@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts";
+import ContactDetail from "./pages/ContactDetail";
 import Listings from "./pages/Listings";
 import Appointments from "./pages/Appointments";
 import Pipeline from "./pages/Pipeline";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
             <Route path="/contacts" element={<ProtectedRoute><MainLayout><Contacts /></MainLayout></ProtectedRoute>} />
+            <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ContactDetail /></MainLayout></ProtectedRoute>} />
             <Route path="/listings" element={<ProtectedRoute><MainLayout><Listings /></MainLayout></ProtectedRoute>} />
             <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
             <Route path="/pipeline" element={<ProtectedRoute><MainLayout><Pipeline /></MainLayout></ProtectedRoute>} />

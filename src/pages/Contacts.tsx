@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -10,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Phone, Mail, Trash2, Pencil, Users } from "lucide-react";
+import { Plus, Search, Phone, Mail, Trash2, Pencil, Users, Download, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, Contact } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +28,7 @@ const createEmptyContact = () => ({
 });
 
 export default function Contacts() {
+  const navigate = useNavigate();
   const { data: contacts, isLoading } = useContacts();
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
@@ -37,6 +39,34 @@ export default function Contacts() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [formData, setFormData] = useState(createEmptyContact());
   const { toast } = useToast();
+
+  const handleExportCSV = () => {
+    if (!contacts || contacts.length === 0) {
+      toast({ title: "No data", description: "No contacts to export", variant: "destructive" });
+      return;
+    }
+
+    const headers = ["Name", "Email", "Phone", "Status", "Source", "Notes", "Created At"];
+    const rows = contacts.map((c) => [
+      c.name,
+      c.email || "",
+      c.phone || "",
+      c.status || "",
+      c.source || "",
+      c.notes || "",
+      c.created_at ? new Date(c.created_at).toLocaleDateString() : "",
+    ]);
+
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `contacts-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: "Contacts exported to CSV" });
+  };
 
   const stats = {
     total: contacts?.length || 0,
@@ -140,19 +170,24 @@ export default function Contacts() {
         title="Contacts"
         description="Manage your contacts and leads"
         actions={
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setFormData(createEmptyContact());
-              setEditingContact(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2" onClick={() => handleOpenDialog()}>
-                <Plus className="w-4 h-4" />
-                Add Contact
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportCSV} className="gap-2">
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setFormData(createEmptyContact());
+                setEditingContact(null);
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" onClick={() => handleOpenDialog()}>
+                  <Plus className="w-4 h-4" />
+                  Add Contact
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[400px] bg-popover border-border">
               <DialogHeader>
                 <DialogTitle>{editingContact ? "Edit Contact" : "Add New Contact"}</DialogTitle>
@@ -232,6 +267,7 @@ export default function Contacts() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 
@@ -263,7 +299,11 @@ export default function Contacts() {
       ) : (
         <div className="space-y-3">
           {filteredContacts.map((contact) => (
-            <div key={contact.id} className="contact-row">
+            <div 
+              key={contact.id} 
+              className="contact-row cursor-pointer hover:bg-secondary/50 transition-colors"
+              onClick={() => navigate(`/contacts/${contact.id}`)}
+            >
               <AvatarCircle name={contact.name} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -290,7 +330,7 @@ export default function Contacts() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(contact)}>
                   <Pencil className="w-4 h-4" />
                 </Button>
@@ -313,6 +353,7 @@ export default function Contacts() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
           ))}
