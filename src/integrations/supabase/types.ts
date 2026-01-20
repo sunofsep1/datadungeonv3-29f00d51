@@ -109,41 +109,106 @@ export type Database = {
       contacts: {
         Row: {
           created_at: string
+          current_situation_notes: string | null
           email: string | null
           id: string
           name: string
           notes: string | null
+          pain_points: string | null
           phone: string | null
+          pipeline_stage: string | null
+          pleasure_points: string | null
+          selling_intentions: string | null
           source: string | null
           status: string | null
+          story: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          current_situation_notes?: string | null
           email?: string | null
           id?: string
           name: string
           notes?: string | null
+          pain_points?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          pleasure_points?: string | null
+          selling_intentions?: string | null
           source?: string | null
           status?: string | null
+          story?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          current_situation_notes?: string | null
           email?: string | null
           id?: string
           name?: string
           notes?: string | null
+          pain_points?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          pleasure_points?: string | null
+          selling_intentions?: string | null
           source?: string | null
           status?: string | null
+          story?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      interactions: {
+        Row: {
+          body: string | null
+          channel: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          subject: string | null
+          timestamp: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          channel?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          subject?: string | null
+          timestamp?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          channel?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          subject?: string | null
+          timestamp?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kpi_goals: {
         Row: {
