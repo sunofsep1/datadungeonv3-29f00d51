@@ -19,7 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
-import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
+import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -230,7 +230,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <KPISnapshot />
-          <MiniCalendar />
+          <DashboardCalendarWidget />
         </div>
 
         <div className="space-y-6">
@@ -371,17 +371,18 @@ export default function Dashboard() {
             <div className="space-y-2">
               <Label>Source</Label>
               <Select value={newLead.source} onValueChange={(value) => setNewLead({ ...newLead, source: value })}>
-                <SelectTrigger className="bg-input"><SelectValue placeholder="Select source..." /></SelectTrigger>
+                <SelectTrigger className="bg-input"><SelectValue placeholder="Select source" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="website">Website</SelectItem>
                   <SelectItem value="referral">Referral</SelectItem>
                   <SelectItem value="social">Social Media</SelectItem>
                   <SelectItem value="open-home">Open Home</SelectItem>
                   <SelectItem value="cold-call">Cold Call</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Property Interest</Label><Input placeholder="Looking for 3-bed house in Bondi" className="bg-input" value={newLead.propertyInterest} onChange={(e) => setNewLead({ ...newLead, propertyInterest: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Property Interest</Label><Input placeholder="e.g. 3BR house in Sydney" className="bg-input" value={newLead.propertyInterest} onChange={(e) => setNewLead({ ...newLead, propertyInterest: e.target.value })} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setLeadDialogOpen(false)}>Cancel</Button>
@@ -390,8 +391,26 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
+      <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border">
+          <DialogHeader><DialogTitle>Schedule Appointment</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2"><Label>Title *</Label><Input placeholder="Meeting with client" className="bg-input" value={newAppointment.title} onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Date *</Label><Input type="date" className="bg-input" value={newAppointment.date} onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Time</Label><Input type="time" className="bg-input" value={newAppointment.time} onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })} /></div>
+            </div>
+            <div className="space-y-2"><Label>Location</Label><Input placeholder="Office or address" className="bg-input" value={newAppointment.location} onChange={(e) => setNewAppointment({ ...newAppointment, location: e.target.value })} /></div>
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setAppointmentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleScheduleAppointment} disabled={createAppointment.isPending}>{createAppointment.isPending ? "Scheduling..." : "Schedule"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
+        <DialogContent className="sm:max-w-[450px] bg-popover border-border">
           <DialogHeader><DialogTitle>Create Post</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2"><Label>Title *</Label><Input placeholder="Post title" className="bg-input" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} /></div>
@@ -405,37 +424,16 @@ export default function Dashboard() {
                     <SelectItem value="facebook">Facebook</SelectItem>
                     <SelectItem value="instagram">Instagram</SelectItem>
                     <SelectItem value="linkedin">LinkedIn</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="twitter">Twitter/X</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Schedule</Label>
-                <Input type="date" className="bg-input" value={newPost.scheduledDate} onChange={(e) => setNewPost({ ...newPost, scheduledDate: e.target.value })} />
-              </div>
+              <div className="space-y-2"><Label>Schedule Date</Label><Input type="date" className="bg-input" value={newPost.scheduledDate} onChange={(e) => setNewPost({ ...newPost, scheduledDate: e.target.value })} /></div>
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setPostDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleAddPost} disabled={createPost.isPending}>{createPost.isPending ? "Creating..." : "Create Post"}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader><DialogTitle>Schedule Appointment</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2"><Label>Title *</Label><Input placeholder="Appointment title" className="bg-input" value={newAppointment.title} onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Date *</Label><Input type="date" className="bg-input" value={newAppointment.date} onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })} /></div>
-              <div className="space-y-2"><Label>Time</Label><Input type="time" className="bg-input" value={newAppointment.time} onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })} /></div>
-            </div>
-            <div className="space-y-2"><Label>Location</Label><Input placeholder="Meeting location" className="bg-input" value={newAppointment.location} onChange={(e) => setNewAppointment({ ...newAppointment, location: e.target.value })} /></div>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setAppointmentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleScheduleAppointment} disabled={createAppointment.isPending}>{createAppointment.isPending ? "Scheduling..." : "Schedule"}</Button>
           </div>
         </DialogContent>
       </Dialog>
