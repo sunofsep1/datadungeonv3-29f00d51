@@ -11,10 +11,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Phone, Mail, Trash2, Pencil, Users, Download, ChevronRight } from "lucide-react";
+import { Plus, Search, Phone, Mail, Trash2, Pencil, Users, Download, ChevronRight, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, Contact } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 
 type ContactStatus = "hot" | "warm" | "cold" | "lead";
 
@@ -36,6 +37,7 @@ export default function Contacts() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [formData, setFormData] = useState(createEmptyContact());
   const { toast } = useToast();
@@ -170,10 +172,14 @@ export default function Contacts() {
         title="Contacts"
         description="Manage your contacts and leads"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setIsImportOpen(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Import CSV</span>
+            </Button>
             <Button variant="outline" onClick={handleExportCSV} className="gap-2">
               <Download className="w-4 h-4" />
-              Export CSV
+              <span className="hidden sm:inline">Export</span>
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
@@ -185,7 +191,7 @@ export default function Contacts() {
               <DialogTrigger asChild>
                 <Button className="gap-2" onClick={() => handleOpenDialog()}>
                   <Plus className="w-4 h-4" />
-                  Add Contact
+                  <span className="hidden sm:inline">Add Contact</span>
                 </Button>
               </DialogTrigger>
             <DialogContent className="sm:max-w-[400px] bg-popover border-border">
@@ -359,6 +365,8 @@ export default function Contacts() {
           ))}
         </div>
       )}
+
+      <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
     </div>
   );
 }

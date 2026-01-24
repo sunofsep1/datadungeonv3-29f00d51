@@ -13,18 +13,13 @@ import ContactDetail from "./pages/ContactDetail";
 import Listings from "./pages/Listings";
 import Appointments from "./pages/Appointments";
 import Pipeline from "./pages/Pipeline";
-import Campaigns from "./pages/Campaigns";
+import Marketing from "./pages/Marketing";
+import Performance from "./pages/Performance";
 import Scripts from "./pages/Scripts";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import AgentDashboard from "./pages/agent-ops/AgentDashboard";
-import Numbers from "./pages/agent-ops/Numbers";
-import Goals from "./pages/agent-ops/Goals";
-import Prospecting from "./pages/agent-ops/Prospecting";
-import Marketing from "./pages/agent-ops/Marketing";
-import Strategy from "./pages/agent-ops/Strategy";
-import Settings from "./pages/agent-ops/Settings";
 
 const queryClient = new QueryClient();
 
@@ -45,15 +40,13 @@ const App = () => (
             <Route path="/listings" element={<ProtectedRoute><MainLayout><Listings /></MainLayout></ProtectedRoute>} />
             <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
             <Route path="/pipeline" element={<ProtectedRoute><MainLayout><Pipeline /></MainLayout></ProtectedRoute>} />
-            <Route path="/campaigns" element={<ProtectedRoute><MainLayout><Campaigns /></MainLayout></ProtectedRoute>} />
+            <Route path="/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
+            <Route path="/performance" element={<ProtectedRoute><MainLayout><Performance /></MainLayout></ProtectedRoute>} />
             <Route path="/scripts" element={<ProtectedRoute><MainLayout><Scripts /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/dashboard" element={<ProtectedRoute><MainLayout><AgentDashboard /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/numbers" element={<ProtectedRoute><MainLayout><Numbers /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/goals" element={<ProtectedRoute><MainLayout><Goals /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/prospecting" element={<ProtectedRoute><MainLayout><Prospecting /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/strategy" element={<ProtectedRoute><MainLayout><Strategy /></MainLayout></ProtectedRoute>} />
-            <Route path="/agent-ops/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+            {/* Legacy redirects */}
+            <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />
+            <Route path="/agent-ops/*" element={<Navigate to="/performance" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
