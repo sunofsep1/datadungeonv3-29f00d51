@@ -4,6 +4,8 @@ import { NumbersKPIGrid } from "@/components/agent-ops/NumbersKPIGrid";
 import { NumbersCharts } from "@/components/agent-ops/NumbersCharts";
 import { LogActivityForm } from "@/components/agent-ops/LogActivityForm";
 import { GoalsSection } from "@/components/agent-ops/GoalsSection";
+import { CallsTracker } from "@/components/performance/CallsTracker";
+import { GoalsManager } from "@/components/performance/GoalsManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Performance() {
@@ -26,7 +28,11 @@ export default function Performance() {
           <NumbersKPIGrid />
         </TabsContent>
 
-        <TabsContent value="goals">
+        <TabsContent value="goals" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GoalsManager />
+            <CallsTracker />
+          </div>
           <GoalsSection />
         </TabsContent>
 

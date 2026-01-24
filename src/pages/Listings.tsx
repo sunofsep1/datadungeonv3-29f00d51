@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2 } from "lucide-react";
+import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
+import { useContacts } from "@/hooks/useContacts";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
@@ -25,10 +26,12 @@ const createEmptyListing = () => ({
   property_type: "house" as PropertyType,
   status: "active" as ListingStatus,
   notes: "",
+  contact_id: "",
 });
 
 export default function Listings() {
   const { data: listings, isLoading } = useListings();
+  const { data: contacts = [] } = useContacts();
   const createListing = useCreateListing();
   const updateListing = useUpdateListing();
   const deleteListing = useDeleteListing();
@@ -36,7 +39,18 @@ export default function Listings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [formData, setFormData] = useState(createEmptyListing());
+  const [selectedContact, setSelectedContact] = useState<typeof contacts[0] | null>(null);
   const { toast } = useToast();
+
+  // Update selected contact when contact_id changes
+  useEffect(() => {
+    if (formData.contact_id) {
+      const contact = contacts.find(c => c.id === formData.contact_id);
+      setSelectedContact(contact || null);
+    } else {
+      setSelectedContact(null);
+    }
+  }, [formData.contact_id, contacts]);
 
   const handleOpenDialog = (listing?: Listing) => {
     if (listing) {
@@ -49,6 +63,7 @@ export default function Listings() {
         property_type: (listing.property_type as PropertyType) || "house",
         status: (listing.status as ListingStatus) || "active",
         notes: listing.notes || "",
+        contact_id: (listing as any).contact_id || "",
       });
     } else {
       setEditingListing(null);
@@ -64,14 +79,25 @@ export default function Listings() {
     }
 
     try {
+      const listingData = {
+        address: formData.address,
+        price: formData.price,
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        property_type: formData.property_type,
+        status: formData.status,
+        notes: formData.notes,
+        contact_id: formData.contact_id || null,
+      };
+
       if (editingListing) {
         await updateListing.mutateAsync({
           id: editingListing.id,
-          ...formData,
+          ...listingData,
         });
         toast({ title: "Success", description: "Listing updated!" });
       } else {
-        await createListing.mutateAsync(formData);
+        await createListing.mutateAsync(listingData);
         toast({ title: "Success", description: "Listing added!" });
       }
       setIsDialogOpen(false);
@@ -114,10 +140,16 @@ export default function Listings() {
     }
   };
 
+  const getContactForListing = (listing: Listing) => {
+    const contactId = (listing as any).contact_id;
+    if (!contactId) return null;
+    return contacts.find(c => c.id === contactId);
+  };
+
   if (isLoading) {
     return (
       <div className="animate-fade-in">
-        <PageHeader title="Listings" description="Manage your property listings" />
+        <PageHeader title="Listings & Deals" description="Manage your property listings and link property owners" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48" />)}
         </div>
@@ -128,8 +160,8 @@ export default function Listings() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Listings"
-        description="Manage your property listings"
+        title="Listings & Deals"
+        description="Manage your property listings and link property owners"
         actions={
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
@@ -149,6 +181,45 @@ export default function Listings() {
                 <DialogTitle>{editingListing ? "Edit Listing" : "Add New Listing"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+                {/* Property Owner Section */}
+                <div className="space-y-2 p-4 bg-secondary rounded-lg">
+                  <Label className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Property Owner
+                  </Label>
+                  <Select
+                    value={formData.contact_id}
+                    onValueChange={(value) => setFormData({ ...formData, contact_id: value })}
+                  >
+                    <SelectTrigger className="bg-input">
+                      <SelectValue placeholder="Select property owner (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {contacts.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          {contact.name} {contact.email ? `(${contact.email})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedContact && (
+                    <div className="mt-2 p-3 bg-card rounded border border-border">
+                      <p className="text-sm font-medium text-foreground">{selectedContact.name}</p>
+                      {selectedContact.phone && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <Phone className="w-3 h-3" /> {selectedContact.phone}
+                        </p>
+                      )}
+                      {selectedContact.email && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> {selectedContact.email}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label>Address *</Label>
                   <Input
@@ -252,59 +323,77 @@ export default function Listings() {
       {/* Listings Grid */}
       {listings && listings.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {listings.map((listing) => (
-            <Card key={listing.id} className="p-4 bg-card border-border">
-              <div className="flex items-start justify-between mb-3">
-                <StatusBadge variant={getStatusVariant(listing.status)}>{listing.status || "active"}</StatusBadge>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(listing)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Listing</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this listing? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteListing(listing.id)}>Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+          {listings.map((listing) => {
+            const owner = getContactForListing(listing);
+            return (
+              <Card key={listing.id} className="p-4 bg-card border-border">
+                <div className="flex items-start justify-between mb-3">
+                  <StatusBadge variant={getStatusVariant(listing.status)}>{listing.status || "active"}</StatusBadge>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(listing)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this listing? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteListing(listing.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
-              </div>
-              <h3 className="font-semibold text-foreground mb-1">{listing.address}</h3>
-              {listing.property_type && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1 mb-3">
-                  <MapPin className="w-3 h-3" />
-                  {listing.property_type}
-                </p>
-              )}
-              <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                {listing.bedrooms !== null && (
-                  <span className="flex items-center gap-1">
-                    <Bed className="w-4 h-4" />
-                    {listing.bedrooms}
-                  </span>
+                <h3 className="font-semibold text-foreground mb-1">{listing.address}</h3>
+                {listing.property_type && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                    <MapPin className="w-3 h-3" />
+                    {listing.property_type}
+                  </p>
                 )}
-                {listing.bathrooms !== null && (
-                  <span className="flex items-center gap-1">
-                    <Bath className="w-4 h-4" />
-                    {listing.bathrooms}
-                  </span>
+                <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                  {listing.bedrooms !== null && (
+                    <span className="flex items-center gap-1">
+                      <Bed className="w-4 h-4" />
+                      {listing.bedrooms}
+                    </span>
+                  )}
+                  {listing.bathrooms !== null && (
+                    <span className="flex items-center gap-1">
+                      <Bath className="w-4 h-4" />
+                      {listing.bathrooms}
+                    </span>
+                  )}
+                </div>
+                {/* Property Owner Info */}
+                {owner && (
+                  <div className="pt-3 border-t border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Property Owner</p>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">{owner.name}</span>
+                    </div>
+                    {owner.phone && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Phone className="w-3 h-3" /> {owner.phone}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12 text-muted-foreground">

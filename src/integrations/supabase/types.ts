@@ -106,6 +106,53 @@ export type Database = {
           },
         ]
       }
+      calls: {
+        Row: {
+          call_date: string
+          contact_id: string | null
+          contact_name: string | null
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          outcome: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_date?: string
+          contact_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_date?: string
+          contact_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -305,6 +352,7 @@ export type Database = {
           address: string
           bathrooms: number | null
           bedrooms: number | null
+          contact_id: string | null
           created_at: string
           id: string
           notes: string | null
@@ -319,6 +367,7 @@ export type Database = {
           address: string
           bathrooms?: number | null
           bedrooms?: number | null
+          contact_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -333,6 +382,7 @@ export type Database = {
           address?: string
           bathrooms?: number | null
           bedrooms?: number | null
+          contact_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -343,7 +393,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listings_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posts: {
         Row: {
