@@ -12,11 +12,14 @@ import { Users, TrendingUp, Megaphone, Calendar, Clock, Home } from "lucide-reac
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact } from "@/hooks/useContacts";
 import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
-import { useListings, useCreateListing, useUpdateListing } from "@/hooks/useListings";
+import { useListings, useCreateListing } from "@/hooks/useListings";
 import { useLeads, useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
-import { format, formatDistanceToNow } from "date-fns";
-import { EnhancedCalendarWidget } from "@/components/dashboard/EnhancedCalendarWidget";
+import { formatDistanceToNow } from "date-fns";
+import { VisionBoard } from "@/components/dashboard/VisionBoard";
+import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
+import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
+import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -24,30 +27,25 @@ export default function Dashboard() {
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
-  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
 
   const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
   const [newDeal, setNewDeal] = useState({ address: "", price: "", stage: "new", propertyType: "house" });
-  const [newCampaign, setNewCampaign] = useState({ name: "", type: "email", description: "" });
   const [newAppointment, setNewAppointment] = useState({ title: "", date: "", time: "", location: "" });
   const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", source: "", propertyInterest: "" });
   const [newPost, setNewPost] = useState({ title: "", content: "", platform: "facebook", scheduledDate: "" });
 
-  // Fetch real data from database
   const { data: contacts = [] } = useContacts();
   const { data: appointments = [] } = useAppointments();
   const { data: listings = [] } = useListings();
   const { data: leads = [] } = useLeads();
   const { data: posts = [] } = usePosts();
 
-  // Mutations
   const createContact = useCreateContact();
   const createAppointment = useCreateAppointment();
   const createListing = useCreateListing();
-  const updateListing = useUpdateListing();
   const createLead = useCreateLead();
   const createPost = useCreatePost();
 
@@ -58,7 +56,6 @@ export default function Dashboard() {
     { label: "Appointments", value: appointments.length, icon: Calendar },
   ];
 
-  // Build recent activity from real data
   const recentActivity = useMemo(() => {
     const activities: { type: string; message: string; time: string; date: Date }[] = [];
 
@@ -89,9 +86,7 @@ export default function Dashboard() {
       });
     });
 
-    return activities
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .slice(0, 5);
+    return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
   }, [contacts, appointments, listings]);
 
   const handleAddContact = async () => {
@@ -171,7 +166,7 @@ export default function Dashboard() {
       toast({ title: "Success", description: "Post created!" });
       setNewPost({ title: "", content: "", platform: "facebook", scheduledDate: "" });
       setPostDialogOpen(false);
-      navigate("/agent-ops/marketing");
+      navigate("/marketing");
     } catch (error) {
       toast({ title: "Error", description: "Failed to create post", variant: "destructive" });
     }
@@ -206,39 +201,83 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="Dashboard"
-        description="Welcome back! Here's an overview of your CRM."
-      />
+      <PageHeader title="Dashboard" description="Welcome back! Here's your command center." />
+
+      {/* Vision & Affirmations Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <VisionBoard />
+        <AffirmationsWidget />
+      </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="p-6 bg-card border-border">
-            <div className="flex items-center gap-4">
+          <Card key={index} className="p-4 md:p-6 bg-card border-border">
+            <div className="flex items-center gap-3 md:gap-4">
               <div className="p-2 rounded-lg bg-primary/10">
-                <stat.icon className="w-5 h-5 text-primary" />
+                <stat.icon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{stat.label}</p>
+                <p className="text-xl md:text-2xl font-bold text-foreground">{stat.value}</p>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Enhanced Calendar Widget */}
-        <div className="lg:col-span-2">
-          <EnhancedCalendarWidget />
+        <div className="lg:col-span-2 space-y-6">
+          <KPISnapshot />
+          <MiniCalendar />
         </div>
 
-        {/* Right Column */}
         <div className="space-y-6">
+          {/* Quick Actions */}
+          <Card className="p-4 md:p-6 bg-card border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setContactDialogOpen(true)}
+                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors min-h-[48px]"
+              >
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Add Contact</span>
+              </button>
+              <button
+                onClick={() => setDealDialogOpen(true)}
+                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors min-h-[48px]"
+              >
+                <TrendingUp className="w-4 h-4 text-success" />
+                <span className="text-sm font-medium">Add Deal</span>
+              </button>
+              <button
+                onClick={() => setLeadDialogOpen(true)}
+                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors min-h-[48px]"
+              >
+                <Megaphone className="w-4 h-4 text-warning" />
+                <span className="text-sm font-medium">Add Lead</span>
+              </button>
+              <button
+                onClick={() => setAppointmentDialogOpen(true)}
+                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors min-h-[48px]"
+              >
+                <Calendar className="w-4 h-4 text-info" />
+                <span className="text-sm font-medium">Schedule</span>
+              </button>
+              <button
+                onClick={() => setPostDialogOpen(true)}
+                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors col-span-2 min-h-[48px]"
+              >
+                <Home className="w-4 h-4 text-teal" />
+                <span className="text-sm font-medium">Create Post</span>
+              </button>
+            </div>
+          </Card>
+
           {/* Recent Activity */}
-          <Card className="p-6 bg-card border-border">
+          <Card className="p-4 md:p-6 bg-card border-border">
             <h3 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
             {recentActivity.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -259,149 +298,48 @@ export default function Dashboard() {
               </div>
             )}
           </Card>
-
-          {/* Quick Actions */}
-          <Card className="p-6 bg-card border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setContactDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-              >
-                <Users className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">Add Contact</span>
-              </button>
-              <button
-                onClick={() => setDealDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-              >
-                <TrendingUp className="w-4 h-4 text-success" />
-                <span className="text-sm font-medium">Add Deal</span>
-              </button>
-              <button
-                onClick={() => setLeadDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-              >
-                <Megaphone className="w-4 h-4 text-warning" />
-                <span className="text-sm font-medium">Add Lead</span>
-              </button>
-              <button
-                onClick={() => setAppointmentDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-              >
-                <Calendar className="w-4 h-4 text-info" />
-                <span className="text-sm font-medium">Schedule</span>
-              </button>
-              <button
-                onClick={() => setPostDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors col-span-2"
-              >
-                <Home className="w-4 h-4 text-teal" />
-                <span className="text-sm font-medium">Create Post</span>
-              </button>
-            </div>
-          </Card>
         </div>
       </div>
 
-      {/* Add Contact Dialog */}
+      {/* Dialogs */}
       <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader>
-            <DialogTitle>Add Contact</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Contact</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Name *</Label>
-              <Input
-                placeholder="Contact name"
-                className="bg-input"
-                value={newContact.name}
-                onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                placeholder="email@example.com"
-                className="bg-input"
-                value={newContact.email}
-                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input
-                placeholder="0400 000 000"
-                className="bg-input"
-                value={newContact.phone}
-                onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Name *</Label><Input placeholder="Contact name" className="bg-input" value={newContact.name} onChange={(e) => setNewContact({ ...newContact, name: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Email</Label><Input placeholder="email@example.com" className="bg-input" value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Phone</Label><Input placeholder="0400 000 000" className="bg-input" value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setContactDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddContact} disabled={createContact.isPending}>
-              {createContact.isPending ? "Adding..." : "Add Contact"}
-            </Button>
+            <Button onClick={handleAddContact} disabled={createContact.isPending}>{createContact.isPending ? "Adding..." : "Add Contact"}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add Deal Dialog */}
       <Dialog open={dealDialogOpen} onOpenChange={setDealDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader>
-            <DialogTitle>Add Deal</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Deal</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Property Address *</Label>
-              <Input
-                placeholder="123 Main Street, Sydney"
-                className="bg-input"
-                value={newDeal.address}
-                onChange={(e) => setNewDeal({ ...newDeal, address: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Price</Label>
-              <Input
-                type="number"
-                placeholder="0"
-                className="bg-input"
-                value={newDeal.price}
-                onChange={(e) => setNewDeal({ ...newDeal, price: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Property Address *</Label><Input placeholder="123 Main Street, Sydney" className="bg-input" value={newDeal.address} onChange={(e) => setNewDeal({ ...newDeal, address: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Price</Label><Input type="number" placeholder="0" className="bg-input" value={newDeal.price} onChange={(e) => setNewDeal({ ...newDeal, price: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Property Type</Label>
-                <Select
-                  value={newDeal.propertyType}
-                  onValueChange={(value) => setNewDeal({ ...newDeal, propertyType: value })}
-                >
-                  <SelectTrigger className="bg-input">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={newDeal.propertyType} onValueChange={(value) => setNewDeal({ ...newDeal, propertyType: value })}>
+                  <SelectTrigger className="bg-input"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="house">House</SelectItem>
                     <SelectItem value="apartment">Apartment</SelectItem>
                     <SelectItem value="townhouse">Townhouse</SelectItem>
                     <SelectItem value="land">Land</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Stage</Label>
-                <Select
-                  value={newDeal.stage}
-                  onValueChange={(value) => setNewDeal({ ...newDeal, stage: value })}
-                >
-                  <SelectTrigger className="bg-input">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={newDeal.stage} onValueChange={(value) => setNewDeal({ ...newDeal, stage: value })}>
+                  <SelectTrigger className="bg-input"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="new">New</SelectItem>
                     <SelectItem value="contacted">Contacted</SelectItem>
@@ -416,122 +354,53 @@ export default function Dashboard() {
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setDealDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddDeal} disabled={createListing.isPending}>
-              {createListing.isPending ? "Adding..." : "Add Deal"}
-            </Button>
+            <Button onClick={handleAddDeal} disabled={createListing.isPending}>{createListing.isPending ? "Adding..." : "Add Deal"}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add Lead Dialog */}
       <Dialog open={leadDialogOpen} onOpenChange={setLeadDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader>
-            <DialogTitle>Add Lead</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Lead</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Name *</Label>
-              <Input
-                placeholder="Lead name"
-                className="bg-input"
-                value={newLead.name}
-                onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Name *</Label><Input placeholder="Lead name" className="bg-input" value={newLead.name} onChange={(e) => setNewLead({ ...newLead, name: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  placeholder="email@example.com"
-                  className="bg-input"
-                  value={newLead.email}
-                  onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input
-                  placeholder="0400 000 000"
-                  className="bg-input"
-                  value={newLead.phone}
-                  onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
-                />
-              </div>
+              <div className="space-y-2"><Label>Email</Label><Input placeholder="email@example.com" className="bg-input" value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Phone</Label><Input placeholder="0400 000 000" className="bg-input" value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} /></div>
             </div>
             <div className="space-y-2">
               <Label>Source</Label>
-              <Select
-                value={newLead.source}
-                onValueChange={(value) => setNewLead({ ...newLead, source: value })}
-              >
-                <SelectTrigger className="bg-input">
-                  <SelectValue placeholder="Select source..." />
-                </SelectTrigger>
+              <Select value={newLead.source} onValueChange={(value) => setNewLead({ ...newLead, source: value })}>
+                <SelectTrigger className="bg-input"><SelectValue placeholder="Select source..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="website">Website</SelectItem>
                   <SelectItem value="referral">Referral</SelectItem>
                   <SelectItem value="social">Social Media</SelectItem>
                   <SelectItem value="open-home">Open Home</SelectItem>
                   <SelectItem value="cold-call">Cold Call</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Property Interest</Label>
-              <Input
-                placeholder="Looking for 3-bed house in Bondi"
-                className="bg-input"
-                value={newLead.propertyInterest}
-                onChange={(e) => setNewLead({ ...newLead, propertyInterest: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Property Interest</Label><Input placeholder="Looking for 3-bed house in Bondi" className="bg-input" value={newLead.propertyInterest} onChange={(e) => setNewLead({ ...newLead, propertyInterest: e.target.value })} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setLeadDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddLead} disabled={createLead.isPending}>
-              {createLead.isPending ? "Adding..." : "Add Lead"}
-            </Button>
+            <Button onClick={handleAddLead} disabled={createLead.isPending}>{createLead.isPending ? "Adding..." : "Add Lead"}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Create Post Dialog */}
       <Dialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader>
-            <DialogTitle>Create Post</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Create Post</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input
-                placeholder="Post title"
-                className="bg-input"
-                value={newPost.title}
-                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Content</Label>
-              <Textarea
-                placeholder="Write your post content..."
-                className="bg-input min-h-[100px]"
-                value={newPost.content}
-                onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Title *</Label><Input placeholder="Post title" className="bg-input" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Content</Label><Textarea placeholder="Write your post content..." className="bg-input min-h-[100px]" value={newPost.content} onChange={(e) => setNewPost({ ...newPost, content: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Platform</Label>
-                <Select
-                  value={newPost.platform}
-                  onValueChange={(value) => setNewPost({ ...newPost, platform: value })}
-                >
-                  <SelectTrigger className="bg-input">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={newPost.platform} onValueChange={(value) => setNewPost({ ...newPost, platform: value })}>
+                  <SelectTrigger className="bg-input"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="facebook">Facebook</SelectItem>
                     <SelectItem value="instagram">Instagram</SelectItem>
@@ -542,75 +411,31 @@ export default function Dashboard() {
               </div>
               <div className="space-y-2">
                 <Label>Schedule</Label>
-                <Input
-                  type="date"
-                  className="bg-input"
-                  value={newPost.scheduledDate}
-                  onChange={(e) => setNewPost({ ...newPost, scheduledDate: e.target.value })}
-                />
+                <Input type="date" className="bg-input" value={newPost.scheduledDate} onChange={(e) => setNewPost({ ...newPost, scheduledDate: e.target.value })} />
               </div>
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setPostDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddPost} disabled={createPost.isPending}>
-              {createPost.isPending ? "Creating..." : "Create Post"}
-            </Button>
+            <Button onClick={handleAddPost} disabled={createPost.isPending}>{createPost.isPending ? "Creating..." : "Create Post"}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Schedule Appointment Dialog */}
       <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader>
-            <DialogTitle>Schedule Appointment</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Schedule Appointment</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input
-                placeholder="Appointment title"
-                className="bg-input"
-                value={newAppointment.title}
-                onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Title *</Label><Input placeholder="Appointment title" className="bg-input" value={newAppointment.title} onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Date *</Label>
-                <Input
-                  type="date"
-                  className="bg-input"
-                  value={newAppointment.date}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Time</Label>
-                <Input
-                  type="time"
-                  className="bg-input"
-                  value={newAppointment.time}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })}
-                />
-              </div>
+              <div className="space-y-2"><Label>Date *</Label><Input type="date" className="bg-input" value={newAppointment.date} onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Time</Label><Input type="time" className="bg-input" value={newAppointment.time} onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })} /></div>
             </div>
-            <div className="space-y-2">
-              <Label>Location</Label>
-              <Input
-                placeholder="Meeting location"
-                className="bg-input"
-                value={newAppointment.location}
-                onChange={(e) => setNewAppointment({ ...newAppointment, location: e.target.value })}
-              />
-            </div>
+            <div className="space-y-2"><Label>Location</Label><Input placeholder="Meeting location" className="bg-input" value={newAppointment.location} onChange={(e) => setNewAppointment({ ...newAppointment, location: e.target.value })} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setAppointmentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleScheduleAppointment} disabled={createAppointment.isPending}>
-              {createAppointment.isPending ? "Scheduling..." : "Schedule"}
-            </Button>
+            <Button onClick={handleScheduleAppointment} disabled={createAppointment.isPending}>{createAppointment.isPending ? "Scheduling..." : "Schedule"}</Button>
           </div>
         </DialogContent>
       </Dialog>
