@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,21 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
 import { useContacts } from "@/hooks/useContacts";
+import { format } from "date-fns";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
@@ -54,6 +65,8 @@ export default function Listings() {
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [formData, setFormData] = useState(createEmptyListing());
   const [selectedContact, setSelectedContact] = useState<typeof contacts[0] | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const { toast } = useToast();
 
   // Update selected contact when contact_id changes
@@ -179,6 +192,14 @@ export default function Listings() {
     return contacts.find(c => c.id === contactId);
   };
 
+  // Pagination
+  const paginatedListings = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return (listings ?? []).slice(startIndex, startIndex + itemsPerPage);
+  }, [listings, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil((listings?.length ?? 0) / itemsPerPage);
+
   if (isLoading) {
     return (
       <div className="animate-fade-in">
@@ -216,9 +237,18 @@ export default function Listings() {
                 <DialogTitle>{editingListing ? "Edit Listing" : "Add New Listing"}</DialogTitle>
               </DialogHeader>
               <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4 mt-4 pb-4">
-                {/* Property Owner Section */}
-                <div className="space-y-2 p-4 bg-secondary rounded-lg">
+                <Tabs defaultValue="basic" className="mt-4">
+                  <TabsList className="grid w-full grid-cols-6">
+                    <TabsTrigger value="basic">Basic</TabsTrigger>
+                    <TabsTrigger value="property">Property</TabsTrigger>
+                    <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                    <TabsTrigger value="financial">Financial</TabsTrigger>
+                    <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                    <TabsTrigger value="notes">Notes</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="basic" className="space-y-4 mt-4">
+                    {/* Property Owner Section */}
+                    <div className="space-y-2 p-4 bg-secondary rounded-lg">
                   <Label className="flex items-center gap-2">
                     <User className="w-4 h-4" />
                     Property Owner
@@ -332,8 +362,10 @@ export default function Listings() {
                     </SelectContent>
                   </Select>
                 </div>
-                  {/* Property Details Section */}
-                  <div className="space-y-2">
+                  </TabsContent>
+                  <TabsContent value="property" className="space-y-4 mt-4">
+                    {/* Property Details Section */}
+                    <div className="space-y-2">
                     <Label className="text-base font-semibold">Property Details</Label>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -387,9 +419,10 @@ export default function Listings() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Marketing Section */}
-                  <div className="space-y-2">
+                  </TabsContent>
+                  <TabsContent value="marketing" className="space-y-4 mt-4">
+                    {/* Marketing Section */}
+                    <div className="space-y-2">
                     <Label className="text-base font-semibold">Marketing</Label>
                     <div className="space-y-2">
                       <Label>Listing Description</Label>
@@ -425,9 +458,10 @@ export default function Listings() {
                       />
                     </div>
                   </div>
-
-                  {/* Financial Section */}
-                  <div className="space-y-2">
+                  </TabsContent>
+                  <TabsContent value="financial" className="space-y-4 mt-4">
+                    {/* Financial Section */}
+                    <div className="space-y-2">
                     <Label className="text-base font-semibold">Financial</Label>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -478,9 +512,10 @@ export default function Listings() {
                       />
                     </div>
                   </div>
-
-                  {/* Timeline Section */}
-                  <div className="space-y-2">
+                  </TabsContent>
+                  <TabsContent value="timeline" className="space-y-4 mt-4">
+                    {/* Timeline Section */}
+                    <div className="space-y-2">
                     <Label className="text-base font-semibold">Timeline</Label>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
@@ -518,9 +553,10 @@ export default function Listings() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Notes Section */}
-                  <div className="space-y-2">
+                  </TabsContent>
+                  <TabsContent value="notes" className="space-y-4 mt-4">
+                    {/* Notes Section */}
+                    <div className="space-y-2">
                     <Label className="text-base font-semibold">Additional Notes</Label>
                     <div className="space-y-2">
                       <Label>Agent Notes</Label>
@@ -565,7 +601,8 @@ export default function Listings() {
                       />
                     </div>
                   </div>
-                </div>
+                  </TabsContent>
+                </Tabs>
               </ScrollArea>
               <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
@@ -583,79 +620,145 @@ export default function Listings() {
 
       {/* Listings Grid */}
       {listings && listings.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {listings.map((listing) => {
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedListings.map((listing) => {
             const owner = getContactForListing(listing);
             return (
-              <Card key={listing.id} className="p-4 bg-card border-border">
-                <div className="flex items-start justify-between mb-3">
-                  <StatusBadge variant={getStatusVariant(listing.status)}>{listing.status || "active"}</StatusBadge>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(listing)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Listing</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this listing? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteListing(listing.id)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+              <Card key={listing.id} className="p-0 bg-card border-border overflow-hidden hover:shadow-md transition-shadow">
+                {/* Property Image Placeholder */}
+                <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <Building2 className="w-16 h-16 text-primary/40" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-1">{listing.address}</h3>
-                {listing.property_type && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                    <MapPin className="w-3 h-3" />
-                    {listing.property_type}
-                  </p>
-                )}
-                <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  {listing.bedrooms !== null && (
-                    <span className="flex items-center gap-1">
-                      <Bed className="w-4 h-4" />
-                      {listing.bedrooms}
-                    </span>
-                  )}
-                  {listing.bathrooms !== null && (
-                    <span className="flex items-center gap-1">
-                      <Bath className="w-4 h-4" />
-                      {listing.bathrooms}
-                    </span>
-                  )}
-                </div>
-                {/* Property Owner Info */}
-                {owner && (
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground mb-1">Property Owner</p>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium text-foreground">{owner.name}</span>
-                    </div>
-                    {owner.phone && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                        <Phone className="w-3 h-3" /> {owner.phone}
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {listing.property_type && (
+                          <Badge variant="secondary" className="text-xs capitalize">
+                            {listing.property_type}
+                          </Badge>
+                        )}
+                        <StatusBadge variant={getStatusVariant(listing.status)} className="text-xs">
+                          {listing.status || "active"}
+                        </StatusBadge>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono mb-1">
+                        ID: {listing.id.slice(0, 8)}
                       </p>
+                    </div>
+                    <div className="flex gap-1 ml-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(listing)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this listing? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteListing(listing.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-2 line-clamp-2">{listing.address}</h3>
+                  <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                    {listing.bedrooms !== null && (
+                      <span className="flex items-center gap-1.5">
+                        <Bed className="w-4 h-4" />
+                        {listing.bedrooms}
+                      </span>
+                    )}
+                    {listing.bathrooms !== null && (
+                      <span className="flex items-center gap-1.5">
+                        <Bath className="w-4 h-4" />
+                        {listing.bathrooms}
+                      </span>
                     )}
                   </div>
-                )}
+                  {listing.created_at && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                      <Calendar className="w-3 h-3" />
+                      Listed: {format(new Date(listing.created_at), "MMM d, yyyy")}
+                    </div>
+                  )}
+                  {/* Property Owner Info */}
+                  {owner && (
+                    <div className="pt-3 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-1">Property Owner</p>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">{owner.name}</span>
+                      </div>
+                      {owner.phone && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <Phone className="w-3 h-3" /> {owner.phone}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </Card>
             );
           })}
-        </div>
+          </div>
+          {totalPages > 1 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       ) : (
         <div className="text-center py-12 text-muted-foreground">
           <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />

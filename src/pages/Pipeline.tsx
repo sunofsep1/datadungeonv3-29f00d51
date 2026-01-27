@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -6,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Plus, GripVertical, Home, DollarSign } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, GripVertical, Home, DollarSign, User, Clock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useListings, useCreateListing, useUpdateListing, Listing } from "@/hooks/useListings";
+import { useListings, useCreateListing, useUpdateListing, Listing, ListingWithContact } from "@/hooks/useListings";
+import { useContacts } from "@/hooks/useContacts";
+import { useLogListingStageMove } from "@/hooks/useEvents";
+import { differenceInDays, format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const PIPELINE_STAGES = [
   { id: "new", name: "New", color: "bg-blue-500" },
@@ -19,14 +25,34 @@ const PIPELINE_STAGES = [
   { id: "settled", name: "Settled", color: "bg-green-500" },
 ];
 
+// Stage warning thresholds (days)
+const STAGE_WARNINGS: Record<string, number> = {
+  new: 7,
+  contacted: 14,
+  inspection: 21,
+  offer: 14,
+  "under-contract": 60,
+  settled: Infinity, // Never warn on settled
+};
+
 export default function Pipeline() {
+  const navigate = useNavigate();
   const { data: listings = [], isLoading } = useListings();
+  const { data: contacts = [] } = useContacts();
   const createListing = useCreateListing();
   const updateListing = useUpdateListing();
+  const { logStageMove } = useLogListingStageMove();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newDeal, setNewDeal] = useState({ address: "", price: "", stage: "new", propertyType: "house" });
   const [draggedItem, setDraggedItem] = useState<Listing | null>(null);
   const { toast } = useToast();
+
+  // Create a map of contact_id to contact for quick lookup
+  const contactMap = useMemo(() => {
+    const map = new Map();
+    contacts.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [contacts]);
 
   const getListingsByStage = (stageId: string) => {
     return listings.filter((listing) => (listing.pipeline_stage || "new") === stageId);
@@ -69,16 +95,57 @@ export default function Pipeline() {
       return;
     }
     
+    const oldStage = draggedItem.pipeline_stage || "new";
+    const newStageName = PIPELINE_STAGES.find((s) => s.id === stageId)?.name || stageId;
+    
     try {
       await updateListing.mutateAsync({
         id: draggedItem.id,
         pipeline_stage: stageId,
       });
-      toast({ title: "Stage Updated", description: `Moved to ${PIPELINE_STAGES.find(s => s.id === stageId)?.name}` });
+      
+      // Log activity event for stage movement
+      try {
+        await logStageMove(
+          draggedItem.id,
+          draggedItem.contact_id,
+          oldStage,
+          stageId,
+          draggedItem.address
+        );
+      } catch (err) {
+        // Don't fail the stage update if activity logging fails
+        console.error("Failed to log stage movement:", err);
+      }
+      
+      toast({
+        title: "Stage Updated",
+        description: `Moved to ${newStageName}`,
+      });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update stage", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to update stage",
+        variant: "destructive",
+      });
     }
     setDraggedItem(null);
+  };
+
+  // Calculate days in current stage and get warning status
+  const getDaysInStage = (listing: Listing): number => {
+    if (!listing.updated_at) return 0;
+    const updated = new Date(listing.updated_at);
+    return differenceInDays(new Date(), updated);
+  };
+
+  const getStageWarning = (listing: Listing): "none" | "warning" | "critical" => {
+    const days = getDaysInStage(listing);
+    const threshold = STAGE_WARNINGS[listing.pipeline_stage || "new"] || 30;
+    
+    if (days > threshold * 1.5) return "critical";
+    if (days > threshold) return "warning";
+    return "none";
   };
 
   const formatCurrency = (value: number | null) => {
@@ -123,31 +190,83 @@ export default function Pipeline() {
               <div className="text-xs text-muted-foreground mb-4">{formatCurrency(stageValue)}</div>
               
               <div className="space-y-2">
-                {stageListings.map((listing) => (
-                  <Card 
-                    key={listing.id} 
-                    className="p-3 bg-secondary/50 border-border cursor-grab hover:bg-secondary transition-colors active:cursor-grabbing"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, listing)}
-                  >
-                    <div className="flex items-start gap-2">
-                      <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-foreground truncate">{listing.address}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <DollarSign className="w-3 h-3 text-primary" />
-                          <span className="text-sm text-primary">{formatCurrency(listing.price)}</span>
-                        </div>
-                        {listing.property_type && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <Home className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground capitalize">{listing.property_type}</span>
+                {stageListings.map((listing) => {
+                  // Get contact from listing.contacts (if joined) or fallback to contactMap
+                  const contact =
+                    (listing as ListingWithContact).contacts ||
+                    (listing.contact_id ? contactMap.get(listing.contact_id) : null);
+                  const daysInStage = getDaysInStage(listing);
+                  const warning = getStageWarning(listing);
+                  
+                  return (
+                    <Card
+                      key={listing.id}
+                      className={cn(
+                        "p-3 bg-secondary/50 border-border cursor-grab hover:bg-secondary transition-colors active:cursor-grabbing",
+                        warning === "critical" && "border-yellow-500/50 bg-yellow-500/5",
+                        warning === "warning" && "border-yellow-400/30 bg-yellow-400/5"
+                      )}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, listing)}
+                      onClick={() => navigate(`/listings`)} // Could navigate to listing detail if exists
+                    >
+                      <div className="flex items-start gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          {/* Contact Name */}
+                          {contact && (
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <User className="w-3 h-3 text-muted-foreground" />
+                              <p className="font-medium text-xs text-foreground truncate">
+                                {contact.name}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Property Address */}
+                          <p className="font-medium text-sm text-foreground truncate">
+                            {listing.address}
+                          </p>
+                          
+                          {/* Price */}
+                          <div className="flex items-center gap-2 mt-1">
+                            <DollarSign className="w-3 h-3 text-primary" />
+                            <span className="text-sm text-primary font-medium">
+                              {formatCurrency(listing.price)}
+                            </span>
                           </div>
-                        )}
+                          
+                          {/* Days in Stage & Warning */}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {daysInStage} day{daysInStage !== 1 ? "s" : ""} in stage
+                            </span>
+                            {warning !== "none" && (
+                              <Badge
+                                variant={warning === "critical" ? "destructive" : "default"}
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                                {warning === "critical" ? "Stale" : "Warning"}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Property Type */}
+                          {listing.property_type && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Home className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground capitalize">
+                                {listing.property_type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           );

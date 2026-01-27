@@ -32,8 +32,7 @@ export function useRealtimeSubscription(
           table: tableName,
         },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-          console.log(`Realtime ${tableName} change:`, payload.eventType);
-          // Invalidate all related queries
+          // Invalidate all related queries on realtime changes
           queryKeys.forEach((queryKey) => {
             queryClient.invalidateQueries({ queryKey });
           });

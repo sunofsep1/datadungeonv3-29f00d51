@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MapPin, User, ArrowLeft, Building2, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 import { useProperty, formatPropertyAddress } from "@/hooks/useProperties";
 import { useContacts } from "@/hooks/useContacts";
 import {
@@ -201,6 +202,46 @@ export default function PropertyDetail() {
             <p className="text-foreground whitespace-pre-wrap mt-1">{property.notes}</p>
           </div>
         )}
+        {/* Metadata Table */}
+        <div className="mt-4 pt-4 border-t border-border">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
+            Metadata
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground block mb-1">Primary Agent</span>
+              <p className="font-medium text-foreground">
+                {property.user_id ? "Current User" : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground block mb-1">Source</span>
+              <p className="font-medium text-foreground">—</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground block mb-1">First Created</span>
+              <p className="font-medium text-foreground">
+                {property.created_at
+                  ? format(new Date(property.created_at), "PPp")
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground block mb-1">Last Modified</span>
+              <p className="font-medium text-foreground">
+                {property.updated_at
+                  ? format(new Date(property.updated_at), "PPp")
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground block mb-1">Last Contact</span>
+              <p className="font-medium text-foreground">
+                {links.length > 0 ? "See linked contacts" : "—"}
+              </p>
+            </div>
+          </div>
+        </div>
       </Card>
 
       <Card className="p-6">

@@ -22,7 +22,7 @@ export type ContactWithMeta = Contact & {
 const CONTACTS_SELECT =
   "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(property_id, properties(address_line1, city, state, postcode))";
 
-const CONTACTS_QUERY_KEYS = [["contacts"]] as const;
+const CONTACTS_QUERY_KEYS = [["contacts"]];
 
 export function useContacts() {
   useRealtimeSubscription("contacts", CONTACTS_QUERY_KEYS);
@@ -78,8 +78,10 @@ export function useCreateContact() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      // Event logging for contact creation (future automation hook)
+      // Could emit: { type: "contact.created", entityId: data.id, ... }
     },
   });
 }
@@ -89,6 +91,13 @@ export function useUpdateContact() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ContactUpdate & { id: string }) => {
+      // Fetch current contact to detect status changes
+      const { data: current } = await supabase
+        .from("contacts")
+        .select("status")
+        .eq("id", id)
+        .single();
+      
       const { data, error } = await supabase
         .from("contacts")
         .update(updates)
@@ -96,11 +105,18 @@ export function useUpdateContact() {
         .select()
         .single();
       if (error) throw error;
-      return data;
+      
+      // Return data with old status for event logging
+      return { ...data, _oldStatus: current?.status };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", variables.id] });
+      
+      // Event logging for status changes (future automation hook)
+      if (variables.status && (data as any)._oldStatus !== variables.status) {
+        // Could emit: { type: "contact.status_changed", entityId: variables.id, oldStatus: (data as any)._oldStatus, newStatus: variables.status }
+      }
     },
   });
 }

@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ContactDetailPanel } from "@/components/contacts/ContactDetailPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -46,6 +48,10 @@ import {
   Upload,
   ArrowUpDown,
   Tag,
+  CheckSquare,
+  Square,
+  Building2,
+  Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -59,23 +65,48 @@ import {
   getTagNames,
   getLinkedPropertyAddress,
 } from "@/hooks/useContacts";
+import { useLogContactStatusChange } from "@/hooks/useEvents";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag, useRemoveContactTag } from "@/hooks/useContactTags";
+import { useCreateProperty } from "@/hooks/useProperties";
+import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 type ContactStatus = "hot" | "warm" | "cold" | "lead";
 type SortOption = "name-asc" | "name-desc" | "status-asc" | "status-desc";
+
+const AUSTRALIAN_STATES = [
+  { value: "NSW", label: "New South Wales" },
+  { value: "VIC", label: "Victoria" },
+  { value: "QLD", label: "Queensland" },
+  { value: "SA", label: "South Australia" },
+  { value: "WA", label: "Western Australia" },
+  { value: "TAS", label: "Tasmania" },
+  { value: "NT", label: "Northern Territory" },
+  { value: "ACT", label: "Australian Capital Territory" },
+];
 
 const createEmptyContact = () => ({
   name: "",
@@ -90,6 +121,13 @@ const createEmptyContact = () => ({
   pleasure_points: "",
   pipeline_stage: "",
   current_situation_notes: "",
+  // Address fields
+  address_line1: "",
+  address_line2: "",
+  city: "", // Used as suburb
+  state: "",
+  postcode: "",
+  country: "Australia",
 });
 
 export default function Contacts() {
@@ -102,6 +140,9 @@ export default function Contacts() {
   const createTag = useCreateTag();
   const addContactTag = useAddContactTag();
   const removeContactTag = useRemoveContactTag();
+  const { logStatusChange } = useLogContactStatusChange();
+  const createProperty = useCreateProperty();
+  const createPropertyLink = useCreateContactPropertyLink();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -114,10 +155,20 @@ export default function Contacts() {
   const [formData, setFormData] = useState(createEmptyContact());
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState("");
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(null);
+  const [filterLastTouched, setFilterLastTouched] = useState<string>("all");
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [createPropertyFromAddress, setCreatePropertyFromAddress] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const { toast } = useToast();
 
   const filteredAndSortedContacts = useMemo(() => {
     let list = (contacts ?? []) as ContactWithMeta[];
+    const now = new Date();
+    
+    // Real-time search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((c) => {
@@ -133,18 +184,57 @@ export default function Contacts() {
         );
       });
     }
+    
+    // Status filter
     if (filterStatus && filterStatus !== "all") {
       list = list.filter((c) => (c.status ?? "lead") === filterStatus);
     }
+    
+    // Tag filter
     if (filterTagIds.length > 0) {
       list = list.filter((c) => {
         const ctTagIds = (c.contact_tags ?? []).map((ct) => ct.tag_id);
         return filterTagIds.some((tid) => ctTagIds.includes(tid));
       });
     }
+    
+    // Source filter
     if (filterSource && filterSource !== "all") {
       list = list.filter((c) => (c.source ?? "") === filterSource);
     }
+    
+    // Has property filter
+    if (filterHasProperty !== null) {
+      list = list.filter((c) => {
+        const hasProperty = (c.contact_property_links ?? []).length > 0;
+        return filterHasProperty ? hasProperty : !hasProperty;
+      });
+    }
+    
+    // Last touched filter
+    if (filterLastTouched !== "all") {
+      list = list.filter((c) => {
+        if (!c.updated_at) return false;
+        const updated = new Date(c.updated_at);
+        const daysDiff = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
+        
+        switch (filterLastTouched) {
+          case "today":
+            return daysDiff === 0;
+          case "7days":
+            return daysDiff <= 7;
+          case "30days":
+            return daysDiff <= 30;
+          case "overdue":
+            // Consider overdue if not touched in 30+ days and status is hot/warm
+            return daysDiff > 30 && (c.status === "hot" || c.status === "warm");
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Sorting
     const sorted = [...list].sort((a, b) => {
       if (sortBy === "name-asc") return (a.name || "").localeCompare(b.name || "");
       if (sortBy === "name-desc") return (b.name || "").localeCompare(a.name || "");
@@ -158,7 +248,20 @@ export default function Contacts() {
       return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
     });
     return sorted;
-  }, [contacts, searchQuery, filterStatus, filterTagIds, filterSource, sortBy]);
+  }, [contacts, searchQuery, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+
+  // Pagination
+  const paginatedContacts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedContacts.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedContacts, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredAndSortedContacts.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
 
   const distinctSources = useMemo(() => {
     const set = new Set<string>();
@@ -168,8 +271,9 @@ export default function Contacts() {
     return Array.from(set).sort();
   }, [contacts]);
 
-  const handleExportCSV = () => {
-    if (filteredAndSortedContacts.length === 0) {
+  const handleExportCSV = (contactsToExport?: ContactWithMeta[]) => {
+    const contactsList = contactsToExport || filteredAndSortedContacts;
+    if (contactsList.length === 0) {
       toast({
         title: "No data",
         description: "No contacts to export (maybe filters hide all)",
@@ -187,7 +291,7 @@ export default function Contacts() {
       "Linked property address",
       "Created At",
     ];
-    const rows = filteredAndSortedContacts.map((c) => {
+    const rows = contactsList.map((c) => {
       const phones = (c.contact_channels ?? [])
         .filter((ch) => ch.channel_type === "phone" || ch.channel_type === "mobile")
         .map((ch) => ch.value)
@@ -236,6 +340,8 @@ export default function Contacts() {
   const handleOpenDialog = (contact?: ContactWithMeta) => {
     if (contact) {
       setEditingContact(contact);
+      // Extract address from linked property if exists
+      const linkedProperty = contact.contact_property_links?.[0]?.properties;
       setFormData({
         name: contact.name,
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
@@ -249,13 +355,22 @@ export default function Contacts() {
         pleasure_points: contact.pleasure_points ?? "",
         pipeline_stage: contact.pipeline_stage ?? "",
         current_situation_notes: contact.current_situation_notes ?? "",
+        // Address fields from linked property
+        address_line1: linkedProperty?.address_line1 ?? "",
+        address_line2: "",
+        city: linkedProperty?.city ?? "",
+        state: "",
+        postcode: linkedProperty?.postcode ?? "",
+        country: "Australia",
       });
       const tagIds = (contact.contact_tags ?? []).map((ct) => ct.tag_id);
       setSelectedTagIds(tagIds);
+      setCreatePropertyFromAddress(false); // Don't create duplicate property when editing
     } else {
       setEditingContact(null);
       setFormData(createEmptyContact());
       setSelectedTagIds([]);
+      setCreatePropertyFromAddress(false);
     }
     setNewTagName("");
     setIsDialogOpen(true);
@@ -273,6 +388,7 @@ export default function Contacts() {
     try {
       let contactId: string;
       if (editingContact) {
+        const oldStatus = editingContact.status;
         const updated = await updateContact.mutateAsync({
           id: editingContact.id,
           name: formData.name,
@@ -289,6 +405,17 @@ export default function Contacts() {
           current_situation_notes: formData.current_situation_notes || null,
         });
         contactId = updated.id;
+        
+        // Log status change event if status changed
+        if (oldStatus !== formData.status) {
+          try {
+            await logStatusChange(contactId, oldStatus, formData.status);
+          } catch (err) {
+            // Don't fail the update if event logging fails
+            console.error("Failed to log status change:", err);
+          }
+        }
+        
         toast({ title: "Success", description: "Contact updated!" });
       } else {
         const created = await createContact.mutateAsync({
@@ -306,7 +433,41 @@ export default function Contacts() {
           current_situation_notes: formData.current_situation_notes || null,
         });
         contactId = created.id;
-        toast({ title: "Success", description: "Contact added!" });
+        
+        // Create property and link as owner if checkbox is checked and address provided
+        if (createPropertyFromAddress && formData.address_line1?.trim()) {
+          try {
+            const property = await createProperty.mutateAsync({
+              address_line1: formData.address_line1.trim(),
+              address_line2: formData.address_line2?.trim() || null,
+              city: formData.city?.trim() || null,
+              state: formData.state || null,
+              postcode: formData.postcode?.trim() || null,
+              country: formData.country || "Australia",
+            });
+            
+            // Link contact as owner
+            await createPropertyLink.mutateAsync({
+              contact_id: contactId,
+              property_id: property.id,
+              role: "owner",
+            });
+            
+            toast({ 
+              title: "Success", 
+              description: "Contact and property created!" 
+            });
+          } catch (error: any) {
+            console.error("Failed to create property:", error);
+            toast({
+              title: "Contact created",
+              description: `Property creation failed: ${error.message}`,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({ title: "Success", description: "Contact added!" });
+        }
       }
 
       // Handle tags: sync selected tags with contact
@@ -331,6 +492,7 @@ export default function Contacts() {
       setFormData(createEmptyContact());
       setSelectedTagIds([]);
       setEditingContact(null);
+      setCreatePropertyFromAddress(false);
     } catch (e: unknown) {
       toast({
         title: "Error",
@@ -450,6 +612,7 @@ export default function Contacts() {
                   setSelectedTagIds([]);
                   setNewTagName("");
                   setEditingContact(null);
+                  setCreatePropertyFromAddress(false);
                 }
               }}
             >
@@ -464,11 +627,20 @@ export default function Contacts() {
                   <DialogTitle>
                     {editingContact ? "Edit Contact" : "Add New Contact"}
                   </DialogTitle>
+                  <DialogDescription className="sr-only">
+                    {editingContact ? "Edit contact details and information" : "Add a new contact to your CRM"}
+                  </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1 pr-4">
-                  <div className="space-y-4 mt-4 pb-4">
-                    {/* Basic Info */}
-                    <div className="grid grid-cols-2 gap-4">
+                  <Tabs defaultValue="basic" className="mt-4">
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="basic">Basic</TabsTrigger>
+                      <TabsTrigger value="address">Address</TabsTrigger>
+                      <TabsTrigger value="tags">Tags</TabsTrigger>
+                      <TabsTrigger value="details">Details</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="basic" className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Name *</Label>
                         <Input
@@ -546,9 +718,97 @@ export default function Contacts() {
                         }
                       />
                     </div>
-
-                    {/* Tags */}
-                    <div className="space-y-2">
+                    </TabsContent>
+                    <TabsContent value="address" className="space-y-4 mt-4">
+                      <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Property Address</Label>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="create-property"
+                            checked={createPropertyFromAddress}
+                            onCheckedChange={(checked) => setCreatePropertyFromAddress(!!checked)}
+                          />
+                          <Label htmlFor="create-property" className="text-sm font-normal cursor-pointer">
+                            Create property and link as owner
+                          </Label>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>
+                          Address Line 1 {createPropertyFromAddress && "*"}
+                        </Label>
+                        <Input
+                          placeholder="Street address"
+                          className="bg-input"
+                          value={formData.address_line1}
+                          onChange={(e) =>
+                            setFormData({ ...formData, address_line1: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address Line 2 (Unit/Apartment)</Label>
+                        <Input
+                          placeholder="Unit, apartment, etc."
+                          className="bg-input"
+                          value={formData.address_line2}
+                          onChange={(e) =>
+                            setFormData({ ...formData, address_line2: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Suburb</Label>
+                          <Input
+                            placeholder="Suburb"
+                            className="bg-input"
+                            value={formData.city}
+                            onChange={(e) =>
+                              setFormData({ ...formData, city: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>State</Label>
+                          <Select
+                            value={formData.state}
+                            onValueChange={(value) =>
+                              setFormData({ ...formData, state: value })
+                            }
+                          >
+                            <SelectTrigger className="bg-input">
+                              <SelectValue placeholder="Select state" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AUSTRALIAN_STATES.map((state) => (
+                                <SelectItem key={state.value} value={state.value}>
+                                  {state.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Postcode</Label>
+                          <Input
+                            placeholder="2000"
+                            className="bg-input"
+                            value={formData.postcode}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, "").slice(0, 4);
+                              setFormData({ ...formData, postcode: value });
+                            }}
+                            maxLength={4}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    </TabsContent>
+                    <TabsContent value="tags" className="space-y-4 mt-4">
+                      <div className="space-y-2">
                       <Label>Tags</Label>
                       <div className="border border-border rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
                         {tags && tags.length > 0 ? (
@@ -603,9 +863,9 @@ export default function Contacts() {
                         </Button>
                       </div>
                     </div>
-
-                    {/* Detailed Conversation Data */}
-                    <div className="space-y-2">
+                    </TabsContent>
+                    <TabsContent value="details" className="space-y-4 mt-4">
+                      <div className="space-y-2">
                       <Label>Story</Label>
                       <Textarea
                         placeholder="Their story, background, situation..."
@@ -673,7 +933,8 @@ export default function Contacts() {
                         }
                       />
                     </div>
-                  </div>
+                    </TabsContent>
+                  </Tabs>
                 </ScrollArea>
                 <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -765,6 +1026,39 @@ export default function Contacts() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Select
+            value={filterHasProperty === null ? "all" : filterHasProperty ? "has" : "none"}
+            onValueChange={(v) => {
+              if (v === "all") setFilterHasProperty(null);
+              else setFilterHasProperty(v === "has");
+            }}
+          >
+            <SelectTrigger className="w-[140px] bg-input">
+              <Building2 className="w-4 h-4 mr-1" />
+              <SelectValue placeholder="Property" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All contacts</SelectItem>
+              <SelectItem value="has">Has property</SelectItem>
+              <SelectItem value="none">No property</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filterLastTouched}
+            onValueChange={setFilterLastTouched}
+          >
+            <SelectTrigger className="w-[140px] bg-input">
+              <Clock className="w-4 h-4 mr-1" />
+              <SelectValue placeholder="Last touched" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="7days">Last 7 days</SelectItem>
+              <SelectItem value="30days">Last 30 days</SelectItem>
+              <SelectItem value="overdue">Overdue follow-up</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
             value={sortBy}
             onValueChange={(v) => setSortBy(v as SortOption)}
           >
@@ -782,6 +1076,96 @@ export default function Contacts() {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      {selectedContactIds.size > 0 && (
+        <div className="mb-4 p-3 bg-secondary rounded-lg border border-border flex items-center justify-between">
+          <span className="text-sm text-foreground">
+            {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <div className="flex gap-2">
+            <Select
+              onValueChange={async (status) => {
+                // Bulk status update
+                try {
+                  const contactsToUpdate = filteredAndSortedContacts.filter((c) =>
+                    selectedContactIds.has(c.id)
+                  );
+                  const promises = contactsToUpdate.map(async (contact) => {
+                    const oldStatus = contact.status;
+                    await updateContact.mutateAsync({
+                      id: contact.id,
+                      status: status as ContactStatus,
+                    });
+                    // Log status change
+                    if (oldStatus !== status) {
+                      try {
+                        await logStatusChange(contact.id, oldStatus, status);
+                      } catch (err) {
+                        console.error("Failed to log status change:", err);
+                      }
+                    }
+                  });
+                  await Promise.all(promises);
+                  toast({
+                    title: "Success",
+                    description: `Updated ${selectedContactIds.size} contacts`,
+                  });
+                  setSelectedContactIds(new Set());
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to update contacts",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <SelectTrigger className="w-[140px] bg-input">
+                <SelectValue placeholder="Change status..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hot">Set to Hot</SelectItem>
+                <SelectItem value="warm">Set to Warm</SelectItem>
+                <SelectItem value="cold">Set to Cold</SelectItem>
+                <SelectItem value="lead">Set to Lead</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Bulk tag - would need a dialog for tag selection
+                toast({ title: "Info", description: "Bulk tagging coming soon" });
+              }}
+            >
+              <Tag className="w-4 h-4 mr-1" />
+              Tag
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const selectedContacts = filteredAndSortedContacts.filter((c) =>
+                  selectedContactIds.has(c.id)
+                );
+                handleExportCSV(selectedContacts);
+                setSelectedContactIds(new Set());
+              }}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Export
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedContactIds(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {filteredAndSortedContacts.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -792,8 +1176,9 @@ export default function Contacts() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredAndSortedContacts.map((contact) => {
+        <>
+          <div className="space-y-3">
+            {paginatedContacts.map((contact) => {
             const primaryEmail = getPrimaryEmail(contact);
             const primaryPhone = getPrimaryPhone(contact);
             const tagNames = getTagNames(contact);
@@ -806,7 +1191,7 @@ export default function Contacts() {
               <div
                 key={contact.id}
                 className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors cursor-pointer"
-                onClick={() => navigate(`/contacts/${contact.id}`)}
+                onClick={() => setSelectedContactId(contact.id)}
               >
                 <AvatarCircle
                   name={contact.name}
@@ -862,7 +1247,33 @@ export default function Contacts() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleOpenDialog(contact)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedContactIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(contact.id)) {
+                          next.delete(contact.id);
+                        } else {
+                          next.add(contact.id);
+                        }
+                        return next;
+                      });
+                    }}
+                  >
+                    {selectedContactIds.has(contact.id) ? (
+                      <CheckSquare className="w-4 h-4" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenDialog(contact);
+                    }}
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -899,10 +1310,64 @@ export default function Contacts() {
               </div>
             );
           })}
-        </div>
+          </div>
+          {totalPages > 1 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
 
       <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
+      
+      {/* Contact Detail Slide-over Panel */}
+      <ContactDetailPanel
+        contactId={selectedContactId}
+        open={selectedContactId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedContactId(null);
+        }}
+      />
     </div>
   );
 }

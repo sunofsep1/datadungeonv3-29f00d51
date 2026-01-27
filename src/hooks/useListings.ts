@@ -7,6 +7,10 @@ export type Listing = Tables<"listings">;
 export type ListingInsert = TablesInsert<"listings">;
 export type ListingUpdate = TablesUpdate<"listings">;
 
+export type ListingWithContact = Listing & {
+  contacts?: { id: string; name: string } | null;
+};
+
 export function useListings() {
   // Subscribe to realtime changes
   useRealtimeSubscription("listings", [["listings"]]);
@@ -16,11 +20,19 @@ export function useListings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select("*")
+        .select("*, contacts(id, name)")
         .order("created_at", { ascending: false });
       
-      if (error) throw error;
-      return data as Listing[];
+      if (error) {
+        // Fallback to simple select if relations don't exist
+        const { data: simple, error: simpleError } = await supabase
+          .from("listings")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (simpleError) throw simpleError;
+        return (simple ?? []) as Listing[];
+      }
+      return (data ?? []) as ListingWithContact[];
     },
   });
 }

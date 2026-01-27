@@ -35,7 +35,7 @@ const MAP_OPTIONS = [
   { value: "mobile", label: "Mobile" },
   { value: "address", label: "Address (single)" },
   { value: "address_line1", label: "Address line 1" },
-  { value: "city", label: "City" },
+  { value: "city", label: "Suburb/City" },
   { value: "state", label: "State" },
   { value: "postcode", label: "Postcode" },
   { value: "source", label: "Source" },
@@ -45,6 +45,19 @@ const MAP_OPTIONS = [
   { value: "story", label: "Story" },
   { value: "skip", label: "-- Skip --" },
 ];
+
+// Australian state abbreviations
+const AUSTRALIAN_STATES = ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"];
+const AUSTRALIAN_STATE_NAMES: Record<string, string> = {
+  "new south wales": "NSW",
+  "victoria": "VIC",
+  "queensland": "QLD",
+  "south australia": "SA",
+  "western australia": "WA",
+  "tasmania": "TAS",
+  "northern territory": "NT",
+  "australian capital territory": "ACT",
+};
 
 type Step = "upload" | "mapping" | "preview" | "importing" | "complete";
 
@@ -149,9 +162,24 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       const auto: Record<number, string> = {};
       rows[0].forEach((h, i) => {
         const lower = h.toLowerCase().replace(/[^a-z]/g, "");
-        const opt = MAP_OPTIONS.find(
+        // Enhanced matching for Australian addresses
+        let opt = MAP_OPTIONS.find(
           (o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4))
         );
+        
+        // Better matching for Australian-specific terms
+        if (!opt) {
+          if (lower.includes("suburb") || lower.includes("town") || lower.includes("locality")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "city");
+          } else if (lower.includes("postcode") || lower.includes("postcode") || lower.includes("postal") || lower.includes("zip")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "postcode");
+          } else if (lower.includes("street") || lower.includes("st") || lower.includes("road") || lower.includes("rd") || lower.includes("addr")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
+          } else if (lower.includes("state") || lower.includes("st") && !lower.includes("street")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "state");
+          }
+        }
+        
         if (opt) auto[i] = opt.value;
       });
       setMapping(auto);
@@ -281,20 +309,81 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           }
         }
 
+        // Create property from address if enabled and address data exists
         if (createPropertiesFromAddress && (r.address || r.address_line1)) {
-          const addr = r.address || [r.address_line1, r.city, r.state, r.postcode].filter(Boolean).join(", ");
-          if (addr) {
+          // Parse combined address if needed (e.g., "123 Main St, Sydney NSW 2000")
+          let addressLine1 = r.address_line1 || "";
+          let suburb = r.city || "";
+          let state = r.state || "";
+          let postcode = r.postcode || "";
+          
+          // If only combined address provided, try to parse it
+          if (!addressLine1 && r.address) {
+            const addrParts = r.address.split(",").map((p: string) => p.trim());
+            addressLine1 = addrParts[0] || "";
+            
+            // Try to extract suburb, state, postcode from remaining parts
+            if (addrParts.length > 1) {
+              const lastPart = addrParts[addrParts.length - 1];
+              // Check if last part contains state and postcode (e.g., "NSW 2000")
+              const statePostcodeMatch = lastPart.match(/^([A-Z]{2,3})\s+(\d{4})$/);
+              if (statePostcodeMatch) {
+                state = statePostcodeMatch[1];
+                postcode = statePostcodeMatch[2];
+                suburb = addrParts.slice(1, -1).join(", ") || "";
+              } else {
+                // Check if it's just postcode
+                const postcodeMatch = lastPart.match(/^(\d{4})$/);
+                if (postcodeMatch) {
+                  postcode = postcodeMatch[1];
+                  suburb = addrParts.slice(1, -1).join(", ") || "";
+                } else {
+                  suburb = addrParts.slice(1).join(", ");
+                }
+              }
+            }
+          }
+          
+          // Normalize Australian state (handle full names and abbreviations)
+          if (state) {
+            const stateLower = state.toLowerCase();
+            if (AUSTRALIAN_STATE_NAMES[stateLower]) {
+              state = AUSTRALIAN_STATE_NAMES[stateLower];
+            } else if (!AUSTRALIAN_STATES.includes(state.toUpperCase())) {
+              // Try to match partial state names
+              const matched = Object.entries(AUSTRALIAN_STATE_NAMES).find(([name]) =>
+                name.includes(stateLower) || stateLower.includes(name)
+              );
+              if (matched) state = matched[1];
+            }
+          }
+          
+          // Validate postcode (Australian format: 4 digits)
+          if (postcode) {
+            postcode = postcode.replace(/\D/g, "").slice(0, 4);
+          }
+          
+          // Only create property if we have at least address_line1
+          if (addressLine1.trim()) {
             try {
               const prop = await createProperty.mutateAsync({
-                address_line1: r.address_line1 || r.address || addr,
-                city: r.city || null,
-                state: r.state || null,
-                postcode: r.postcode || null,
+                address_line1: addressLine1.trim(),
+                address_line2: null,
+                city: suburb.trim() || null,
+                state: state || null,
+                postcode: postcode || null,
+                country: "Australia",
               });
-              await createLink.mutateAsync({ contact_id: contactId, property_id: prop.id, role: "owner" });
+              await createLink.mutateAsync({ 
+                contact_id: contactId, 
+                property_id: prop.id, 
+                role: "owner" 
+              });
             } catch (e) {
               errs.push(`Row ${rowNum}: Could not create property: ${(e as Error).message}`);
             }
+          } else {
+            errs.push(`Row ${rowNum}: Address line 1 required for property creation`);
           }
         }
       } catch (e) {

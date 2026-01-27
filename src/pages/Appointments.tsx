@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Calendar, Clock, MapPin, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointments, useCreateAppointment, useUpdateAppointment, useDeleteAppointment, Appointment } from "@/hooks/useAppointments";
@@ -62,6 +72,8 @@ export default function Appointments() {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [formData, setFormData] = useState(createEmptyAppointment());
   const [gcalNeedsAuth, setGcalNeedsAuth] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const { toast } = useToast();
 
   // Check Google Calendar connection status
@@ -232,6 +244,14 @@ export default function Appointments() {
     }
   };
 
+  // Pagination
+  const paginatedAppointments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return (appointments ?? []).slice(startIndex, startIndex + itemsPerPage);
+  }, [appointments, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil((appointments?.length ?? 0) / itemsPerPage);
+
   if (isLoading) {
     return (
       <div className="animate-fade-in">
@@ -256,9 +276,15 @@ export default function Appointments() {
                 <DialogTitle>{editingAppointment ? "Edit Appointment" : "New Appointment"}</DialogTitle>
               </DialogHeader>
               <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4 mt-4 pb-4">
-                  {/* Basic Info */}
-                  <div className="space-y-2">
+                <Tabs defaultValue="basic" className="mt-4">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="basic">Basic</TabsTrigger>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="followup">Follow-up</TabsTrigger>
+                    <TabsTrigger value="settings">Settings</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="basic" className="space-y-4 mt-4">
+                    <div className="space-y-2">
                     <Label>Title *</Label>
                     <Input
                       placeholder="Appointment title"
@@ -387,9 +413,9 @@ export default function Appointments() {
                       </Select>
                     </div>
                   </div>
-
-                  {/* Rich Data */}
-                  <div className="space-y-2">
+                  </TabsContent>
+                  <TabsContent value="details" className="space-y-4 mt-4">
+                    <div className="space-y-2">
                     <Label>Description</Label>
                     <Textarea
                       placeholder="Appointment description..."
@@ -413,11 +439,13 @@ export default function Appointments() {
                       placeholder="Additional notes..."
                       className="bg-input min-h-[80px]"
                       value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    />
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Follow-up Tasks</Label>
+                  </TabsContent>
+                  <TabsContent value="followup" className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>Follow-up Tasks</Label>
                     <Textarea
                       placeholder="Tasks to follow up on..."
                       className="bg-input min-h-[60px]"
@@ -458,31 +486,34 @@ export default function Appointments() {
                       placeholder="Action items, who does what..."
                       className="bg-input min-h-[80px]"
                       value={formData.action_items}
-                      onChange={(e) => setFormData({ ...formData, action_items: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Google Calendar Sync */}
-                  {!editingAppointment && (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="sync-google"
-                        checked={formData.syncToGoogle && !gcalNeedsAuth}
-                        disabled={gcalNeedsAuth}
-                        onCheckedChange={(checked) =>
-                          setFormData({ ...formData, syncToGoogle: checked as boolean })
-                        }
+                        onChange={(e) => setFormData({ ...formData, action_items: e.target.value })}
                       />
-                      <Label
-                        htmlFor="sync-google"
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        Sync to Google Calendar
-                        {gcalNeedsAuth && " (Connect Google Calendar first)"}
-                      </Label>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                  </TabsContent>
+                  <TabsContent value="settings" className="space-y-4 mt-4">
+                    {!editingAppointment ? (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="sync-google"
+                          checked={formData.syncToGoogle && !gcalNeedsAuth}
+                          disabled={gcalNeedsAuth}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, syncToGoogle: checked as boolean })
+                          }
+                        />
+                        <Label
+                          htmlFor="sync-google"
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          Sync to Google Calendar
+                          {gcalNeedsAuth && " (Connect Google Calendar first)"}
+                        </Label>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Settings cannot be changed when editing an appointment.</p>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </ScrollArea>
               <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -506,8 +537,9 @@ export default function Appointments() {
       />
 
       {appointments && appointments.length > 0 ? (
-        <div className="space-y-4">
-          {appointments.map((appointment) => (
+        <>
+          <div className="space-y-4">
+            {paginatedAppointments.map((appointment) => (
             <Card key={appointment.id} className="p-4 bg-card border-border">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -528,8 +560,53 @@ export default function Appointments() {
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       ) : (
         <div className="text-center py-12 text-muted-foreground"><Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No appointments scheduled. Create your first appointment!</p></div>
       )}

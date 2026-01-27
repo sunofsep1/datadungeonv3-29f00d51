@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,16 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, ChevronRight, Building2, User, Search, Plus, Pencil } from "lucide-react";
 import { useProperties, formatPropertyAddress, useCreateProperty, useUpdateProperty, type PropertyWithLinks } from "@/hooks/useProperties";
 import { useContacts } from "@/hooks/useContacts";
@@ -47,12 +57,29 @@ export default function Properties() {
   const [editingProperty, setEditingProperty] = useState<PropertyWithLinks | null>(null);
   const [formData, setFormData] = useState(createEmptyProperty());
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
-  const filtered = (properties ?? []).filter((p) => {
-    const addr = formatPropertyAddress(p).toLowerCase();
-    const q = searchQuery.trim().toLowerCase();
-    return !q || addr.includes(q);
-  });
+  const filtered = useMemo(() => {
+    return (properties ?? []).filter((p) => {
+      const addr = formatPropertyAddress(p).toLowerCase();
+      const q = searchQuery.trim().toLowerCase();
+      return !q || addr.includes(q);
+    });
+  }, [properties, searchQuery]);
+
+  // Pagination
+  const paginatedProperties = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(startIndex, startIndex + itemsPerPage);
+  }, [filtered, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const handleOpenDialog = (property?: PropertyWithLinks) => {
     if (property) {
@@ -214,9 +241,15 @@ export default function Properties() {
                 </DialogTitle>
               </DialogHeader>
               <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4 mt-4 pb-4">
-                  {/* Address Section */}
-                  <div className="space-y-2">
+                <Tabs defaultValue="address" className="mt-4">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="address">Address</TabsTrigger>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="owners">Owners</TabsTrigger>
+                    <TabsTrigger value="notes">Notes</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="address" className="space-y-4 mt-4">
+                    <div className="space-y-2">
                     <Label>Address Line 1 *</Label>
                     <Input
                       placeholder="Street address"
@@ -286,9 +319,9 @@ export default function Properties() {
                       />
                     </div>
                   </div>
-
-                  {/* Property Details */}
-                  <div className="grid grid-cols-2 gap-4">
+                  </TabsContent>
+                  <TabsContent value="details" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Property Type</Label>
                       <Select
@@ -355,49 +388,51 @@ export default function Properties() {
                       />
                     </div>
                   </div>
-
-                  {/* Owners */}
-                  {!editingProperty && (
-                    <div className="space-y-2">
-                      <Label>Property Owners</Label>
-                      <div className="border border-border rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
-                        {contacts && contacts.length > 0 ? (
-                          <div className="flex flex-col gap-2">
-                            {contacts.map((contact) => (
-                              <div key={contact.id} className="flex items-center gap-2">
-                                <Checkbox
-                                  id={`owner-${contact.id}`}
-                                  checked={selectedOwnerIds.includes(contact.id)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedOwnerIds((prev) => [...prev, contact.id]);
-                                    } else {
-                                      setSelectedOwnerIds((prev) =>
-                                        prev.filter((id) => id !== contact.id)
-                                      );
-                                    }
-                                  }}
-                                />
-                                <Label
-                                  htmlFor={`owner-${contact.id}`}
-                                  className="text-sm font-normal cursor-pointer flex-1"
-                                >
-                                  {contact.name}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No contacts available. Create contacts first.
-                          </p>
-                        )}
+                  </TabsContent>
+                  <TabsContent value="owners" className="space-y-4 mt-4">
+                    {!editingProperty ? (
+                      <div className="space-y-2">
+                        <Label>Property Owners</Label>
+                        <div className="border border-border rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
+                          {contacts && contacts.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {contacts.map((contact) => (
+                                <div key={contact.id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`owner-${contact.id}`}
+                                    checked={selectedOwnerIds.includes(contact.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedOwnerIds((prev) => [...prev, contact.id]);
+                                      } else {
+                                        setSelectedOwnerIds((prev) =>
+                                          prev.filter((id) => id !== contact.id)
+                                        );
+                                      }
+                                    }}
+                                  />
+                                  <Label
+                                    htmlFor={`owner-${contact.id}`}
+                                    className="text-sm font-normal cursor-pointer flex-1"
+                                  >
+                                    {contact.name}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No contacts available. Create contacts first.
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  <div className="space-y-2">
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Property owners cannot be edited after creation.</p>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="notes" className="space-y-4 mt-4">
+                    <div className="space-y-2">
                     <Label>Notes</Label>
                     <Textarea
                       placeholder="Property notes, features, condition, etc."
@@ -408,7 +443,8 @@ export default function Properties() {
                       }
                     />
                   </div>
-                </div>
+                  </TabsContent>
+                </Tabs>
               </ScrollArea>
               <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -449,8 +485,9 @@ export default function Properties() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3 mt-6">
-          {filtered.map((p) => (
+        <>
+          <div className="space-y-3 mt-6">
+            {paginatedProperties.map((p) => (
             <PropertyRow
               key={p.id}
               property={p}
@@ -460,8 +497,53 @@ export default function Properties() {
                 handleOpenDialog(p);
               }}
             />
-          ))}
-        </div>
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
     </div>
   );
