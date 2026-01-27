@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Phone, Calendar, Building2, FileText, FileCheck, Handshake, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCurrentMonthActivities } from "@/hooks/useActivities";
 import { useKPIGoals } from "@/hooks/useKPIGoals";
@@ -26,10 +27,26 @@ const kpiConfig: NumbersKPI[] = [
 ];
 
 export function NumbersKPIGrid() {
-  const { data: activities, isLoading: activitiesLoading } = useCurrentMonthActivities();
-  const { data: goals, isLoading: goalsLoading } = useKPIGoals();
+  const { data: activities, isLoading: activitiesLoading, isError: activitiesError, refetch: refetchActivities } = useCurrentMonthActivities();
+  const { data: goals, isLoading: goalsLoading, isError: goalsError, refetch: refetchGoals } = useKPIGoals();
 
   const isLoading = activitiesLoading || goalsLoading;
+  const isError = activitiesError || goalsError;
+  const refetch = () => {
+    refetchActivities();
+    refetchGoals();
+  };
+
+  if (isError) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground mb-4">Couldn&apos;t load daily numbers.</p>
+          <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Calculate totals from activities
   const totals = React.useMemo(() => {

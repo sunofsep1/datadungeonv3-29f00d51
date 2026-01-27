@@ -1,16 +1,33 @@
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { useKPIGoals } from "@/hooks/useKPIGoals";
 import { useActivities } from "@/hooks/useActivities";
 import { DollarSign, Calendar, Phone, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function KPISnapshot() {
-  const { data: goals } = useKPIGoals();
-  const { data: activities = [] } = useActivities();
+  const { data: goals, isError: goalsError, refetch: refetchGoals } = useKPIGoals();
+  const { data: activities = [], isError: activitiesError, refetch: refetchActivities } = useActivities();
+
+  const isError = goalsError || activitiesError;
+  const refetch = () => {
+    refetchGoals();
+    refetchActivities();
+  };
+
+  if (isError) {
+    return (
+      <Card className="p-4 bg-card border-border">
+        <h3 className="font-semibold text-foreground mb-4">KPI Snapshot</h3>
+        <p className="text-sm text-muted-foreground mb-2">Couldn&apos;t load KPI data.</p>
+        <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
+      </Card>
+    );
+  }
 
   // Calculate totals from activities
-  const totals = activities.reduce(
+  const totals = (activities ?? []).reduce(
     (acc, activity) => ({
       gci: acc.gci + (activity.gci_earned || 0),
       appointments: acc.appointments + (activity.appointments_set || 0),

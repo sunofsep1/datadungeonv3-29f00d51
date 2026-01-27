@@ -88,6 +88,7 @@ export function EnhancedCalendarWidget() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -108,15 +109,14 @@ export function EnhancedCalendarWidget() {
 
   const fetchEvents = async () => {
     if (!user) return;
-    
     setLoading(true);
+    setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setLoading(false);
         return;
       }
-
       const response = await fetch(
         `https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar?action=events`,
         {
@@ -126,9 +126,7 @@ export function EnhancedCalendarWidget() {
           },
         }
       );
-
       const data = await response.json();
-
       if (data?.needsAuth) {
         setNeedsAuth(true);
         setEvents([]);
@@ -139,10 +137,15 @@ export function EnhancedCalendarWidget() {
         console.error("Calendar error:", data.error);
         if (data.error === "Not connected") {
           setNeedsAuth(true);
+        } else {
+          setError(data.error);
         }
+        setEvents([]);
       }
-    } catch (error) {
-      console.error("Error fetching events:", error);
+    } catch (e) {
+      console.error("Error fetching events:", e);
+      setError(e instanceof Error ? e.message : "Failed to fetch Google Calendar");
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -479,8 +482,9 @@ export function EnhancedCalendarWidget() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 print:hidden">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold text-foreground">Calendar</h3>
-          <Button variant="ghost" size="icon" onClick={fetchEvents} title="Refresh">
-            <RefreshCw className="w-4 h-4" />
+          <Badge variant="secondary" className="text-xs font-normal">Google connected</Badge>
+          <Button variant="ghost" size="icon" onClick={fetchEvents} title="Refresh" disabled={loading}>
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -498,6 +502,13 @@ export function EnhancedCalendarWidget() {
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="flex items-center justify-between gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20 print:hidden">
+          <p className="text-sm text-destructive truncate">{error}</p>
+          <Button variant="outline" size="sm" onClick={fetchEvents}>Retry</Button>
+        </div>
+      )}
 
       {/* View Toggle and Navigation */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 print:hidden">

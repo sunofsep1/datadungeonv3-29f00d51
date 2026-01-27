@@ -4,11 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --config vite.config.cjs",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:safe": "vite build --config vite.config.cjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "health": "tsx scripts/health.ts",
+    "export:contacts": "tsx scripts/export-contacts.ts",
+    "db:push": "supabase db push",
+    "db:migrate": "supabase migration up"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -63,6 +68,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
+    "tsx": "^4.19.2",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",

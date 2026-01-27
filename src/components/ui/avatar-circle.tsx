@@ -2,6 +2,8 @@ import { cn } from "@/lib/utils";
 
 interface AvatarCircleProps {
   name: string;
+  /** Override initials (e.g. from first/last name). If not provided, derived from name. */
+  initials?: string;
   color?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -41,9 +43,9 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function AvatarCircle({ name, color, size = "md", className }: AvatarCircleProps) {
+export function AvatarCircle({ name, initials: initialsProp, color, size = "md", className }: AvatarCircleProps) {
   const bgColor = color || getColorForName(name);
-  const initials = getInitials(name);
+  const initials = initialsProp ?? getInitials(name);
 
   return (
     <div

@@ -14,9 +14,29 @@ import { useCalls } from "@/hooks/useCalls";
 
 export function GoalsManager() {
   const { toast } = useToast();
-  const { data: kpiGoals, isLoading: goalsLoading } = useKPIGoals();
-  const { data: activities = [] } = useActivities();
-  const { data: calls = [] } = useCalls();
+  const { data: kpiGoals, isLoading: goalsLoading, isError: goalsError, refetch: refetchGoals } = useKPIGoals();
+  const { data: activities = [], isError: activitiesError, refetch: refetchActivities } = useActivities();
+  const { data: calls = [], isError: callsError, refetch: refetchCalls } = useCalls();
+
+  const isError = goalsError || activitiesError || callsError;
+  const refetch = () => {
+    refetchGoals();
+    refetchActivities();
+    refetchCalls();
+  };
+
+  if (isError) {
+    return (
+      <Card className="p-6 bg-card border-border">
+        <div className="flex items-center justify-between mb-4">
+          <Target className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-foreground">Goals Progress</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">Couldn&apos;t load goals data.</p>
+        <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
+      </Card>
+    );
+  }
 
   // Calculate totals from activities
   const totals = useMemo(() => {

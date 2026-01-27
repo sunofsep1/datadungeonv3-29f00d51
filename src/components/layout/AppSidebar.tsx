@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   Building2,
+  MapPin,
   Calendar,
   TrendingUp,
   Megaphone,
@@ -31,8 +32,9 @@ const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Listings & Deals", url: "/listings", icon: Building2 },
+  { title: "Properties", url: "/properties", icon: MapPin },
   { title: "Pipeline", url: "/pipeline", icon: TrendingUp },
-  { title: "Calendar", url: "/appointments", icon: Calendar },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
 ];
@@ -41,7 +43,7 @@ const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Pipeline", url: "/pipeline", icon: TrendingUp },
-  { title: "Calendar", url: "/appointments", icon: Calendar },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "More", url: "#more", icon: MoreHorizontal },
 ];
 
@@ -94,7 +96,8 @@ export function AppSidebar() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.url || 
               (item.url === "/listings" && location.pathname === "/listings") ||
-              (item.url === "/appointments" && location.pathname.startsWith("/appointments"));
+              (item.url === "/properties" && location.pathname.startsWith("/properties")) ||
+              (item.url === "/calendar" && (location.pathname.startsWith("/calendar") || location.pathname.startsWith("/appointments")));
             return (
               <NavLink
                 key={item.title}
@@ -228,6 +231,12 @@ export function AppSidebar() {
                       <NavLink to="/listings" className="flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         Listings & Deals
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/properties" className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Properties
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

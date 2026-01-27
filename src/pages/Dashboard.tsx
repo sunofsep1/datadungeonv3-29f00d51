@@ -15,15 +15,21 @@ import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
 import { useListings, useCreateListing } from "@/hooks/useListings";
 import { useLeads, useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { addHours } from "date-fns";
 import { formatDistanceToNow } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 
+const GCAL_URL = "https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar";
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
@@ -186,11 +192,51 @@ export default function Dashboard() {
         ? `${newAppointment.date}T${newAppointment.time}:00`
         : `${newAppointment.date}T09:00:00`;
       
-      await createAppointment.mutateAsync({
+      const appointment = await createAppointment.mutateAsync({
         title: newAppointment.title,
         date: dateTime,
         location: newAppointment.location || null,
+        type: "meeting",
       });
+      
+      // Try to sync to Google Calendar if connected
+      if (user) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            // Check if Google Calendar is connected
+            const checkRes = await fetch(`${GCAL_URL}?action=events`, {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                "Content-Type": "application/json",
+              },
+            });
+            const checkData = await checkRes.json();
+            
+            if (!checkData?.needsAuth && !checkData?.error) {
+              // Connected, create event
+              await fetch(`${GCAL_URL}?action=create-event`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  summary: newAppointment.title,
+                  description: "",
+                  start: dateTime,
+                  end: addHours(new Date(dateTime), 1).toISOString(),
+                  location: newAppointment.location || "",
+                }),
+              });
+            }
+          }
+        } catch (e) {
+          // Silent fail - appointment is already created
+          console.log("Google Calendar sync failed:", e);
+        }
+      }
+      
       toast({ title: "Success", description: "Appointment scheduled!" });
       setNewAppointment({ title: "", date: "", time: "", location: "" });
       setAppointmentDialogOpen(false);

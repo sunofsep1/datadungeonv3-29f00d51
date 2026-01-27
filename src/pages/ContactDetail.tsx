@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, 
   Printer, 
@@ -21,11 +22,14 @@ import {
   Plus,
   Edit,
   Trash2,
-  Clock
+  Clock,
+  MapPin,
+  Tag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
-import { useUpdateContact } from "@/hooks/useContacts";
+import { useUpdateContact, getPrimaryEmail, getPrimaryPhone, getTagNames, getLinkedPropertyAddress } from "@/hooks/useContacts";
+import { getInitials } from "@/lib/utils";
 import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
 import { format, formatDistanceToNow } from "date-fns";
@@ -38,7 +42,7 @@ export default function ContactDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const { data: contact, isLoading } = useContact(id);
+  const { data: contact, isLoading, isError, refetch } = useContact(id);
   const { data: interactions = [] } = useInteractions(id);
   const { data: appointments = [] } = useAppointments();
   const updateContact = useUpdateContact();
@@ -63,17 +67,17 @@ export default function ContactDetail() {
     if (contact) {
       setEditFormData({
         name: contact.name,
-        email: contact.email || "",
-        phone: contact.phone || "",
+        email: getPrimaryEmail(contact) ?? contact.email ?? "",
+        phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
         status: contact.status || "lead",
-        source: contact.source || "",
-        notes: contact.notes || "",
-        story: (contact as any).story || "",
-        pipeline_stage: (contact as any).pipeline_stage || "",
-        selling_intentions: (contact as any).selling_intentions || "",
-        current_situation_notes: (contact as any).current_situation_notes || "",
-        pain_points: (contact as any).pain_points || "",
-        pleasure_points: (contact as any).pleasure_points || "",
+        source: contact.source ?? "",
+        notes: contact.notes ?? "",
+        story: contact.story ?? "",
+        pipeline_stage: contact.pipeline_stage ?? "",
+        selling_intentions: contact.selling_intentions ?? "",
+        current_situation_notes: contact.current_situation_notes ?? "",
+        pain_points: contact.pain_points ?? "",
+        pleasure_points: contact.pleasure_points ?? "",
       });
       setIsEditing(true);
     }
@@ -147,6 +151,19 @@ export default function ContactDetail() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="animate-fade-in text-center py-12">
+        <p className="font-medium text-foreground mb-2">Couldn&apos;t load contact</p>
+        <p className="text-sm text-muted-foreground mb-4">Check your connection and migrations, then retry.</p>
+        <div className="flex justify-center gap-2">
+          <Button variant="outline" onClick={() => refetch()}>Retry</Button>
+          <Button variant="ghost" onClick={() => navigate("/contacts")}>Back to Contacts</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!contact) {
     return (
       <div className="animate-fade-in text-center py-12">
@@ -183,73 +200,109 @@ export default function ContactDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Contact Info Card */}
-        <Card className="p-6 lg:col-span-2 print:border print:border-gray-300">
-          <div className="flex items-start gap-4 mb-6">
-            <AvatarCircle name={contact.name} size="lg" />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-xl font-semibold">{contact.name}</h2>
-                <StatusBadge variant={getStatusVariant(contact.status)}>
-                  {contact.status || "lead"}
-                </StatusBadge>
-              </div>
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {contact.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="w-4 h-4" /> {contact.phone}
-                  </span>
+        <div className="lg:col-span-2 space-y-6">
+          {/* Overview */}
+          <Card className="p-6 print:border print:border-gray-300">
+            <div className="flex items-start gap-4">
+              <AvatarCircle
+                name={contact.name}
+                size="lg"
+                initials={getInitials(contact.first_name, contact.last_name, contact.name)}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h2 className="text-xl font-semibold text-foreground">{contact.name}</h2>
+                  <StatusBadge variant={getStatusVariant(contact.status)}>
+                    {contact.status || "lead"}
+                  </StatusBadge>
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  {(getPrimaryPhone(contact) ?? contact.phone) && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="w-4 h-4 shrink-0" /> {getPrimaryPhone(contact) ?? contact.phone}
+                    </span>
+                  )}
+                  {(getPrimaryEmail(contact) ?? contact.email) && (
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 shrink-0" /> {getPrimaryEmail(contact) ?? contact.email}
+                    </span>
+                  )}
+                </div>
+                {contact.source && (
+                  <p className="text-sm text-muted-foreground mt-1">Source: {contact.source}</p>
                 )}
-                {contact.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-4 h-4" /> {contact.email}
-                  </span>
+                {getTagNames(contact).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                    <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    {getTagNames(contact).map((t) => (
+                      <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
+                    ))}
+                  </div>
+                )}
+                {getLinkedPropertyAddress(contact) && (
+                  <div className="flex items-start gap-1.5 mt-2 text-sm text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{getLinkedPropertyAddress(contact)}</span>
+                  </div>
                 )}
               </div>
-              {contact.source && (
-                <p className="text-sm text-muted-foreground mt-2">Source: {contact.source}</p>
-              )}
             </div>
-          </div>
+          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
+          {/* Story & Intent */}
+          <Card className="p-6 print:border print:border-gray-300">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Story & intent</h3>
+            <div className="space-y-5">
               <div>
                 <Label className="text-muted-foreground text-xs uppercase">Story</Label>
-                <p className="text-foreground">{(contact as any).story || "-"}</p>
+                <p className="text-foreground mt-1 whitespace-pre-wrap min-h-[1.5rem]">
+                  {contact.story || "—"}
+                </p>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label className="text-muted-foreground text-xs uppercase">Pipeline stage</Label>
+                  <p className="text-foreground mt-1">{contact.pipeline_stage || "—"}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs uppercase">Selling intentions</Label>
+                  <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.selling_intentions || "—"}</p>
+                </div>
               </div>
               <div>
-                <Label className="text-muted-foreground text-xs uppercase">Pipeline Stage</Label>
-                <p className="text-foreground">{(contact as any).pipeline_stage || "-"}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-xs uppercase">Selling Intentions</Label>
-                <p className="text-foreground">{(contact as any).selling_intentions || "-"}</p>
+                <Label className="text-muted-foreground text-xs uppercase">Current situation</Label>
+                <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.current_situation_notes || "—"}</p>
               </div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-muted-foreground text-xs uppercase">Current Situation</Label>
-                <p className="text-foreground">{(contact as any).current_situation_notes || "-"}</p>
+          </Card>
+
+          {/* Pain & Pleasure */}
+          <Card className="p-6 print:border print:border-gray-300">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">Pain points</Label>
+                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
+                  {contact.pain_points || "—"}
+                </p>
               </div>
-              <div>
-                <Label className="text-muted-foreground text-xs uppercase">Pain Points</Label>
-                <p className="text-foreground">{(contact as any).pain_points || "-"}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-xs uppercase">Pleasure Points</Label>
-                <p className="text-foreground">{(contact as any).pleasure_points || "-"}</p>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">Pleasure points</Label>
+                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
+                  {contact.pleasure_points || "—"}
+                </p>
               </div>
             </div>
-          </div>
+          </Card>
 
           {contact.notes && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <Label className="text-muted-foreground text-xs uppercase">Notes</Label>
-              <p className="text-foreground whitespace-pre-wrap">{contact.notes}</p>
-            </div>
+            <Card className="p-6 print:border print:border-gray-300">
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
+              <p className="text-foreground whitespace-pre-wrap text-sm">{contact.notes}</p>
+            </Card>
           )}
-        </Card>
+        </div>
 
         {/* Activity Timeline */}
         <Card className="p-6 print:border print:border-gray-300">

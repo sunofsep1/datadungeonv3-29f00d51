@@ -1,194 +1,329 @@
-import { useState, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useMemo } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, Check, AlertCircle, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload, FileSpreadsheet, Check, AlertCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useCreateContact } from "@/hooks/useContacts";
+import { useContacts, useCreateContact, useUpdateContact, getPrimaryEmail, getPrimaryPhone } from "@/hooks/useContacts";
+import { useCreateProperty } from "@/hooks/useProperties";
+import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
+import { useTags, useCreateTag } from "@/hooks/useTags";
+import { useAddContactTag } from "@/hooks/useContactTags";
+import type { ContactWithMeta } from "@/hooks/useContacts";
 
 interface CSVImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const CONTACT_FIELDS = [
+const PREVIEW_ROWS = 20;
+
+const MAP_OPTIONS = [
   { value: "name", label: "Name *", required: true },
   { value: "email", label: "Email" },
   { value: "phone", label: "Phone" },
+  { value: "mobile", label: "Mobile" },
+  { value: "address", label: "Address (single)" },
+  { value: "address_line1", label: "Address line 1" },
+  { value: "city", label: "City" },
+  { value: "state", label: "State" },
+  { value: "postcode", label: "Postcode" },
   { value: "source", label: "Source" },
   { value: "status", label: "Status" },
+  { value: "tags", label: "Tags (comma-separated)" },
   { value: "notes", label: "Notes" },
   { value: "story", label: "Story" },
-  { value: "pipeline_stage", label: "Pipeline Stage" },
-  { value: "selling_intentions", label: "Selling Intentions" },
-  { value: "current_situation_notes", label: "Current Situation Notes" },
-  { value: "pain_points", label: "Pain Points" },
-  { value: "pleasure_points", label: "Pleasure Points" },
-  { value: "skip", label: "-- Skip Column --" },
+  { value: "skip", label: "-- Skip --" },
 ];
 
-type ImportStep = "upload" | "mapping" | "preview" | "importing" | "complete";
+type Step = "upload" | "mapping" | "preview" | "importing" | "complete";
+
+function parseCSV(text: string): string[][] {
+  const lines = text.split("\n").filter((l) => l.trim());
+  return lines.map((line) => {
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') inQuotes = !inQuotes;
+      else if ((c === "," && !inQuotes) || (c === "\n" && !inQuotes)) {
+        out.push(cur.trim());
+        cur = "";
+      } else cur += c;
+    }
+    out.push(cur.trim());
+    return out;
+  });
+}
+
+function normalizeEmail(s: string): string {
+  return s.trim().toLowerCase().replace(/\s/g, "");
+}
+function normalizePhone(s: string): string {
+  return s.trim().replace(/\s/g, "").replace(/^\+61/, "0");
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
-  const [step, setStep] = useState<ImportStep>("upload");
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: existingContacts = [] } = useContacts();
+  const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const createProperty = useCreateProperty();
+  const createLink = useCreateContactPropertyLink();
+  const { data: existingTags = [] } = useTags();
+  const createTag = useCreateTag();
+  const addContactTag = useAddContactTag();
+
+  const [step, setStep] = useState<Step>("upload");
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
-  const [importProgress, setImportProgress] = useState(0);
-  const [importedCount, setImportedCount] = useState(0);
-  const [skippedCount, setSkippedCount] = useState(0);
+  const [mapping, setMapping] = useState<Record<number, string>>({});
+  const [createPropertiesFromAddress, setCreatePropertiesFromAddress] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [created, setCreated] = useState(0);
+  const [updated, setUpdated] = useState(0);
+  const [skipped, setSkipped] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
-  const { toast } = useToast();
-  const createContact = useCreateContact();
 
-  const resetState = () => {
+  const emailToContact = useMemo(() => {
+    const m = new Map<string, ContactWithMeta>();
+    (existingContacts as ContactWithMeta[]).forEach((c) => {
+      const e = getPrimaryEmail(c) ?? c.email;
+      if (e) m.set(normalizeEmail(e), c);
+    });
+    return m;
+  }, [existingContacts]);
+  const phoneToContact = useMemo(() => {
+    const m = new Map<string, ContactWithMeta>();
+    (existingContacts as ContactWithMeta[]).forEach((c) => {
+      const p = getPrimaryPhone(c) ?? c.phone;
+      if (p) m.set(normalizePhone(p), c);
+    });
+    return m;
+  }, [existingContacts]);
+
+  const tagNameToId = useMemo(() => {
+    const m = new Map<string, string>();
+    existingTags.forEach((t) => m.set(t.name.toLowerCase().trim(), t.id));
+    return m;
+  }, [existingTags]);
+
+  const reset = () => {
     setStep("upload");
     setCsvData([]);
     setHeaders([]);
-    setColumnMapping({});
-    setImportProgress(0);
-    setImportedCount(0);
-    setSkippedCount(0);
+    setMapping({});
+    setCreatePropertiesFromAddress(false);
+    setProgress(0);
+    setCreated(0);
+    setUpdated(0);
+    setSkipped(0);
     setErrors([]);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split("\n").filter(line => line.trim());
-      const parsedData = lines.map(line => {
-        const result: string[] = [];
-        let current = "";
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === "," && !inQuotes) {
-            result.push(current.trim());
-            current = "";
-          } else {
-            current += char;
-          }
-        }
-        result.push(current.trim());
-        return result;
-      });
-
-      if (parsedData.length < 2) {
-        toast({ title: "Error", description: "CSV must have headers and at least one data row", variant: "destructive" });
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const rows = parseCSV((r.result as string) ?? "");
+      if (rows.length < 2) {
+        toast({ title: "Error", description: "CSV must have headers and at least one row", variant: "destructive" });
         return;
       }
-
-      setHeaders(parsedData[0]);
-      setCsvData(parsedData.slice(1));
-      
-      // Auto-map columns based on header names
-      const autoMapping: Record<number, string> = {};
-      parsedData[0].forEach((header, index) => {
-        const headerLower = header.toLowerCase().replace(/[^a-z]/g, "");
-        const matchedField = CONTACT_FIELDS.find(f => 
-          f.value !== "skip" && headerLower.includes(f.value.replace("_", ""))
+      setHeaders(rows[0]);
+      setCsvData(rows.slice(1));
+      const auto: Record<number, string> = {};
+      rows[0].forEach((h, i) => {
+        const lower = h.toLowerCase().replace(/[^a-z]/g, "");
+        const opt = MAP_OPTIONS.find(
+          (o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4))
         );
-        if (matchedField) {
-          autoMapping[index] = matchedField.value;
-        }
+        if (opt) auto[i] = opt.value;
       });
-      setColumnMapping(autoMapping);
+      setMapping(auto);
       setStep("mapping");
     };
-    reader.readAsText(file);
+    r.readAsText(f);
   };
 
-  const handleMappingChange = (columnIndex: number, fieldValue: string) => {
-    setColumnMapping(prev => ({
-      ...prev,
-      [columnIndex]: fieldValue,
-    }));
+  const setMappingAt = (col: number, value: string) => {
+    setMapping((prev) => ({ ...prev, [col]: value }));
   };
 
-  const validateMapping = () => {
-    const hasNameMapping = Object.values(columnMapping).includes("name");
-    if (!hasNameMapping) {
-      toast({ title: "Error", description: "You must map a column to 'Name'", variant: "destructive" });
-      return false;
-    }
-    return true;
-  };
+  const mappedRows = useMemo(() => {
+    return csvData.map((row) => {
+      const rec: Record<string, string> = {};
+      Object.entries(mapping).forEach(([i, field]) => {
+        if (field !== "skip") rec[field] = (row[parseInt(i)] ?? "").trim();
+      });
+      return rec;
+    });
+  }, [csvData, mapping]);
 
-  const handleStartImport = async () => {
-    if (!validateMapping()) return;
-    
+  const validationErrors = useMemo(() => {
+    const errs: string[] = [];
+    mappedRows.forEach((r, idx) => {
+      if (!r.name?.trim()) errs.push(`Row ${idx + 2}: Missing name`);
+      if (r.email && !EMAIL_RE.test(r.email)) errs.push(`Row ${idx + 2}: Invalid email "${r.email}"`);
+    });
+    return errs;
+  }, [mappedRows]);
+
+  const hasName = Object.values(mapping).includes("name");
+  const previewRows = mappedRows.slice(0, PREVIEW_ROWS);
+  const mappedFields = Object.entries(mapping)
+    .filter(([, v]) => v !== "skip")
+    .map(([i, v]) => ({ col: parseInt(i), field: v }))
+    .sort((a, b) => a.col - b.col);
+
+  const runImport = async () => {
+    if (!hasName) return;
     setStep("importing");
-    const newErrors: string[] = [];
-    let imported = 0;
-    let skipped = 0;
-    const batchSize = 10;
+    const errs: string[] = [];
+    let cr = 0,
+      up = 0,
+      sk = 0;
+    const total = mappedRows.length;
+    const tagMap = new Map(tagNameToId);
 
-    for (let i = 0; i < csvData.length; i += batchSize) {
-      const batch = csvData.slice(i, Math.min(i + batchSize, csvData.length));
-      
-      for (let j = 0; j < batch.length; j++) {
-        const row = batch[j];
-        const contact: Record<string, string | null> = {};
-        
-        Object.entries(columnMapping).forEach(([colIndex, field]) => {
-          if (field !== "skip") {
-            contact[field] = row[parseInt(colIndex)] || null;
-          }
-        });
-
-        if (!contact.name || !contact.name.trim()) {
-          newErrors.push(`Row ${i + j + 2}: Missing required field 'name'`);
-          skipped++;
-          continue;
-        }
-
-        try {
-          await createContact.mutateAsync({
-            name: contact.name,
-            email: contact.email || null,
-            phone: contact.phone || null,
-            source: contact.source || null,
-            status: contact.status || "lead",
-            notes: contact.notes || null,
-            story: contact.story || null,
-            pipeline_stage: contact.pipeline_stage || null,
-            selling_intentions: contact.selling_intentions || null,
-            current_situation_notes: contact.current_situation_notes || null,
-            pain_points: contact.pain_points || null,
-            pleasure_points: contact.pleasure_points || null,
-          });
-          imported++;
-        } catch (error: any) {
-          newErrors.push(`Row ${i + j + 2}: ${error.message || "Failed to import"}`);
-          skipped++;
-        }
+    for (let i = 0; i < mappedRows.length; i++) {
+      const r = mappedRows[i];
+      const rowNum = i + 2;
+      if (!r.name?.trim()) {
+        errs.push(`Row ${rowNum}: Missing name`);
+        sk++;
+        setProgress(Math.round((i / total) * 100));
+        setSkipped(sk);
+        setCreated(cr);
+        setUpdated(up);
+        continue;
+      }
+      if (r.email && !EMAIL_RE.test(r.email)) {
+        errs.push(`Row ${rowNum}: Invalid email`);
+        sk++;
+        setProgress(Math.round((i / total) * 100));
+        setSkipped(sk);
+        setCreated(cr);
+        setUpdated(up);
+        continue;
       }
 
-      setImportProgress(Math.round(((i + batch.length) / csvData.length) * 100));
-      setImportedCount(imported);
-      setSkippedCount(skipped);
+      const emailNorm = r.email ? normalizeEmail(r.email) : null;
+      const phoneNorm = r.phone ? normalizePhone(r.phone) : null;
+      const mobileNorm = r.mobile ? normalizePhone(r.mobile) : null;
+      const match =
+        (emailNorm && emailToContact.get(emailNorm)) ??
+        (phoneNorm && phoneToContact.get(phoneNorm)) ??
+        (mobileNorm && phoneToContact.get(mobileNorm)) ??
+        null;
+
+      let contactId: string;
+      try {
+        if (match) {
+          await updateContact.mutateAsync({
+            id: match.id,
+            name: r.name,
+            source: r.source || null,
+            status: (r.status as "hot" | "warm" | "cold" | "lead") || "lead",
+            notes: r.notes || null,
+            story: r.story || null,
+          });
+          contactId = match.id;
+          up++;
+        } else {
+          const created = await createContact.mutateAsync({
+            name: r.name,
+            email: r.email || null,
+            phone: r.phone || r.mobile || null,
+            source: r.source || null,
+            status: (r.status as "hot" | "warm" | "cold" | "lead") || "lead",
+            notes: r.notes || null,
+            story: r.story || null,
+          });
+          contactId = (created as { id: string }).id;
+          cr++;
+        }
+
+        if (contactId && r.tags) {
+          const tagNames = r.tags.split(",").map((t) => t.trim()).filter(Boolean);
+          for (const tn of tagNames) {
+            let tagId = tagMap.get(tn.toLowerCase());
+            if (!tagId) {
+              try {
+                const createdTag = await createTag.mutateAsync({ name: tn });
+                tagId = (createdTag as { id: string }).id;
+                tagMap.set(tn.toLowerCase(), tagId);
+              } catch {
+                /* skip tag */
+              }
+            }
+            if (tagId) {
+              try {
+                await addContactTag.mutateAsync({ contact_id: contactId, tag_id: tagId });
+              } catch {
+                /* skip link */
+              }
+            }
+          }
+        }
+
+        if (createPropertiesFromAddress && (r.address || r.address_line1)) {
+          const addr = r.address || [r.address_line1, r.city, r.state, r.postcode].filter(Boolean).join(", ");
+          if (addr) {
+            try {
+              const prop = await createProperty.mutateAsync({
+                address_line1: r.address_line1 || r.address || addr,
+                city: r.city || null,
+                state: r.state || null,
+                postcode: r.postcode || null,
+              });
+              await createLink.mutateAsync({ contact_id: contactId, property_id: prop.id, role: "owner" });
+            } catch (e) {
+              errs.push(`Row ${rowNum}: Could not create property: ${(e as Error).message}`);
+            }
+          }
+        }
+      } catch (e) {
+        errs.push(`Row ${rowNum}: ${(e as Error).message}`);
+        sk++;
+      }
+
+      setProgress(Math.round(((i + 1) / total) * 100));
+      setCreated(cr);
+      setUpdated(up);
+      setSkipped(sk);
     }
 
-    setErrors(newErrors);
+    setErrors(errs);
+    qc.invalidateQueries({ queryKey: ["contacts"] });
+    qc.invalidateQueries({ queryKey: ["properties"] });
+    qc.invalidateQueries({ queryKey: ["tags"] });
     setStep("complete");
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { 
-      if (!isOpen) resetState();
-      onOpenChange(isOpen); 
-    }}>
-      <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[80vh] overflow-y-auto">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) reset();
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="sm:max-w-[700px] bg-popover border-border max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
@@ -200,25 +335,17 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           <div className="space-y-4 mt-4">
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <Upload className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Upload a CSV file with your contacts
-              </p>
+              <p className="text-sm text-muted-foreground mb-4">Upload a CSV file</p>
               <Label htmlFor="csv-upload" className="cursor-pointer">
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
                   <Upload className="w-4 h-4" />
                   Choose File
                 </div>
-                <Input
-                  id="csv-upload"
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
+                <Input id="csv-upload" type="file" accept=".csv" className="hidden" onChange={onFile} />
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Supported fields: Name (required), Email, Phone, Source, Status, Notes, Story, Pipeline Stage, Selling Intentions, Current Situation Notes, Pain Points, Pleasure Points
+              Map columns to: contact (name, email, phone, mobile), address, source, tags. We’ll preview the first {PREVIEW_ROWS} rows, validate, and de‑duplicate by email/mobile.
             </p>
           </div>
         )}
@@ -226,25 +353,22 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
         {step === "mapping" && (
           <div className="space-y-4 mt-4">
             <p className="text-sm text-muted-foreground">
-              Map your CSV columns to contact fields. Found {csvData.length} rows to import.
+              Map CSV columns to contact, channel, address, source, and tags. {csvData.length} rows.
             </p>
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-              {headers.map((header, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="flex-1 text-sm font-medium truncate" title={header}>
-                    {header}
+            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2">
+              {headers.map((h, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className="flex-1 text-sm truncate" title={h}>
+                    {h}
                   </div>
-                  <Select
-                    value={columnMapping[index] || "skip"}
-                    onValueChange={(value) => handleMappingChange(index, value)}
-                  >
+                  <Select value={mapping[idx] ?? "skip"} onValueChange={(v) => setMappingAt(idx, v)}>
                     <SelectTrigger className="w-[180px] bg-input">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CONTACT_FIELDS.map((field) => (
-                        <SelectItem key={field.value} value={field.value}>
-                          {field.label}
+                      {MAP_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -252,90 +376,117 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
                 </div>
               ))}
             </div>
-            
-            {/* Preview */}
-            <div className="border border-border rounded-lg p-3 bg-secondary/30">
-              <p className="text-xs font-medium mb-2">Preview (first 3 rows):</p>
-              <div className="overflow-x-auto">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="create-props"
+                checked={createPropertiesFromAddress}
+                onCheckedChange={(v) => setCreatePropertiesFromAddress(!!v)}
+              />
+              <Label htmlFor="create-props" className="text-sm">
+                Create properties from address columns and link contacts as owners
+              </Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setStep("upload")}>
+                Back
+              </Button>
+              <Button onClick={() => setStep("preview")} disabled={!hasName}>
+                Next: Preview
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === "preview" && (
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              First {PREVIEW_ROWS} rows (mapped). Clean and validate, then import.
+            </p>
+            {validationErrors.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">Validation issues</p>
+                  <ul className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                    {validationErrors.slice(0, 5).map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                    {validationErrors.length > 5 && (
+                      <li>… and {validationErrors.length - 5} more</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
                 <table className="text-xs w-full">
-                  <thead>
+                  <thead className="bg-muted/50 sticky top-0">
                     <tr>
-                      {Object.entries(columnMapping)
-                        .filter(([_, field]) => field !== "skip")
-                        .map(([colIndex, field]) => (
-                          <th key={colIndex} className="px-2 py-1 text-left font-medium text-muted-foreground">
-                            {field}
-                          </th>
-                        ))}
+                      {mappedFields.map(({ field }) => (
+                        <th key={field} className="px-2 py-1.5 text-left font-medium text-muted-foreground">
+                          {field}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {csvData.slice(0, 3).map((row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {Object.entries(columnMapping)
-                          .filter(([_, field]) => field !== "skip")
-                          .map(([colIndex]) => (
-                            <td key={colIndex} className="px-2 py-1 truncate max-w-[100px]">
-                              {row[parseInt(colIndex)] || "-"}
-                            </td>
-                          ))}
+                    {previewRows.map((row, ri) => (
+                      <tr key={ri} className="border-t border-border">
+                        {mappedFields.map(({ field }) => (
+                          <td key={field} className="px-2 py-1 truncate max-w-[120px]">
+                            {row[field] ?? "—"}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
-
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setStep("upload")}>Back</Button>
-              <Button onClick={handleStartImport}>
-                Import {csvData.length} Contacts
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setStep("mapping")}>
+                Back
+              </Button>
+              <Button onClick={runImport}>
+                Import {csvData.length} rows {validationErrors.length > 0 && `(some rows will be skipped)`}
               </Button>
             </div>
           </div>
         )}
 
         {step === "importing" && (
-          <div className="space-y-4 mt-4 text-center">
-            <div className="py-8">
-              <Progress value={importProgress} className="h-2 mb-4" />
-              <p className="text-lg font-medium">
-                Importing... {importedCount}/{csvData.length}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Please wait while we import your contacts
-              </p>
-            </div>
+          <div className="space-y-4 mt-4 text-center py-6">
+            <Progress value={progress} className="h-2 max-w-xs mx-auto" />
+            <p className="text-sm font-medium">Importing… {created} created, {updated} updated, {skipped} skipped</p>
           </div>
         )}
 
         {step === "complete" && (
           <div className="space-y-4 mt-4">
-            <div className="text-center py-6">
-              <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
+            <div className="text-center py-4">
+              <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-3">
                 <Check className="w-6 h-6 text-success" />
               </div>
-              <p className="text-lg font-medium">Import Complete!</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                {importedCount} contacts imported, {skippedCount} skipped
+              <p className="font-medium">Import complete</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Created {created}, updated {updated}, skipped {skipped}.
               </p>
             </div>
-
             {errors.length > 0 && (
-              <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/10 max-h-[150px] overflow-y-auto">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4 text-destructive" />
-                  <span className="text-sm font-medium text-destructive">Errors ({errors.length})</span>
-                </div>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  {errors.slice(0, 10).map((error, i) => (
-                    <li key={i}>{error}</li>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 max-h-32 overflow-y-auto">
+                <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  Errors ({errors.length})
+                </p>
+                <ul className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                  {errors.slice(0, 8).map((e, i) => (
+                    <li key={i}>{e}</li>
                   ))}
-                  {errors.length > 10 && <li>...and {errors.length - 10} more</li>}
+                  {errors.length > 8 && <li>… and {errors.length - 8} more</li>}
                 </ul>
               </div>
             )}
-
             <div className="flex justify-end">
               <Button onClick={() => onOpenChange(false)}>Done</Button>
             </div>

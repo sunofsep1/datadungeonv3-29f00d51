@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
@@ -27,6 +28,19 @@ const createEmptyListing = () => ({
   status: "active" as ListingStatus,
   notes: "",
   contact_id: "",
+  // Additional fields stored in notes or as separate fields
+  listing_description: "",
+  key_features: "",
+  open_house_dates: "",
+  reserve_price: 0,
+  commission_rate: 0,
+  marketing_budget: 0,
+  listing_date: "",
+  expected_sale_date: "",
+  settlement_date: "",
+  agent_notes: "",
+  vendor_requirements: "",
+  special_conditions: "",
 });
 
 export default function Listings() {
@@ -79,6 +93,25 @@ export default function Listings() {
     }
 
     try {
+      // Combine all additional fields into notes for now (or extend schema later)
+      const combinedNotes = [
+        formData.notes,
+        formData.listing_description && `Description: ${formData.listing_description}`,
+        formData.key_features && `Features: ${formData.key_features}`,
+        formData.open_house_dates && `Open House: ${formData.open_house_dates}`,
+        formData.agent_notes && `Agent Notes: ${formData.agent_notes}`,
+        formData.vendor_requirements && `Vendor Requirements: ${formData.vendor_requirements}`,
+        formData.special_conditions && `Special Conditions: ${formData.special_conditions}`,
+        formData.reserve_price > 0 && `Reserve: $${formData.reserve_price.toLocaleString()}`,
+        formData.commission_rate > 0 && `Commission: ${formData.commission_rate}%`,
+        formData.marketing_budget > 0 && `Marketing Budget: $${formData.marketing_budget.toLocaleString()}`,
+        formData.listing_date && `Listed: ${formData.listing_date}`,
+        formData.expected_sale_date && `Expected Sale: ${formData.expected_sale_date}`,
+        formData.settlement_date && `Settlement: ${formData.settlement_date}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
       const listingData = {
         address: formData.address,
         price: formData.price,
@@ -86,7 +119,7 @@ export default function Listings() {
         bathrooms: formData.bathrooms,
         property_type: formData.property_type,
         status: formData.status,
-        notes: formData.notes,
+        notes: combinedNotes || null,
         contact_id: formData.contact_id || null,
       };
 
@@ -165,22 +198,25 @@ export default function Listings() {
         actions={
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
-            if (!open) {
+            if (open) {
+              handleOpenDialog();
+            } else {
               setFormData(createEmptyListing());
               setEditingListing(null);
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2" onClick={() => handleOpenDialog()}>
+              <Button className="gap-2">
                 <Plus className="w-4 h-4" />
                 Add Listing
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-popover border-border">
+            <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>{editingListing ? "Edit Listing" : "Add New Listing"}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-4 mt-4 pb-4">
                 {/* Property Owner Section */}
                 <div className="space-y-2 p-4 bg-secondary rounded-lg">
                   <Label className="flex items-center gap-2">
@@ -296,17 +332,242 @@ export default function Listings() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Textarea
-                    placeholder="Property description..."
-                    className="bg-input min-h-[80px]"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
+                  {/* Property Details Section */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Property Details</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Land Size (sqm)</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          className="bg-input"
+                          onChange={(e) => {
+                            // Store in notes for now, or extend schema later
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Building Size (sqm)</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          className="bg-input"
+                          onChange={(e) => {
+                            // Store in notes for now
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Year Built</Label>
+                        <Input
+                          type="number"
+                          placeholder="YYYY"
+                          className="bg-input"
+                          onChange={(e) => {
+                            // Store in notes
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Condition</Label>
+                        <Select>
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Select condition" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="excellent">Excellent</SelectItem>
+                            <SelectItem value="good">Good</SelectItem>
+                            <SelectItem value="fair">Fair</SelectItem>
+                            <SelectItem value="needs-work">Needs Work</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Marketing Section */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Marketing</Label>
+                    <div className="space-y-2">
+                      <Label>Listing Description</Label>
+                      <Textarea
+                        placeholder="Detailed property description for marketing..."
+                        className="bg-input min-h-[100px]"
+                        value={formData.listing_description}
+                        onChange={(e) =>
+                          setFormData({ ...formData, listing_description: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Key Features</Label>
+                      <Textarea
+                        placeholder="Pool, garage, views, etc. (one per line)"
+                        className="bg-input min-h-[80px]"
+                        value={formData.key_features}
+                        onChange={(e) =>
+                          setFormData({ ...formData, key_features: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Open House Dates/Times</Label>
+                      <Textarea
+                        placeholder="e.g., Sat 2pm-4pm, Sun 11am-1pm"
+                        className="bg-input min-h-[60px]"
+                        value={formData.open_house_dates}
+                        onChange={(e) =>
+                          setFormData({ ...formData, open_house_dates: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Financial Section */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Financial</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Reserve Price</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          className="bg-input"
+                          value={formData.reserve_price || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              reserve_price: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Commission Rate (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="0"
+                          className="bg-input"
+                          value={formData.commission_rate || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              commission_rate: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Marketing Budget</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.marketing_budget || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            marketing_budget: Number(e.target.value) || 0,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Timeline Section */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Timeline</Label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Listing Date</Label>
+                        <Input
+                          type="date"
+                          className="bg-input"
+                          value={formData.listing_date}
+                          onChange={(e) =>
+                            setFormData({ ...formData, listing_date: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Expected Sale Date</Label>
+                        <Input
+                          type="date"
+                          className="bg-input"
+                          value={formData.expected_sale_date}
+                          onChange={(e) =>
+                            setFormData({ ...formData, expected_sale_date: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Settlement Date</Label>
+                        <Input
+                          type="date"
+                          className="bg-input"
+                          value={formData.settlement_date}
+                          onChange={(e) =>
+                            setFormData({ ...formData, settlement_date: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes Section */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Additional Notes</Label>
+                    <div className="space-y-2">
+                      <Label>Agent Notes</Label>
+                      <Textarea
+                        placeholder="Internal notes, observations, etc."
+                        className="bg-input min-h-[80px]"
+                        value={formData.agent_notes}
+                        onChange={(e) =>
+                          setFormData({ ...formData, agent_notes: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Vendor Requirements</Label>
+                      <Textarea
+                        placeholder="What the vendor needs, preferences, etc."
+                        className="bg-input min-h-[80px]"
+                        value={formData.vendor_requirements}
+                        onChange={(e) =>
+                          setFormData({ ...formData, vendor_requirements: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Special Conditions</Label>
+                      <Textarea
+                        placeholder="Any special conditions or requirements"
+                        className="bg-input min-h-[80px]"
+                        value={formData.special_conditions}
+                        onChange={(e) =>
+                          setFormData({ ...formData, special_conditions: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>General Notes</Label>
+                      <Textarea
+                        placeholder="Additional notes..."
+                        className="bg-input min-h-[80px]"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
+              </ScrollArea>
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button 
                   onClick={handleSaveListing}
