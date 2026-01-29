@@ -29,7 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
-const LINK_ROLES = ["owner", "tenant", "interested", "other"] as const;
+const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -106,7 +106,7 @@ export default function PropertyDetail() {
       await createLink.mutateAsync({
         property_id: id,
         contact_id: addOwnerContactId,
-        role: addOwnerRole as "owner" | "tenant" | "interested" | "other",
+        role: addOwnerRole as "owner" | "buyer" | "tenant" | "interested" | "other",
         notes: addOwnerNotes.trim() || null,
       });
       toast({ title: "Success", description: "Owner linked." });
@@ -264,9 +264,16 @@ export default function PropertyDetail() {
                 className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-secondary/50"
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="font-medium text-foreground">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/contacts/${l.contact_id}`);
+                    }}
+                    className="font-medium text-foreground hover:underline text-left"
+                  >
                     {l.contacts?.name ?? "Unknown"}
-                  </span>
+                  </button>
                   <Badge variant="secondary" className="text-xs capitalize">
                     {l.role || "owner"}
                   </Badge>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,11 +24,18 @@ import {
   Trash2,
   Clock,
   MapPin,
-  Tag
+  Tag,
+  Building2,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
-import { useUpdateContact, getPrimaryEmail, getPrimaryPhone, getTagNames, getLinkedPropertyAddress } from "@/hooks/useContacts";
+import { useUpdateContact, getPrimaryEmail, getPrimaryPhone, getTagNames } from "@/hooks/useContacts";
+import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
+import {
+  useCreateContactPropertyLink,
+  useDeleteContactPropertyLink,
+} from "@/hooks/useContactPropertyLinks";
 import { getInitials } from "@/lib/utils";
 import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
@@ -36,6 +43,7 @@ import { format, formatDistanceToNow } from "date-fns";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
+const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
@@ -45,12 +53,19 @@ export default function ContactDetail() {
   const { data: contact, isLoading, isError, refetch } = useContact(id);
   const { data: interactions = [] } = useInteractions(id);
   const { data: appointments = [] } = useAppointments();
+  const { data: allProperties = [] } = useProperties();
   const updateContact = useUpdateContact();
   const createInteraction = useCreateInteraction();
   const deleteInteraction = useDeleteInteraction();
+  const createLink = useCreateContactPropertyLink();
+  const deleteLink = useDeleteContactPropertyLink();
 
   const [isEditing, setIsEditing] = useState(false);
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
+  const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
+  const [linkPropertyId, setLinkPropertyId] = useState("");
+  const [linkRole, setLinkRole] = useState("owner");
+  const [linkNotes, setLinkNotes] = useState("");
   const [editFormData, setEditFormData] = useState<any>({});
   const [newInteraction, setNewInteraction] = useState({
     type: "call",
@@ -61,6 +76,25 @@ export default function ContactDetail() {
 
   const contactAppointments = appointments.filter(
     (apt) => apt.contact_id === id
+  );
+
+  const linkedProperties = useMemo(() => {
+    if (!contact?.contact_property_links) return [];
+    return contact.contact_property_links
+      .map((link) => {
+        const property = allProperties.find((p) => p.id === link.property_id);
+        return property ? { ...link, property } : null;
+      })
+      .filter(Boolean) as Array<typeof contact.contact_property_links[0] & { property: typeof allProperties[0] }>;
+  }, [contact?.contact_property_links, allProperties]);
+
+  const linkedPropertyIds = useMemo(
+    () => new Set((contact?.contact_property_links ?? []).map((l) => l.property_id)),
+    [contact?.contact_property_links]
+  );
+  const availableProperties = useMemo(
+    () => allProperties.filter((p) => !linkedPropertyIds.has(p.id)),
+    [allProperties, linkedPropertyIds]
   );
 
   const handleStartEdit = () => {
@@ -126,6 +160,50 @@ export default function ContactDetail() {
       toast({ title: "Deleted", description: "Interaction removed" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleLinkProperty = async () => {
+    if (!id || !linkPropertyId) {
+      toast({ title: "Error", description: "Select a property.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createLink.mutateAsync({
+        contact_id: id,
+        property_id: linkPropertyId,
+        role: linkRole as "owner" | "buyer" | "tenant" | "interested" | "other",
+        notes: linkNotes.trim() || null,
+      });
+      toast({ title: "Success", description: "Property linked." });
+      setLinkPropertyOpen(false);
+      setLinkPropertyId("");
+      setLinkRole("owner");
+      setLinkNotes("");
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to link property",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUnlinkProperty = async (linkId: string, propertyId: string) => {
+    if (!id) return;
+    try {
+      await deleteLink.mutateAsync({
+        id: linkId,
+        property_id: propertyId,
+        contact_id: id,
+      });
+      toast({ title: "Removed", description: "Property unlinked." });
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to unlink",
+        variant: "destructive",
+      });
     }
   };
 
@@ -239,14 +317,104 @@ export default function ContactDetail() {
                     ))}
                   </div>
                 )}
-                {getLinkedPropertyAddress(contact) && (
-                  <div className="flex items-start gap-1.5 mt-2 text-sm text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>{getLinkedPropertyAddress(contact)}</span>
-                  </div>
-                )}
               </div>
             </div>
+          </Card>
+
+          {/* Linked properties */}
+          <Card className="p-6 print:border print:border-gray-300">
+            <div className="flex items-center justify-between mb-4 print:hidden">
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Linked properties</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => setLinkPropertyOpen(true)}
+                disabled={availableProperties.length === 0}
+              >
+                <Plus className="w-4 h-4" /> Link property
+              </Button>
+            </div>
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide hidden print:block mb-4">Linked properties</h3>
+            {linkedProperties.length > 0 ? (
+              <div className="space-y-4">
+                {linkedProperties.map((link) => {
+                  const property = link.property;
+                  if (!property) return null;
+                  const address = formatPropertyAddress(property);
+                  return (
+                    <div
+                      key={link.id}
+                      className="flex items-start gap-3 p-4 rounded-lg border border-border print:border-gray-300"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 print:hidden">
+                        <Building2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/properties/${property.id}`)}
+                          className="font-medium text-sm text-foreground hover:underline text-left block mb-1 print:no-underline"
+                        >
+                          {address}
+                        </button>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-2">
+                          {property.property_type && (
+                            <Badge variant="secondary" className="text-xs">{property.property_type}</Badge>
+                          )}
+                          {property.bedrooms != null && <span>{property.bedrooms} bed</span>}
+                          {property.bathrooms != null && <span>{property.bathrooms} bath</span>}
+                        </div>
+                        {property.price != null && property.price > 0 && (
+                          <p className="text-sm font-semibold text-foreground mb-2">
+                            ${property.price.toLocaleString()}
+                          </p>
+                        )}
+                        {link.role && (
+                          <Badge variant="outline" className="text-xs mb-2">{link.role}</Badge>
+                        )}
+                        <div className="flex gap-2 mt-2 print:hidden">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 h-8"
+                            onClick={() => navigate(`/properties/${property.id}`)}
+                          >
+                            <ExternalLink className="w-3 h-3" /> View
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 h-8 text-destructive hover:text-destructive"
+                            onClick={() => handleUnlinkProperty(link.id, property.id)}
+                            disabled={deleteLink.isPending}
+                          >
+                            <Trash2 className="w-3 h-3" /> Remove association
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 border border-dashed border-border rounded-lg print:border-gray-300">
+                <MapPin className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+                <p className="text-sm text-muted-foreground mb-2">No properties linked</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 print:hidden"
+                  onClick={() => setLinkPropertyOpen(true)}
+                  disabled={availableProperties.length === 0}
+                >
+                  <Plus className="w-4 h-4" /> Click here to add
+                </Button>
+                {availableProperties.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">Create properties first, or link from the property page.</p>
+                )}
+              </div>
+            )}
           </Card>
 
           {/* Story & Intent */}
@@ -561,6 +729,75 @@ export default function ContactDetail() {
             <Button variant="outline" onClick={() => setAddInteractionOpen(false)}>Cancel</Button>
             <Button onClick={handleAddInteraction} disabled={createInteraction.isPending}>
               {createInteraction.isPending ? "Saving..." : "Log Interaction"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Link Property Dialog */}
+      <Dialog open={linkPropertyOpen} onOpenChange={setLinkPropertyOpen}>
+        <DialogContent className="sm:max-w-[420px] bg-popover border-border">
+          <DialogHeader>
+            <DialogTitle>Link property to contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Property</Label>
+              <Select
+                value={linkPropertyId}
+                onValueChange={setLinkPropertyId}
+                disabled={availableProperties.length === 0}
+              >
+                <SelectTrigger className="w-full bg-input">
+                  <SelectValue placeholder={availableProperties.length === 0 ? "No properties available" : "Select property..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProperties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {formatPropertyAddress(p)}
+                      {p.property_type && ` · ${p.property_type}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {availableProperties.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Create properties first, or they may all be linked already.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Relationship</Label>
+              <Select value={linkRole} onValueChange={setLinkRole}>
+                <SelectTrigger className="w-full bg-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LINK_ROLES.map((r) => (
+                    <SelectItem key={r} value={r} className="capitalize">
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                className="bg-input min-h-[60px]"
+                placeholder="e.g. Primary contact, joint owner..."
+                value={linkNotes}
+                onChange={(e) => setLinkNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button variant="outline" onClick={() => setLinkPropertyOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleLinkProperty}
+              disabled={!linkPropertyId || createLink.isPending}
+            >
+              {createLink.isPending ? "Linking..." : "Link property"}
             </Button>
           </div>
         </DialogContent>

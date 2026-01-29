@@ -27,6 +27,8 @@ import {
   FileText,
   Building2,
   Users,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useContact } from "@/hooks/useContact";
@@ -36,7 +38,11 @@ import {
   getTagNames,
   getLinkedPropertyAddress,
 } from "@/hooks/useContacts";
-import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
+import { useProperties, formatPropertyAddress, useCreateProperty } from "@/hooks/useProperties";
+import {
+  useCreateContactPropertyLink,
+  useDeleteContactPropertyLink,
+} from "@/hooks/useContactPropertyLinks";
 import { useInteractions, useCreateInteraction, Interaction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
 import { getInitials } from "@/lib/utils";
@@ -50,6 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
+const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
 
 interface ContactDetailPanelProps {
   contactId: string | null;
@@ -65,8 +72,15 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   const { data: appointments = [] } = useAppointments();
   const { data: allProperties = [] } = useProperties();
   const createInteraction = useCreateInteraction();
+  const createLink = useCreateContactPropertyLink();
+  const deleteLink = useDeleteContactPropertyLink();
+  const createProperty = useCreateProperty();
 
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
+  const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
+  const [linkPropertyId, setLinkPropertyId] = useState("");
+  const [linkRole, setLinkRole] = useState("owner");
+  const [linkNotes, setLinkNotes] = useState("");
   const [newInteraction, setNewInteraction] = useState({
     type: "call",
     channel: "phone",
@@ -94,6 +108,15 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   const relatedContactsCount = 0; // Placeholder - contact_contact_links doesn't exist yet
   const propertiesCount = linkedProperties.length;
 
+  const linkedPropertyIds = useMemo(
+    () => new Set((contact?.contact_property_links ?? []).map((l) => l.property_id)),
+    [contact?.contact_property_links]
+  );
+  const availableProperties = useMemo(
+    () => allProperties.filter((p) => !linkedPropertyIds.has(p.id)),
+    [allProperties, linkedPropertyIds]
+  );
+
   // Get last activity timestamp
   const lastActivity = useMemo(() => {
     if (!contact) return null;
@@ -110,6 +133,86 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
     );
     return sorted[0].timestamp;
   }, [contact, interactions, contactAppointments]);
+
+  const handleLinkProperty = async () => {
+    if (!contactId || !linkPropertyId) {
+      toast({ title: "Error", description: "Select a property.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createLink.mutateAsync({
+        contact_id: contactId,
+        property_id: linkPropertyId,
+        role: linkRole as "owner" | "buyer" | "tenant" | "interested" | "other",
+        notes: linkNotes.trim() || null,
+      });
+      toast({ title: "Success", description: "Property linked." });
+      setLinkPropertyOpen(false);
+      setLinkPropertyId("");
+      setLinkRole("owner");
+      setLinkNotes("");
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to link property",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUnlinkProperty = async (
+    linkId: string,
+    propertyId: string
+  ) => {
+    if (!contactId) return;
+    try {
+      await deleteLink.mutateAsync({
+        id: linkId,
+        property_id: propertyId,
+        contact_id: contactId,
+      });
+      toast({ title: "Removed", description: "Property unlinked." });
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to unlink",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreatePropertyFromContactAddress = async () => {
+    if (!contactId || !(contact as any).address_line1) {
+      // No address on contact, open link dialog instead
+      setLinkPropertyOpen(true);
+      return;
+    }
+    try {
+      const property = await createProperty.mutateAsync({
+        address_line1: (contact as any).address_line1,
+        address_line2: (contact as any).address_line2 || null,
+        city: (contact as any).city || null,
+        state: (contact as any).state || null,
+        postcode: (contact as any).postcode || null,
+        country: (contact as any).country || "Australia",
+      });
+      
+      // Link contact as owner
+      await createLink.mutateAsync({
+        contact_id: contactId,
+        property_id: property.id,
+        role: "owner",
+      });
+      
+      toast({ title: "Success", description: "Property created and linked!" });
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create property",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAddInteraction = async () => {
     if (!contactId) return;
@@ -312,6 +415,31 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                             >
                               {getLinkedPropertyAddress(contact)}
                             </button>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Address */}
+                    {((contact as any).address_line1 || (contact as any).city) && (
+                      <Card className="p-4">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <div className="flex-1">
+                            <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                              Address
+                            </Label>
+                            <p className="text-sm text-foreground">
+                              {[
+                                (contact as any).address_line1,
+                                (contact as any).address_line2,
+                                (contact as any).city,
+                                (contact as any).state,
+                                (contact as any).postcode,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </p>
                           </div>
                         </div>
                       </Card>
@@ -555,6 +683,25 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                           <p className="text-sm text-foreground whitespace-pre-wrap">{contact.notes}</p>
                         </div>
                       )}
+                      {/* Address */}
+                      {((contact as any).address_line1 || (contact as any).city) && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                            Address
+                          </Label>
+                          <p className="text-sm text-foreground">
+                            {[
+                              (contact as any).address_line1,
+                              (contact as any).address_line2,
+                              (contact as any).city,
+                              (contact as any).state,
+                              (contact as any).postcode,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
 
@@ -610,6 +757,27 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
                   {/* Related Properties Tab */}
                   <TabsContent value="related-properties" className="space-y-6 mt-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {propertiesCount} linked
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          // If contact has address, create property from it; otherwise open link dialog
+                          if ((contact as any).address_line1) {
+                            handleCreatePropertyFromContactAddress();
+                          } else {
+                            setLinkPropertyOpen(true);
+                          }
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add property
+                      </Button>
+                    </div>
                     {linkedProperties.length > 0 ? (
                       <div className="space-y-4">
                         {linkedProperties.map((link) => {
@@ -619,49 +787,74 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                           return (
                             <Card
                               key={link.id}
-                              className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => {
-                                onOpenChange(false);
-                                navigate(`/properties/${property.id}`);
-                              }}
+                              className="p-4 border-border hover:bg-muted/30 transition-colors"
                             >
                               <div className="flex items-start gap-3">
                                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                                   <Building2 className="w-6 h-6 text-primary" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm text-foreground mb-1">
-                                        {address}
-                                      </p>
-                                      {property.property_type && (
-                                        <Badge variant="secondary" className="text-xs">
-                                          {property.property_type}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {property.price && (
-                                      <p className="text-sm font-semibold text-foreground whitespace-nowrap">
-                                        ${property.price.toLocaleString()}
-                                      </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onOpenChange(false);
+                                      navigate(`/properties/${property.id}`);
+                                    }}
+                                    className="font-medium text-sm text-foreground hover:underline text-left mb-1 block"
+                                  >
+                                    {address}
+                                  </button>
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-2">
+                                    {property.property_type && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {property.property_type}
+                                      </Badge>
                                     )}
-                                  </div>
-                                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                                    {property.bedrooms && (
+                                    {property.bedrooms != null && (
                                       <span>{property.bedrooms} bed</span>
                                     )}
-                                    {property.bathrooms && (
+                                    {property.bathrooms != null && (
                                       <span>{property.bathrooms} bath</span>
                                     )}
                                   </div>
-                                  {link.role && (
-                                    <div className="mt-2">
-                                      <Badge variant="outline" className="text-xs">
-                                        {link.role}
-                                      </Badge>
-                                    </div>
+                                  {property.price != null && property.price > 0 && (
+                                    <p className="text-sm font-semibold text-foreground mb-2">
+                                      ${property.price.toLocaleString()}
+                                    </p>
                                   )}
+                                  {link.role && (
+                                    <Badge variant="outline" className="text-xs mb-2">
+                                      {link.role}
+                                    </Badge>
+                                  )}
+                                  <div className="flex gap-2 mt-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="gap-1 h-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onOpenChange(false);
+                                        navigate(`/properties/${property.id}`);
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      View
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="gap-1 h-8 text-destructive hover:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUnlinkProperty(link.id, property.id);
+                                      }}
+                                      disabled={deleteLink.isPending}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Remove association
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             </Card>
@@ -679,12 +872,15 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                           size="sm"
                           className="gap-2 mt-2"
                           onClick={() => {
-                            onOpenChange(false);
-                            navigate(`/contacts/${contact.id}`);
+                            if ((contact as any).address_line1) {
+                              handleCreatePropertyFromContactAddress();
+                            } else {
+                              setLinkPropertyOpen(true);
+                            }
                           }}
                         >
                           <Plus className="w-4 h-4" />
-                          Link a property
+                          Click here to add
                         </Button>
                       </Card>
                     )}
@@ -777,6 +973,77 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
               disabled={createInteraction.isPending}
             >
               {createInteraction.isPending ? "Saving..." : "Log Interaction"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Link Property Dialog */}
+      <Dialog open={linkPropertyOpen} onOpenChange={setLinkPropertyOpen}>
+        <DialogContent className="sm:max-w-[420px] bg-popover border-border">
+          <DialogHeader>
+            <DialogTitle>Link property to contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Property</Label>
+              <Select
+                value={linkPropertyId}
+                onValueChange={setLinkPropertyId}
+                disabled={availableProperties.length === 0}
+              >
+                <SelectTrigger className="w-full bg-input">
+                  <SelectValue placeholder={availableProperties.length === 0 ? "No properties available" : "Select property..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProperties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {formatPropertyAddress(p)}
+                      {p.property_type && ` · ${p.property_type}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {availableProperties.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Create properties first, or they may all be linked already.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Relationship</Label>
+              <Select value={linkRole} onValueChange={setLinkRole}>
+                <SelectTrigger className="w-full bg-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LINK_ROLES.map((r) => (
+                    <SelectItem key={r} value={r} className="capitalize">
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                className="bg-input min-h-[60px]"
+                placeholder="e.g. Primary contact, joint owner..."
+                value={linkNotes}
+                onChange={(e) => setLinkNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button variant="outline" onClick={() => setLinkPropertyOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLinkProperty}
+              disabled={!linkPropertyId || createLink.isPending}
+            >
+              {createLink.isPending ? "Linking..." : "Link property"}
             </Button>
           </div>
         </DialogContent>

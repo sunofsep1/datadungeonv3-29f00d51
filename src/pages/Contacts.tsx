@@ -159,7 +159,6 @@ export default function Contacts() {
   const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(null);
   const [filterLastTouched, setFilterLastTouched] = useState<string>("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
-  const [createPropertyFromAddress, setCreatePropertyFromAddress] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const { toast } = useToast();
@@ -340,8 +339,6 @@ export default function Contacts() {
   const handleOpenDialog = (contact?: ContactWithMeta) => {
     if (contact) {
       setEditingContact(contact);
-      // Extract address from linked property if exists
-      const linkedProperty = contact.contact_property_links?.[0]?.properties;
       setFormData({
         name: contact.name,
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
@@ -355,22 +352,20 @@ export default function Contacts() {
         pleasure_points: contact.pleasure_points ?? "",
         pipeline_stage: contact.pipeline_stage ?? "",
         current_situation_notes: contact.current_situation_notes ?? "",
-        // Address fields from linked property
-        address_line1: linkedProperty?.address_line1 ?? "",
-        address_line2: "",
-        city: linkedProperty?.city ?? "",
-        state: "",
-        postcode: linkedProperty?.postcode ?? "",
-        country: "Australia",
+        // Address fields from contact
+        address_line1: (contact as any).address_line1 ?? "",
+        address_line2: (contact as any).address_line2 ?? "",
+        city: (contact as any).city ?? "",
+        state: (contact as any).state ?? "",
+        postcode: (contact as any).postcode ?? "",
+        country: (contact as any).country ?? "Australia",
       });
       const tagIds = (contact.contact_tags ?? []).map((ct) => ct.tag_id);
       setSelectedTagIds(tagIds);
-      setCreatePropertyFromAddress(false); // Don't create duplicate property when editing
     } else {
       setEditingContact(null);
       setFormData(createEmptyContact());
       setSelectedTagIds([]);
-      setCreatePropertyFromAddress(false);
     }
     setNewTagName("");
     setIsDialogOpen(true);
@@ -403,6 +398,13 @@ export default function Contacts() {
           pleasure_points: formData.pleasure_points || null,
           pipeline_stage: formData.pipeline_stage || null,
           current_situation_notes: formData.current_situation_notes || null,
+          // Store address directly on contact
+          address_line1: formData.address_line1?.trim() || null,
+          address_line2: formData.address_line2?.trim() || null,
+          city: formData.city?.trim() || null,
+          state: formData.state || null,
+          postcode: formData.postcode?.trim() || null,
+          country: formData.country || "Australia",
         });
         contactId = updated.id;
         
@@ -431,43 +433,16 @@ export default function Contacts() {
           pleasure_points: formData.pleasure_points || null,
           pipeline_stage: formData.pipeline_stage || null,
           current_situation_notes: formData.current_situation_notes || null,
+          // Store address directly on contact
+          address_line1: formData.address_line1?.trim() || null,
+          address_line2: formData.address_line2?.trim() || null,
+          city: formData.city?.trim() || null,
+          state: formData.state || null,
+          postcode: formData.postcode?.trim() || null,
+          country: formData.country || "Australia",
         });
         contactId = created.id;
-        
-        // Create property and link as owner if checkbox is checked and address provided
-        if (createPropertyFromAddress && formData.address_line1?.trim()) {
-          try {
-            const property = await createProperty.mutateAsync({
-              address_line1: formData.address_line1.trim(),
-              address_line2: formData.address_line2?.trim() || null,
-              city: formData.city?.trim() || null,
-              state: formData.state || null,
-              postcode: formData.postcode?.trim() || null,
-              country: formData.country || "Australia",
-            });
-            
-            // Link contact as owner
-            await createPropertyLink.mutateAsync({
-              contact_id: contactId,
-              property_id: property.id,
-              role: "owner",
-            });
-            
-            toast({ 
-              title: "Success", 
-              description: "Contact and property created!" 
-            });
-          } catch (error: any) {
-            console.error("Failed to create property:", error);
-            toast({
-              title: "Contact created",
-              description: `Property creation failed: ${error.message}`,
-              variant: "destructive",
-            });
-          }
-        } else {
-          toast({ title: "Success", description: "Contact added!" });
-        }
+        toast({ title: "Success", description: "Contact added!" });
       }
 
       // Handle tags: sync selected tags with contact
@@ -492,7 +467,6 @@ export default function Contacts() {
       setFormData(createEmptyContact());
       setSelectedTagIds([]);
       setEditingContact(null);
-      setCreatePropertyFromAddress(false);
     } catch (e: unknown) {
       toast({
         title: "Error",
@@ -612,7 +586,6 @@ export default function Contacts() {
                   setSelectedTagIds([]);
                   setNewTagName("");
                   setEditingContact(null);
-                  setCreatePropertyFromAddress(false);
                 }
               }}
             >
@@ -721,24 +694,8 @@ export default function Contacts() {
                     </TabsContent>
                     <TabsContent value="address" className="space-y-4 mt-4">
                       <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-base font-semibold">Property Address</Label>
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="create-property"
-                            checked={createPropertyFromAddress}
-                            onCheckedChange={(checked) => setCreatePropertyFromAddress(!!checked)}
-                          />
-                          <Label htmlFor="create-property" className="text-sm font-normal cursor-pointer">
-                            Create property and link as owner
-                          </Label>
-                        </div>
-                      </div>
-                      
                       <div className="space-y-2">
-                        <Label>
-                          Address Line 1 {createPropertyFromAddress && "*"}
-                        </Label>
+                        <Label>Address Line 1</Label>
                         <Input
                           placeholder="Street address"
                           className="bg-input"
