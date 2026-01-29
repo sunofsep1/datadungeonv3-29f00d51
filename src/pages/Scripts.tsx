@@ -75,7 +75,7 @@ export default function Scripts() {
                 Add Script
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-popover border-border">
+            <DialogContent className="sm:max-w-[600px] bg-[#242424] border-white/10">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Edit Script" : "Create New Script"}</DialogTitle>
               </DialogHeader>
@@ -111,7 +111,7 @@ export default function Scripts() {
       {/* Scripts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {scripts.map((script) => (
-          <Card key={script.id} className="p-4 bg-card border-border">
+          <Card key={script.id} className="zoho-card p-4 border-white/10">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
@@ -126,7 +126,7 @@ export default function Scripts() {
                 </Button>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground line-clamp-4">
+            <p className="text-sm text-white/60 line-clamp-4">
               {script.content || "No content yet..."}
             </p>
           </Card>
@@ -134,7 +134,7 @@ export default function Scripts() {
       </div>
 
       {scripts.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="text-center py-12 text-white/60">
           <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>No scripts yet. Create your first call script!</p>
         </div>

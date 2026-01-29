@@ -332,7 +332,7 @@ export default function Calendar() {
       <div className="space-y-2">
         <div className="text-lg font-semibold mb-4">{format(currentDate, "EEEE, MMMM d, yyyy")}</div>
         {events.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No events scheduled</p>
+          <p className="text-white/60 text-center py-8">No events scheduled</p>
         ) : (
           <div className="space-y-2">
             {events.map((item) => (
@@ -345,7 +345,7 @@ export default function Calendar() {
                         {item.source === "google" ? "Google" : "App"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4 text-sm text-white/60">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {formatEventTime(item)}
@@ -387,12 +387,12 @@ export default function Calendar() {
         {weekDays.map((day) => {
           const events = getEventsForDate(day);
           return (
-            <div key={day.toISOString()} className="border border-border rounded-lg p-2 min-h-[200px]">
+            <div key={day.toISOString()} className="border border-white/10 rounded-lg p-2 min-h-[200px]">
               <div
                 className={cn(
                   "text-sm font-medium mb-2",
                   isToday(day) && "text-primary font-bold",
-                  !isSameMonth(day, currentDate) && "text-muted-foreground"
+                  !isSameMonth(day, currentDate) && "text-white/60"
                 )}
               >
                 {format(day, "EEE d")}
@@ -411,7 +411,7 @@ export default function Calendar() {
                   </div>
                 ))}
                 {events.length > 3 && (
-                  <div className="text-xs text-muted-foreground">+{events.length - 3} more</div>
+                  <div className="text-xs text-white/60">+{events.length - 3} more</div>
                 )}
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function Calendar() {
     return (
       <div className="grid grid-cols-7 gap-1">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+          <div key={day} className="text-center text-sm font-medium text-white/60 p-2">
             {day}
           </div>
         ))}
@@ -442,7 +442,7 @@ export default function Calendar() {
             <div
               key={day.toISOString()}
               className={cn(
-                "border border-border rounded p-1 min-h-[100px]",
+                "border border-white/10 rounded p-1 min-h-[100px]",
                 !isCurrentMonth && "opacity-50"
               )}
             >
@@ -450,7 +450,7 @@ export default function Calendar() {
                 className={cn(
                   "text-sm mb-1",
                   isToday(day) && "font-bold text-primary",
-                  !isCurrentMonth && "text-muted-foreground"
+                  !isCurrentMonth && "text-white/60"
                 )}
               >
                 {format(day, "d")}
@@ -469,7 +469,7 @@ export default function Calendar() {
                   </div>
                 ))}
                 {events.length > 2 && (
-                  <div className="text-[10px] text-muted-foreground">+{events.length - 2}</div>
+                  <div className="text-[10px] text-white/60">+{events.length - 2}</div>
                 )}
               </div>
             </div>
@@ -492,7 +492,7 @@ export default function Calendar() {
                 Add Appointment
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-popover border-border">
+            <DialogContent className="sm:max-w-[500px] bg-[#242424] border-white/10">
               <DialogHeader>
                 <DialogTitle>New Appointment</DialogTitle>
               </DialogHeader>
@@ -600,7 +600,7 @@ export default function Calendar() {
 
       {/* Google Calendar Connection */}
       {user && (
-        <Card className="p-4 mb-6 bg-card border-border">
+        <Card className="p-4 mb-6 zoho-card border-white/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-primary" />
@@ -632,7 +632,7 @@ export default function Calendar() {
       )}
 
       {/* Calendar Controls */}
-      <Card className="p-4 mb-6 bg-card border-border">
+      <Card className="p-4 mb-6 zoho-card border-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={navigatePrevious}>
@@ -661,7 +661,7 @@ export default function Calendar() {
       </Card>
 
       {/* Calendar View */}
-      <Card className="p-4 bg-card border-border">
+      <Card className="p-4 zoho-card border-white/10">
         {viewMode === "day" && renderDayView()}
         {viewMode === "week" && renderWeekView()}
         {viewMode === "month" && renderMonthView()}
@@ -669,12 +669,12 @@ export default function Calendar() {
 
       {/* Upcoming Events */}
       {upcomingItems.length > 0 && (
-        <Card className="p-4 mt-6 bg-card border-border">
+        <Card className="p-4 mt-6 zoho-card border-white/10">
           <h3 className="font-semibold mb-4">Upcoming Events</h3>
           <ScrollArea className="max-h-[300px]">
             <div className="space-y-2">
               {upcomingItems.map((item) => (
-                <div key={item.id} className="flex items-start justify-between p-2 rounded border border-border">
+                <div key={item.id} className="flex items-start justify-between p-2 rounded border border-white/10">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium">{item.title}</span>
@@ -682,7 +682,7 @@ export default function Calendar() {
                         {item.source === "google" ? "Google" : "App"}
                       </Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-white/60">
                       {format(parseISO(item.date), "MMM d, h:mm a")}
                       {item.location && ` • ${item.location}`}
                     </div>

@@ -154,6 +154,49 @@
 }
 
 @layer components {
+  /* Force Zoho layout to dark so preview always shows Zoho look */
+  .zoho-layout,
+  .zoho-layout main {
+    background-color: #1a1a1a !important;
+  }
+  .zoho-layout main {
+    color: #e0e0e0;
+  }
+
+  /* Zoho-inspired content surfaces (Phase 2) - !important so they override Tailwind utilities */
+  .zoho-card {
+    background-color: #242424 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 0.5rem;
+  }
+  .zoho-card .text-foreground,
+  .zoho-content-title {
+    color: #ffffff !important;
+  }
+  .zoho-card .text-muted-foreground,
+  .zoho-content-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+  .zoho-accent {
+    color: #00BCD4 !important;
+  }
+  .zoho-accent-bg {
+    background-color: rgba(0, 188, 212, 0.15) !important;
+  }
+  .zoho-card.stat-card,
+  .stat-card.zoho-card {
+    background-color: #242424 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .zoho-card.stat-card .text-foreground,
+  .stat-card.zoho-card .text-foreground {
+    color: #ffffff;
+  }
+  .zoho-card.stat-card .text-muted-foreground,
+  .stat-card.zoho-card .text-muted-foreground {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
   .stat-card {
     @apply rounded-lg p-6 text-center;
   }
@@ -197,7 +240,9 @@
   }
 
   .pipeline-column {
-    @apply bg-card rounded-lg min-h-[400px] p-4;
+    background-color: #242424 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    @apply rounded-lg min-h-[400px] p-4;
   }
 
   .pipeline-column-header {
@@ -205,11 +250,21 @@
   }
 
   .contact-row {
-    @apply flex items-center gap-4 p-4 bg-card rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer;
+    @apply flex items-center gap-4 p-4 rounded-lg transition-colors cursor-pointer;
+    background-color: #242424;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .contact-row:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 
   .campaign-row {
-    @apply flex items-center justify-between p-4 bg-card rounded-lg hover:bg-secondary/50 transition-colors;
+    @apply flex items-center justify-between p-4 rounded-lg transition-colors;
+    background-color: #242424;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .campaign-row:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 }
 

@@ -123,7 +123,7 @@ export default function Marketing() {
                 <Plus className="w-4 h-4" /> Create Post
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[400px] bg-popover border-border">
+            <DialogContent className="sm:max-w-[400px] bg-[#242424] border-white/10">
               <DialogHeader>
                 <DialogTitle>{editingPost ? "Edit Post" : "Create Post"}</DialogTitle>
               </DialogHeader>
@@ -190,19 +190,19 @@ export default function Marketing() {
 
         <TabsContent value="posts">
           <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
             <Input placeholder="Search posts..." className="pl-10 bg-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
 
           {filteredPosts.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-white/60">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No posts yet. Create your first post!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredPosts.map((post) => (
-                <Card key={post.id} className="p-4 bg-card border-border">
+                <Card key={post.id} className="zoho-card p-4 border-white/10">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{getPlatformIcon(post.platform)}</span>
@@ -219,10 +219,10 @@ export default function Marketing() {
                       </Button>
                     </div>
                   </div>
-                  <h4 className="font-medium text-foreground mb-2 line-clamp-2">{post.title}</h4>
-                  {post.content && <p className="text-sm text-muted-foreground line-clamp-3 mb-3">{post.content}</p>}
+                  <h4 className="font-medium text-white mb-2 line-clamp-2">{post.title}</h4>
+                  {post.content && <p className="text-sm text-white/60 line-clamp-3 mb-3">{post.content}</p>}
                   {post.scheduled_date && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 text-xs text-white/60">
                       <Calendar className="w-3 h-3" />
                       {format(new Date(post.scheduled_date), "MMM d, yyyy")}
                     </div>

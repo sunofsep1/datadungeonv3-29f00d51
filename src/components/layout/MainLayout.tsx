@@ -1,17 +1,44 @@
-import { ReactNode } from "react";
-import { AppSidebar } from "./AppSidebar";
+import { ReactNode, useState } from "react";
+import { HeaderBar } from "./HeaderBar";
+import { SidebarNavigation } from "./SidebarNavigation";
+import { layout } from "@/lib/designTokens";
+import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const sidebarWidth = sidebarCollapsed ? layout.sidebarCollapsed : layout.sidebarWidth;
+
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <AppSidebar />
-      <main className="flex-1 p-4 sm:p-6 overflow-auto print:p-0 print:w-full pb-20 md:pb-6">
-        {children}
-      </main>
+    <div className="zoho-layout flex min-h-screen w-full bg-[#1a1a1a]">
+      <SidebarNavigation
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
+      {/* Spacer so main content starts after sidebar (desktop) */}
+      <div
+        className={cn("hidden md:block shrink-0 transition-[width] duration-250")}
+        style={{ width: sidebarWidth }}
+      />
+      <div className="flex flex-1 flex-col min-w-0">
+        <HeaderBar
+          sidebarCollapsed={sidebarCollapsed}
+          onMenuClick={() => setSidebarCollapsed((c) => !c)}
+        />
+        <main
+          className={cn(
+            "flex-1 overflow-auto p-4 sm:p-6 print:p-0 print:w-full bg-[#1a1a1a] text-white",
+            "pb-20 md:pb-6"
+          )}
+          style={{ paddingTop: `calc(${layout.headerHeight} + 1rem)` }}
+        >
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

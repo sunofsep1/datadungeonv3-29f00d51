@@ -180,14 +180,14 @@ export default function Pipeline() {
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, stage.id)}
             >
-              <div className="pipeline-column-header border-b border-border">
+              <div className="pipeline-column-header border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${stage.color}`} />
-                  <span className="font-medium text-foreground text-sm">{stage.name}</span>
+                  <span className="font-medium text-white text-sm">{stage.name}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{stageListings.length}</span>
+                <span className="text-xs text-white/60">{stageListings.length}</span>
               </div>
-              <div className="text-xs text-muted-foreground mb-4">{formatCurrency(stageValue)}</div>
+              <div className="text-xs text-white/60 mb-4">{formatCurrency(stageValue)}</div>
               
               <div className="space-y-2">
                 {stageListings.map((listing) => {
@@ -202,7 +202,7 @@ export default function Pipeline() {
                     <Card
                       key={listing.id}
                       className={cn(
-                        "p-3 bg-secondary/50 border-border cursor-grab hover:bg-secondary transition-colors active:cursor-grabbing",
+                        "p-3 bg-white/5 border border-white/10 cursor-grab hover:bg-white/10 transition-colors active:cursor-grabbing zoho-card",
                         warning === "critical" && "border-yellow-500/50 bg-yellow-500/5",
                         warning === "warning" && "border-yellow-400/30 bg-yellow-400/5"
                       )}
@@ -211,20 +211,20 @@ export default function Pipeline() {
                       onClick={() => navigate(`/listings`)} // Could navigate to listing detail if exists
                     >
                       <div className="flex items-start gap-2">
-                        <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <GripVertical className="w-4 h-4 text-white/50 mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           {/* Contact Name */}
                           {contact && (
                             <div className="flex items-center gap-1.5 mb-1">
-                              <User className="w-3 h-3 text-muted-foreground" />
-                              <p className="font-medium text-xs text-foreground truncate">
+                              <User className="w-3 h-3 text-white/60" />
+                              <p className="font-medium text-xs text-white truncate">
                                 {contact.name}
                               </p>
                             </div>
                           )}
                           
                           {/* Property Address */}
-                          <p className="font-medium text-sm text-foreground truncate">
+                          <p className="font-medium text-sm text-white truncate">
                             {listing.address}
                           </p>
                           
@@ -238,8 +238,8 @@ export default function Pipeline() {
                           
                           {/* Days in Stage & Warning */}
                           <div className="flex items-center gap-2 mt-1.5">
-                            <Clock className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3 text-white/60" />
+                            <span className="text-xs text-white/60">
                               {daysInStage} day{daysInStage !== 1 ? "s" : ""} in stage
                             </span>
                             {warning !== "none" && (
@@ -256,8 +256,8 @@ export default function Pipeline() {
                           {/* Property Type */}
                           {listing.property_type && (
                             <div className="flex items-center gap-1 mt-1">
-                              <Home className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground capitalize">
+                              <Home className="w-3 h-3 text-white/60" />
+                              <span className="text-xs text-white/60 capitalize">
                                 {listing.property_type}
                               </span>
                             </div>
@@ -274,7 +274,7 @@ export default function Pipeline() {
       </div>
 
       {listings.length === 0 && !isLoading && (
-        <div className="text-center py-12 text-muted-foreground mt-8">
+        <div className="text-center py-12 text-white/60 mt-8">
           <Home className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>No deals in pipeline. Add your first deal to get started!</p>
         </div>
@@ -282,7 +282,7 @@ export default function Pipeline() {
 
       {/* Add Deal Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[400px] bg-[#242424] border-white/10">
           <DialogHeader>
             <DialogTitle>Add Deal</DialogTitle>
           </DialogHeader>

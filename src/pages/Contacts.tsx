@@ -546,7 +546,7 @@ export default function Contacts() {
     return (
       <div className="animate-fade-in">
         <PageHeader title="Contacts" description="Manage your contacts and leads" />
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="text-center py-12 text-white/60">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="font-medium text-foreground mb-2">Couldn&apos;t load contacts</p>
           <p className="text-sm mb-4">Check your connection and migrations, then retry.</p>
@@ -916,10 +916,10 @@ export default function Contacts() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard value={stats.total} label="Total Contacts" variant="total" />
-        <StatCard value={stats.hot} label="Hot Leads" variant="cancelled" />
-        <StatCard value={stats.warm} label="Warm Leads" variant="planning" />
-        <StatCard value={stats.cold} label="Cold Leads" variant="active" />
+        <StatCard value={stats.total} label="Total Contacts" variant="total" className="zoho-card" />
+        <StatCard value={stats.hot} label="Hot Leads" variant="cancelled" className="zoho-card" />
+        <StatCard value={stats.warm} label="Warm Leads" variant="planning" className="zoho-card" />
+        <StatCard value={stats.cold} label="Cold Leads" variant="active" className="zoho-card" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -1035,8 +1035,8 @@ export default function Contacts() {
 
       {/* Bulk Actions */}
       {selectedContactIds.size > 0 && (
-        <div className="mb-4 p-3 bg-secondary rounded-lg border border-border flex items-center justify-between">
-          <span className="text-sm text-foreground">
+        <div className="mb-4 p-3 zoho-card rounded-lg flex items-center justify-between">
+          <span className="text-sm text-white">
             {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""} selected
           </span>
           <div className="flex gap-2">
@@ -1124,7 +1124,7 @@ export default function Contacts() {
       )}
 
       {filteredAndSortedContacts.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="text-center py-12 text-white/60">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>
             {!contacts?.length
@@ -1147,7 +1147,7 @@ export default function Contacts() {
             return (
               <div
                 key={contact.id}
-                className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors cursor-pointer"
+                className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-white/10 hover:bg-white/10 transition-colors cursor-pointer zoho-card"
                 onClick={() => setSelectedContactId(contact.id)}
               >
                 <AvatarCircle
@@ -1156,7 +1156,7 @@ export default function Contacts() {
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground">
+                    <span className="font-medium text-white">
                       {contact.name}
                     </span>
                     <StatusBadge variant={getStatusVariant(contact.status)}>
@@ -1262,7 +1262,7 @@ export default function Contacts() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-4 h-4 text-white/50" />
                 </div>
               </div>
             );

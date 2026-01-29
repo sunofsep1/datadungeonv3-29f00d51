@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { colors, spacing, layout, typography, shadows, transitions } from "./src/lib/designTokens";
 
 export default {
   darkMode: ["class"],
@@ -73,6 +74,30 @@ export default {
           DEFAULT: "hsl(var(--teal))",
           foreground: "hsl(var(--teal-foreground))",
         },
+        // Zoho-inspired design tokens (dd-*)
+        "dd-bg": colors.background.primary,
+        "dd-bg-secondary": colors.background.secondary,
+        "dd-bg-surface": colors.background.surface,
+        "dd-accent": colors.primary,
+        "dd-accent-hover": colors.primaryHover,
+        "dd-text": colors.text.primary,
+        "dd-text-secondary": colors.text.secondary,
+        "dd-text-muted": colors.text.muted,
+      },
+      spacing: { ...spacing },
+      width: {
+        "sidebar": layout.sidebarWidth,
+        "sidebar-collapsed": layout.sidebarCollapsed,
+      },
+      height: {
+        "header": layout.headerHeight,
+        "toolbar": layout.toolbarHeight,
+      },
+      boxShadow: shadows,
+      transitionDuration: {
+        fast: "150ms",
+        normal: "250ms",
+        slow: "350ms",
       },
       borderRadius: {
         lg: "var(--radius)",

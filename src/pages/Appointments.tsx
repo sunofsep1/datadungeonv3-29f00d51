@@ -271,7 +271,7 @@ export default function Appointments() {
             <DialogTrigger asChild>
               <Button className="gap-2" onClick={() => handleOpenDialog()}><Plus className="w-4 h-4" />New Appointment</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="sm:max-w-[600px] bg-[#242424] border-white/10 max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>{editingAppointment ? "Edit Appointment" : "New Appointment"}</DialogTitle>
               </DialogHeader>
@@ -515,7 +515,7 @@ export default function Appointments() {
                   </TabsContent>
                 </Tabs>
               </ScrollArea>
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/10">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -540,19 +540,19 @@ export default function Appointments() {
         <>
           <div className="space-y-4">
             {paginatedAppointments.map((appointment) => (
-            <Card key={appointment.id} className="p-4 bg-card border-border">
+            <Card key={appointment.id} className="zoho-card p-4 border-white/10">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold text-foreground">{appointment.title}</h3>
+                    <h3 className="font-semibold text-white">{appointment.title}</h3>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeColor(appointment.type)}`}>{appointment.type || "meeting"}</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-white/60">
                     <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{format(new Date(appointment.date), "MMM d, yyyy")}</span>
                     <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{format(new Date(appointment.date), "h:mm a")}</span>
                     {appointment.location && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{appointment.location}</span>}
                   </div>
-                  {appointment.notes && <p className="mt-2 text-sm text-muted-foreground">{appointment.notes}</p>}
+                  {appointment.notes && <p className="mt-2 text-sm text-white/60">{appointment.notes}</p>}
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(appointment)}><Pencil className="w-4 h-4" /></Button>
@@ -608,7 +608,7 @@ export default function Appointments() {
           )}
         </>
       ) : (
-        <div className="text-center py-12 text-muted-foreground"><Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No appointments scheduled. Create your first appointment!</p></div>
+        <div className="text-center py-12 text-white/60"><Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>No appointments scheduled. Create your first appointment!</p></div>
       )}
     </div>
   );

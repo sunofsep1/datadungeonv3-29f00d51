@@ -270,15 +270,15 @@ export default function Listings() {
                     </SelectContent>
                   </Select>
                   {selectedContact && (
-                    <div className="mt-2 p-3 bg-card rounded border border-border">
-                      <p className="text-sm font-medium text-foreground">{selectedContact.name}</p>
+                    <div className="mt-2 p-3 zoho-card rounded border border-white/10">
+                      <p className="text-sm font-medium text-white">{selectedContact.name}</p>
                       {selectedContact.phone && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <p className="text-xs text-white/60 flex items-center gap-1 mt-1">
                           <Phone className="w-3 h-3" /> {selectedContact.phone}
                         </p>
                       )}
                       {selectedContact.email && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <p className="text-xs text-white/60 flex items-center gap-1">
                           <Mail className="w-3 h-3" /> {selectedContact.email}
                         </p>
                       )}
@@ -604,7 +604,7 @@ export default function Listings() {
                   </TabsContent>
                 </Tabs>
               </ScrollArea>
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/10">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button 
                   onClick={handleSaveListing}
@@ -625,7 +625,7 @@ export default function Listings() {
             {paginatedListings.map((listing) => {
             const owner = getContactForListing(listing);
             return (
-              <Card key={listing.id} className="p-0 bg-card border-border overflow-hidden hover:shadow-md transition-shadow">
+              <Card key={listing.id} className="zoho-card p-0 overflow-hidden hover:shadow-md transition-shadow border border-white/10">
                 {/* Property Image Placeholder */}
                 <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                   <Building2 className="w-16 h-16 text-primary/40" />
@@ -643,7 +643,7 @@ export default function Listings() {
                           {listing.status || "active"}
                         </StatusBadge>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono mb-1">
+                      <p className="text-xs text-white/60 font-mono mb-1">
                         ID: {listing.id.slice(0, 8)}
                       </p>
                     </div>
@@ -672,9 +672,9 @@ export default function Listings() {
                       </AlertDialog>
                     </div>
                   </div>
-                  <h3 className="font-semibold text-foreground mb-2 line-clamp-2">{listing.address}</h3>
+                  <h3 className="font-semibold text-white mb-2 line-clamp-2">{listing.address}</h3>
                   <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                  <div className="flex items-center gap-4 text-sm text-white/60 mb-3">
                     {listing.bedrooms !== null && (
                       <span className="flex items-center gap-1.5">
                         <Bed className="w-4 h-4" />
@@ -689,7 +689,7 @@ export default function Listings() {
                     )}
                   </div>
                   {listing.created_at && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                    <div className="flex items-center gap-1.5 text-xs text-white/60 mb-3">
                       <Calendar className="w-3 h-3" />
                       Listed: {format(new Date(listing.created_at), "MMM d, yyyy")}
                     </div>
@@ -703,7 +703,7 @@ export default function Listings() {
                         <span className="text-sm font-medium text-foreground">{owner.name}</span>
                       </div>
                       {owner.phone && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <p className="text-xs text-white/60 flex items-center gap-1 mt-1">
                           <Phone className="w-3 h-3" /> {owner.phone}
                         </p>
                       )}
@@ -760,7 +760,7 @@ export default function Listings() {
           )}
         </>
       ) : (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="text-center py-12 text-white/60">
           <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>No listings yet. Add your first property listing!</p>
         </div>

@@ -18,10 +18,10 @@ export function KPISnapshot() {
 
   if (isError) {
     return (
-      <Card className="p-4 bg-card border-border">
-        <h3 className="font-semibold text-foreground mb-4">KPI Snapshot</h3>
-        <p className="text-sm text-muted-foreground mb-2">Couldn&apos;t load KPI data.</p>
-        <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
+      <Card className="zoho-card p-4">
+        <h3 className="font-semibold text-white mb-4">KPI Snapshot</h3>
+        <p className="text-sm text-white/60 mb-2">Couldn&apos;t load KPI data.</p>
+        <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={refetch}>Retry</Button>
       </Card>
     );
   }
@@ -73,10 +73,10 @@ export function KPISnapshot() {
   ];
 
   return (
-    <Card className="p-4 bg-card border-border">
+    <Card className="zoho-card p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground">KPI Snapshot</h3>
-        <Link to="/performance" className="text-xs text-primary hover:underline">
+        <h3 className="font-semibold text-white">KPI Snapshot</h3>
+        <Link to="/performance" className="text-xs text-[#00BCD4] hover:underline">
           View All →
         </Link>
       </div>
@@ -89,9 +89,9 @@ export function KPISnapshot() {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
-                  <span className="text-sm text-foreground">{kpi.label}</span>
+                  <span className="text-sm text-white">{kpi.label}</span>
                 </div>
-                <span className="text-sm font-medium text-foreground">
+                <span className="text-sm font-medium text-white">
                   {kpi.format(kpi.current)} / {kpi.format(kpi.goal)}
                 </span>
               </div>

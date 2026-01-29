@@ -53,11 +53,11 @@ export function AffirmationsWidget() {
   };
 
   return (
-    <Card className="p-4 bg-card border-border">
+    <Card className="zoho-card p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Heart className="w-5 h-5 text-destructive" />
-          <h3 className="font-semibold text-foreground">Today's Affirmation</h3>
+          <Heart className="w-5 h-5 text-rose-400" />
+          <h3 className="font-semibold text-white">Today's Affirmation</h3>
         </div>
         <div className="flex gap-1">
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleRotate}>
@@ -70,7 +70,7 @@ export function AffirmationsWidget() {
       </div>
 
       {!showAll ? (
-        <div className="relative bg-gradient-to-r from-primary/10 to-teal/10 rounded-lg p-4 border border-primary/20">
+        <div className="relative bg-white/5 rounded-lg p-4 border border-white/10">
           {isEditing ? (
             <div className="flex gap-2">
               <Input
@@ -85,14 +85,14 @@ export function AffirmationsWidget() {
             </div>
           ) : (
             <>
-              <p className="text-foreground font-medium italic">
+              <p className="text-white font-medium italic">
                 "{affirmations[currentIndex]}"
               </p>
               <button
                 onClick={handleEditCurrent}
                 className="absolute top-2 right-2 p-1 opacity-0 hover:opacity-100 transition-opacity"
               >
-                <Pencil className="w-3 h-3 text-muted-foreground" />
+                <Pencil className="w-3 h-3 text-white/50" />
               </button>
             </>
           )}
@@ -100,9 +100,9 @@ export function AffirmationsWidget() {
       ) : (
         <div className="space-y-2">
           {affirmations.map((affirmation, index) => (
-            <div key={index} className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
-              <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
-              <span className="flex-1 text-sm text-foreground">{affirmation}</span>
+            <div key={index} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/10">
+              <span className="text-xs text-white/50 w-6">{index + 1}.</span>
+              <span className="flex-1 text-sm text-white">{affirmation}</span>
               <Button
                 size="icon"
                 variant="ghost"

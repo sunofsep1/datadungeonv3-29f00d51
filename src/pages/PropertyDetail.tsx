@@ -57,9 +57,9 @@ export default function PropertyDetail() {
   if (isError) {
     return (
       <div className="animate-fade-in text-center py-12">
-        <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-        <p className="font-medium text-foreground mb-2">Couldn&apos;t load property</p>
-        <p className="text-sm text-muted-foreground mb-4">Check your connection and migrations, then retry.</p>
+        <Building2 className="w-12 h-12 mx-auto mb-4 text-white/60 opacity-50" />
+        <p className="font-medium text-white mb-2">Couldn&apos;t load property</p>
+        <p className="text-sm text-white/60 mb-4">Check your connection and migrations, then retry.</p>
         <div className="flex justify-center gap-2">
           <Button variant="outline" onClick={() => refetch()}>Retry</Button>
           <Button variant="ghost" onClick={() => navigate("/properties")}>Back to Properties</Button>
@@ -71,7 +71,7 @@ export default function PropertyDetail() {
   if (!property) {
     return (
       <div className="animate-fade-in text-center py-12">
-        <p className="text-muted-foreground">Property not found</p>
+        <p className="text-white/60">Property not found</p>
         <Button variant="outline" onClick={() => navigate("/properties")} className="mt-4">
           Back to Properties
         </Button>
@@ -148,11 +148,11 @@ export default function PropertyDetail() {
             <Building2 className="w-6 h-6" />
             Property
           </h1>
-          <p className="text-muted-foreground">Details and linked owners</p>
+          <p className="text-white/60">Details and linked owners</p>
         </div>
       </div>
 
-      <Card className="p-6 mb-6">
+      <Card className="zoho-card p-6 mb-6 border-white/10">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
             <MapPin className="w-6 h-6 text-primary" />
@@ -161,7 +161,7 @@ export default function PropertyDetail() {
             <h2 className="text-lg font-semibold text-foreground">Address</h2>
             <p className="text-foreground">{addr || "—"}</p>
             {(property.city || property.state || property.postcode) && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-white/60 mt-1">
                 {[property.city, property.state, property.postcode].filter(Boolean).join(", ")}
                 {property.country && `, ${property.country}`}
               </p>
@@ -171,25 +171,25 @@ export default function PropertyDetail() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           {property.property_type && (
             <div>
-              <span className="text-muted-foreground">Type</span>
+              <span className="text-white/60">Type</span>
               <p className="font-medium capitalize">{property.property_type}</p>
             </div>
           )}
           {property.bedrooms != null && (
             <div>
-              <span className="text-muted-foreground">Bedrooms</span>
+              <span className="text-white/60">Bedrooms</span>
               <p className="font-medium">{property.bedrooms}</p>
             </div>
           )}
           {property.bathrooms != null && (
             <div>
-              <span className="text-muted-foreground">Bathrooms</span>
+              <span className="text-white/60">Bathrooms</span>
               <p className="font-medium">{property.bathrooms}</p>
             </div>
           )}
           {property.price != null && property.price > 0 && (
             <div>
-              <span className="text-muted-foreground">Price</span>
+              <span className="text-white/60">Price</span>
               <p className="font-medium">
                 ${Number(property.price).toLocaleString()}
               </p>
@@ -197,29 +197,29 @@ export default function PropertyDetail() {
           )}
         </div>
         {property.notes && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <span className="text-muted-foreground text-sm">Notes</span>
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <span className="text-white/60 text-sm">Notes</span>
             <p className="text-foreground whitespace-pre-wrap mt-1">{property.notes}</p>
           </div>
         )}
         {/* Metadata Table */}
-        <div className="mt-4 pt-4 border-t border-border">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <h4 className="text-xs font-semibold text-white/60 uppercase mb-3">
             Metadata
           </h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground block mb-1">Primary Agent</span>
+              <span className="text-white/60 block mb-1">Primary Agent</span>
               <p className="font-medium text-foreground">
                 {property.user_id ? "Current User" : "—"}
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground block mb-1">Source</span>
+              <span className="text-white/60 block mb-1">Source</span>
               <p className="font-medium text-foreground">—</p>
             </div>
             <div>
-              <span className="text-muted-foreground block mb-1">First Created</span>
+              <span className="text-white/60 block mb-1">First Created</span>
               <p className="font-medium text-foreground">
                 {property.created_at
                   ? format(new Date(property.created_at), "PPp")
@@ -227,7 +227,7 @@ export default function PropertyDetail() {
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground block mb-1">Last Modified</span>
+              <span className="text-white/60 block mb-1">Last Modified</span>
               <p className="font-medium text-foreground">
                 {property.updated_at
                   ? format(new Date(property.updated_at), "PPp")
@@ -235,7 +235,7 @@ export default function PropertyDetail() {
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground block mb-1">Last Contact</span>
+              <span className="text-white/60 block mb-1">Last Contact</span>
               <p className="font-medium text-foreground">
                 {links.length > 0 ? "See linked contacts" : "—"}
               </p>
@@ -244,7 +244,7 @@ export default function PropertyDetail() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="zoho-card p-6 border-white/10">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-foreground flex items-center gap-2">
             <User className="w-4 h-4" />
@@ -255,7 +255,7 @@ export default function PropertyDetail() {
           </Button>
         </div>
         {links.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No linked contacts yet. Add owners to link contacts to this property.</p>
+          <p className="text-white/60 text-sm">No linked contacts yet. Add owners to link contacts to this property.</p>
         ) : (
           <ul className="space-y-2">
             {links.map((l) => (
@@ -279,7 +279,7 @@ export default function PropertyDetail() {
                   </Badge>
                 </div>
                 {l.notes && (
-                  <p className="text-sm text-muted-foreground w-full mt-1">{l.notes}</p>
+                  <p className="text-sm text-white/60 w-full mt-1">{l.notes}</p>
                 )}
                 <div className="flex items-center gap-1">
                   <Button
@@ -313,7 +313,7 @@ export default function PropertyDetail() {
       </Card>
 
       <Dialog open={addOwnerOpen} onOpenChange={setAddOwnerOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[420px] bg-[#242424] border-white/10">
           <DialogHeader>
             <DialogTitle>Link owner to property</DialogTitle>
           </DialogHeader>
@@ -337,7 +337,7 @@ export default function PropertyDetail() {
                 </SelectContent>
               </Select>
               {availableContacts.length === 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/60">
                   Create contacts first, or they may all be linked already.
                 </p>
               )}

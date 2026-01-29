@@ -277,12 +277,12 @@ export function DashboardCalendarWidget() {
   };
 
   return (
-    <Card className="p-4 md:p-6 bg-card border-border">
+    <Card className="zoho-card p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <CalendarIcon className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Calendar</h3>
+          <h3 className="text-lg font-semibold text-white">Calendar</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {user && (
@@ -350,14 +350,14 @@ export function DashboardCalendarWidget() {
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
-        <h4 className="text-sm font-medium text-foreground">{getViewTitle()}</h4>
+        <h4 className="text-sm font-medium text-white">{getViewTitle()}</h4>
       </div>
 
       {/* Calendar Grid */}
       {viewMode === "month" && (
         <div className="grid grid-cols-7 gap-1 mb-4">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+            <div key={day} className="text-center text-xs font-medium text-white/60 py-2">
               {day}
             </div>
           ))}
@@ -367,7 +367,7 @@ export function DashboardCalendarWidget() {
               <div
                 key={idx}
                 className={cn(
-                  "min-h-[60px] p-1 border border-border rounded text-xs",
+                  "min-h-[60px] p-1 border border-white/10 rounded text-xs",
                   isToday(day) && "bg-primary/10 border-primary",
                   !isSameMonth(day, currentDate) && "opacity-40"
                 )}
@@ -391,7 +391,7 @@ export function DashboardCalendarWidget() {
                   </div>
                 ))}
                 {dayEvents.length > 2 && (
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-[10px] text-white/60">
                     +{dayEvents.length - 2} more
                   </div>
                 )}
@@ -409,7 +409,7 @@ export function DashboardCalendarWidget() {
               <div
                 key={idx}
                 className={cn(
-                  "min-h-[100px] p-2 border border-border rounded",
+                  "min-h-[100px] p-2 border border-white/10 rounded",
                   isToday(day) && "bg-primary/10 border-primary"
                 )}
               >
@@ -441,7 +441,7 @@ export function DashboardCalendarWidget() {
       {viewMode === "day" && (
         <div className="mb-4">
           <div className={cn(
-            "p-4 border border-border rounded",
+            "p-4 border border-white/10 rounded",
             isToday(currentDate) && "bg-primary/5 border-primary"
           )}>
             <div className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -452,14 +452,14 @@ export function DashboardCalendarWidget() {
               )}
             </div>
             {getEventsForDate(currentDate).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No appointments scheduled</p>
+              <p className="text-sm text-white/60">No appointments scheduled</p>
             ) : (
               <div className="space-y-3">
                 {getEventsForDate(currentDate).map((item) => (
                   <div key={item.id} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-foreground">{item.title}</span>
+                        <span className="font-medium text-white">{item.title}</span>
                         <Badge variant={item.source === "google" ? "secondary" : "default"} className="text-[10px]">
                           {item.source === "google" ? "Google" : "App"}
                         </Badge>
@@ -474,12 +474,12 @@ export function DashboardCalendarWidget() {
                           </a>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
                         <Clock className="w-3 h-3" />
                         {formatEventTime(item)}
                       </div>
                       {item.location && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
                           <MapPin className="w-3 h-3" />
                           {item.location}
                         </div>
@@ -494,10 +494,10 @@ export function DashboardCalendarWidget() {
       )}
 
       {/* Upcoming */}
-      <div className="border-t border-border pt-4">
-        <h4 className="text-sm font-medium text-foreground mb-3">Upcoming</h4>
+      <div className="border-t border-white/10 pt-4">
+        <h4 className="text-sm font-medium text-white mb-3">Upcoming</h4>
         {upcomingItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No upcoming appointments or Google Calendar events</p>
+          <p className="text-sm text-white/60">No upcoming appointments or Google Calendar events</p>
         ) : (
           <div className="space-y-2">
             {upcomingItems.map((item) => {
@@ -530,7 +530,7 @@ export function DashboardCalendarWidget() {
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : null}
-                  <div className="text-xs text-muted-foreground flex-shrink-0">{dateStr}</div>
+                  <div className="text-xs text-white/60 flex-shrink-0">{dateStr}</div>
                 </div>
               );
             })}

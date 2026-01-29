@@ -199,9 +199,9 @@ export default function Properties() {
     return (
       <div className="animate-fade-in">
         <PageHeader title="Properties" description="Properties and linked owners" />
-        <div className="text-center py-12 text-muted-foreground mt-6">
+        <div className="text-center py-12 text-white/60 mt-6">
           <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p className="font-medium text-foreground mb-2">Couldn&apos;t load properties</p>
+          <p className="font-medium text-white mb-2">Couldn&apos;t load properties</p>
           <p className="text-sm mb-4">Check your connection and migrations, then retry.</p>
           <Button onClick={() => refetch()} variant="outline">
             Retry
@@ -212,7 +212,7 @@ export default function Properties() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in min-h-[60vh]">
       <PageHeader
         title="Properties"
         description="Properties and linked owners"
@@ -234,7 +234,7 @@ export default function Properties() {
                 <span className="hidden sm:inline">Add Property</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="sm:max-w-[600px] bg-[#242424] border-white/10 max-h-[90vh] overflow-hidden flex flex-col text-white">
               <DialogHeader>
                 <DialogTitle>
                   {editingProperty ? "Edit Property" : "Add New Property"}
@@ -393,7 +393,7 @@ export default function Properties() {
                     {!editingProperty ? (
                       <div className="space-y-2">
                         <Label>Property Owners</Label>
-                        <div className="border border-border rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
+                        <div className="border border-white/10 rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
                           {contacts && contacts.length > 0 ? (
                             <div className="flex flex-col gap-2">
                               {contacts.map((contact) => (
@@ -421,14 +421,14 @@ export default function Properties() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-white/60">
                               No contacts available. Create contacts first.
                             </p>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Property owners cannot be edited after creation.</p>
+                      <p className="text-sm text-white/60">Property owners cannot be edited after creation.</p>
                     )}
                   </TabsContent>
                   <TabsContent value="notes" className="space-y-4 mt-4">
@@ -446,7 +446,7 @@ export default function Properties() {
                   </TabsContent>
                 </Tabs>
               </ScrollArea>
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/10">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -467,7 +467,7 @@ export default function Properties() {
         }
       />
       <div className="relative mt-6 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
         <Input
           placeholder="Search by address..."
           className="pl-10 bg-input"
@@ -476,12 +476,13 @@ export default function Properties() {
         />
       </div>
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground mt-6">
-          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>
+        <div className="text-center py-12 text-white/60 mt-6 rounded-lg border border-white/10 bg-[#242424]/50 p-8">
+          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-white/60" />
+          <p className="text-white/80 font-medium mb-1">No properties to show</p>
+          <p className="text-sm">
             {!properties?.length
-              ? "No properties yet. Add properties via CSV import or create manually."
-              : "No properties match your search."}
+              ? "Add your first property using the Add Property button above, or import via Contacts."
+              : "No properties match your search. Try clearing the search box."}
           </p>
         </div>
       ) : (
@@ -566,16 +567,16 @@ function PropertyRow({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-border hover:bg-secondary/50 transition-colors cursor-pointer"
+      className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-white/10 hover:bg-white/10 transition-colors cursor-pointer zoho-card"
       onClick={onSelect}
     >
       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
         <MapPin className="w-5 h-5 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-foreground">{addr || "—"}</p>
+        <p className="font-medium text-white">{addr || "—"}</p>
         {owners.length > 0 && (
-          <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
+          <p className="text-sm text-white/60 mt-0.5 flex items-center gap-1">
             <User className="w-3 h-3" />
             {owners.join(", ")}
           </p>
@@ -590,7 +591,7 @@ function PropertyRow({
         >
           <Pencil className="w-4 h-4" />
         </Button>
-        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+        <ChevronRight className="w-5 h-5 text-white/50" />
       </div>
     </div>
   );

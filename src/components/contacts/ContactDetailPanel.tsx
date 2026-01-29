@@ -264,7 +264,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col p-0">
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col p-0 bg-[#242424] border-white/10 text-white">
           {isLoading ? (
             <div className="p-6">
               <div className="animate-pulse space-y-4">
@@ -274,7 +274,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
             </div>
           ) : contact ? (
             <>
-              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-white/10">
                 <div className="flex items-start gap-4">
                   <AvatarCircle
                     name={contact.name}
@@ -282,7 +282,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                     initials={getInitials(contact.first_name, contact.last_name, contact.name)}
                   />
                   <div className="flex-1 min-w-0">
-                    <SheetTitle className="text-xl font-semibold mb-2">
+                    <SheetTitle className="text-xl font-semibold mb-2 text-white">
                       {contact.name}
                     </SheetTitle>
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -290,13 +290,13 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                         {contact.status || "lead"}
                       </StatusBadge>
                       {lastActivity && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-xs text-white/60 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           Last activity: {formatDistanceToNow(new Date(lastActivity), { addSuffix: true })}
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap gap-4 text-sm text-white/60">
                       {(getPrimaryPhone(contact) ?? contact.phone) && (
                         <span className="flex items-center gap-1.5">
                           <Phone className="w-4 h-4 shrink-0" />{" "}
@@ -385,7 +385,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                     {/* Tags */}
                     {getTagNames(contact).length > 0 && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <Tag className="w-4 h-4 text-muted-foreground" />
+                        <Tag className="w-4 h-4 text-white/60" />
                         {getTagNames(contact).map((t) => (
                           <Badge key={t} variant="secondary" className="font-normal">
                             {t}
@@ -396,11 +396,11 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
                     {/* Linked Properties */}
                     {getLinkedPropertyAddress(contact) && (
-                      <Card className="p-4">
+                      <Card className="zoho-card p-4 border-white/10">
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <MapPin className="w-4 h-4 text-white/60 mt-0.5 shrink-0" />
                           <div className="flex-1">
-                            <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                            <Label className="text-xs text-white/60 uppercase mb-1 block">
                               Linked Property
                             </Label>
                             <button
@@ -411,7 +411,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                                   navigate(`/properties/${propertyLink.property_id}`);
                                 }
                               }}
-                              className="text-sm text-foreground hover:underline"
+                              className="text-sm text-white hover:underline"
                             >
                               {getLinkedPropertyAddress(contact)}
                             </button>
@@ -422,14 +422,14 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
                     {/* Address */}
                     {((contact as any).address_line1 || (contact as any).city) && (
-                      <Card className="p-4">
+                      <Card className="zoho-card p-4 border-white/10">
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <MapPin className="w-4 h-4 text-white/60 mt-0.5 shrink-0" />
                           <div className="flex-1">
-                            <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                            <Label className="text-xs text-white/60 uppercase mb-1 block">
                               Address
                             </Label>
-                            <p className="text-sm text-foreground">
+                            <p className="text-sm text-white">
                               {[
                                 (contact as any).address_line1,
                                 (contact as any).address_line2,
@@ -448,50 +448,50 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                     {/* Source */}
                     {contact.source && (
                       <div>
-                        <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                        <Label className="text-xs text-white/60 uppercase mb-1 block">
                           Source
                         </Label>
-                        <p className="text-sm text-foreground">{contact.source}</p>
+                        <p className="text-sm text-white">{contact.source}</p>
                       </div>
                     )}
 
                     <Separator />
 
                     {/* Metadata Table */}
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <h4 className="text-xs font-semibold text-white/60 uppercase mb-3">
                         Metadata
                       </h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-muted-foreground block mb-1">Primary Agent</span>
-                          <p className="font-medium text-foreground">
+                          <span className="text-white/60 block mb-1">Primary Agent</span>
+                          <p className="font-medium text-white">
                             {contact.user_id ? "Current User" : "—"}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground block mb-1">Source</span>
-                          <p className="font-medium text-foreground">{contact.source || "—"}</p>
+                          <span className="text-white/60 block mb-1">Source</span>
+                          <p className="font-medium text-white">{contact.source || "—"}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground block mb-1">First Created</span>
-                          <p className="font-medium text-foreground">
+                          <span className="text-white/60 block mb-1">First Created</span>
+                          <p className="font-medium text-white">
                             {contact.created_at
                               ? format(new Date(contact.created_at), "PPp")
                               : "—"}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground block mb-1">Last Modified</span>
-                          <p className="font-medium text-foreground">
+                          <span className="text-white/60 block mb-1">Last Modified</span>
+                          <p className="font-medium text-white">
                             {contact.updated_at
                               ? format(new Date(contact.updated_at), "PPp")
                               : "—"}
                           </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground block mb-1">Last Contact</span>
-                          <p className="font-medium text-foreground">
+                          <span className="text-white/60 block mb-1">Last Contact</span>
+                          <p className="font-medium text-white">
                             {lastActivity
                               ? formatDistanceToNow(new Date(lastActivity), { addSuffix: true })
                               : "—"}
@@ -505,25 +505,25 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                     {/* Activity Timeline */}
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-foreground">Activity Timeline</h3>
+                        <h3 className="font-semibold text-white">Activity Timeline</h3>
                       </div>
                       <div className="space-y-4">
                         {/* Appointments */}
                         {contactAppointments.map((apt) => (
                           <div
                             key={apt.id}
-                            className="flex gap-3 pb-4 border-b border-border last:border-0"
+                            className="flex gap-3 pb-4 border-b border-white/10 last:border-0"
                           >
                             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                               <Calendar className="w-4 h-4 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm">{apt.title}</p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-white/60">
                                 {format(new Date(apt.date), "PPp")}
                               </p>
                               {apt.location && (
-                                <p className="text-xs text-muted-foreground">{apt.location}</p>
+                                <p className="text-xs text-white/60">{apt.location}</p>
                               )}
                             </div>
                           </div>
@@ -533,24 +533,24 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                         {interactions.map((interaction: Interaction) => (
                           <div
                             key={interaction.id}
-                            className="flex gap-3 pb-4 border-b border-border last:border-0"
+                            className="flex gap-3 pb-4 border-b border-white/10 last:border-0"
                           >
                             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                              <MessageSquare className="w-4 h-4 text-white/60" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm capitalize">{interaction.type}</p>
                               {interaction.subject && (
-                                <p className="text-sm text-foreground">{interaction.subject}</p>
+                                <p className="text-sm text-white">{interaction.subject}</p>
                               )}
                               {interaction.body && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="text-xs text-white/60 mt-1">
                                   {interaction.body}
                                 </p>
                               )}
                               <div className="flex items-center gap-2 mt-1">
-                                <Clock className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">
+                                <Clock className="w-3 h-3 text-white/60" />
+                                <span className="text-xs text-white/60">
                                   {formatDistanceToNow(new Date(interaction.timestamp), {
                                     addSuffix: true,
                                   })}
@@ -566,7 +566,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                         ))}
 
                         {interactions.length === 0 && contactAppointments.length === 0 && (
-                          <p className="text-muted-foreground text-sm text-center py-4">
+                          <p className="text-white/60 text-sm text-center py-4">
                             No activity yet. Log your first interaction!
                           </p>
                         )}
@@ -578,13 +578,13 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   <TabsContent value="contact-card" className="space-y-6 mt-6">
                     <div className="space-y-4">
                       <div>
-                        <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                        <Label className="text-xs text-white/60 uppercase mb-1 block">
                           Name
                         </Label>
-                        <p className="text-sm text-foreground">{contact.name}</p>
+                        <p className="text-sm text-white">{contact.name}</p>
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                        <Label className="text-xs text-white/60 uppercase mb-1 block">
                           Status
                         </Label>
                         <StatusBadge variant={getStatusVariant(contact.status)}>
@@ -593,103 +593,103 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                       </div>
                       {(getPrimaryPhone(contact) ?? contact.phone) && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Phone
                           </Label>
-                          <p className="text-sm text-foreground">
+                          <p className="text-sm text-white">
                             {getPrimaryPhone(contact) ?? contact.phone}
                           </p>
                         </div>
                       )}
                       {(getPrimaryEmail(contact) ?? contact.email) && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Email
                           </Label>
-                          <p className="text-sm text-foreground">
+                          <p className="text-sm text-white">
                             {getPrimaryEmail(contact) ?? contact.email}
                           </p>
                         </div>
                       )}
                       {contact.source && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Source
                           </Label>
-                          <p className="text-sm text-foreground">{contact.source}</p>
+                          <p className="text-sm text-white">{contact.source}</p>
                         </div>
                       )}
                       {contact.pipeline_stage && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Pipeline Stage
                           </Label>
-                          <p className="text-sm text-foreground">{contact.pipeline_stage}</p>
+                          <p className="text-sm text-white">{contact.pipeline_stage}</p>
                         </div>
                       )}
                       {contact.story && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Story
                           </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{contact.story}</p>
+                          <p className="text-sm text-white whitespace-pre-wrap">{contact.story}</p>
                         </div>
                       )}
                       {contact.selling_intentions && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Selling Intentions
                           </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                          <p className="text-sm text-white whitespace-pre-wrap">
                             {contact.selling_intentions}
                           </p>
                         </div>
                       )}
                       {contact.current_situation_notes && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Current Situation Notes
                           </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                          <p className="text-sm text-white whitespace-pre-wrap">
                             {contact.current_situation_notes}
                           </p>
                         </div>
                       )}
                       {contact.pain_points && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Pain Points
                           </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                          <p className="text-sm text-white whitespace-pre-wrap">
                             {contact.pain_points}
                           </p>
                         </div>
                       )}
                       {contact.pleasure_points && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Pleasure Points
                           </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                          <p className="text-sm text-white whitespace-pre-wrap">
                             {contact.pleasure_points}
                           </p>
                         </div>
                       )}
                       {contact.notes && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             General Notes
                           </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{contact.notes}</p>
+                          <p className="text-sm text-white whitespace-pre-wrap">{contact.notes}</p>
                         </div>
                       )}
                       {/* Address */}
                       {((contact as any).address_line1 || (contact as any).city) && (
                         <div>
-                          <Label className="text-xs text-muted-foreground uppercase mb-1 block">
+                          <Label className="text-xs text-white/60 uppercase mb-1 block">
                             Address
                           </Label>
-                          <p className="text-sm text-foreground">
+                          <p className="text-sm text-white">
                             {[
                               (contact as any).address_line1,
                               (contact as any).address_line2,
@@ -708,8 +708,8 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   {/* Requirements Tab */}
                   <TabsContent value="requirements" className="space-y-6 mt-6">
                     <Card className="p-8 text-center border-dashed">
-                      <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <FileText className="w-12 h-12 mx-auto mb-4 text-white/60 opacity-50" />
+                      <p className="text-sm text-white/60 mb-2">
                         No requirements have been added
                       </p>
                       <Button
@@ -733,8 +733,8 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   {/* Related Contacts Tab */}
                   <TabsContent value="related-contacts" className="space-y-6 mt-6">
                     <Card className="p-8 text-center border-dashed">
-                      <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <Users className="w-12 h-12 mx-auto mb-4 text-white/60 opacity-50" />
+                      <p className="text-sm text-white/60 mb-2">
                         No related contacts have been added
                       </p>
                       <Button
@@ -758,7 +758,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   {/* Related Properties Tab */}
                   <TabsContent value="related-properties" className="space-y-6 mt-6">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-white/60">
                         {propertiesCount} linked
                       </span>
                       <Button
@@ -787,7 +787,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                           return (
                             <Card
                               key={link.id}
-                              className="p-4 border-border hover:bg-muted/30 transition-colors"
+                              className="p-4 border-white/10 hover:bg-muted/30 transition-colors"
                             >
                               <div className="flex items-start gap-3">
                                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -800,11 +800,11 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                                       onOpenChange(false);
                                       navigate(`/properties/${property.id}`);
                                     }}
-                                    className="font-medium text-sm text-foreground hover:underline text-left mb-1 block"
+                                    className="font-medium text-sm text-white hover:underline text-left mb-1 block"
                                   >
                                     {address}
                                   </button>
-                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-2">
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/60 mb-2">
                                     {property.property_type && (
                                       <Badge variant="secondary" className="text-xs">
                                         {property.property_type}
@@ -818,7 +818,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                                     )}
                                   </div>
                                   {property.price != null && property.price > 0 && (
-                                    <p className="text-sm font-semibold text-foreground mb-2">
+                                    <p className="text-sm font-semibold text-white mb-2">
                                       ${property.price.toLocaleString()}
                                     </p>
                                   )}
@@ -863,8 +863,8 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                       </div>
                     ) : (
                       <Card className="p-8 text-center border-dashed">
-                        <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <MapPin className="w-12 h-12 mx-auto mb-4 text-white/60 opacity-50" />
+                        <p className="text-sm text-white/60 mb-2">
                           No properties have been linked
                         </p>
                         <Button
@@ -894,7 +894,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
       {/* Add Interaction Dialog */}
       <Dialog open={addInteractionOpen} onOpenChange={setAddInteractionOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[400px] bg-popover border-white/10">
           <DialogHeader>
             <DialogTitle>Log Interaction</DialogTitle>
           </DialogHeader>
@@ -980,7 +980,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
       {/* Link Property Dialog */}
       <Dialog open={linkPropertyOpen} onOpenChange={setLinkPropertyOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[420px] bg-popover border-white/10">
           <DialogHeader>
             <DialogTitle>Link property to contact</DialogTitle>
           </DialogHeader>
@@ -1005,7 +1005,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                 </SelectContent>
               </Select>
               {availableProperties.length === 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/60">
                   Create properties first, or they may all be linked already.
                 </p>
               )}

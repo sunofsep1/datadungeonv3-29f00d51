@@ -17,7 +17,7 @@ export default function Performance() {
       />
       
       <Tabs defaultValue="numbers" className="space-y-6">
-        <TabsList className="bg-secondary">
+        <TabsList className="bg-white/10 border border-white/10">
           <TabsTrigger value="numbers">Daily Numbers</TabsTrigger>
           <TabsTrigger value="goals">Goals & Targets</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>

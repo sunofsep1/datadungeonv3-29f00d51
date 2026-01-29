@@ -1,0 +1,198 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Search,
+  Plus,
+  Bell,
+  Calendar,
+  Mail,
+  Grid3X3,
+  Settings,
+  Menu,
+  LayoutGrid,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+const MODULE_TITLES: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/contacts": "Contacts",
+  "/listings": "Listings & Deals",
+  "/properties": "Properties",
+  "/pipeline": "Pipeline",
+  "/calendar": "Calendar",
+  "/appointments": "Appointments",
+  "/marketing": "Marketing",
+  "/performance": "Performance",
+  "/scripts": "Scripts",
+  "/settings": "Settings",
+};
+
+function getModuleTitle(pathname: string): string {
+  if (pathname.startsWith("/contacts")) return "Contacts";
+  if (pathname.startsWith("/properties")) return "Properties";
+  if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
+  return MODULE_TITLES[pathname] ?? "Data Dungeon";
+}
+
+interface HeaderBarProps {
+  onMenuClick?: () => void;
+  sidebarCollapsed?: boolean;
+}
+
+export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const moduleTitle = getModuleTitle(location.pathname);
+
+  const getCreateUrl = () => {
+    if (location.pathname.startsWith("/contacts")) return "/contacts";
+    if (location.pathname.startsWith("/listings")) return "/listings";
+    if (location.pathname.startsWith("/properties")) return "/properties";
+    if (location.pathname.startsWith("/appointments")) return "/appointments";
+    return "/contacts";
+  };
+
+  const handleCreate = () => {
+    const url = getCreateUrl();
+    if (url === "/contacts") navigate("/contacts");
+    else navigate(url);
+  };
+
+  const initials = user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : "U";
+
+  return (
+    <header
+      className={cn(
+        "fixed top-0 right-0 z-30 flex h-[60px] items-center justify-between border-b px-4 transition-[left] duration-250",
+        "bg-[#2c2c2c] border-white/10 text-white",
+        "left-0",
+        sidebarCollapsed ? "md:left-[80px]" : "md:left-[248px]"
+      )}
+      style={{ height: "60px" }}
+    >
+      {/* Left: Menu + Module title */}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <span className="text-sm font-semibold text-white">
+          {moduleTitle}
+        </span>
+      </div>
+
+      {/* Right: Toolbar */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+          title="Search"
+        >
+          <Search className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-2 bg-[#4A90E2] hover:bg-[#357ABD] text-white"
+          onClick={handleCreate}
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Create</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+          title="Notifications"
+        >
+          <Bell className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+          onClick={() => navigate("/calendar")}
+          title="Calendar"
+        >
+          <Calendar className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+          title="Emails"
+        >
+          <Mail className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+          title="Apps"
+        >
+          <LayoutGrid className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+          onClick={() => navigate("/settings")}
+          title="Settings"
+        >
+          <Settings className="h-5 w-5" />
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full border border-white/20 hover:bg-white/10"
+            >
+              <Avatar className="h-8 w-8 bg-[#00BCD4]/20 text-[#00BCD4]">
+                <AvatarFallback className="text-xs font-medium">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-[#2c2c2c] border-white/10">
+            <div className="px-2 py-2 text-xs text-white/60 truncate">
+              {user?.email}
+            </div>
+            <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuItem
+              className="text-white/90 focus:bg-white/10 focus:text-white"
+              onClick={() => navigate("/settings")}
+            >
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-white/90 focus:bg-white/10 focus:text-white"
+              onClick={() => navigate("/scripts")}
+            >
+              Scripts
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  );
+}

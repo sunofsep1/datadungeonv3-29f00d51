@@ -232,8 +232,8 @@ export default function ContactDetail() {
   if (isError) {
     return (
       <div className="animate-fade-in text-center py-12">
-        <p className="font-medium text-foreground mb-2">Couldn&apos;t load contact</p>
-        <p className="text-sm text-muted-foreground mb-4">Check your connection and migrations, then retry.</p>
+        <p className="font-medium text-white mb-2">Couldn&apos;t load contact</p>
+        <p className="text-sm text-white/60 mb-4">Check your connection and migrations, then retry.</p>
         <div className="flex justify-center gap-2">
           <Button variant="outline" onClick={() => refetch()}>Retry</Button>
           <Button variant="ghost" onClick={() => navigate("/contacts")}>Back to Contacts</Button>
@@ -245,7 +245,7 @@ export default function ContactDetail() {
   if (!contact) {
     return (
       <div className="animate-fade-in text-center py-12">
-        <p className="text-muted-foreground">Contact not found</p>
+        <p className="text-white/60">Contact not found</p>
         <Button variant="outline" onClick={() => navigate("/contacts")} className="mt-4">
           Back to Contacts
         </Button>
@@ -260,8 +260,8 @@ export default function ContactDetail() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">{contact.name}</h1>
-          <p className="text-muted-foreground">Contact Details</p>
+          <h1 className="text-2xl font-bold text-white">{contact.name}</h1>
+          <p className="text-white/60">Contact Details</p>
         </div>
         <Button variant="outline" onClick={handlePrint} className="gap-2">
           <Printer className="w-4 h-4" /> Print
@@ -280,7 +280,7 @@ export default function ContactDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Overview */}
-          <Card className="p-6 print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
             <div className="flex items-start gap-4">
               <AvatarCircle
                 name={contact.name}
@@ -289,12 +289,12 @@ export default function ContactDetail() {
               />
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <h2 className="text-xl font-semibold text-foreground">{contact.name}</h2>
+                  <h2 className="text-xl font-semibold text-white">{contact.name}</h2>
                   <StatusBadge variant={getStatusVariant(contact.status)}>
                     {contact.status || "lead"}
                   </StatusBadge>
                 </div>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-wrap gap-4 text-sm text-white/60">
                   {(getPrimaryPhone(contact) ?? contact.phone) && (
                     <span className="flex items-center gap-1.5">
                       <Phone className="w-4 h-4 shrink-0" /> {getPrimaryPhone(contact) ?? contact.phone}
@@ -307,11 +307,11 @@ export default function ContactDetail() {
                   )}
                 </div>
                 {contact.source && (
-                  <p className="text-sm text-muted-foreground mt-1">Source: {contact.source}</p>
+                  <p className="text-sm text-white/60 mt-1">Source: {contact.source}</p>
                 )}
                 {getTagNames(contact).length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                    <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <Tag className="w-3.5 h-3.5 text-white/60 shrink-0" />
                     {getTagNames(contact).map((t) => (
                       <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
                     ))}
@@ -322,9 +322,9 @@ export default function ContactDetail() {
           </Card>
 
           {/* Linked properties */}
-          <Card className="p-6 print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
             <div className="flex items-center justify-between mb-4 print:hidden">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Linked properties</h3>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Linked properties</h3>
               <Button
                 variant="outline"
                 size="sm"
@@ -335,7 +335,7 @@ export default function ContactDetail() {
                 <Plus className="w-4 h-4" /> Link property
               </Button>
             </div>
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide hidden print:block mb-4">Linked properties</h3>
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wide hidden print:block mb-4">Linked properties</h3>
             {linkedProperties.length > 0 ? (
               <div className="space-y-4">
                 {linkedProperties.map((link) => {
@@ -345,7 +345,7 @@ export default function ContactDetail() {
                   return (
                     <div
                       key={link.id}
-                      className="flex items-start gap-3 p-4 rounded-lg border border-border print:border-gray-300"
+                      className="flex items-start gap-3 p-4 rounded-lg border border-white/10 print:border-gray-300"
                     >
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 print:hidden">
                         <Building2 className="w-5 h-5 text-primary" />
@@ -354,11 +354,11 @@ export default function ContactDetail() {
                         <button
                           type="button"
                           onClick={() => navigate(`/properties/${property.id}`)}
-                          className="font-medium text-sm text-foreground hover:underline text-left block mb-1 print:no-underline"
+                          className="font-medium text-sm text-white hover:underline text-left block mb-1 print:no-underline"
                         >
                           {address}
                         </button>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-white/60 mb-2">
                           {property.property_type && (
                             <Badge variant="secondary" className="text-xs">{property.property_type}</Badge>
                           )}
@@ -366,7 +366,7 @@ export default function ContactDetail() {
                           {property.bathrooms != null && <span>{property.bathrooms} bath</span>}
                         </div>
                         {property.price != null && property.price > 0 && (
-                          <p className="text-sm font-semibold text-foreground mb-2">
+                          <p className="text-sm font-semibold text-white mb-2">
                             ${property.price.toLocaleString()}
                           </p>
                         )}
@@ -398,9 +398,9 @@ export default function ContactDetail() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-6 border border-dashed border-border rounded-lg print:border-gray-300">
-                <MapPin className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" />
-                <p className="text-sm text-muted-foreground mb-2">No properties linked</p>
+              <div className="text-center py-6 border border-dashed border-white/10 rounded-lg print:border-gray-300">
+                <MapPin className="w-10 h-10 mx-auto mb-2 text-white/60 opacity-50" />
+                <p className="text-sm text-white/60 mb-2">No properties linked</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -411,53 +411,53 @@ export default function ContactDetail() {
                   <Plus className="w-4 h-4" /> Click here to add
                 </Button>
                 {availableProperties.length === 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">Create properties first, or link from the property page.</p>
+                  <p className="text-xs text-white/60 mt-2">Create properties first, or link from the property page.</p>
                 )}
               </div>
             )}
           </Card>
 
           {/* Story & Intent */}
-          <Card className="p-6 print:border print:border-gray-300">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Story & intent</h3>
+          <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wide mb-4">Story & intent</h3>
             <div className="space-y-5">
               <div>
-                <Label className="text-muted-foreground text-xs uppercase">Story</Label>
-                <p className="text-foreground mt-1 whitespace-pre-wrap min-h-[1.5rem]">
+                <Label className="text-white/60 text-xs uppercase">Story</Label>
+                <p className="text-white mt-1 whitespace-pre-wrap min-h-[1.5rem]">
                   {contact.story || "—"}
                 </p>
               </div>
               <Separator />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label className="text-muted-foreground text-xs uppercase">Pipeline stage</Label>
-                  <p className="text-foreground mt-1">{contact.pipeline_stage || "—"}</p>
+                  <Label className="text-white/60 text-xs uppercase">Pipeline stage</Label>
+                  <p className="text-white mt-1">{contact.pipeline_stage || "—"}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-xs uppercase">Selling intentions</Label>
-                  <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.selling_intentions || "—"}</p>
+                  <Label className="text-white/60 text-xs uppercase">Selling intentions</Label>
+                  <p className="text-white mt-1 whitespace-pre-wrap">{contact.selling_intentions || "—"}</p>
                 </div>
               </div>
               <div>
-                <Label className="text-muted-foreground text-xs uppercase">Current situation</Label>
-                <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.current_situation_notes || "—"}</p>
+                <Label className="text-white/60 text-xs uppercase">Current situation</Label>
+                <p className="text-white mt-1 whitespace-pre-wrap">{contact.current_situation_notes || "—"}</p>
               </div>
             </div>
           </Card>
 
           {/* Pain & Pleasure */}
-          <Card className="p-6 print:border print:border-gray-300">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
+          <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wide mb-4">Pain & pleasure points</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase">Pain points</Label>
-                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
+                <Label className="text-white/60 text-xs uppercase">Pain points</Label>
+                <p className="text-white whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
                   {contact.pain_points || "—"}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase">Pleasure points</Label>
-                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
+                <Label className="text-white/60 text-xs uppercase">Pleasure points</Label>
+                <p className="text-white whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
                   {contact.pleasure_points || "—"}
                 </p>
               </div>
@@ -465,17 +465,17 @@ export default function ContactDetail() {
           </Card>
 
           {contact.notes && (
-            <Card className="p-6 print:border print:border-gray-300">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
-              <p className="text-foreground whitespace-pre-wrap text-sm">{contact.notes}</p>
+            <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Notes</h3>
+              <p className="text-white whitespace-pre-wrap text-sm">{contact.notes}</p>
             </Card>
           )}
         </div>
 
         {/* Activity Timeline */}
-        <Card className="p-6 print:border print:border-gray-300">
+        <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
           <div className="flex items-center justify-between mb-4 print:hidden">
-            <h3 className="font-semibold text-foreground">Activity Timeline</h3>
+            <h3 className="font-semibold text-white">Activity Timeline</h3>
             <Button size="sm" onClick={() => setAddInteractionOpen(true)} className="gap-1">
               <Plus className="w-4 h-4" /> Log
             </Button>
@@ -485,17 +485,17 @@ export default function ContactDetail() {
           <div className="space-y-4 max-h-[600px] overflow-y-auto print:max-h-none">
             {/* Appointments */}
             {contactAppointments.map((apt) => (
-              <div key={apt.id} className="flex gap-3 pb-4 border-b border-border last:border-0">
+              <div key={apt.id} className="flex gap-3 pb-4 border-b border-white/10 last:border-0">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{apt.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-white/60">
                     {format(new Date(apt.date), "PPp")}
                   </p>
                   {apt.location && (
-                    <p className="text-xs text-muted-foreground">{apt.location}</p>
+                    <p className="text-xs text-white/60">{apt.location}</p>
                   )}
                 </div>
               </div>
@@ -503,9 +503,9 @@ export default function ContactDetail() {
 
             {/* Interactions */}
             {interactions.map((interaction: Interaction) => (
-              <div key={interaction.id} className="flex gap-3 pb-4 border-b border-border last:border-0 group">
+              <div key={interaction.id} className="flex gap-3 pb-4 border-b border-white/10 last:border-0 group">
                 <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                  <MessageSquare className="w-4 h-4 text-white/60" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -520,14 +520,14 @@ export default function ContactDetail() {
                     </Button>
                   </div>
                   {interaction.subject && (
-                    <p className="text-sm text-foreground">{interaction.subject}</p>
+                    <p className="text-sm text-white">{interaction.subject}</p>
                   )}
                   {interaction.body && (
-                    <p className="text-xs text-muted-foreground mt-1">{interaction.body}</p>
+                    <p className="text-xs text-white/60 mt-1">{interaction.body}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3 text-white/60" />
+                    <span className="text-xs text-white/60">
                       {formatDistanceToNow(new Date(interaction.timestamp), { addSuffix: true })}
                     </span>
                     {interaction.channel && (
@@ -541,7 +541,7 @@ export default function ContactDetail() {
             ))}
 
             {interactions.length === 0 && contactAppointments.length === 0 && (
-              <p className="text-muted-foreground text-sm text-center py-4">
+              <p className="text-white/60 text-sm text-center py-4">
                 No activity yet. Log your first interaction!
               </p>
             )}
@@ -551,7 +551,7 @@ export default function ContactDetail() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] bg-[#242424] border-white/10 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Contact</DialogTitle>
           </DialogHeader>
@@ -671,7 +671,7 @@ export default function ContactDetail() {
 
       {/* Add Interaction Dialog */}
       <Dialog open={addInteractionOpen} onOpenChange={setAddInteractionOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[400px] bg-[#242424] border-white/10">
           <DialogHeader>
             <DialogTitle>Log Interaction</DialogTitle>
           </DialogHeader>
@@ -736,7 +736,7 @@ export default function ContactDetail() {
 
       {/* Link Property Dialog */}
       <Dialog open={linkPropertyOpen} onOpenChange={setLinkPropertyOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[420px] bg-[#242424] border-white/10">
           <DialogHeader>
             <DialogTitle>Link property to contact</DialogTitle>
           </DialogHeader>
@@ -761,7 +761,7 @@ export default function ContactDetail() {
                 </SelectContent>
               </Select>
               {availableProperties.length === 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/60">
                   Create properties first, or they may all be linked already.
                 </p>
               )}
