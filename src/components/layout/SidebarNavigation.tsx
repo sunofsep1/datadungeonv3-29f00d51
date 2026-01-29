@@ -3,10 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  MapPin,
   Calendar,
-  TrendingUp,
   Megaphone,
   Menu,
   X,
@@ -40,9 +37,6 @@ import { layout } from "@/lib/designTokens";
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Listings & Deals", url: "/listings", icon: Building2 },
-  { title: "Properties", url: "/properties", icon: MapPin },
-  { title: "Pipeline", url: "/pipeline", icon: TrendingUp },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
@@ -51,15 +45,12 @@ const navItems = [
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Pipeline", url: "/pipeline", icon: TrendingUp },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "More", url: "#more", icon: MoreHorizontal },
 ];
 
 function isNavActive(item: { url: string }, pathname: string): boolean {
   if (pathname === item.url) return true;
-  if (item.url === "/listings" && pathname === "/listings") return true;
-  if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   return false;
@@ -291,18 +282,6 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-[#2c2c2c] border-white/10">
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/listings" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
-                        <Building2 className="w-4 h-4" />
-                        Listings & Deals
-                      </NavLink>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/properties" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
-                        <MapPin className="w-4 h-4" />
-                        Properties
-                      </NavLink>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <NavLink to="/marketing" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
                         <Megaphone className="w-4 h-4" />

@@ -45,7 +45,7 @@ const createEmptyProperty = () => ({
 
 export default function Properties() {
   const navigate = useNavigate();
-  const { data: properties, isLoading, isError, refetch } = useProperties();
+  const { data: properties, isLoading, isError, error, refetch } = useProperties();
   const { data: contacts = [] } = useContacts();
   const createProperty = useCreateProperty();
   const updateProperty = useUpdateProperty();
@@ -196,14 +196,29 @@ export default function Properties() {
   }
 
   if (isError) {
+    const isMissingTable =
+      error instanceof Error &&
+      (error.message.includes("not set up") ||
+        error.message.includes("schema cache") ||
+        error.message.includes("does not exist") ||
+        error.message.includes("could not find"));
     return (
       <div className="animate-fade-in">
         <PageHeader title="Properties" description="Properties and linked owners" />
-        <div className="text-center py-12 text-white/60 mt-6">
-          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+        <div className="text-center py-12 rounded-lg border border-white/10 bg-[#242424]/80 p-8 max-w-lg mx-auto mt-6">
+          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-white/60" />
           <p className="font-medium text-white mb-2">Couldn&apos;t load properties</p>
-          <p className="text-sm mb-4">Check your connection and migrations, then retry.</p>
-          <Button onClick={() => refetch()} variant="outline">
+          <p className="text-sm text-white/70 mb-4">
+            {error instanceof Error ? error.message : "Check your connection and migrations, then retry."}
+          </p>
+            {isMissingTable && (
+            <p className="text-xs text-white/50 mb-4 text-left bg-white/5 rounded p-3">
+              Run migrations so the <code className="text-[#00BCD4]">properties</code> table exists:{" "}
+              <code className="block mt-2 text-white/70">npm run db:push</code> or in Supabase Dashboard → SQL Editor run the SQL from{" "}
+              <code className="text-[#00BCD4]">supabase/migrations/RUN_IN_SUPABASE_DASHBOARD_properties_only.sql</code>.
+            </p>
+          )}
+          <Button onClick={() => refetch()} variant="outline" className="border-white/20 text-white hover:bg-white/10">
             Retry
           </Button>
         </div>

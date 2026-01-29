@@ -20,14 +20,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { openGlobalSearch } from "./GlobalSearch";
 import { cn } from "@/lib/utils";
 
 const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/contacts": "Contacts",
-  "/listings": "Listings & Deals",
-  "/properties": "Properties",
-  "/pipeline": "Pipeline",
   "/calendar": "Calendar",
   "/appointments": "Appointments",
   "/marketing": "Marketing",
@@ -38,7 +36,6 @@ const MODULE_TITLES: Record<string, string> = {
 
 function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/contacts")) return "Contacts";
-  if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
   return MODULE_TITLES[pathname] ?? "Data Dungeon";
 }
@@ -103,7 +100,8 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
           variant="ghost"
           size="icon"
           className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
-          title="Search"
+          title="Search (⌘K)"
+          onClick={openGlobalSearch}
         >
           <Search className="h-5 w-5" />
         </Button>

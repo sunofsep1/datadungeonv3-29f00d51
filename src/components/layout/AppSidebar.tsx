@@ -3,10 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  MapPin,
   Calendar,
-  TrendingUp,
   Megaphone,
   Menu,
   X,
@@ -31,9 +28,6 @@ import {
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Listings & Deals", url: "/listings", icon: Building2 },
-  { title: "Properties", url: "/properties", icon: MapPin },
-  { title: "Pipeline", url: "/pipeline", icon: TrendingUp },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
@@ -42,7 +36,6 @@ const navItems = [
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Pipeline", url: "/pipeline", icon: TrendingUp },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "More", url: "#more", icon: MoreHorizontal },
 ];
@@ -227,18 +220,6 @@ export function AppSidebar() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-48 mb-2">
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/listings" className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4" />
-                        Listings & Deals
-                      </NavLink>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/properties" className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        Properties
-                      </NavLink>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <NavLink to="/marketing" className="flex items-center gap-2">
                         <Megaphone className="w-4 h-4" />

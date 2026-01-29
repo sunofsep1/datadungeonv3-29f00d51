@@ -12,7 +12,6 @@ import { Users, TrendingUp, Megaphone, Calendar, Clock, Home } from "lucide-reac
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact } from "@/hooks/useContacts";
 import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
-import { useListings, useCreateListing } from "@/hooks/useListings";
 import { useLeads, useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,34 +31,30 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
-  const [dealDialogOpen, setDealDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
 
   const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
-  const [newDeal, setNewDeal] = useState({ address: "", price: "", stage: "new", propertyType: "house" });
   const [newAppointment, setNewAppointment] = useState({ title: "", date: "", time: "", location: "" });
   const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", source: "", propertyInterest: "" });
   const [newPost, setNewPost] = useState({ title: "", content: "", platform: "facebook", scheduledDate: "" });
 
   const { data: contacts = [] } = useContacts();
   const { data: appointments = [] } = useAppointments();
-  const { data: listings = [] } = useListings();
   const { data: leads = [] } = useLeads();
   const { data: posts = [] } = usePosts();
 
   const createContact = useCreateContact();
   const createAppointment = useCreateAppointment();
-  const createListing = useCreateListing();
   const createLead = useCreateLead();
   const createPost = useCreatePost();
 
   const stats = [
     { label: "Contacts", value: contacts.length, icon: Users },
-    { label: "Active Deals", value: listings.length, icon: TrendingUp },
     { label: "Leads", value: leads.length, icon: Megaphone },
     { label: "Appointments", value: appointments.length, icon: Calendar },
+    { label: "Posts", value: posts.length, icon: TrendingUp },
   ];
 
   const recentActivity = useMemo(() => {
@@ -83,17 +78,8 @@ export default function Dashboard() {
       });
     });
 
-    listings.slice(0, 3).forEach((listing) => {
-      activities.push({
-        type: "listing",
-        message: `Listing: ${listing.address}`,
-        time: formatDistanceToNow(new Date(listing.created_at), { addSuffix: true }),
-        date: new Date(listing.created_at),
-      });
-    });
-
     return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
-  }, [contacts, appointments, listings]);
+  }, [contacts, appointments]);
 
   const handleAddContact = async () => {
     if (!newContact.name.trim()) {
@@ -111,27 +97,6 @@ export default function Dashboard() {
       setContactDialogOpen(false);
     } catch (error) {
       toast({ title: "Error", description: "Failed to add contact", variant: "destructive" });
-    }
-  };
-
-  const handleAddDeal = async () => {
-    if (!newDeal.address.trim()) {
-      toast({ title: "Error", description: "Please enter an address", variant: "destructive" });
-      return;
-    }
-    try {
-      await createListing.mutateAsync({
-        address: newDeal.address,
-        price: newDeal.price ? Number(newDeal.price) : null,
-        pipeline_stage: newDeal.stage,
-        property_type: newDeal.propertyType,
-      });
-      toast({ title: "Success", description: "Deal added to pipeline!" });
-      setNewDeal({ address: "", price: "", stage: "new", propertyType: "house" });
-      setDealDialogOpen(false);
-      navigate("/pipeline");
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to add deal", variant: "destructive" });
     }
   };
 
@@ -292,13 +257,6 @@ export default function Dashboard() {
                 <span className="text-sm font-medium">Add Contact</span>
               </button>
               <button
-                onClick={() => setDealDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors min-h-[48px]"
-              >
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-medium">Add Deal</span>
-              </button>
-              <button
                 onClick={() => setLeadDialogOpen(true)}
                 className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors min-h-[48px]"
               >
@@ -359,48 +317,6 @@ export default function Dashboard() {
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setContactDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleAddContact} disabled={createContact.isPending}>{createContact.isPending ? "Adding..." : "Add Contact"}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={dealDialogOpen} onOpenChange={setDealDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader><DialogTitle>Add Deal</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2"><Label>Property Address *</Label><Input placeholder="123 Main Street, Sydney" className="bg-input" value={newDeal.address} onChange={(e) => setNewDeal({ ...newDeal, address: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Price</Label><Input type="number" placeholder="0" className="bg-input" value={newDeal.price} onChange={(e) => setNewDeal({ ...newDeal, price: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Property Type</Label>
-                <Select value={newDeal.propertyType} onValueChange={(value) => setNewDeal({ ...newDeal, propertyType: value })}>
-                  <SelectTrigger className="bg-input"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="house">House</SelectItem>
-                    <SelectItem value="apartment">Apartment</SelectItem>
-                    <SelectItem value="townhouse">Townhouse</SelectItem>
-                    <SelectItem value="land">Land</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Stage</Label>
-                <Select value={newDeal.stage} onValueChange={(value) => setNewDeal({ ...newDeal, stage: value })}>
-                  <SelectTrigger className="bg-input"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="inspection">Inspection</SelectItem>
-                    <SelectItem value="offer">Offer</SelectItem>
-                    <SelectItem value="under-contract">Under Contract</SelectItem>
-                    <SelectItem value="settled">Settled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setDealDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddDeal} disabled={createListing.isPending}>{createListing.isPending ? "Adding..." : "Add Deal"}</Button>
           </div>
         </DialogContent>
       </Dialog>

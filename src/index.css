@@ -183,6 +183,23 @@
   .zoho-accent-bg {
     background-color: rgba(0, 188, 212, 0.15) !important;
   }
+  /* Zoho dialog: readable labels and inputs in dark dialogs */
+  .zoho-dialog label,
+  .zoho-dialog [data-slot="label"] {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  .zoho-dialog input,
+  .zoho-dialog textarea,
+  .zoho-dialog select {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+  }
+  .zoho-dialog input::placeholder,
+  .zoho-dialog textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
   .zoho-card.stat-card,
   .stat-card.zoho-card {
     background-color: #242424 !important;

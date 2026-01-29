@@ -23,14 +23,20 @@ const PROPERTIES_SELECT =
 
 const PROPERTIES_QUERY_KEYS = [["properties"]] as const;
 
-function isPropertiesRelationError(msg: string): boolean {
+function isPropertiesTableOrRelationError(msg: string): boolean {
   const m = msg.toLowerCase();
   return (
     (m.includes("relation") && m.includes("does not exist")) ||
+    m.includes("schema cache") ||
+    m.includes("could not find the table") ||
+    (m.includes("could not find") && m.includes("properties")) ||
     m.includes("contact_property_links") ||
     m.includes("contacts")
   );
 }
+
+const PROPERTIES_MISSING_MESSAGE =
+  "Properties table not set up. Run migrations (npm run db:push) or run the migration SQL in Supabase Dashboard → SQL Editor.";
 
 export function useProperties() {
   useRealtimeSubscription("properties", PROPERTIES_QUERY_KEYS);
@@ -39,21 +45,41 @@ export function useProperties() {
   return useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("properties")
-        .select(PROPERTIES_SELECT)
-        .order("created_at", { ascending: false });
-      if (!error) return (data ?? []) as PropertyWithLinks[];
-      if (!isPropertiesRelationError(error?.message ?? "")) throw error;
-      const { data: simple, error: simpleError } = await supabase
-        .from("properties")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (simpleError) throw simpleError;
-      return ((simple ?? []) as Property[]).map((p) => ({
-        ...p,
-        contact_property_links: [],
-      })) as PropertyWithLinks[];
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select(PROPERTIES_SELECT)
+          .order("created_at", { ascending: false });
+        if (!error) return (data ?? []) as PropertyWithLinks[];
+        const msg = (error?.message ?? "").toLowerCase();
+        if (!isPropertiesTableOrRelationError(msg)) throw error;
+        const { data: simple, error: simpleError } = await supabase
+          .from("properties")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!simpleError) {
+          return ((simple ?? []) as Property[]).map((p) => ({
+            ...p,
+            contact_property_links: [],
+          })) as PropertyWithLinks[];
+        }
+        if (isPropertiesTableOrRelationError((simpleError?.message ?? "").toLowerCase())) {
+          throw new Error(PROPERTIES_MISSING_MESSAGE);
+        }
+        throw simpleError;
+      } catch (e) {
+        const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
+        if (
+          msg.includes("properties") &&
+          (msg.includes("schema cache") ||
+            msg.includes("does not exist") ||
+            msg.includes("could not find") ||
+            msg.includes("relation"))
+        ) {
+          throw new Error(PROPERTIES_MISSING_MESSAGE);
+        }
+        throw e;
+      }
     },
   });
 }
@@ -75,13 +101,18 @@ export function useProperty(id: string | undefined) {
         if (!data) throw new Error("Property not found");
         return data as PropertyWithLinks;
       }
-      if (!isPropertiesRelationError(error?.message ?? "")) throw error;
+      if (!isPropertiesTableOrRelationError(error?.message ?? "")) throw error;
       const { data: simple, error: simpleError } = await supabase
         .from("properties")
         .select("*")
         .eq("id", id)
         .maybeSingle();
-      if (simpleError) throw simpleError;
+      if (simpleError) {
+        if (isPropertiesTableOrRelationError(simpleError?.message ?? "")) {
+          throw new Error(PROPERTIES_MISSING_MESSAGE);
+        }
+        throw simpleError;
+      }
       if (!simple) throw new Error("Property not found");
       return {
         ...(simple as Property),
