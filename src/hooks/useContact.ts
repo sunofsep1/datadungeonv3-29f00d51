@@ -21,14 +21,14 @@ export function useContact(id: string | undefined) {
     queryKey: ["contact", id],
     queryFn: async () => {
       if (!id) throw new Error("No contact ID provided");
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("contacts")
         .select(CONTACT_SELECT)
         .eq("id", id)
         .maybeSingle();
       if (!error) {
         if (!data) throw new Error("Contact not found");
-        return data as ContactWithMeta;
+        return data as unknown as ContactWithMeta;
       }
       if (!isRelationError(error?.message ?? "")) throw error;
       const { data: simple, error: simpleError } = await supabase

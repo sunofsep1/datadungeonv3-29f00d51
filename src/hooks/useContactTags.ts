@@ -1,20 +1,23 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { TablesInsert } from "@/integrations/supabase/types";
 
-export type ContactTagInsert = TablesInsert<"contact_tags">;
+// Manual types for contact_tags (not in auto-generated types)
+export interface ContactTagInsert {
+  contact_id: string;
+  tag_id: string;
+}
 
 export function useAddContactTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (link: ContactTagInsert) => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("contact_tags")
         .insert(link)
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return data as { id?: string; contact_id: string; tag_id: string };
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contacts"] });
@@ -34,7 +37,7 @@ export function useRemoveContactTag() {
       contact_id: string;
       tag_id: string;
     }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("contact_tags")
         .delete()
         .eq("contact_id", contact_id)

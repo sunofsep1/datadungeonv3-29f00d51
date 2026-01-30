@@ -1,8 +1,23 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { TablesInsert } from "@/integrations/supabase/types";
 
-export type ContactPropertyLinkInsert = TablesInsert<"contact_property_links">;
+// Manual types for contact_property_links (not in auto-generated types)
+export interface ContactPropertyLink {
+  id: string;
+  contact_id: string;
+  property_id: string;
+  role: string;
+  notes?: string | null;
+  user_id?: string;
+  created_at?: string;
+}
+
+export interface ContactPropertyLinkInsert {
+  contact_id: string;
+  property_id: string;
+  role?: string;
+  notes?: string | null;
+}
 
 export function useCreateContactPropertyLink() {
   const qc = useQueryClient();
@@ -12,15 +27,14 @@ export function useCreateContactPropertyLink() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      // Some projects have user_id NOT NULL on contact_property_links
-      const payload = { ...link, user_id: user.id } as ContactPropertyLinkInsert & { user_id?: string };
-      const { data, error } = await supabase
+      const payload = { ...link, user_id: user.id };
+      const { data, error } = await (supabase as any)
         .from("contact_property_links")
         .insert(payload)
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return data as ContactPropertyLink;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["properties"] });
@@ -43,7 +57,7 @@ export function useDeleteContactPropertyLink() {
       property_id: string;
       contact_id: string;
     }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("contact_property_links")
         .delete()
         .eq("id", id);

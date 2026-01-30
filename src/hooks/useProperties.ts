@@ -1,11 +1,45 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
-import { useRealtimeSubscription } from "./useRealtimeSubscription";
+import type { ContactChannel } from "./useContactChannels";
 
-export type Property = Tables<"properties">;
-export type PropertyInsert = TablesInsert<"properties">;
-export type PropertyUpdate = TablesUpdate<"properties">;
+// Type definitions (tables not in auto-generated types)
+export interface Property {
+  id: string;
+  user_id: string;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postcode?: string | null;
+  country?: string | null;
+  property_type?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  price?: number | null;
+  status?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PropertyInsert {
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postcode?: string | null;
+  country?: string | null;
+  property_type?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  price?: number | null;
+  status?: string | null;
+  notes?: string | null;
+}
+
+export interface PropertyUpdate extends Partial<PropertyInsert> {
+  id?: string;
+}
 
 export type PropertyWithLinks = Property & {
   contact_property_links?: Array<{
@@ -21,7 +55,7 @@ export type PropertyWithLinks = Property & {
 const PROPERTIES_SELECT =
   "*, contact_property_links(id, contact_id, property_id, role, notes, contacts(id, name, first_name, last_name, email, phone))";
 
-const PROPERTIES_QUERY_KEYS = [["properties"]] as const;
+const PROPERTIES_QUERY_KEYS = [["properties"]];
 
 function isPropertiesTableOrRelationError(msg: string): boolean {
   const m = msg.toLowerCase();
@@ -36,24 +70,21 @@ function isPropertiesTableOrRelationError(msg: string): boolean {
 }
 
 const PROPERTIES_MISSING_MESSAGE =
-  "Properties table not set up. Run migrations (npm run db:push) or run the migration SQL in Supabase Dashboard → SQL Editor.";
+  "Properties table not set up. Run migrations or create the table in the database.";
 
 export function useProperties() {
-  useRealtimeSubscription("properties", PROPERTIES_QUERY_KEYS);
-  useRealtimeSubscription("contact_property_links", PROPERTIES_QUERY_KEYS);
-
   return useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from("properties")
           .select(PROPERTIES_SELECT)
           .order("created_at", { ascending: false });
         if (!error) return (data ?? []) as PropertyWithLinks[];
         const msg = (error?.message ?? "").toLowerCase();
         if (!isPropertiesTableOrRelationError(msg)) throw error;
-        const { data: simple, error: simpleError } = await supabase
+        const { data: simple, error: simpleError } = await (supabase as any)
           .from("properties")
           .select("*")
           .order("created_at", { ascending: false });
@@ -85,14 +116,11 @@ export function useProperties() {
 }
 
 export function useProperty(id: string | undefined) {
-  useRealtimeSubscription("properties", PROPERTIES_QUERY_KEYS);
-  useRealtimeSubscription("contact_property_links", PROPERTIES_QUERY_KEYS);
-
   return useQuery({
     queryKey: ["property", id],
     queryFn: async () => {
       if (!id) throw new Error("No property ID");
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("properties")
         .select(PROPERTIES_SELECT)
         .eq("id", id)
@@ -102,31 +130,21 @@ export function useProperty(id: string | undefined) {
         return data as PropertyWithLinks;
       }
       if (!isPropertiesTableOrRelationError(error?.message ?? "")) throw error;
-      const { data: simple, error: simpleError } = await supabase
+      const { data: simple, error: simpleError } = await (supabase as any)
         .from("properties")
         .select("*")
         .eq("id", id)
         .maybeSingle();
       if (!simpleError && simple) {
         return {
-          ...(simple as Property),
+          ...simple,
           contact_property_links: [],
         } as PropertyWithLinks;
       }
-      // Fallback: fetch via RPC (bypasses schema cache for property detail page)
-      const { data: rpcData, error: rpcError } = await supabase.rpc("get_property_by_id", {
-        prop_id: id,
-      });
-      if (!rpcError && rpcData) {
-        return {
-          ...(rpcData as Property),
-          contact_property_links: [],
-        } as PropertyWithLinks;
-      }
-      if (isPropertiesTableOrRelationError((simpleError?.message ?? rpcError?.message ?? "").toLowerCase())) {
+      if (isPropertiesTableOrRelationError((simpleError?.message ?? "").toLowerCase())) {
         throw new Error(PROPERTIES_MISSING_MESSAGE);
       }
-      throw simpleError ?? rpcError ?? new Error("Property not found");
+      throw simpleError ?? new Error("Property not found");
     },
     enabled: !!id,
   });
@@ -135,15 +153,16 @@ export function useProperty(id: string | undefined) {
 export function useCreateProperty() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: Omit<PropertyInsert, "user_id">) => {
+    mutationFn: async (p: PropertyInsert) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      // Use RPC to bypass PostgREST schema cache issues with address columns
-      const { data, error } = await supabase.rpc("create_property_with_address", {
-        payload: p,
-      });
+      const { data, error } = await (supabase as any)
+        .from("properties")
+        .insert({ ...p, user_id: user.id })
+        .select()
+        .single();
       if (error) throw error;
       return data as Property;
     },
@@ -155,14 +174,14 @@ export function useUpdateProperty() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: PropertyUpdate & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("properties")
         .update(updates)
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return data as Property;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["properties"] });
@@ -175,22 +194,22 @@ export function useDeleteProperty() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("properties").delete().eq("id", id);
+      const { error } = await (supabase as any).from("properties").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["properties"] }),
   });
 }
 
-/** Format property address for display (handles old schema with single "address" column) */
+/** Format property address for display */
 export function formatPropertyAddress(p: Property & { address?: string | null }): string {
-  const line1 = (p as { address_line1?: string | null }).address_line1 ?? (p as { address?: string | null }).address;
+  const line1 = p.address_line1 ?? (p as any).address;
   const parts = [
     line1,
-    (p as { address_line2?: string | null }).address_line2,
-    [(p as { city?: string | null }).city, (p as { state?: string | null }).state].filter(Boolean).join(" "),
-    (p as { postcode?: string | null }).postcode,
-    (p as { country?: string | null }).country,
+    p.address_line2,
+    [p.city, p.state].filter(Boolean).join(" "),
+    p.postcode,
+    p.country,
   ].filter(Boolean);
   return parts.join(", ") || "—";
 }

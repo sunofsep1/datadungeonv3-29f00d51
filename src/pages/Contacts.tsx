@@ -270,8 +270,8 @@ export default function Contacts() {
     return Array.from(set).sort();
   }, [contacts]);
 
-  const handleExportCSV = (contactsToExport?: ContactWithMeta[]) => {
-    const contactsList = contactsToExport || filteredAndSortedContacts;
+  const handleExportCSV = () => {
+    const contactsList = filteredAndSortedContacts;
     if (contactsList.length === 0) {
       toast({
         title: "No data",
@@ -1102,10 +1102,7 @@ export default function Contacts() {
               variant="outline"
               size="sm"
               onClick={() => {
-                const selectedContacts = filteredAndSortedContacts.filter((c) =>
-                  selectedContactIds.has(c.id)
-                );
-                handleExportCSV(selectedContacts);
+                handleExportCSV();
                 setSelectedContactIds(new Set());
               }}
             >
