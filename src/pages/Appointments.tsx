@@ -34,7 +34,10 @@ import { format, addHours } from "date-fns";
 
 type AppointmentType = "valuation" | "meeting" | "call" | "inspection";
 
-const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
+const getGcalUrl = () => {
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  return base ? `${base}/functions/v1/google-calendar` : null;
+};
 
 const createEmptyAppointment = () => ({
   title: "",
@@ -79,16 +82,22 @@ export default function Appointments() {
   // Check Google Calendar connection status
   const checkGcalConnection = useCallback(async () => {
     if (!user) return;
+    const gcalUrl = getGcalUrl();
+    if (!gcalUrl) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const res = await fetch(`${GCAL_URL}?action=events`, {
+      const res = await fetch(`${gcalUrl}?action=events`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGcalNeedsAuth(true);
+        return;
+      }
       if (data?.needsAuth || data?.error === "Not connected") {
         setGcalNeedsAuth(true);
       } else {
@@ -188,10 +197,12 @@ export default function Appointments() {
 
         // Sync to Google Calendar if enabled and connected
         if (formData.syncToGoogle && !gcalNeedsAuth && user) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              await fetch(`${GCAL_URL}?action=create-event`, {
+          const gcalUrl = getGcalUrl();
+          if (gcalUrl) {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                await fetch(`${gcalUrl}?action=create-event`, {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${session.access_token}`,
@@ -205,15 +216,16 @@ export default function Appointments() {
                   location: formData.location || "",
                 }),
               });
-              toast({ title: "Synced", description: "Appointment added to Google Calendar" });
+                toast({ title: "Synced", description: "Appointment added to Google Calendar" });
+              }
+            } catch (e) {
+              console.error("Google Calendar sync failed:", e);
+              toast({
+                title: "Warning",
+                description: "Appointment created but Google Calendar sync failed",
+                variant: "default",
+              });
             }
-          } catch (e) {
-            console.error("Google Calendar sync failed:", e);
-            toast({
-              title: "Warning",
-              description: "Appointment created but Google Calendar sync failed",
-              variant: "default",
-            });
           }
         }
       }

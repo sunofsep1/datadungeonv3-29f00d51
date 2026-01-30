@@ -43,8 +43,14 @@ export function GoogleCalendarWidget() {
         setLoading(false);
         return;
       }
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!baseUrl) {
+        setError("Supabase URL not configured");
+        setLoading(false);
+        return;
+      }
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=events`,
+        `${baseUrl}/functions/v1/google-calendar?action=events`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -52,7 +58,13 @@ export function GoogleCalendarWidget() {
           },
         }
       );
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data?.error || `Calendar error (${response.status})`);
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
       if (data?.needsAuth) {
         setNeedsAuth(true);
         setEvents([]);
@@ -83,14 +95,18 @@ export function GoogleCalendarWidget() {
 
   const handleConnect = async () => {
     if (!user) return;
-    
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!baseUrl) {
+      toast({ title: "Error", description: "Supabase URL not configured", variant: "destructive" });
+      return;
+    }
     setConnecting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=auth-url`,
+        `${baseUrl}/functions/v1/google-calendar?action=auth-url`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -127,13 +143,14 @@ export function GoogleCalendarWidget() {
 
   const handleDisconnect = async () => {
     if (!user) return;
-    
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!baseUrl) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
       await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=disconnect`,
+        `${baseUrl}/functions/v1/google-calendar?action=disconnect`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,

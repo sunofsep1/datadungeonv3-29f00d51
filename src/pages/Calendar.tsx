@@ -69,7 +69,10 @@ export interface CalendarItem {
   htmlLink?: string;
 }
 
-const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
+const getGcalUrl = () => {
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  return base ? `${base}/functions/v1/google-calendar` : null;
+};
 
 export default function Calendar() {
   const { user } = useAuth();
@@ -101,18 +104,30 @@ export default function Calendar() {
     setGcalLoading(true);
     setGcalError(null);
     try {
+      const gcalUrl = getGcalUrl();
+      if (!gcalUrl) {
+        setGcalError("Supabase URL not configured");
+        setGcalLoading(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setGcalLoading(false);
         return;
       }
-      const res = await fetch(`${GCAL_URL}?action=events`, {
+      const res = await fetch(`${gcalUrl}?action=events`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGcalError(data?.error || `Calendar error (${res.status})`);
+        setGcalEvents([]);
+        setGcalLoading(false);
+        return;
+      }
       if (data?.needsAuth) {
         setGcalNeedsAuth(true);
         setGcalEvents([]);
@@ -211,10 +226,15 @@ export default function Calendar() {
 
   const handleConnectGcal = async () => {
     if (!user) return;
+    const gcalBase = getGcalUrl();
+    if (!gcalBase) {
+      setGcalError("Supabase URL not configured");
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const res = await fetch(`${GCAL_URL}?action=auth-url`, {
+      const res = await fetch(`${gcalBase}?action=auth-url`, {
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       });
       const data = await res.json();
@@ -234,10 +254,12 @@ export default function Calendar() {
 
   const handleDisconnectGcal = async () => {
     if (!user) return;
+    const gcalBase = getGcalUrl();
+    if (!gcalBase) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await fetch(`${GCAL_URL}?action=disconnect`, {
+      await fetch(`${gcalBase}?action=disconnect`, {
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       });
       setGcalEvents([]);
@@ -268,30 +290,33 @@ export default function Calendar() {
 
       // Sync to Google Calendar if enabled
       if (newAppointment.syncToGoogle && !gcalNeedsAuth && user) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await fetch(`${GCAL_URL}?action=create-event`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                summary: newAppointment.title,
-                description: newAppointment.notes || "",
-                start: dateTime,
-                end: newAppointment.endTime
-                  ? `${newAppointment.date}T${newAppointment.endTime}:00`
-                  : addHours(new Date(dateTime), 1).toISOString(),
-                location: newAppointment.location || "",
-              }),
-            });
-            fetchGcal();
-            toast({ title: "Synced", description: "Added to Google Calendar" });
+        const gcalBase = getGcalUrl();
+        if (gcalBase) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              await fetch(`${gcalBase}?action=create-event`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  summary: newAppointment.title,
+                  description: newAppointment.notes || "",
+                  start: dateTime,
+                  end: newAppointment.endTime
+                    ? `${newAppointment.date}T${newAppointment.endTime}:00`
+                    : addHours(new Date(dateTime), 1).toISOString(),
+                  location: newAppointment.location || "",
+                }),
+              });
+              fetchGcal();
+              toast({ title: "Synced", description: "Added to Google Calendar" });
+            }
+          } catch (e) {
+            console.error("Google Calendar sync failed:", e);
           }
-        } catch (e) {
-          console.error("Google Calendar sync failed:", e);
         }
       }
 

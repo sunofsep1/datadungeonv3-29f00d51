@@ -59,7 +59,10 @@ export interface CalendarItem {
   htmlLink?: string;
 }
 
-const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
+const getGcalUrl = () => {
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  return base ? `${base}/functions/v1/google-calendar` : null;
+};
 
 export function DashboardCalendarWidget() {
   const navigate = useNavigate();
@@ -78,18 +81,30 @@ export function DashboardCalendarWidget() {
     setGcalLoading(true);
     setGcalError(null);
     try {
+      const gcalUrl = getGcalUrl();
+      if (!gcalUrl) {
+        setGcalError("Supabase URL not configured");
+        setGcalLoading(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setGcalLoading(false);
         return;
       }
-      const res = await fetch(`${GCAL_URL}?action=events`, {
+      const res = await fetch(`${gcalUrl}?action=events`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGcalError(data?.error || `Calendar error (${res.status})`);
+        setGcalEvents([]);
+        setGcalLoading(false);
+        return;
+      }
       if (data?.needsAuth) {
         setGcalNeedsAuth(true);
         setGcalEvents([]);
@@ -102,7 +117,11 @@ export function DashboardCalendarWidget() {
         setGcalEvents([]);
       }
     } catch (e) {
-      setGcalError(e instanceof Error ? e.message : "Failed to fetch Google Calendar");
+      const msg = e instanceof Error ? e.message : "Failed to fetch Google Calendar";
+      const isNetwork = /failed to fetch|network|load/i.test(msg);
+      setGcalError(isNetwork
+        ? "Could not reach calendar. Deploy the google-calendar Edge Function to your Supabase project and ensure VITE_SUPABASE_URL in .env matches that project."
+        : msg);
       setGcalEvents([]);
     } finally {
       setGcalLoading(false);
@@ -241,10 +260,15 @@ export function DashboardCalendarWidget() {
 
   const handleConnectGcal = async () => {
     if (!user) return;
+    const gcalBase = getGcalUrl();
+    if (!gcalBase) {
+      setGcalError("Supabase URL not configured");
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const res = await fetch(`${GCAL_URL}?action=auth-url`, {
+      const res = await fetch(`${gcalBase}?action=auth-url`, {
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       });
       const data = await res.json();
@@ -264,10 +288,12 @@ export function DashboardCalendarWidget() {
 
   const handleDisconnectGcal = async () => {
     if (!user) return;
+    const gcalBase = getGcalUrl();
+    if (!gcalBase) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await fetch(`${GCAL_URL}?action=disconnect`, {
+      await fetch(`${gcalBase}?action=disconnect`, {
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       });
       setGcalEvents([]);
@@ -331,9 +357,12 @@ export function DashboardCalendarWidget() {
         </div>
       )}
       {gcalError && !gcalNeedsAuth && (
-        <div className="flex items-center justify-between gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
-          <p className="text-sm text-destructive truncate">Google Calendar: {gcalError}</p>
-          <Button variant="outline" size="sm" onClick={fetchGcal}>Retry</Button>
+        <div className="flex flex-col gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-destructive font-medium">Google Calendar</p>
+            <Button variant="outline" size="sm" onClick={fetchGcal}>Retry</Button>
+          </div>
+          <p className="text-sm text-destructive/90">{gcalError}</p>
         </div>
       )}
 

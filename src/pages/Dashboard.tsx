@@ -23,7 +23,10 @@ import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 
-const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
+const getGcalUrl = () => {
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  return base ? `${base}/functions/v1/google-calendar` : null;
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -165,22 +168,23 @@ export default function Dashboard() {
       });
       
       // Try to sync to Google Calendar if connected
-      if (user) {
+      const gcalUrl = getGcalUrl();
+      if (user && gcalUrl) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             // Check if Google Calendar is connected
-            const checkRes = await fetch(`${GCAL_URL}?action=events`, {
+            const checkRes = await fetch(`${gcalUrl}?action=events`, {
               headers: {
                 Authorization: `Bearer ${session.access_token}`,
                 "Content-Type": "application/json",
               },
             });
-            const checkData = await checkRes.json();
+            const checkData = await checkRes.json().catch(() => ({}));
             
-            if (!checkData?.needsAuth && !checkData?.error) {
+            if (checkRes.ok && !checkData?.needsAuth && !checkData?.error) {
               // Connected, create event
-              await fetch(`${GCAL_URL}?action=create-event`, {
+              await fetch(`${gcalUrl}?action=create-event`, {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${session.access_token}`,
