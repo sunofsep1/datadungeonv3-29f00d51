@@ -23,7 +23,7 @@ import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 
-const GCAL_URL = "https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar";
+const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
 
 export default function Dashboard() {
   const navigate = useNavigate();

@@ -7,13 +7,26 @@ export type Contact = Tables<"contacts">;
 export type ContactInsert = TablesInsert<"contacts">;
 export type ContactUpdate = TablesUpdate<"contacts">;
 
+/** Address fields on contacts (DB has these via migration; extend until types regenerated) */
+export type ContactAddressFields = {
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postcode?: string | null;
+  country?: string | null;
+};
+
 export type ContactChannel = Tables<"contact_channels">;
 export type ContactTagRow = { tag_id: string; tags: { name: string } | null };
 export type ContactPropertyLinkRow = {
+  id?: string;
   property_id: string;
+  role?: string;
+  notes?: string | null;
   properties: { address_line1: string | null; city: string | null; state: string | null; postcode: string | null } | null;
 };
-export type ContactWithMeta = Contact & {
+export type ContactWithMeta = Contact & ContactAddressFields & {
   contact_channels?: ContactChannel[];
   contact_tags?: ContactTagRow[];
   contact_property_links?: ContactPropertyLinkRow[];
@@ -65,20 +78,21 @@ export function useCreateContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (contact: Omit<ContactInsert, "user_id">) => {
+    mutationFn: async (contact: Omit<ContactInsert, "user_id"> & ContactAddressFields) => {
+      // Ensure authenticated (RPC also checks, but fail fast here)
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const { data, error } = await supabase
-        .from("contacts")
-        .insert({ ...contact, user_id: user.id })
-        .select()
-        .single();
+
+      // Use RPC to bypass PostgREST schema cache issues with address columns
+      const { data, error } = await supabase.rpc("create_contact_with_address", {
+        payload: contact,
+      });
       if (error) throw error;
-      return data;
+      return data as Contact & ContactAddressFields;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       // Event logging for contact creation (future automation hook)
       // Could emit: { type: "contact.created", entityId: data.id, ... }
@@ -90,29 +104,27 @@ export function useUpdateContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: ContactUpdate & { id: string }) => {
-      // Fetch current contact to detect status changes
+    mutationFn: async ({ id, ...updates }: ContactUpdate & ContactAddressFields & { id: string }) => {
+      // Fetch current contact to detect status changes (this select doesn't use address columns)
       const { data: current } = await supabase
         .from("contacts")
         .select("status")
         .eq("id", id)
         .single();
-      
-      const { data, error } = await supabase
-        .from("contacts")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
+
+      // Use RPC to bypass PostgREST schema cache issues with address columns
+      const { data, error } = await supabase.rpc("update_contact_with_address", {
+        payload: { id, ...updates },
+      });
       if (error) throw error;
-      
+
       // Return data with old status for event logging
-      return { ...data, _oldStatus: current?.status };
+      return { ...(data as Contact & ContactAddressFields), _oldStatus: current?.status };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", variables.id] });
-      
+
       // Event logging for status changes (future automation hook)
       if (variables.status && (data as any)._oldStatus !== variables.status) {
         // Could emit: { type: "contact.status_changed", entityId: variables.id, oldStatus: (data as any)._oldStatus, newStatus: variables.status }
@@ -168,4 +180,16 @@ export function getLinkedPropertyAddress(c: ContactWithMeta): string {
   if (!first) return "";
   const parts = [first.address_line1, first.city, first.state, first.postcode].filter(Boolean);
   return parts.join(", ");
+}
+
+/** Format contact address as single line (e.g. "12 Smith St, Cleveland QLD 4163, Australia") */
+export function formatContactAddress(c: ContactAddressFields | ContactWithMeta): string {
+  const parts = [
+    c.address_line1,
+    c.address_line2,
+    [c.city, c.state].filter(Boolean).join(" "),
+    c.postcode,
+    c.country,
+  ].filter(Boolean);
+  return parts.join(", ") || "—";
 }

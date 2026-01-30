@@ -5,10 +5,17 @@ import {
   Bell,
   Calendar,
   Mail,
-  Grid3X3,
   Settings,
   Menu,
   LayoutGrid,
+  LayoutDashboard,
+  Users,
+  Clock,
+  Megaphone,
+  BarChart3,
+  FileText,
+  Building2,
+  CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,14 +121,31 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Create</span>
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
-          title="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+              title="Notifications"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72 bg-[#2c2c2c] border-white/10 text-white">
+            <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+              <span className="font-semibold text-sm">Notifications</span>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-white/60 hover:text-white hover:bg-white/10">
+                <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                Mark all read
+              </Button>
+            </div>
+            <div className="py-8 px-4 text-center text-sm text-white/50">
+              No notifications
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="ghost"
           size="icon"
@@ -131,22 +155,79 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         >
           <Calendar className="h-5 w-5" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
-          title="Emails"
-        >
-          <Mail className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
-          title="Apps"
-        >
-          <LayoutGrid className="h-5 w-5" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+              title="Emails"
+              aria-label="Emails"
+            >
+              <Mail className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72 bg-[#2c2c2c] border-white/10 text-white">
+            <div className="px-3 py-2 border-b border-white/10">
+              <span className="font-semibold text-sm">Emails</span>
+            </div>
+            <div className="py-8 px-4 text-center text-sm text-white/50">
+              Coming soon
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-white/70 hover:bg-white/10 hover:text-[#00BCD4]"
+              title="Apps"
+              aria-label="App launcher"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-[#2c2c2c] border-white/10 text-white">
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/dashboard")}>
+              <LayoutDashboard className="h-4 w-4 mr-2" />
+              Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/contacts")}>
+              <Users className="h-4 w-4 mr-2" />
+              Contacts
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/properties")}>
+              <Building2 className="h-4 w-4 mr-2" />
+              Properties
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/calendar")}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Calendar
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/appointments")}>
+              <Clock className="h-4 w-4 mr-2" />
+              Appointments
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/marketing")}>
+              <Megaphone className="h-4 w-4 mr-2" />
+              Marketing
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/performance")}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Performance
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/settings")}>
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-white/90 focus:bg-white/10 focus:text-white" onClick={() => navigate("/scripts")}>
+              <FileText className="h-4 w-4 mr-2" />
+              Scripts
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="ghost"
           size="icon"

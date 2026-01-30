@@ -8,9 +8,15 @@ export function useCreateContactPropertyLink() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (link: ContactPropertyLinkInsert) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      // Some projects have user_id NOT NULL on contact_property_links
+      const payload = { ...link, user_id: user.id } as ContactPropertyLinkInsert & { user_id?: string };
       const { data, error } = await supabase
         .from("contact_property_links")
-        .insert(link)
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;

@@ -9,6 +9,8 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+// Where to redirect the browser after OAuth (your app URL). Set in Supabase Dashboard → Edge Functions → google-calendar → Secrets.
+const REDIRECT_BASE_URL = Deno.env.get("REDIRECT_BASE_URL") || "http://localhost:8080";
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -37,7 +39,7 @@ Deno.serve(async (req) => {
         return new Response(null, {
           status: 302,
           headers: {
-            Location: `${SUPABASE_URL?.replace('.supabase.co', '.lovable.app').replace('https://agflprqqvsndkwlpscvt', 'https://id-preview--411c241c-49a8-45f4-8be3-1505dff49d25')}/dashboard?calendar_error=${encodeURIComponent(error)}`,
+            Location: `${REDIRECT_BASE_URL}/dashboard?calendar_error=${encodeURIComponent(error)}`,
           },
         });
       }
@@ -47,12 +49,12 @@ Deno.serve(async (req) => {
         return new Response(null, {
           status: 302,
           headers: {
-            Location: `https://id-preview--411c241c-49a8-45f4-8be3-1505dff49d25.lovable.app/dashboard?calendar_error=missing_params`,
+            Location: `${REDIRECT_BASE_URL}/dashboard?calendar_error=missing_params`,
           },
         });
       }
 
-      const redirectUri = `https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar?action=callback`;
+      const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar?action=callback`;
 
       // Exchange code for tokens
       const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -74,7 +76,7 @@ Deno.serve(async (req) => {
         return new Response(null, {
           status: 302,
           headers: {
-            Location: `https://id-preview--411c241c-49a8-45f4-8be3-1505dff49d25.lovable.app/dashboard?calendar_error=${encodeURIComponent(tokens.error_description || tokens.error)}`,
+            Location: `${REDIRECT_BASE_URL}/dashboard?calendar_error=${encodeURIComponent(tokens.error_description || tokens.error)}`,
           },
         });
       }
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
         return new Response(null, {
           status: 302,
           headers: {
-            Location: `https://id-preview--411c241c-49a8-45f4-8be3-1505dff49d25.lovable.app/dashboard?calendar_error=storage_failed`,
+            Location: `${REDIRECT_BASE_URL}/dashboard?calendar_error=storage_failed`,
           },
         });
       }
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `https://id-preview--411c241c-49a8-45f4-8be3-1505dff49d25.lovable.app/dashboard?calendar_connected=true`,
+          Location: `${REDIRECT_BASE_URL}/dashboard?calendar_connected=true`,
         },
       });
     }
@@ -139,7 +141,7 @@ Deno.serve(async (req) => {
 
     if (action === "auth-url") {
       // Generate OAuth URL for Google Calendar with read+write scope
-      const redirectUri = `https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar?action=callback`;
+      const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar?action=callback`;
       const scope = encodeURIComponent("https://www.googleapis.com/auth/calendar");
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +

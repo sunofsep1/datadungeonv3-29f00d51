@@ -14,12 +14,12 @@ export type PropertyWithLinks = Property & {
     property_id: string;
     role: string;
     notes: string | null;
-    contacts: { id: string; name: string; first_name: string | null; last_name: string | null } | null;
+    contacts: { id: string; name: string; first_name: string | null; last_name: string | null; email: string | null; phone: string | null } | null;
   }>;
 };
 
 const PROPERTIES_SELECT =
-  "*, contact_property_links(id, contact_id, property_id, role, notes, contacts(id, name, first_name, last_name))";
+  "*, contact_property_links(id, contact_id, property_id, role, notes, contacts(id, name, first_name, last_name, email, phone))";
 
 const PROPERTIES_QUERY_KEYS = [["properties"]] as const;
 
@@ -107,17 +107,26 @@ export function useProperty(id: string | undefined) {
         .select("*")
         .eq("id", id)
         .maybeSingle();
-      if (simpleError) {
-        if (isPropertiesTableOrRelationError(simpleError?.message ?? "")) {
-          throw new Error(PROPERTIES_MISSING_MESSAGE);
-        }
-        throw simpleError;
+      if (!simpleError && simple) {
+        return {
+          ...(simple as Property),
+          contact_property_links: [],
+        } as PropertyWithLinks;
       }
-      if (!simple) throw new Error("Property not found");
-      return {
-        ...(simple as Property),
-        contact_property_links: [],
-      } as PropertyWithLinks;
+      // Fallback: fetch via RPC (bypasses schema cache for property detail page)
+      const { data: rpcData, error: rpcError } = await supabase.rpc("get_property_by_id", {
+        prop_id: id,
+      });
+      if (!rpcError && rpcData) {
+        return {
+          ...(rpcData as Property),
+          contact_property_links: [],
+        } as PropertyWithLinks;
+      }
+      if (isPropertiesTableOrRelationError((simpleError?.message ?? rpcError?.message ?? "").toLowerCase())) {
+        throw new Error(PROPERTIES_MISSING_MESSAGE);
+      }
+      throw simpleError ?? rpcError ?? new Error("Property not found");
     },
     enabled: !!id,
   });
@@ -131,13 +140,12 @@ export function useCreateProperty() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const { data, error } = await supabase
-        .from("properties")
-        .insert({ ...p, user_id: user.id })
-        .select()
-        .single();
+      // Use RPC to bypass PostgREST schema cache issues with address columns
+      const { data, error } = await supabase.rpc("create_property_with_address", {
+        payload: p,
+      });
       if (error) throw error;
-      return data;
+      return data as Property;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["properties"] }),
   });
@@ -174,14 +182,15 @@ export function useDeleteProperty() {
   });
 }
 
-/** Format property address for display */
-export function formatPropertyAddress(p: Property): string {
+/** Format property address for display (handles old schema with single "address" column) */
+export function formatPropertyAddress(p: Property & { address?: string | null }): string {
+  const line1 = (p as { address_line1?: string | null }).address_line1 ?? (p as { address?: string | null }).address;
   const parts = [
-    p.address_line1,
-    p.address_line2,
-    [p.city, p.state].filter(Boolean).join(" "),
-    p.postcode,
-    p.country,
+    line1,
+    (p as { address_line2?: string | null }).address_line2,
+    [(p as { city?: string | null }).city, (p as { state?: string | null }).state].filter(Boolean).join(" "),
+    (p as { postcode?: string | null }).postcode,
+    (p as { country?: string | null }).country,
   ].filter(Boolean);
   return parts.join(", ") || "—";
 }

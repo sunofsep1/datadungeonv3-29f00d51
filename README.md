@@ -73,6 +73,13 @@ Local and **production** (Lovable) use the **same Supabase project** so they sha
 
 Never commit `.env` or `.env.local`. They are gitignored.
 
+### Google Calendar (Edge Function)
+
+The app calls the **google-calendar** Edge Function using `VITE_SUPABASE_URL`, so it uses the same project as your `.env`. If you deploy the Edge Function to Supabase:
+
+1. In **Supabase Dashboard** → **Edge Functions** → **google-calendar** → **Secrets**, set **`REDIRECT_BASE_URL`** to your app URL (e.g. `http://localhost:8080` for local, or your Lovable/production URL). This is where users are sent after connecting Google Calendar.
+2. In **Google Cloud Console** (OAuth client), add the callback URL: `https://<YOUR_PROJECT_REF>.supabase.co/functions/v1/google-calendar?action=callback`.
+
 ---
 
 ## 3. Database, migrations, and schema

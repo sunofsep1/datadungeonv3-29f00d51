@@ -164,7 +164,7 @@ export function EnhancedCalendarWidget() {
       if (!session) return;
 
       const response = await fetch(
-        `https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar?action=auth-url`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=auth-url`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -204,7 +204,7 @@ export function EnhancedCalendarWidget() {
       if (!session) return;
 
       await fetch(
-        `https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar?action=disconnect`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=disconnect`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -345,7 +345,7 @@ export function EnhancedCalendarWidget() {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             await fetch(
-              `https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar?action=create-event`,
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar?action=create-event`,
               {
                 method: "POST",
                 headers: {

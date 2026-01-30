@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
-import { useUpdateContact, getPrimaryEmail, getPrimaryPhone, getTagNames } from "@/hooks/useContacts";
+import { useUpdateContact, getPrimaryEmail, getPrimaryPhone, getTagNames, formatContactAddress } from "@/hooks/useContacts";
 import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import {
   useCreateContactPropertyLink,
@@ -44,6 +44,17 @@ import { format, formatDistanceToNow } from "date-fns";
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
 const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
+
+const AUSTRALIAN_STATES = [
+  { value: "NSW", label: "New South Wales" },
+  { value: "VIC", label: "Victoria" },
+  { value: "QLD", label: "Queensland" },
+  { value: "SA", label: "South Australia" },
+  { value: "WA", label: "Western Australia" },
+  { value: "TAS", label: "Tasmania" },
+  { value: "NT", label: "Northern Territory" },
+  { value: "ACT", label: "Australian Capital Territory" },
+];
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
@@ -112,6 +123,12 @@ export default function ContactDetail() {
         current_situation_notes: contact.current_situation_notes ?? "",
         pain_points: contact.pain_points ?? "",
         pleasure_points: contact.pleasure_points ?? "",
+        address_line1: contact.address_line1 ?? "",
+        address_line2: contact.address_line2 ?? "",
+        city: contact.city ?? "",
+        state: contact.state ?? "",
+        postcode: contact.postcode ?? "",
+        country: contact.country ?? "Australia",
       });
       setIsEditing(true);
     }
@@ -120,10 +137,28 @@ export default function ContactDetail() {
   const handleSaveEdit = async () => {
     if (!contact) return;
     try {
-      await updateContact.mutateAsync({
+      const payload = {
         id: contact.id,
-        ...editFormData,
-      });
+        name: editFormData.name,
+        email: editFormData.email || null,
+        phone: editFormData.phone || null,
+        status: editFormData.status,
+        source: editFormData.source || null,
+        notes: editFormData.notes || null,
+        story: editFormData.story || null,
+        pipeline_stage: editFormData.pipeline_stage || null,
+        selling_intentions: editFormData.selling_intentions || null,
+        current_situation_notes: editFormData.current_situation_notes || null,
+        pain_points: editFormData.pain_points || null,
+        pleasure_points: editFormData.pleasure_points || null,
+        address_line1: editFormData.address_line1?.trim() || null,
+        address_line2: editFormData.address_line2?.trim() || null,
+        city: editFormData.city?.trim() || null,
+        state: editFormData.state || null,
+        postcode: editFormData.postcode?.trim() || null,
+        country: editFormData.country || "Australia",
+      };
+      await updateContact.mutateAsync(payload as any);
       toast({ title: "Success", description: "Contact updated!" });
       setIsEditing(false);
     } catch (error: any) {
@@ -319,6 +354,19 @@ export default function ContactDetail() {
                 )}
               </div>
             </div>
+          </Card>
+
+          {/* Contact information (address) */}
+          <Card className="zoho-card p-6 border-white/10 print:border print:border-gray-300">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wide mb-4">Contact information</h3>
+            {(contact.address_line1 || contact.city) ? (
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-white/60 mt-0.5 shrink-0" />
+                <p className="text-white">{formatContactAddress(contact)}</p>
+              </div>
+            ) : (
+              <p className="text-white/60">No address</p>
+            )}
           </Card>
 
           {/* Linked properties */}
@@ -601,6 +649,63 @@ export default function ContactDetail() {
                 className="bg-input"
                 value={editFormData.source || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, source: e.target.value })}
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label>Address Line 1</Label>
+              <Input
+                className="bg-input"
+                placeholder="Street address"
+                value={editFormData.address_line1 || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, address_line1: e.target.value })}
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label>Address Line 2</Label>
+              <Input
+                className="bg-input"
+                placeholder="Unit, suite, etc."
+                value={editFormData.address_line2 || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, address_line2: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Suburb (city)</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.city || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>State</Label>
+              <Select
+                value={editFormData.state || ""}
+                onValueChange={(v) => setEditFormData({ ...editFormData, state: v })}
+              >
+                <SelectTrigger className="bg-input"><SelectValue placeholder="Select state" /></SelectTrigger>
+                <SelectContent>
+                  {AUSTRALIAN_STATES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Postcode</Label>
+              <Input
+                className="bg-input"
+                placeholder="e.g. 4163"
+                value={editFormData.postcode || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, postcode: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.country || "Australia"}
+                onChange={(e) => setEditFormData({ ...editFormData, country: e.target.value })}
               />
             </div>
             <div className="space-y-2">

@@ -18,16 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, User, ArrowLeft, Building2, Plus, Trash2 } from "lucide-react";
+import { MapPin, ArrowLeft, Building2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useProperty, formatPropertyAddress } from "@/hooks/useProperties";
 import { useContacts } from "@/hooks/useContacts";
-import {
-  useCreateContactPropertyLink,
-  useDeleteContactPropertyLink,
-} from "@/hooks/useContactPropertyLinks";
-import { Badge } from "@/components/ui/badge";
+import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
+import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
 
 const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
 
@@ -38,7 +35,6 @@ export default function PropertyDetail() {
   const { data: property, isLoading, isError, refetch } = useProperty(id);
   const { data: contacts = [] } = useContacts();
   const createLink = useCreateContactPropertyLink();
-  const deleteLink = useDeleteContactPropertyLink();
 
   const [addOwnerOpen, setAddOwnerOpen] = useState(false);
   const [addOwnerContactId, setAddOwnerContactId] = useState<string>("");
@@ -80,7 +76,7 @@ export default function PropertyDetail() {
   }
 
   const addr = formatPropertyAddress(property);
-  const links = property.contact_property_links ?? [];
+  const links = Array.isArray(property.contact_property_links) ? property.contact_property_links : [];
   const linkedContactIds = useMemo(
     () => new Set(links.map((l) => l.contact_id)),
     [links]
@@ -109,29 +105,12 @@ export default function PropertyDetail() {
         role: addOwnerRole as "owner" | "buyer" | "tenant" | "interested" | "other",
         notes: addOwnerNotes.trim() || null,
       });
-      toast({ title: "Success", description: "Owner linked." });
+      toast({ title: "Success", description: "Contact linked." });
       setAddOwnerOpen(false);
     } catch (e: unknown) {
       toast({
         title: "Error",
-        description: e instanceof Error ? e.message : "Failed to link owner",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRemoveLink = async (
-    linkId: string,
-    propertyId: string,
-    contactId: string
-  ) => {
-    try {
-      await deleteLink.mutateAsync({ id: linkId, property_id: propertyId, contact_id: contactId });
-      toast({ title: "Removed", description: "Owner unlinked." });
-    } catch (e: unknown) {
-      toast({
-        title: "Error",
-        description: e instanceof Error ? e.message : "Failed to unlink",
+        description: e instanceof Error ? e.message : "Failed to link contact",
         variant: "destructive",
       });
     }
@@ -148,7 +127,7 @@ export default function PropertyDetail() {
             <Building2 className="w-6 h-6" />
             Property
           </h1>
-          <p className="text-white/60">Details and linked owners</p>
+          <p className="text-white/60">Details and linked contacts</p>
         </div>
       </div>
 
@@ -160,10 +139,10 @@ export default function PropertyDetail() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">Address</h2>
             <p className="text-foreground">{addr || "—"}</p>
-            {(property.city || property.state || property.postcode) && (
+            {((property as { city?: string | null }).city || (property as { state?: string | null }).state || (property as { postcode?: string | null }).postcode) && (
               <p className="text-sm text-white/60 mt-1">
-                {[property.city, property.state, property.postcode].filter(Boolean).join(", ")}
-                {property.country && `, ${property.country}`}
+                {[(property as { city?: string | null }).city, (property as { state?: string | null }).state, (property as { postcode?: string | null }).postcode].filter(Boolean).join(", ")}
+                {(property as { country?: string | null }).country && `, ${(property as { country?: string | null }).country}`}
               </p>
             )}
           </div>
@@ -244,78 +223,12 @@ export default function PropertyDetail() {
         </div>
       </Card>
 
-      <Card className="zoho-card p-6 border-white/10">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
-            <User className="w-4 h-4" />
-            Linked owners
-          </h3>
-          <Button size="sm" onClick={handleOpenAddOwner} className="gap-1">
-            <Plus className="w-4 h-4" /> Add owner
-          </Button>
-        </div>
-        {links.length === 0 ? (
-          <p className="text-white/60 text-sm">No linked contacts yet. Add owners to link contacts to this property.</p>
-        ) : (
-          <ul className="space-y-2">
-            {links.map((l) => (
-              <li
-                key={l.id}
-                className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-secondary/50"
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/contacts/${l.contact_id}`);
-                    }}
-                    className="font-medium text-foreground hover:underline text-left"
-                  >
-                    {l.contacts?.name ?? "Unknown"}
-                  </button>
-                  <Badge variant="secondary" className="text-xs capitalize">
-                    {l.role || "owner"}
-                  </Badge>
-                </div>
-                {l.notes && (
-                  <p className="text-sm text-white/60 w-full mt-1">{l.notes}</p>
-                )}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/contacts/${l.contact_id}`);
-                    }}
-                  >
-                    View contact
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveLink(l.id, property.id, l.contact_id);
-                    }}
-                    disabled={deleteLink.isPending}
-                    title="Unlink owner"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      <PropertyContactsCard property={property} onLinkClick={handleOpenAddOwner} />
 
       <Dialog open={addOwnerOpen} onOpenChange={setAddOwnerOpen}>
         <DialogContent className="sm:max-w-[420px] bg-[#242424] border-white/10">
           <DialogHeader>
-            <DialogTitle>Link owner to property</DialogTitle>
+            <DialogTitle>Link contact to property</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
@@ -378,7 +291,7 @@ export default function PropertyDetail() {
               onClick={handleAddOwner}
               disabled={!addOwnerContactId || createLink.isPending}
             >
-              {createLink.isPending ? "Linking..." : "Add owner"}
+              {createLink.isPending ? "Linking..." : "Link contact"}
             </Button>
           </div>
         </DialogContent>

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Contact, ContactWithMeta } from "./useContacts";
 
 const CONTACT_SELECT =
-  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(property_id, role, notes, properties(*))";
+  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(*))";
 
 function isRelationError(msg: string): boolean {
   const m = msg.toLowerCase();

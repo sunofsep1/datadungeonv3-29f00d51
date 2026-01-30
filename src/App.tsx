@@ -11,6 +11,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts";
 import ContactDetail from "./pages/ContactDetail";
+import Properties from "./pages/Properties";
+import PropertyDetail from "./pages/PropertyDetail";
 import Appointments from "./pages/Appointments";
 import Calendar from "./pages/Calendar";
 import Marketing from "./pages/Marketing";
@@ -41,8 +43,8 @@ const App = () => (
               <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
               <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
               <Route path="/listings" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/properties" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/properties/:id" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/properties" element={<ProtectedRoute><MainLayout><Properties /></MainLayout></ProtectedRoute>} />
+              <Route path="/properties/:id" element={<ProtectedRoute><MainLayout><PropertyDetail /></MainLayout></ProtectedRoute>} />
               <Route path="/pipeline" element={<Navigate to="/dashboard" replace />} />
               <Route path="/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
               <Route path="/performance" element={<ProtectedRoute><MainLayout><Performance /></MainLayout></ProtectedRoute>} />

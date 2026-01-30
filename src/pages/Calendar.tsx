@@ -69,7 +69,7 @@ export interface CalendarItem {
   htmlLink?: string;
 }
 
-const GCAL_URL = "https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar";
+const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
 
 export default function Calendar() {
   const { user } = useAuth();

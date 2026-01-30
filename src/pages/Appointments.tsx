@@ -34,7 +34,7 @@ import { format, addHours } from "date-fns";
 
 type AppointmentType = "valuation" | "meeting" | "call" | "inspection";
 
-const GCAL_URL = "https://agflprqqvsndkwlpscvt.supabase.co/functions/v1/google-calendar";
+const GCAL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar`;
 
 const createEmptyAppointment = () => ({
   title: "",
