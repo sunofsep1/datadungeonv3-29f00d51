@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
-import { useRealtimeSubscription } from "./useRealtimeSubscription";
+import type { ContactChannel } from "./useContactChannels";
 
 export type Contact = Tables<"contacts">;
 export type ContactInsert = TablesInsert<"contacts">;
@@ -15,9 +15,10 @@ export type ContactAddressFields = {
   state?: string | null;
   postcode?: string | null;
   country?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
 };
 
-export type ContactChannel = Tables<"contact_channels">;
 export type ContactTagRow = { tag_id: string; tags: { name: string } | null };
 export type ContactPropertyLinkRow = {
   id?: string;
@@ -33,24 +34,20 @@ export type ContactWithMeta = Contact & ContactAddressFields & {
 };
 
 const CONTACTS_SELECT =
-  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(property_id, properties(address_line1, city, state, postcode))";
+  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(address_line1, city, state, postcode))";
 
 const CONTACTS_QUERY_KEYS = [["contacts"]];
 
 export function useContacts() {
-  useRealtimeSubscription("contacts", CONTACTS_QUERY_KEYS);
-  useRealtimeSubscription("contact_channels", CONTACTS_QUERY_KEYS);
-  useRealtimeSubscription("contact_tags", CONTACTS_QUERY_KEYS);
-  useRealtimeSubscription("contact_property_links", CONTACTS_QUERY_KEYS);
-
   return useQuery({
     queryKey: ["contacts"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Try full select with relations
+      const { data, error } = await (supabase as any)
         .from("contacts")
         .select(CONTACTS_SELECT)
         .order("created_at", { ascending: false });
-      if (!error) return (data ?? []) as ContactWithMeta[];
+      if (!error) return (data ?? []) as unknown as ContactWithMeta[];
       const msg = (error?.message ?? "").toLowerCase();
       const missingRelation =
         (msg.includes("relation") && msg.includes("does not exist")) ||
@@ -59,6 +56,7 @@ export function useContacts() {
         msg.includes("contact_property_links") ||
         msg.includes("properties");
       if (!missingRelation) throw error;
+      // Fallback to simple select
       const { data: simple, error: simpleError } = await supabase
         .from("contacts")
         .select("*")
@@ -79,23 +77,21 @@ export function useCreateContact() {
 
   return useMutation({
     mutationFn: async (contact: Omit<ContactInsert, "user_id"> & ContactAddressFields) => {
-      // Ensure authenticated (RPC also checks, but fail fast here)
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Use RPC to bypass PostgREST schema cache issues with address columns
-      const { data, error } = await supabase.rpc("create_contact_with_address", {
-        payload: contact,
-      });
+      const { data, error } = await (supabase as any)
+        .from("contacts")
+        .insert({ ...contact, user_id: user.id })
+        .select()
+        .single();
       if (error) throw error;
       return data as Contact & ContactAddressFields;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
-      // Event logging for contact creation (future automation hook)
-      // Could emit: { type: "contact.created", entityId: data.id, ... }
     },
   });
 }
@@ -105,30 +101,25 @@ export function useUpdateContact() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ContactUpdate & ContactAddressFields & { id: string }) => {
-      // Fetch current contact to detect status changes (this select doesn't use address columns)
       const { data: current } = await supabase
         .from("contacts")
         .select("status")
         .eq("id", id)
         .single();
 
-      // Use RPC to bypass PostgREST schema cache issues with address columns
-      const { data, error } = await supabase.rpc("update_contact_with_address", {
-        payload: { id, ...updates },
-      });
+      const { data, error } = await (supabase as any)
+        .from("contacts")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
 
-      // Return data with old status for event logging
       return { ...(data as Contact & ContactAddressFields), _oldStatus: current?.status };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", variables.id] });
-
-      // Event logging for status changes (future automation hook)
-      if (variables.status && (data as any)._oldStatus !== variables.status) {
-        // Could emit: { type: "contact.status_changed", entityId: variables.id, oldStatus: (data as any)._oldStatus, newStatus: variables.status }
-      }
     },
   });
 }
@@ -149,7 +140,7 @@ export function useDeleteContact() {
 
 /** Primary email from contact_channels or legacy contacts.email */
 export function getPrimaryEmail(c: ContactWithMeta): string | null {
-  const ch = c.contact_channels?.find(
+  const ch = (c.contact_channels ?? []).find(
     (x) => x.channel_type === "email" && x.is_primary
   );
   if (ch) return ch.value;
@@ -158,7 +149,7 @@ export function getPrimaryEmail(c: ContactWithMeta): string | null {
 
 /** Primary phone from contact_channels or legacy contacts.phone */
 export function getPrimaryPhone(c: ContactWithMeta): string | null {
-  const ch = c.contact_channels?.find(
+  const ch = (c.contact_channels ?? []).find(
     (x) =>
       (x.channel_type === "phone" || x.channel_type === "mobile") && x.is_primary
   );

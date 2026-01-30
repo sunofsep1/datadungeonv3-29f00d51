@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
 import { useContacts } from "@/hooks/useContacts";
@@ -83,6 +84,7 @@ export default function Listings() {
     if (listing) {
       setEditingListing(listing);
       setFormData({
+        ...createEmptyListing(),
         address: listing.address,
         price: Number(listing.price) || 0,
         bedrooms: listing.bedrooms || 0,
