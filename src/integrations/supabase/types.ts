@@ -153,6 +153,125 @@ export type Database = {
           },
         ]
       }
+      contact_channels: {
+        Row: {
+          channel_type: string
+          channel_value: string
+          contact_id: string
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          channel_type: string
+          channel_value: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          channel_type?: string
+          channel_value?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_channels_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_property_links: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_property_links_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_property_links_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_tags: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tags_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -452,6 +571,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      properties: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          bathrooms: number | null
+          bedrooms: number | null
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          postcode: string | null
+          price: number | null
+          property_type: string | null
+          state: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          postcode?: string | null
+          price?: number | null
+          property_type?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          postcode?: string | null
+          price?: number | null
+          property_type?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
