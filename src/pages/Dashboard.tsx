@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, TrendingUp, Megaphone, Calendar, Clock, Home, ChevronRight, CheckSquare } from "lucide-react";
+import { Users, TrendingUp, Megaphone, Calendar, Home, ChevronRight, CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact } from "@/hooks/useContacts";
 import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
@@ -17,12 +17,13 @@ import { usePosts, useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { addHours, format, isPast, isToday } from "date-fns";
-import { formatDistanceToNow } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { PropertyPortfolioDashboard } from "@/components/dashboard/PropertyPortfolioDashboard";
+import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const getGcalUrl = () => {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -44,8 +45,8 @@ export default function Dashboard() {
   const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", source: "", propertyInterest: "" });
   const [newPost, setNewPost] = useState({ title: "", content: "", platform: "facebook", scheduledDate: "" });
 
-  const { data: contacts = [] } = useContacts();
-  const { data: appointments = [] } = useAppointments();
+  const { data: contacts = [], isLoading: contactsLoading } = useContacts();
+  const { data: appointments = [], isLoading: appointmentsLoading } = useAppointments();
   const { data: leads = [] } = useLeads();
   const { data: posts = [] } = usePosts();
 
@@ -60,30 +61,6 @@ export default function Dashboard() {
     { label: "Appointments", value: appointments.length, icon: Calendar },
     { label: "Posts", value: posts.length, icon: TrendingUp },
   ];
-
-  const recentActivity = useMemo(() => {
-    const activities: { type: string; message: string; time: string; date: Date }[] = [];
-
-    contacts.slice(0, 3).forEach((contact) => {
-      activities.push({
-        type: "contact",
-        message: `New contact: ${contact.name}`,
-        time: formatDistanceToNow(new Date(contact.created_at), { addSuffix: true }),
-        date: new Date(contact.created_at),
-      });
-    });
-
-    appointments.slice(0, 3).forEach((apt) => {
-      activities.push({
-        type: "appointment",
-        message: `Appointment: ${apt.title}`,
-        time: formatDistanceToNow(new Date(apt.created_at), { addSuffix: true }),
-        date: new Date(apt.created_at),
-      });
-    });
-
-    return activities.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
-  }, [contacts, appointments]);
 
   const recentContacts = useMemo(
     () => [...contacts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5),
@@ -242,30 +219,41 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       <PageHeader title="Dashboard" description="Welcome back! Here's your command center." />
 
-      {/* Vision & Affirmations Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <VisionBoard />
         <AffirmationsWidget />
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat, index) => (
-          <Card key={index} className="zoho-card p-4 md:p-6">
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className="p-2 rounded-lg zoho-accent-bg">
-                <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+        {contactsLoading ? (
+          [...Array(4)].map((_, i) => (
+            <Card key={i} className="zoho-card p-4 md:p-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <Skeleton className="h-3 w-16 mb-2" />
+                  <Skeleton className="h-7 w-12" />
+                </div>
               </div>
-              <div>
-                <p className="text-xs md:text-sm text-white/60">{stat.label}</p>
-                <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
+            </Card>
+          ))
+        ) : (
+          stats.map((stat, index) => (
+            <Card key={index} className="zoho-card p-4 md:p-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="p-2 rounded-lg zoho-accent-bg">
+                  <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+                </div>
+                <div>
+                  <p className="text-xs md:text-sm text-white/60">{stat.label}</p>
+                  <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <KPISnapshot />
@@ -274,19 +262,13 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-6">
-          {/* To-Do / Tasks */}
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <CheckSquare className="w-5 h-5 zoho-accent" />
                 To-Do
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white/70 hover:text-white hover:bg-white/10 -mr-2"
-                onClick={() => navigate("/tasks")}
-              >
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 -mr-2" onClick={() => navigate("/tasks")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
@@ -295,35 +277,36 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-amber-200">
                   {overdueCount} overdue task{overdueCount !== 1 ? "s" : ""}
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 border-amber-500/50 text-amber-200 hover:bg-amber-500/20"
-                  onClick={() => navigate("/tasks")}
-                >
+                <Button variant="outline" size="sm" className="mt-2 border-amber-500/50 text-amber-200 hover:bg-amber-500/20" onClick={() => navigate("/tasks")}>
                   Go to Tasks
                 </Button>
               </div>
             ) : (
-              <p className="text-sm text-white/50">No overdue tasks</p>
+              <div className="flex items-center gap-2 text-sm text-white/50">
+                <CheckSquare className="w-4 h-4 shrink-0 opacity-60" />
+                <span>No overdue tasks</span>
+              </div>
             )}
           </Card>
 
-          {/* Recent Contacts */}
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">Recent Contacts</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white/70 hover:text-white hover:bg-white/10 -mr-2"
-                onClick={() => navigate("/contacts")}
-              >
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 -mr-2" onClick={() => navigate("/contacts")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
-            {recentContacts.length === 0 ? (
-              <p className="text-sm text-white/50">No contacts yet</p>
+            {contactsLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : recentContacts.length === 0 ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-white/50">
+                <Users className="w-4 h-4 shrink-0 opacity-60" />
+                <span>No contacts yet</span>
+              </div>
             ) : (
               <ul className="space-y-2">
                 {recentContacts.map((c) => (
@@ -342,21 +325,24 @@ export default function Dashboard() {
             )}
           </Card>
 
-          {/* Upcoming Appointments */}
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">Upcoming Appointments</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white/70 hover:text-white hover:bg-white/10 -mr-2"
-                onClick={() => navigate("/appointments")}
-              >
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 -mr-2" onClick={() => navigate("/appointments")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
-            {upcomingAppointments.length === 0 ? (
-              <p className="text-sm text-white/50">No upcoming appointments</p>
+            {appointmentsLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : upcomingAppointments.length === 0 ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-white/50">
+                <Calendar className="w-4 h-4 shrink-0 opacity-60" />
+                <span>No upcoming appointments</span>
+              </div>
             ) : (
               <ul className="space-y-2">
                 {upcomingAppointments.map((apt) => (
@@ -368,9 +354,7 @@ export default function Dashboard() {
                     >
                       <div className="min-w-0">
                         <p className="text-sm text-white truncate">{apt.title}</p>
-                        <p className="text-xs text-white/50">
-                          {format(new Date(apt.date), "EEE, d MMM · HH:mm")}
-                        </p>
+                        <p className="text-xs text-white/50">{format(new Date(apt.date), "EEE, d MMM · HH:mm")}</p>
                       </div>
                       <ChevronRight className="w-4 h-4 shrink-0 text-white/40" />
                     </button>
@@ -380,63 +364,29 @@ export default function Dashboard() {
             )}
           </Card>
 
-          {/* Quick Actions */}
           <Card className="zoho-card p-4 md:p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setContactDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]"
-              >
+              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
                 <Users className="w-4 h-4 zoho-accent" />
                 <span className="text-sm font-medium">Add Contact</span>
               </button>
-              <button
-                onClick={() => setLeadDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]"
-              >
+              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
                 <Megaphone className="w-4 h-4 text-amber-400" />
                 <span className="text-sm font-medium">Add Lead</span>
               </button>
-              <button
-                onClick={() => setAppointmentDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]"
-              >
+              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
                 <Calendar className="w-4 h-4 text-blue-400" />
                 <span className="text-sm font-medium">Schedule</span>
               </button>
-              <button
-                onClick={() => setPostDialogOpen(true)}
-                className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 col-span-2 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]"
-              >
+              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 col-span-2 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
                 <Home className="w-4 h-4 zoho-accent" />
                 <span className="text-sm font-medium">Create Post</span>
               </button>
             </div>
           </Card>
 
-          {/* Recent Activity */}
-          <Card className="zoho-card p-4 md:p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
-            {recentActivity.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-white/50">
-                <Clock className="w-8 h-8 mb-2 opacity-50" />
-                <p className="text-sm">No recent activity yet</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-3 pb-3 border-b border-white/10 last:border-0">
-                    <div className="w-2 h-2 rounded-full zoho-accent bg-[#00BCD4] mt-2 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white">{activity.message}</p>
-                      <p className="text-xs text-white/50 mt-1">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          <RecentActivityFeed />
         </div>
       </div>
 

@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent white flash: app shell stays dark so dashboard never shows white */
+html {
+  background-color: hsl(222 47% 6%);
+}
+body {
+  background-color: hsl(222 47% 6%);
+}
+#root {
+  min-height: 100vh;
+  background-color: hsl(222 47% 6%) !important;
+}
+
 @layer base {
   :root {
     --background: 222 47% 6%;

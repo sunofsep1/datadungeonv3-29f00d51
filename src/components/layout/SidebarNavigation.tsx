@@ -33,16 +33,28 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { layout } from "@/lib/designTokens";
 
-const navItems = [
+type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
+
+const homeItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+];
+
+const clientManagementItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Properties", url: "/properties", icon: Building2 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
+];
+
+const businessItems: NavItem[] = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
 ];
+
+const navItems: NavItem[] = [...homeItems, ...clientManagementItems, ...businessItems];
 
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
@@ -58,6 +70,24 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
   return false;
+}
+
+function renderNavItem(item: NavItem, pathname: string) {
+  const active = isNavActive(item, pathname);
+  return (
+    <NavLink
+      key={item.title}
+      to={item.url}
+      className={cn(
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        "text-white/70 hover:bg-white/10 hover:text-white",
+        active && "bg-[#00BCD4]/20 text-[#00BCD4] hover:bg-[#00BCD4]/25 hover:text-[#00BCD4]"
+      )}
+    >
+      <item.icon className={cn("h-5 w-5 shrink-0", active && "text-[#00BCD4]")} />
+      <span className="truncate">{item.title}</span>
+    </NavLink>
+  );
 }
 
 interface SidebarNavigationProps {
@@ -146,33 +176,62 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           </div>
         )}
 
-        {/* Nav links */}
+        {/* Nav links: grouped when expanded, flat when collapsed */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
-          {navItems.map((item) => {
-            const active = isNavActive(item, location.pathname);
-            const link = (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  "text-white/70 hover:bg-white/10 hover:text-white",
-                  active && "bg-[#00BCD4]/20 text-[#00BCD4] hover:bg-[#00BCD4]/25 hover:text-[#00BCD4]"
-                )}
-              >
-                <item.icon className={cn("h-5 w-5 shrink-0", active && "text-[#00BCD4]")} />
-                {!collapsed && <span className="truncate">{item.title}</span>}
-              </NavLink>
-            );
-            return collapsed ? (
-              <Tooltip key={item.title}>
-                <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right">{item.title}</TooltipContent>
-              </Tooltip>
-            ) : (
-              link
-            );
-          })}
+          {collapsed ? (
+            navItems.map((item) => {
+              const active = isNavActive(item, location.pathname);
+              const link = (
+                <NavLink
+                  key={item.title}
+                  to={item.url}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "text-white/70 hover:bg-white/10 hover:text-white",
+                    active && "bg-[#00BCD4]/20 text-[#00BCD4] hover:bg-[#00BCD4]/25 hover:text-[#00BCD4]"
+                  )}
+                >
+                  <item.icon className={cn("h-5 w-5 shrink-0", active && "text-[#00BCD4]")} />
+                </NavLink>
+              );
+              return (
+                <Tooltip key={item.title}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{item.title}</TooltipContent>
+                </Tooltip>
+              );
+            })
+          ) : (
+            <>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-white/50 hover:text-white/70 hover:bg-white/5">
+                  <span>Home</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {homeItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-white/50 hover:text-white/70 hover:bg-white/5">
+                  <span>Client management</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {clientManagementItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-white/50 hover:text-white/70 hover:bg-white/5">
+                  <span>Business</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {businessItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
         </nav>
 
         {/* Footer: Settings + Sign out */}

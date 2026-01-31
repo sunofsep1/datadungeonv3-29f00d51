@@ -106,17 +106,22 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-5xl overflow-hidden flex flex-col p-0 bg-[#242424] border-white/10 text-white">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-4xl overflow-hidden flex flex-col p-0 bg-[#1a1a1a] border-l border-white/10 text-white shadow-xl"
+        >
           {isLoading ? (
-            <div className="p-6">
-              <div className="animate-pulse space-y-4">
-                <div className="h-8 bg-muted rounded w-3/4" />
-                <div className="h-4 bg-muted rounded w-1/2" />
+            <div className="p-8 flex items-center justify-center min-h-[200px]">
+              <div className="animate-pulse space-y-4 w-full max-w-xs">
+                <div className="h-10 bg-white/10 rounded w-3/4" />
+                <div className="h-4 bg-white/10 rounded w-1/2" />
+                <div className="h-4 bg-white/10 rounded w-2/3" />
               </div>
             </div>
           ) : contact ? (
-            <div className="flex flex-1 overflow-hidden">
-              <div className="w-64 shrink-0 border-r border-white/10 flex flex-col overflow-y-auto">
+            <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+              {/* Left: key info — compact, scannable */}
+              <div className="shrink-0 w-full md:w-56 lg:w-64 border-b md:border-b-0 md:border-r border-white/10 bg-[#242424]/80 flex flex-col">
                 <ContactKeyInfoPanel
                   contact={contact}
                   lastActivity={lastActivity}
@@ -124,39 +129,43 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   onAddNote={() => setAddInteractionOpen(true)}
                 />
               </div>
-              <div className="flex-1 min-w-0 overflow-y-auto">
+              {/* Center: main content */}
+              <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
                 <Tabs defaultValue="about" className="h-full flex flex-col">
-                  <div className="shrink-0 px-4 pt-4 border-b border-white/10">
-                    <TabsList className="bg-transparent gap-2">
-                      <TabsTrigger value="about" className="data-[state=active]:bg-white/10">About</TabsTrigger>
-                      <TabsTrigger value="activities" className="data-[state=active]:bg-white/10">Activities</TabsTrigger>
-                      <TabsTrigger value="properties" className="data-[state=active]:bg-white/10">Properties</TabsTrigger>
-                    <TabsTrigger value="addresses" className="data-[state=active]:bg-white/10">Addresses</TabsTrigger>
+                  <div className="shrink-0 px-4 pt-4 pb-2 border-b border-white/10 bg-[#1a1a1a]">
+                    <TabsList className="bg-white/5 p-0.5 rounded-lg gap-0.5 h-9">
+                      <TabsTrigger value="about" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">About</TabsTrigger>
+                      <TabsTrigger value="activities" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">Activity</TabsTrigger>
+                      <TabsTrigger value="properties" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">Properties</TabsTrigger>
+                      <TabsTrigger value="addresses" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">Addresses</TabsTrigger>
                     </TabsList>
                   </div>
-                  <TabsContent value="about" className="flex-1 mt-0 px-4 py-4">
-                    <ContactAboutPanel contact={contact} />
-                  </TabsContent>
-                  <TabsContent value="activities" className="flex-1 mt-0 px-4 py-4">
-                    <ContactActivityTimeline
-                      contactId={contactId}
-                      onAddNote={() => setAddInteractionOpen(true)}
-                    />
-                  </TabsContent>
-                  <TabsContent value="properties" className="flex-1 mt-0 px-4 py-4 overflow-y-auto">
-                    <PropertiesTab
-                      contactId={contactId}
-                      onLinkPropertyClick={() => setLinkPropertyOpen(true)}
-                      onViewProperty={(propertyId) => { onOpenChange(false); navigate(`/properties/${propertyId}`); }}
-                      onOpenChange={onOpenChange}
-                    />
-                  </TabsContent>
-                  <TabsContent value="addresses" className="flex-1 mt-0 px-4 py-4 overflow-y-auto">
-                    <AddressesTab contactId={contactId} />
-                  </TabsContent>
+                  <div className="flex-1 overflow-y-auto">
+                    <TabsContent value="about" className="mt-0 px-4 py-5 pb-8">
+                      <ContactAboutPanel contact={contact} />
+                    </TabsContent>
+                    <TabsContent value="activities" className="mt-0 px-4 py-5 pb-8">
+                      <ContactActivityTimeline
+                        contactId={contactId}
+                        onAddNote={() => setAddInteractionOpen(true)}
+                      />
+                    </TabsContent>
+                    <TabsContent value="properties" className="mt-0 px-4 py-5 pb-8">
+                      <PropertiesTab
+                        contactId={contactId}
+                        onLinkPropertyClick={() => setLinkPropertyOpen(true)}
+                        onViewProperty={(propertyId) => { onOpenChange(false); navigate(`/properties/${propertyId}`); }}
+                        onOpenChange={onOpenChange}
+                      />
+                    </TabsContent>
+                    <TabsContent value="addresses" className="mt-0 px-4 py-5 pb-8">
+                      <AddressesTab contactId={contactId} />
+                    </TabsContent>
+                  </div>
                 </Tabs>
               </div>
-              <div className="w-80 shrink-0 border-l border-white/10 flex flex-col overflow-y-auto p-4">
+              {/* Right: linked properties — hide on small screens to avoid cramping */}
+              <div className="hidden lg:flex w-72 shrink-0 border-l border-white/10 flex-col overflow-y-auto bg-[#242424]/50 p-4">
                 <ContactPropertiesCard
                   contactId={contactId}
                   onOpenChange={onOpenChange}

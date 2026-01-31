@@ -73,17 +73,12 @@ import { useCreateProperty } from "@/hooks/useProperties";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
-import { getInitials } from "@/lib/utils";
+import { getInitials, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Pagination,
@@ -94,6 +89,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid, Columns } from "lucide-react";
+import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 
 type ContactStatus = "hot" | "warm" | "cold" | "lead";
 type SortOption =
@@ -169,7 +168,11 @@ export default function Contacts() {
   const [filterLastTouched, setFilterLastTouched] = useState<string>("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(true);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
+  const [contactView, setContactView] = useState<"list" | "grid" | "kanban">("list");
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
@@ -640,44 +643,137 @@ export default function Contacts() {
     );
   }
 
+  const filterPanelProps = {
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    filterStatus,
+    onFilterStatusChange: setFilterStatus,
+    filterTagIds,
+    onToggleTagFilter: toggleTagFilter,
+    tags,
+    filterSource,
+    onFilterSourceChange: setFilterSource,
+    distinctSources,
+    filterHasProperty,
+    onFilterHasPropertyChange: setFilterHasProperty,
+    filterLastTouched,
+    onFilterLastTouchedChange: setFilterLastTouched,
+    sortBy,
+    onSortChange: setSortBy,
+    hasActiveFilters,
+    onClearFilters: clearAllFilters,
+  };
+
+  function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid" | "kanban") {
+    if (!contact?.id) return null;
+    const primaryEmail = getPrimaryEmail(contact);
+    const primaryPhone = getPrimaryPhone(contact);
+    const tagNames = getTagNames(contact);
+    const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
+    const cardClass =
+      _layout === "kanban"
+        ? "group flex flex-wrap items-center gap-2 p-3 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card text-sm"
+        : "group flex flex-wrap items-center gap-3 p-4 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card";
+    return (
+      <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <AvatarCircle name={contact.name} initials={initials} />
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-white">{contact.name}</span>
+              <StatusBadge variant={getStatusVariant(contact.status)}>{contact.status ?? "lead"}</StatusBadge>
+              {tagNames.length > 0 && (
+                <span className="flex flex-wrap gap-1">
+                  {tagNames.map((t) => (
+                    <Badge key={t} variant="secondary" className="text-xs font-normal">
+                      {t}
+                    </Badge>
+                  ))}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
+              {primaryPhone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3 h-3" />
+                  {primaryPhone}
+                </span>
+              )}
+              {primaryEmail && (
+                <span className="flex items-center gap-1">
+                  <Mail className="w-3 h-3" />
+                  {primaryEmail}
+                </span>
+              )}
+              {contact.source && (
+                <span className="text-xs bg-secondary px-2 py-0.5 rounded">{contact.source}</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedContactIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(contact.id)) next.delete(contact.id);
+                else next.add(contact.id);
+                return next;
+              });
+            }}
+          >
+            {selectedContactIds.has(contact.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+                <AlertDialogDescription>Are you sure you want to delete {contact.name}? This action cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleDeleteContact(contact.id)}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <ChevronRight className="w-4 h-4 text-white/50" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Contacts"
         description="Manage your contacts and leads"
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsImportOpen(true)}
-              className="gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Import CSV</span>
-            </Button>
-            <Button variant="outline" onClick={handleExportCSV} className="gap-2">
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-            <Dialog
-              open={isDialogOpen}
-              onOpenChange={(open) => {
-                setIsDialogOpen(open);
-                if (!open) {
-                  setFormData(createEmptyContact());
-                  setSelectedTagIds([]);
-                  setNewTagName("");
-                  setEditingContact(null);
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button className="gap-2" onClick={() => handleOpenDialog()}>
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add Contact</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[90vh] overflow-hidden flex flex-col">
+      />
+
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setFormData(createEmptyContact());
+            setSelectedTagIds([]);
+            setNewTagName("");
+            setEditingContact(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader>
                   <DialogTitle>
                     {editingContact ? "Edit Contact" : "Add New Contact"}
@@ -991,138 +1087,129 @@ export default function Contacts() {
                     Contact
                   </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        }
-      />
+        </DialogContent>
+      </Dialog>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard value={stats.total} label="Total Contacts" variant="total" className="zoho-card" />
         <StatCard value={stats.hot} label="Hot Leads" variant="cancelled" className="zoho-card" />
         <StatCard value={stats.warm} label="Warm Leads" variant="planning" className="zoho-card" />
         <StatCard value={stats.cold} label="Cold Leads" variant="active" className="zoho-card" />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email, phone, source, tags..."
-            className="pl-10 bg-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[130px] bg-input">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="hot">Hot</SelectItem>
-              <SelectItem value="warm">Warm</SelectItem>
-              <SelectItem value="cold">Cold</SelectItem>
-              <SelectItem value="lead">Lead</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterSource} onValueChange={setFilterSource}>
-            <SelectTrigger className="w-[140px] bg-input">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              {distinctSources.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <Tag className="w-4 h-4" />
-                Tags {filterTagIds.length ? `(${filterTagIds.length})` : ""}
+      <div className="flex gap-8 mt-8">
+        {/* Filter panel: collapsible on desktop, sheet on mobile */}
+        <div className="hidden lg:block w-[260px] shrink-0">
+          <Collapsible open={filterPanelOpen} onOpenChange={setFilterPanelOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-between text-white/80 hover:text-white hover:bg-white/10 mb-3"
+              >
+                <span className="font-medium">Filter contacts by</span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", filterPanelOpen && "rotate-180")} />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
-              {(tags ?? []).map((t) => (
-                <DropdownMenuCheckboxItem
-                  key={t.id}
-                  checked={filterTagIds.includes(t.id)}
-                  onCheckedChange={() => toggleTagFilter(t.id)}
-                >
-                  {t.name}
-                </DropdownMenuCheckboxItem>
-              ))}
-              {(!tags || tags.length === 0) && (
-                <div className="px-2 py-4 text-sm text-muted-foreground">
-                  No tags yet
-                </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Select
-            value={filterHasProperty === null ? "all" : filterHasProperty ? "has" : "none"}
-            onValueChange={(v) => {
-              if (v === "all") setFilterHasProperty(null);
-              else setFilterHasProperty(v === "has");
-            }}
-          >
-            <SelectTrigger className="w-[140px] bg-input">
-              <Building2 className="w-4 h-4 mr-1" />
-              <SelectValue placeholder="Property" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All contacts</SelectItem>
-              <SelectItem value="has">Has property</SelectItem>
-              <SelectItem value="none">No property</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={filterLastTouched}
-            onValueChange={setFilterLastTouched}
-          >
-            <SelectTrigger className="w-[140px] bg-input">
-              <Clock className="w-4 h-4 mr-1" />
-              <SelectValue placeholder="Last touched" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All time</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="overdue">Overdue follow-up</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={sortBy}
-            onValueChange={(v) => setSortBy(v as SortOption)}
-          >
-            <SelectTrigger className="w-[150px] bg-input">
-              <ArrowUpDown className="w-4 h-4 mr-1" />
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name-asc">Name A–Z</SelectItem>
-              <SelectItem value="name-desc">Name Z–A</SelectItem>
-              <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
-              <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
-              <SelectItem value="property-count-desc">Properties (most)</SelectItem>
-              <SelectItem value="property-count-asc">Properties (least)</SelectItem>
-              <SelectItem value="status-asc">Status A–Z</SelectItem>
-              <SelectItem value="status-desc">Status Z–A</SelectItem>
-            </SelectContent>
-          </Select>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear filters
-            </Button>
-          )}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="rounded-lg border border-white/10 bg-[#242424] p-4">
+                <ContactsFilterPanel {...filterPanelProps} />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
-      </div>
+
+        <div className="flex-1 min-w-0">
+          {/* List toolbar: view name, total, view toggle, Create, Actions, Records per page */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4 min-w-0">
+              <span className="font-semibold text-white truncate">My Contacts</span>
+              <span className="text-sm text-white/60 shrink-0">
+                Total records {filteredAndSortedContacts.length}
+              </span>
+              <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
+                <button
+                  type="button"
+                  aria-label="List view"
+                  onClick={() => setContactView("list")}
+                  className={`rounded-md px-3 py-1.5 ${contactView === "list" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                >
+                  <LayoutList className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Grid view"
+                  onClick={() => setContactView("grid")}
+                  className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Kanban view"
+                  onClick={() => setContactView("kanban")}
+                  className={`rounded-md px-3 py-1.5 ${contactView === "kanban" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                >
+                  <Columns className="h-4 w-4" />
+                </button>
+              </div>
+              <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="lg:hidden gap-1.5 text-white border-white/20 hover:bg-white/10">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] bg-[#242424] border-white/10 text-white overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle className="text-white">Filter contacts by</SheetTitle>
+                  </SheetHeader>
+                  <div className="pt-6">
+                    <ContactsFilterPanel {...filterPanelProps} />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button className="gap-2 bg-[#4A90E2] hover:bg-[#357ABD] text-white" onClick={() => handleOpenDialog()}>
+                <Plus className="w-4 h-4" />
+                Create Contact
+              </Button>
+              <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-white border-white/20 hover:bg-white/10">
+                    Actions
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-48 p-1 bg-[#2c2c2c] border-white/10 text-white">
+                  <button
+                    type="button"
+                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-white/90 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                    onClick={() => { setIsImportOpen(true); setActionsPopoverOpen(false); }}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-white/90 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                    onClick={() => { handleExportCSV(); setActionsPopoverOpen(false); }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </button>
+                </PopoverContent>
+              </Popover>
+              <Select value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[100px] bg-[#2c2c2c] border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
       {/* Bulk Actions */}
       {selectedContactIds.size > 0 && (
@@ -1212,9 +1299,9 @@ export default function Contacts() {
       )}
 
       {filteredAndSortedContacts.length === 0 ? (
-        <div className="text-center py-12 text-white/60">
-          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p className="mb-4">
+        <div className="text-center py-16 text-white/60">
+          <Users className="w-12 h-12 mx-auto mb-6 opacity-50" />
+          <p className="mb-6 text-base">
             {!contacts?.length
               ? "No contacts yet. Add your first contact!"
               : "No contacts match your search or filters."}
@@ -1226,146 +1313,38 @@ export default function Contacts() {
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="text-sm text-muted-foreground mb-4">
             Showing {(currentPage - 1) * itemsPerPage + 1}–
             {Math.min(currentPage * itemsPerPage, filteredAndSortedContacts.length)} of{" "}
             {filteredAndSortedContacts.length} contacts
           </p>
-          <div className="space-y-2">
-            {paginatedContacts.map((contact) => {
-            const primaryEmail = getPrimaryEmail(contact);
-            const primaryPhone = getPrimaryPhone(contact);
-            const tagNames = getTagNames(contact);
-            const initials = getInitials(
-              contact.first_name,
-              contact.last_name,
-              contact.name
-            );
-            return (
-              <div
-                key={contact.id}
-                className="group flex flex-wrap items-center gap-3 p-2.5 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer zoho-card"
-                onClick={() => setSelectedContactId(contact.id)}
-              >
-                <AvatarCircle
-                  name={contact.name}
-                  initials={initials}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-white">
-                      {contact.name}
-                    </span>
-                    <StatusBadge variant={getStatusVariant(contact.status)}>
-                      {contact.status ?? "lead"}
-                    </StatusBadge>
-                    {tagNames.length > 0 && (
-                      <span className="flex flex-wrap gap-1">
-                        {tagNames.map((t) => (
-                          <Badge
-                            key={t}
-                            variant="secondary"
-                            className="text-xs font-normal"
-                          >
-                            {t}
-                          </Badge>
-                        ))}
-                      </span>
-                    )}
+          {contactView === "kanban" ? (
+            <div className="flex gap-4 overflow-x-auto pb-2 min-h-[420px]">
+              {(["hot", "warm", "cold", "lead"] as const).map((status) => {
+                const columnContacts = paginatedContacts.filter((c) => (c.status ?? "lead") === status);
+                return (
+                  <div key={status} className="flex-shrink-0 w-[280px] rounded-lg border border-white/10 bg-[#242424]/80 p-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 flex items-center gap-2">
+                      <StatusBadge variant={getStatusVariant(status)}>{status}</StatusBadge>
+                      <span className="text-white/40">({columnContacts.length})</span>
+                    </h3>
+                    <div className="space-y-3">
+                      {columnContacts.map((contact) => renderContactCard(contact, "kanban"))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    {primaryPhone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {primaryPhone}
-                      </span>
-                    )}
-                    {primaryEmail && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="w-3 h-3" />
-                        {primaryEmail}
-                      </span>
-                    )}
-                    {contact.source && (
-                      <span className="text-xs bg-secondary px-2 py-0.5 rounded">
-                        {contact.source}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div
-                  className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedContactIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(contact.id)) {
-                          next.delete(contact.id);
-                        } else {
-                          next.add(contact.id);
-                        }
-                        return next;
-                      });
-                    }}
-                  >
-                    {selectedContactIds.has(contact.id) ? (
-                      <CheckSquare className="w-4 h-4" />
-                    ) : (
-                      <Square className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenDialog(contact);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete {contact.name}? This
-                          action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteContact(contact.id)}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  <ChevronRight className="w-4 h-4 text-white/50" />
-                </div>
-              </div>
-            );
-          })}
-          </div>
-          {totalPages > 1 && (
+                );
+              })}
+            </div>
+          ) : contactView === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {paginatedContacts.map((contact) => renderContactCard(contact, "list"))}
+            </div>
+          )}
+          {totalPages > 1 && contactView !== "kanban" && (
             <Pagination className="mt-6">
               <PaginationContent>
                 <PaginationItem>
@@ -1411,6 +1390,9 @@ export default function Contacts() {
           )}
         </>
       )}
+
+        </div>
+      </div>
 
       <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
       

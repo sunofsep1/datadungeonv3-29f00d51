@@ -72,6 +72,70 @@ export type Database = {
           },
         ]
       }
+      activity_log: {
+        Row: {
+          id: string
+          user_id: string
+          activity_type: string
+          title: string
+          description: string | null
+          occurred_at: string
+          created_at: string
+          contact_id: string | null
+          property_id: string | null
+          listing_id: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          activity_type?: string
+          title: string
+          description?: string | null
+          occurred_at?: string
+          created_at?: string
+          contact_id?: string | null
+          property_id?: string | null
+          listing_id?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          activity_type?: string
+          title?: string
+          description?: string | null
+          occurred_at?: string
+          created_at?: string
+          contact_id?: string | null
+          property_id?: string | null
+          listing_id?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           contact_id: string | null
@@ -978,7 +1042,7 @@ export type Database = {
       update_contact_with_address: { Args: { payload: Json }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      activity_log_type: "note" | "call" | "email" | "inspection" | "status_change" | "system" | "open_house" | "settlement"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1105,6 +1169,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      activity_log_type: ["note", "call", "email", "inspection", "status_change", "system", "open_house", "settlement"] as const,
+    },
   },
 } as const

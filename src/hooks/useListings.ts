@@ -11,6 +11,25 @@ export type ListingWithContact = Listing & {
   contacts?: { id: string; name: string } | null;
 };
 
+export function useListing(id: string | undefined) {
+  useRealtimeSubscription("listings", [["listings"], ["listing", id ?? ""]]);
+
+  return useQuery({
+    queryKey: ["listing", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as Listing;
+    },
+    enabled: !!id,
+  });
+}
+
 export function useListings() {
   // Subscribe to realtime changes
   useRealtimeSubscription("listings", [["listings"]]);

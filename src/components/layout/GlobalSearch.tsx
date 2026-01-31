@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Command, CommandInput } from "@/components/ui/command";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useContacts } from "@/hooks/useContacts";
-import { Users } from "lucide-react";
+import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
+import { useListings } from "@/hooks/useListings";
+import { Users, Building2, Home } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const GLOBAL_SEARCH_EVENT = "open-global-search";
 
@@ -13,6 +16,8 @@ export function GlobalSearch() {
   const [query, setQuery] = useState("");
 
   const { data: contacts = [] } = useContacts();
+  const { data: properties = [] } = useProperties();
+  const { data: listings = [] } = useListings();
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -43,7 +48,25 @@ export function GlobalSearch() {
     });
   }, [contacts, q]);
 
-  const total = filteredContacts.length;
+  const filteredProperties = useMemo(() => {
+    if (!q) return properties.slice(0, 4);
+    return properties.filter((p) => {
+      const addr = formatPropertyAddress(p).toLowerCase();
+      const city = (p.city ?? "").toLowerCase();
+      const postcode = (p.postcode ?? "").toLowerCase();
+      return addr.includes(q) || city.includes(q) || postcode.includes(q);
+    });
+  }, [properties, q]);
+
+  const filteredListings = useMemo(() => {
+    if (!q) return listings.slice(0, 4);
+    return listings.filter((l) => {
+      const addr = ((l as { address?: string | null }).address ?? "").toLowerCase();
+      return addr.includes(q);
+    });
+  }, [listings, q]);
+
+  const total = filteredContacts.length + filteredProperties.length + filteredListings.length;
 
   const handleSelect = (path: string) => {
     navigate(path);
@@ -65,32 +88,74 @@ export function GlobalSearch() {
           shouldFilter={false}
         >
           <CommandInput
-            placeholder="Search contacts… (⌘K)"
+            placeholder="Search contacts, properties, listings… (⌘K)"
             value={query}
             onValueChange={setQuery}
             className="placeholder:text-white/50 text-white border-b border-white/10 h-12"
           />
         </Command>
-        {/* Results rendered outside Command so we control filtering */}
-        <div className="max-h-[280px] overflow-y-auto border-t border-white/10">
+        <div className="max-h-[320px] overflow-y-auto border-t border-white/10">
           {query && total === 0 && (
             <div className="py-6 text-center text-sm text-white/60">No results. Try a different search.</div>
           )}
           {!query && (
-            <div className="py-4 px-3 text-sm text-white/50">Type to search contacts.</div>
+            <div className="py-4 px-3 text-sm text-white/50">Type to search contacts, properties, or listings.</div>
           )}
           {filteredContacts.length > 0 && (
             <div className="py-1">
               <div className="px-3 py-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Contacts</div>
-              {filteredContacts.slice(0, 8).map((c) => (
+              {filteredContacts.slice(0, 6).map((c) => (
                 <button
-                  key={c.id}
+                  key={`c-${c.id}`}
                   type="button"
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 rounded-none"
                   onClick={() => handleSelect(`/contacts/${c.id}`)}
                 >
                   <Users className="h-4 w-4 shrink-0 text-[#00BCD4]" />
-                  <span className="truncate">{c.name}</span>
+                  <span className="truncate flex-1">{c.name}</span>
+                  {(c.email ?? (c as { phone?: string }).phone) && (
+                    <Badge variant="secondary" className="text-[10px] font-normal bg-white/10 text-white/70 shrink-0">
+                      {c.email ?? (c as { phone?: string }).phone}
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {filteredProperties.length > 0 && (
+            <div className="py-1 border-t border-white/5">
+              <div className="px-3 py-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Properties</div>
+              {filteredProperties.slice(0, 4).map((p) => (
+                <button
+                  key={`p-${p.id}`}
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 rounded-none"
+                  onClick={() => handleSelect(`/properties/${p.id}`)}
+                >
+                  <Building2 className="h-4 w-4 shrink-0 text-[#00BCD4]" />
+                  <span className="truncate flex-1">{formatPropertyAddress(p) || "Property"}</span>
+                  <Badge variant="secondary" className="text-[10px] font-normal bg-white/10 text-white/70 shrink-0">
+                    Property
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          )}
+          {filteredListings.length > 0 && (
+            <div className="py-1 border-t border-white/5">
+              <div className="px-3 py-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Listings</div>
+              {filteredListings.slice(0, 4).map((l) => (
+                <button
+                  key={`l-${l.id}`}
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 rounded-none"
+                  onClick={() => handleSelect(`/listings/${l.id}`)}
+                >
+                  <Home className="h-4 w-4 shrink-0 text-[#00BCD4]" />
+                  <span className="truncate flex-1">{(l as { address?: string }).address ?? "Listing"}</span>
+                  <Badge variant="secondary" className="text-[10px] font-normal bg-white/10 text-white/70 shrink-0">
+                    Listing
+                  </Badge>
                 </button>
               ))}
             </div>

@@ -37,6 +37,7 @@ import {
   useDeleteContactPropertyLink,
 } from "@/hooks/useContactPropertyLinks";
 import { getInitials } from "@/lib/utils";
+import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
 import { format, formatDistanceToNow } from "date-fns";
@@ -297,6 +298,14 @@ export default function ContactDetail() {
 
   return (
     <div className="animate-fade-in print:bg-white print:text-black">
+      <PageBreadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Contacts", href: "/contacts" },
+          { label: contact.name ?? "Contact" },
+        ]}
+        className="mb-4 print:hidden"
+      />
       <div className="flex items-center gap-4 mb-6 print:hidden">
         <Button variant="ghost" size="icon" onClick={() => navigate("/contacts")}>
           <ArrowLeft className="w-5 h-5" />

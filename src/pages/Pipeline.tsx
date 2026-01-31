@@ -16,23 +16,22 @@ import { useLogListingStageMove } from "@/hooks/useEvents";
 import { differenceInDays, format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+// Lifecycle: Appraisal → Listing → Under Contract → Settled → Past Client
 const PIPELINE_STAGES = [
-  { id: "new", name: "New", color: "bg-blue-500" },
-  { id: "contacted", name: "Contacted", color: "bg-cyan-500" },
-  { id: "inspection", name: "Inspection", color: "bg-yellow-500" },
-  { id: "offer", name: "Offer", color: "bg-orange-500" },
-  { id: "under-contract", name: "Under Contract", color: "bg-purple-500" },
+  { id: "appraisal", name: "Appraisal", color: "bg-blue-500" },
+  { id: "listing", name: "Listing", color: "bg-cyan-500" },
+  { id: "under_contract", name: "Under Contract", color: "bg-purple-500" },
   { id: "settled", name: "Settled", color: "bg-green-500" },
+  { id: "past_client", name: "Past Client", color: "bg-slate-500" },
 ];
 
 // Stage warning thresholds (days)
 const STAGE_WARNINGS: Record<string, number> = {
-  new: 7,
-  contacted: 14,
-  inspection: 21,
-  offer: 14,
-  "under-contract": 60,
-  settled: Infinity, // Never warn on settled
+  appraisal: 7,
+  listing: 30,
+  under_contract: 60,
+  settled: Infinity,
+  past_client: Infinity,
 };
 
 export default function Pipeline() {
@@ -43,7 +42,7 @@ export default function Pipeline() {
   const updateListing = useUpdateListing();
   const { logStageMove } = useLogListingStageMove();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newDeal, setNewDeal] = useState({ address: "", price: "", stage: "new", propertyType: "house" });
+  const [newDeal, setNewDeal] = useState({ address: "", price: "", stage: "appraisal", propertyType: "house" });
   const [draggedItem, setDraggedItem] = useState<Listing | null>(null);
   const { toast } = useToast();
 
@@ -55,7 +54,7 @@ export default function Pipeline() {
   }, [contacts]);
 
   const getListingsByStage = (stageId: string) => {
-    return listings.filter((listing) => (listing.pipeline_stage || "new") === stageId);
+    return listings.filter((listing) => (listing.pipeline_stage || "appraisal") === stageId);
   };
 
   const handleAddDeal = async () => {
@@ -95,7 +94,7 @@ export default function Pipeline() {
       return;
     }
     
-    const oldStage = draggedItem.pipeline_stage || "new";
+    const oldStage = draggedItem.pipeline_stage || "appraisal";
     const newStageName = PIPELINE_STAGES.find((s) => s.id === stageId)?.name || stageId;
     
     try {
@@ -141,7 +140,7 @@ export default function Pipeline() {
 
   const getStageWarning = (listing: Listing): "none" | "warning" | "critical" => {
     const days = getDaysInStage(listing);
-    const threshold = STAGE_WARNINGS[listing.pipeline_stage || "new"] || 30;
+    const threshold = STAGE_WARNINGS[listing.pipeline_stage || "appraisal"] || 30;
     
     if (days > threshold * 1.5) return "critical";
     if (days > threshold) return "warning";

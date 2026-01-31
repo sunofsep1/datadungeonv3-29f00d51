@@ -8,6 +8,7 @@ type TableName =
   | "listings"
   | "appointments"
   | "activities"
+  | "activity_log"
   | "kpi_goals"
   | "tags"
   | "contact_tags"

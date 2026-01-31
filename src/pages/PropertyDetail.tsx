@@ -25,7 +25,9 @@ import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
+import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { PropertyGallery } from "@/components/PropertyManagement/PropertyGallery";
+import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 
 const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
 
@@ -131,6 +133,14 @@ export default function PropertyDetail() {
 
   return (
     <div className="animate-fade-in">
+      <PageBreadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Properties", href: "/properties" },
+          { label: addr || "Property" },
+        ]}
+        className="mb-4"
+      />
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" onClick={() => navigate("/properties")}>
           <ArrowLeft className="w-5 h-5" />
@@ -290,6 +300,10 @@ export default function PropertyDetail() {
             </div>
           </div>
         </div>
+      </Card>
+
+      <Card className="zoho-card p-6 mb-6 border-white/10">
+        <ActivityTimeline entityType="property" entityId={id} showAddNote={true} />
       </Card>
 
       <Dialog open={addOwnerOpen} onOpenChange={setAddOwnerOpen}>
