@@ -4,8 +4,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useContact } from "@/hooks/useContact";
-import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
-import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
+import { useProperties } from "@/hooks/useProperties";
 import { useInteractions, useCreateInteraction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,10 +17,12 @@ import { ContactKeyInfoPanel } from "./ContactKeyInfoPanel";
 import { ContactAboutPanel } from "./ContactAboutPanel";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
 import { ContactPropertiesCard } from "./ContactPropertiesCard";
+import { PropertiesTab } from "./tabs/PropertiesTab";
+import { AddressesTab } from "./tabs/AddressesTab";
+import { LinkPropertyModal } from "./modals/LinkPropertyModal";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
-const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
 
 interface ContactDetailPanelProps {
   contactId: string | null;
@@ -35,15 +36,10 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   const { data: contact, isLoading } = useContact(contactId || undefined);
   const { data: interactions = [] } = useInteractions(contactId || undefined);
   const { data: appointments = [] } = useAppointments();
-  const { data: allProperties = [] } = useProperties();
   const createInteraction = useCreateInteraction();
-  const createLink = useCreateContactPropertyLink();
 
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
   const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
-  const [linkPropertyId, setLinkPropertyId] = useState("");
-  const [linkRole, setLinkRole] = useState("owner");
-  const [linkNotes, setLinkNotes] = useState("");
   const [newInteraction, setNewInteraction] = useState({
     type: "call",
     channel: "phone",
@@ -56,11 +52,6 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
     () => new Set((contact?.contact_property_links ?? []).map((l) => l.property_id)),
     [contact?.contact_property_links]
   );
-  const availableProperties = useMemo(
-    () => allProperties.filter((p) => !linkedPropertyIds.has(p.id)),
-    [allProperties, linkedPropertyIds]
-  );
-
   // Get last activity timestamp
   const lastActivity = useMemo(() => {
     if (!contact) return null;
@@ -77,32 +68,6 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
     );
     return sorted[0].timestamp;
   }, [contact, interactions, contactAppointments]);
-
-  const handleLinkProperty = async () => {
-    if (!contactId || !linkPropertyId) {
-      toast({ title: "Error", description: "Select a property.", variant: "destructive" });
-      return;
-    }
-    try {
-      await createLink.mutateAsync({
-        contact_id: contactId,
-        property_id: linkPropertyId,
-        role: linkRole as "owner" | "buyer" | "tenant" | "interested" | "other",
-        notes: linkNotes.trim() || null,
-      });
-      toast({ title: "Success", description: "Property linked." });
-      setLinkPropertyOpen(false);
-      setLinkPropertyId("");
-      setLinkRole("owner");
-      setLinkNotes("");
-    } catch (e: unknown) {
-      toast({
-        title: "Error",
-        description: e instanceof Error ? e.message : "Failed to link property",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleAddInteraction = async () => {
     if (!contactId) return;
@@ -165,6 +130,8 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                     <TabsList className="bg-transparent gap-2">
                       <TabsTrigger value="about" className="data-[state=active]:bg-white/10">About</TabsTrigger>
                       <TabsTrigger value="activities" className="data-[state=active]:bg-white/10">Activities</TabsTrigger>
+                      <TabsTrigger value="properties" className="data-[state=active]:bg-white/10">Properties</TabsTrigger>
+                    <TabsTrigger value="addresses" className="data-[state=active]:bg-white/10">Addresses</TabsTrigger>
                     </TabsList>
                   </div>
                   <TabsContent value="about" className="flex-1 mt-0 px-4 py-4">
@@ -175,6 +142,17 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                       contactId={contactId}
                       onAddNote={() => setAddInteractionOpen(true)}
                     />
+                  </TabsContent>
+                  <TabsContent value="properties" className="flex-1 mt-0 px-4 py-4 overflow-y-auto">
+                    <PropertiesTab
+                      contactId={contactId}
+                      onLinkPropertyClick={() => setLinkPropertyOpen(true)}
+                      onViewProperty={(propertyId) => { onOpenChange(false); navigate(`/properties/${propertyId}`); }}
+                      onOpenChange={onOpenChange}
+                    />
+                  </TabsContent>
+                  <TabsContent value="addresses" className="flex-1 mt-0 px-4 py-4 overflow-y-auto">
+                    <AddressesTab contactId={contactId} />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -277,76 +255,12 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
         </DialogContent>
       </Dialog>
 
-      {/* Link Property Dialog */}
-      <Dialog open={linkPropertyOpen} onOpenChange={setLinkPropertyOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-popover border-white/10">
-          <DialogHeader>
-            <DialogTitle>Link property to contact</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Property</Label>
-              <Select
-                value={linkPropertyId}
-                onValueChange={setLinkPropertyId}
-                disabled={availableProperties.length === 0}
-              >
-                <SelectTrigger className="w-full bg-input">
-                  <SelectValue placeholder={availableProperties.length === 0 ? "No properties available" : "Select property..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableProperties.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {formatPropertyAddress(p)}
-                      {p.property_type && ` · ${p.property_type}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {availableProperties.length === 0 && (
-                <p className="text-xs text-white/60">
-                  Create properties first, or they may all be linked already.
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Relationship</Label>
-              <Select value={linkRole} onValueChange={setLinkRole}>
-                <SelectTrigger className="w-full bg-input">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LINK_ROLES.map((r) => (
-                    <SelectItem key={r} value={r} className="capitalize">
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                className="bg-input min-h-[60px]"
-                placeholder="e.g. Primary contact, joint owner..."
-                value={linkNotes}
-                onChange={(e) => setLinkNotes(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={() => setLinkPropertyOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleLinkProperty}
-              disabled={!linkPropertyId || createLink.isPending}
-            >
-              {createLink.isPending ? "Linking..." : "Link property"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <LinkPropertyModal
+        open={linkPropertyOpen}
+        onOpenChange={setLinkPropertyOpen}
+        contactId={contactId}
+        linkedPropertyIds={linkedPropertyIds}
+      />
     </>
   );
 }

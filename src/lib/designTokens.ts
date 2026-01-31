@@ -63,7 +63,7 @@ export const layout = {
   filterPanelWidth: "248px",
 };
 
-// TYPOGRAPHY
+// TYPOGRAPHY (Phase 2: 12–14px body, 16–18px headings, Zoho-style)
 export const typography = {
   fontFamily: {
     base: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -80,10 +80,15 @@ export const typography = {
     "3xl": "24px",
     "4xl": "30px",
   },
+  lineHeight: {
+    tight: 1.2,
+    normal: 1.5,
+    relaxed: 1.4,
+  },
   fontWeight: {
     normal: 400,
     medium: 500,
-    semibold: 550,
+    semibold: 600,
     bold: 600,
   },
 };
@@ -96,9 +101,25 @@ export const shadows = {
   xl: "0 12px 24px rgba(0, 0, 0, 0.6)",
 };
 
-// TRANSITIONS
+// TRANSITIONS (Phase 2: 150–250ms cubic-bezier for hover/focus)
 export const transitions = {
-  fast: "150ms ease-in-out",
-  normal: "250ms ease-in-out",
-  slow: "350ms ease-in-out",
+  fast: "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+  normal: "200ms cubic-bezier(0.4, 0, 0.2, 1)",
+  slow: "250ms cubic-bezier(0.4, 0, 0.2, 1)",
+};
+
+/** 2025 CRM palette (light, professional): use via theme class or CSS variables */
+export const crm2025 = {
+  primary: "#1F8891",
+  primaryHover: "#1a7279",
+  primaryActive: "#155c62",
+  accent: "#E6B461",
+  accentHover: "#d4a04f",
+  accentActive: "#c28d3d",
+  success: "#22C55E",
+  warning: "#F97316",
+  error: "#EF4444",
+  background: "#FEFBF5",
+  text: "#1F2121",
+  textMuted: "#6b7280",
 };

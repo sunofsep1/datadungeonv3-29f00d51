@@ -28,10 +28,15 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { openGlobalSearch } from "./GlobalSearch";
+import { NavHeadingButtons } from "./NavHeadingButtons";
+import { useNavCounts } from "@/hooks/useNavCounts";
 import { cn } from "@/lib/utils";
 
 const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/hot-leads": "Hot Leads",
+  "/recent": "Recent",
+  "/tasks": "Tasks",
   "/contacts": "Contacts",
   "/calendar": "Calendar",
   "/appointments": "Appointments",
@@ -43,6 +48,7 @@ const MODULE_TITLES: Record<string, string> = {
 
 function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/contacts")) return "Contacts";
+  if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
   return MODULE_TITLES[pathname] ?? "Data Dungeon";
 }
@@ -56,6 +62,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hotLeadsCount, recentCount, tasksCount } = useNavCounts();
   const moduleTitle = getModuleTitle(location.pathname);
 
   const getCreateUrl = () => {
@@ -86,19 +93,26 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
       )}
       style={{ height: "60px" }}
     >
-      {/* Left: Menu + Module title */}
-      <div className="flex items-center gap-3">
+      {/* Left: Menu + Module title + Nav heading buttons */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+          className="h-9 w-9 shrink-0 text-white/80 hover:bg-white/10 hover:text-white"
           onClick={onMenuClick}
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <span className="text-sm font-semibold text-white">
+        <span className="text-sm font-semibold text-white shrink-0 hidden sm:inline">
           {moduleTitle}
         </span>
+        <div className="hidden md:flex items-center gap-2 ml-2 min-w-0">
+          <NavHeadingButtons
+            hotLeadsCount={hotLeadsCount}
+            recentCount={recentCount}
+            tasksCount={tasksCount}
+          />
+        </div>
       </div>
 
       {/* Right: Toolbar */}

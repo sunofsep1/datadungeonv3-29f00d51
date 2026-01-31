@@ -54,6 +54,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   useContacts,
   useCreateContact,
@@ -95,7 +96,15 @@ import {
 } from "@/components/ui/pagination";
 
 type ContactStatus = "hot" | "warm" | "cold" | "lead";
-type SortOption = "name-asc" | "name-desc" | "status-asc" | "status-desc";
+type SortOption =
+  | "name-asc"
+  | "name-desc"
+  | "status-asc"
+  | "status-desc"
+  | "date-added-asc"
+  | "date-added-desc"
+  | "property-count-asc"
+  | "property-count-desc";
 
 const AUSTRALIAN_STATES = [
   { value: "NSW", label: "New South Wales" },
@@ -162,14 +171,15 @@ export default function Contacts() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const { toast } = useToast();
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
   const filteredAndSortedContacts = useMemo(() => {
     let list = (contacts ?? []) as ContactWithMeta[];
     const now = new Date();
     
-    // Real-time search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    // Debounced search
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       list = list.filter((c) => {
         const email = getPrimaryEmail(c);
         const phone = getPrimaryPhone(c);
@@ -242,12 +252,37 @@ export default function Contacts() {
         const sb = b.status ?? "lead";
         return sa.localeCompare(sb) || (a.name || "").localeCompare(b.name || "");
       }
+      if (sortBy === "status-desc") {
+        const sa = a.status ?? "lead";
+        const sb = b.status ?? "lead";
+        return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "date-added-asc") {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return ta - tb || (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "date-added-desc") {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tb - ta || (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "property-count-asc") {
+        const na = (a.contact_property_links ?? []).length;
+        const nb = (b.contact_property_links ?? []).length;
+        return na - nb || (a.name || "").localeCompare(b.name || "");
+      }
+      if (sortBy === "property-count-desc") {
+        const na = (a.contact_property_links ?? []).length;
+        const nb = (b.contact_property_links ?? []).length;
+        return nb - na || (a.name || "").localeCompare(b.name || "");
+      }
       const sa = a.status ?? "lead";
       const sb = b.status ?? "lead";
       return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
     });
     return sorted;
-  }, [contacts, searchQuery, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+  }, [contacts, debouncedSearch, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
 
   // Pagination
   const paginatedContacts = useMemo(() => {
@@ -260,7 +295,25 @@ export default function Contacts() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+  }, [debouncedSearch, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+
+  const hasActiveFilters =
+    debouncedSearch.trim() !== "" ||
+    filterStatus !== "all" ||
+    filterTagIds.length > 0 ||
+    filterSource !== "all" ||
+    filterHasProperty !== null ||
+    filterLastTouched !== "all";
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setFilterStatus("all");
+    setFilterTagIds([]);
+    setFilterSource("all");
+    setFilterHasProperty(null);
+    setFilterLastTouched("all");
+    setCurrentPage(1);
+  };
 
   const distinctSources = useMemo(() => {
     const set = new Set<string>();
@@ -460,6 +513,35 @@ export default function Contacts() {
         // For new contacts, add all selected tags
         for (const tagId of selectedTagIds) {
           await addContactTag.mutateAsync({ contact_id: contactId, tag_id: tagId });
+        }
+      }
+
+      // If contact has an address, create a property from it and link to this contact (owner)
+      const hasAddress = Boolean(formData.address_line1?.trim());
+      if (hasAddress && contactId) {
+        try {
+          const newProperty = await createProperty.mutateAsync({
+            address_line1: formData.address_line1?.trim() || null,
+            address_line2: formData.address_line2?.trim() || null,
+            city: formData.city?.trim() || null,
+            state: formData.state || null,
+            postcode: formData.postcode?.trim() || null,
+            country: formData.country || "Australia",
+          });
+          await createPropertyLink.mutateAsync({
+            contact_id: contactId,
+            property_id: newProperty.id,
+            role: "owner",
+            notes: "Added from contact address",
+          });
+          toast({ title: "Property created", description: "A property was created from the address and linked to this contact." });
+        } catch (propErr) {
+          console.error("Auto-create property from address:", propErr);
+          toast({
+            title: "Contact saved",
+            description: "Contact saved, but property could not be created from address. You can link a property manually.",
+            variant: "destructive",
+          });
         }
       }
 
@@ -1026,10 +1108,19 @@ export default function Contacts() {
             <SelectContent>
               <SelectItem value="name-asc">Name A–Z</SelectItem>
               <SelectItem value="name-desc">Name Z–A</SelectItem>
+              <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
+              <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
+              <SelectItem value="property-count-desc">Properties (most)</SelectItem>
+              <SelectItem value="property-count-asc">Properties (least)</SelectItem>
               <SelectItem value="status-asc">Status A–Z</SelectItem>
               <SelectItem value="status-desc">Status Z–A</SelectItem>
             </SelectContent>
           </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+              Clear filters
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1123,15 +1214,24 @@ export default function Contacts() {
       {filteredAndSortedContacts.length === 0 ? (
         <div className="text-center py-12 text-white/60">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>
+          <p className="mb-4">
             {!contacts?.length
               ? "No contacts yet. Add your first contact!"
               : "No contacts match your search or filters."}
           </p>
+          <Button onClick={() => handleOpenDialog()} variant="default">
+            <Plus className="w-4 h-4 mr-2" />
+            Add contact
+          </Button>
         </div>
       ) : (
         <>
-          <div className="space-y-3">
+          <p className="text-sm text-muted-foreground mb-3">
+            Showing {(currentPage - 1) * itemsPerPage + 1}–
+            {Math.min(currentPage * itemsPerPage, filteredAndSortedContacts.length)} of{" "}
+            {filteredAndSortedContacts.length} contacts
+          </p>
+          <div className="space-y-2">
             {paginatedContacts.map((contact) => {
             const primaryEmail = getPrimaryEmail(contact);
             const primaryPhone = getPrimaryPhone(contact);
@@ -1144,7 +1244,7 @@ export default function Contacts() {
             return (
               <div
                 key={contact.id}
-                className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-white/10 hover:bg-white/10 transition-colors cursor-pointer zoho-card"
+                className="group flex flex-wrap items-center gap-3 p-2.5 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer zoho-card"
                 onClick={() => setSelectedContactId(contact.id)}
               >
                 <AvatarCircle
@@ -1194,7 +1294,7 @@ export default function Contacts() {
                   </div>
                 </div>
                 <div
-                  className="flex gap-1 items-center"
+                  className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Button

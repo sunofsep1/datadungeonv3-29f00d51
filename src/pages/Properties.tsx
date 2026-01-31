@@ -11,18 +11,21 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, ChevronRight, Building2, User, Search, Plus, Pencil } from "lucide-react";
-import { useProperties, formatPropertyAddress, useCreateProperty, useUpdateProperty, type PropertyWithLinks } from "@/hooks/useProperties";
+import { Building2, Search, Plus } from "lucide-react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty, formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
+import { PropertyList } from "@/components/PropertyManagement/PropertyList";
 import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
@@ -49,24 +52,27 @@ export default function Properties() {
   const { data: contacts = [] } = useContacts();
   const createProperty = useCreateProperty();
   const updateProperty = useUpdateProperty();
+  const deleteProperty = useDeleteProperty();
   const createLink = useCreateContactPropertyLink();
   const { toast } = useToast();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<PropertyWithLinks | null>(null);
   const [formData, setFormData] = useState(createEmptyProperty());
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
   const itemsPerPage = 20;
 
   const filtered = useMemo(() => {
     return (properties ?? []).filter((p) => {
       const addr = formatPropertyAddress(p).toLowerCase();
-      const q = searchQuery.trim().toLowerCase();
+      const q = debouncedSearch.trim().toLowerCase();
       return !q || addr.includes(q);
     });
-  }, [properties, searchQuery]);
+  }, [properties, debouncedSearch]);
 
   // Pagination
   const paginatedProperties = useMemo(() => {
@@ -79,7 +85,21 @@ export default function Properties() {
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [debouncedSearch]);
+
+  const handleDeleteProperty = async (property: PropertyWithLinks) => {
+    try {
+      await deleteProperty.mutateAsync(property.id);
+      toast({ title: "Deleted", description: "Property removed." });
+      setPropertyToDelete(null);
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete property",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleOpenDialog = (property?: PropertyWithLinks) => {
     if (property) {
@@ -485,129 +505,57 @@ export default function Properties() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
         <Input
           placeholder="Search by address..."
-          className="pl-10 bg-input"
+          className="pl-10 bg-input h-11"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 text-white/60 mt-6 rounded-lg border border-white/10 bg-[#242424]/50 p-8">
-          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-white/60" />
-          <p className="text-white/80 font-medium mb-1">No properties to show</p>
-          <p className="text-sm">
-            {!properties?.length
-              ? "Add your first property using the Add Property button above, or import via Contacts."
-              : "No properties match your search. Try clearing the search box."}
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="space-y-3 mt-6">
-            {paginatedProperties.map((p) => (
-            <PropertyRow
-              key={p.id}
-              property={p}
-              onSelect={() => navigate(`/properties/${p.id}`)}
-              onEdit={(e) => {
-                e.stopPropagation();
-                handleOpenDialog(p);
-              }}
-            />
-            ))}
-          </div>
-          {totalPages > 1 && (
-            <Pagination className="mt-6">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                  if (
-                    page === 1 ||
-                    page === totalPages ||
-                    (page >= currentPage - 1 && page <= currentPage + 1)
-                  ) {
-                    return (
-                      <PaginationItem key={page}>
-                        <PaginationLink
-                          onClick={() => setCurrentPage(page)}
-                          isActive={currentPage === page}
-                          className="cursor-pointer"
-                        >
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  } else if (page === currentPage - 2 || page === currentPage + 2) {
-                    return (
-                      <PaginationItem key={page}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    );
-                  }
-                  return null;
-                })}
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function PropertyRow({
-  property,
-  onSelect,
-  onEdit,
-}: {
-  property: PropertyWithLinks;
-  onSelect: () => void;
-  onEdit: (e: React.MouseEvent) => void;
-}) {
-  const addr = formatPropertyAddress(property);
-  const owners = (property.contact_property_links ?? [])
-    .filter((l) => l.role === "owner" || !l.role)
-    .map((l) => l.contacts?.name ?? "Unknown")
-    .filter(Boolean);
-
-  return (
-    <div
-      className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-white/10 hover:bg-white/10 transition-colors cursor-pointer zoho-card"
-      onClick={onSelect}
-    >
-      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-        <MapPin className="w-5 h-5 text-primary" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-white">{addr || "—"}</p>
-        {owners.length > 0 && (
-          <p className="text-sm text-white/60 mt-0.5 flex items-center gap-1">
-            <User className="w-3 h-3" />
-            {owners.join(", ")}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={onEdit}
-        >
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <ChevronRight className="w-5 h-5 text-white/50" />
-      </div>
+      <PropertyList
+        properties={filtered}
+        isLoading={isLoading}
+        isError={isError}
+        error={error instanceof Error ? error : null}
+        onRetry={refetch}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        itemsPerPage={itemsPerPage}
+        onSelectProperty={(p) => navigate(`/properties/${p.id}`)}
+        onEditProperty={(p, e) => {
+          e.stopPropagation();
+          handleOpenDialog(p);
+        }}
+        onDeleteProperty={(p, e) => {
+          e.stopPropagation();
+          setPropertyToDelete(p);
+        }}
+        showEditButton
+        showResultCount
+        emptyMessage={
+          !properties?.length
+            ? "Add your first property using the Add Property button above, or import via Contacts."
+            : "No properties match your search. Try clearing the search box."
+        }
+      />
+      <AlertDialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Property</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {propertyToDelete ? formatPropertyAddress(propertyToDelete) : "this property"}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => propertyToDelete && handleDeleteProperty(propertyToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

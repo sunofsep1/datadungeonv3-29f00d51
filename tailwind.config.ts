@@ -96,8 +96,19 @@ export default {
       boxShadow: shadows,
       transitionDuration: {
         fast: "150ms",
-        normal: "250ms",
-        slow: "350ms",
+        normal: "200ms",
+        slow: "250ms",
+      },
+      transitionTimingFunction: {
+        smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
+      },
+      lineHeight: {
+        tight: "1.2",
+        normal: "1.5",
+        relaxed: "1.4",
+      },
+      maxWidth: {
+        container: "1280px",
       },
       borderRadius: {
         lg: "var(--radius)",

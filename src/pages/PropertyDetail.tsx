@@ -25,8 +25,9 @@ import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
+import { PropertyGallery } from "@/components/PropertyManagement/PropertyGallery";
 
-const LINK_ROLES = ["owner", "buyer", "tenant", "interested", "other"] as const;
+const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +41,16 @@ export default function PropertyDetail() {
   const [addOwnerContactId, setAddOwnerContactId] = useState<string>("");
   const [addOwnerRole, setAddOwnerRole] = useState<string>("owner");
   const [addOwnerNotes, setAddOwnerNotes] = useState("");
+
+  const links = Array.isArray(property?.contact_property_links) ? property.contact_property_links : [];
+  const linkedContactIds = useMemo(
+    () => new Set(links.map((l) => l.contact_id)),
+    [links]
+  );
+  const availableContacts = useMemo(
+    () => (contacts as { id: string; name: string }[]).filter((c) => !linkedContactIds.has(c.id)),
+    [contacts, linkedContactIds]
+  );
 
   if (isLoading) {
     return (
@@ -76,15 +87,6 @@ export default function PropertyDetail() {
   }
 
   const addr = formatPropertyAddress(property);
-  const links = Array.isArray(property.contact_property_links) ? property.contact_property_links : [];
-  const linkedContactIds = useMemo(
-    () => new Set(links.map((l) => l.contact_id)),
-    [links]
-  );
-  const availableContacts = useMemo(
-    () => (contacts as { id: string; name: string }[]).filter((c) => !linkedContactIds.has(c.id)),
-    [contacts, linkedContactIds]
-  );
 
   const handleOpenAddOwner = () => {
     setAddOwnerContactId("");
@@ -102,19 +104,30 @@ export default function PropertyDetail() {
       await createLink.mutateAsync({
         property_id: id,
         contact_id: addOwnerContactId,
-        role: addOwnerRole as "owner" | "buyer" | "tenant" | "interested" | "other",
+        role: addOwnerRole as (typeof LINK_ROLES)[number],
         notes: addOwnerNotes.trim() || null,
       });
       toast({ title: "Success", description: "Contact linked." });
       setAddOwnerOpen(false);
     } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      const msg = err?.message ?? (e instanceof Error ? e.message : "");
+      const isDuplicate =
+        err?.code === "23505" ||
+        /duplicate|unique|already exists/i.test(String(msg));
+      const isCheckConstraint = err?.code === "23514" || /check constraint|violates check/i.test(String(msg));
+      let description = e instanceof Error ? e.message : "Failed to link contact";
+      if (isDuplicate) description = "This contact is already linked to this property.";
+      else if (isCheckConstraint) description = "That role isn’t supported yet. Try Owner, Buyer, Tenant, Interested, or Other.";
       toast({
         title: "Error",
-        description: e instanceof Error ? e.message : "Failed to link contact",
+        description,
         variant: "destructive",
       });
     }
   };
+
+  const hasImages = Array.isArray(property.images) && (property.images as string[]).length > 0;
 
   return (
     <div className="animate-fade-in">
@@ -122,14 +135,18 @@ export default function PropertyDetail() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/properties")}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Building2 className="w-6 h-6" />
-            Property
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2 truncate">
+            <Building2 className="w-6 h-6 shrink-0" />
+            {addr || "Property"}
           </h1>
-          <p className="text-white/60">Details and linked contacts</p>
+          <p className="text-white/60 text-sm mt-0.5">Details and linked owners</p>
         </div>
       </div>
+
+      {hasImages && <PropertyGallery images={property.images} className="mb-6" />}
+
+      <PropertyContactsCard property={property} onLinkClick={handleOpenAddOwner} className="mb-6" contactsList={contacts} />
 
       <Card className="zoho-card p-6 mb-6 border-white/10">
         <div className="flex items-start gap-3 mb-4">
@@ -139,15 +156,15 @@ export default function PropertyDetail() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">Address</h2>
             <p className="text-foreground">{addr || "—"}</p>
-            {((property as { city?: string | null }).city || (property as { state?: string | null }).state || (property as { postcode?: string | null }).postcode) && (
+            {(property.city || property.state || property.postcode) && (
               <p className="text-sm text-white/60 mt-1">
-                {[(property as { city?: string | null }).city, (property as { state?: string | null }).state, (property as { postcode?: string | null }).postcode].filter(Boolean).join(", ")}
-                {(property as { country?: string | null }).country && `, ${(property as { country?: string | null }).country}`}
+                {[property.city, property.state, property.postcode].filter(Boolean).join(", ")}
+                {property.country && `, ${property.country}`}
               </p>
             )}
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
           {property.property_type && (
             <div>
               <span className="text-white/60">Type</span>
@@ -166,12 +183,64 @@ export default function PropertyDetail() {
               <p className="font-medium">{property.bathrooms}</p>
             </div>
           )}
-          {property.price != null && property.price > 0 && (
+          {(property.price != null && property.price > 0) && (
             <div>
               <span className="text-white/60">Price</span>
-              <p className="font-medium">
-                ${Number(property.price).toLocaleString()}
-              </p>
+              <p className="font-medium">${Number(property.price).toLocaleString()}</p>
+            </div>
+          )}
+          {(property.price_listed != null && property.price_listed > 0) && (
+            <div>
+              <span className="text-white/60">Listed price</span>
+              <p className="font-medium">${Number(property.price_listed).toLocaleString()}</p>
+            </div>
+          )}
+          {(property.estimated_value != null && property.estimated_value > 0) && (
+            <div>
+              <span className="text-white/60">Estimated value</span>
+              <p className="font-medium">${Number(property.estimated_value).toLocaleString()}</p>
+            </div>
+          )}
+          {property.rental_yield != null && (
+            <div>
+              <span className="text-white/60">Rental yield</span>
+              <p className="font-medium">{Number(property.rental_yield).toFixed(2)}%</p>
+            </div>
+          )}
+          {property.cap_rate != null && (
+            <div>
+              <span className="text-white/60">Cap rate</span>
+              <p className="font-medium">{Number(property.cap_rate).toFixed(2)}%</p>
+            </div>
+          )}
+          {property.lot_size != null && (
+            <div>
+              <span className="text-white/60">Lot size</span>
+              <p className="font-medium">{Number(property.lot_size).toLocaleString()} m²</p>
+            </div>
+          )}
+          {property.building_size != null && (
+            <div>
+              <span className="text-white/60">Building size</span>
+              <p className="font-medium">{Number(property.building_size).toLocaleString()} m²</p>
+            </div>
+          )}
+          {property.year_built != null && (
+            <div>
+              <span className="text-white/60">Year built</span>
+              <p className="font-medium">{property.year_built}</p>
+            </div>
+          )}
+          {property.property_condition && (
+            <div>
+              <span className="text-white/60">Condition</span>
+              <p className="font-medium capitalize">{property.property_condition}</p>
+            </div>
+          )}
+          {property.status && (
+            <div>
+              <span className="text-white/60">Status</span>
+              <p className="font-medium capitalize">{property.status}</p>
             </div>
           )}
         </div>
@@ -222,8 +291,6 @@ export default function PropertyDetail() {
           </div>
         </div>
       </Card>
-
-      <PropertyContactsCard property={property} onLinkClick={handleOpenAddOwner} />
 
       <Dialog open={addOwnerOpen} onOpenChange={setAddOwnerOpen}>
         <DialogContent className="sm:max-w-[420px] bg-[#242424] border-white/10">

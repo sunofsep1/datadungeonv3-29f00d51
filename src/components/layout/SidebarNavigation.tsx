@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeft,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import { layout } from "@/lib/designTokens";
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "Properties", url: "/properties", icon: Building2 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
@@ -45,6 +47,7 @@ const navItems = [
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "Properties", url: "/properties", icon: Building2 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "More", url: "#more", icon: MoreHorizontal },
 ];
@@ -53,6 +56,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (pathname === item.url) return true;
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
+  if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
   return false;
 }
 
@@ -282,6 +286,12 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-[#2c2c2c] border-white/10">
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/properties" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
+                        <Building2 className="w-4 h-4" />
+                        Properties
+                      </NavLink>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <NavLink to="/marketing" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
                         <Megaphone className="w-4 h-4" />

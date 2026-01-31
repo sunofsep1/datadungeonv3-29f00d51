@@ -19,6 +19,9 @@ import Marketing from "./pages/Marketing";
 import Performance from "./pages/Performance";
 import Scripts from "./pages/Scripts";
 import Settings from "./pages/Settings";
+import HotLeads from "./pages/HotLeads";
+import Recent from "./pages/Recent";
+import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -38,6 +41,9 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+              <Route path="/hot-leads" element={<ProtectedRoute><MainLayout><HotLeads /></MainLayout></ProtectedRoute>} />
+              <Route path="/recent" element={<ProtectedRoute><MainLayout><Recent /></MainLayout></ProtectedRoute>} />
+              <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
               <Route path="/contacts" element={<ProtectedRoute><MainLayout><Contacts /></MainLayout></ProtectedRoute>} />
               <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ContactDetail /></MainLayout></ProtectedRoute>} />
               <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />

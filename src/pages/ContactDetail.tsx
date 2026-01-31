@@ -216,9 +216,16 @@ export default function ContactDetail() {
       setLinkRole("owner");
       setLinkNotes("");
     } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      const msg = err?.message ?? (e instanceof Error ? e.message : "");
+      const isDuplicate =
+        err?.code === "23505" ||
+        /duplicate|unique|already exists/i.test(String(msg));
       toast({
         title: "Error",
-        description: e instanceof Error ? e.message : "Failed to link property",
+        description: isDuplicate
+          ? "This property is already linked to this contact."
+          : (e instanceof Error ? e.message : "Failed to link property"),
         variant: "destructive",
       });
     }

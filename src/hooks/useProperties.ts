@@ -20,6 +20,16 @@ export interface Property {
   notes?: string | null;
   created_at: string;
   updated_at?: string;
+  estimated_value?: number | null;
+  price_listed?: number | null;
+  rental_yield?: number | null;
+  cap_rate?: number | null;
+  lot_size?: number | null;
+  building_size?: number | null;
+  property_condition?: string | null;
+  year_built?: number | null;
+  images?: unknown;
+  documents?: unknown;
 }
 
 export interface PropertyInsert {
@@ -35,6 +45,16 @@ export interface PropertyInsert {
   price?: number | null;
   status?: string | null;
   notes?: string | null;
+  estimated_value?: number | null;
+  price_listed?: number | null;
+  rental_yield?: number | null;
+  cap_rate?: number | null;
+  lot_size?: number | null;
+  building_size?: number | null;
+  property_condition?: string | null;
+  year_built?: number | null;
+  images?: unknown;
+  documents?: unknown;
 }
 
 export interface PropertyUpdate extends Partial<PropertyInsert> {
@@ -120,31 +140,50 @@ export function useProperty(id: string | undefined) {
     queryKey: ["property", id],
     queryFn: async () => {
       if (!id) throw new Error("No property ID");
+      let property: PropertyWithLinks;
       const { data, error } = await (supabase as any)
         .from("properties")
         .select(PROPERTIES_SELECT)
         .eq("id", id)
         .maybeSingle();
-      if (!error) {
-        if (!data) throw new Error("Property not found");
-        return data as PropertyWithLinks;
+      if (!error && data) {
+        property = data as PropertyWithLinks;
+      } else {
+        if (error && !isPropertiesTableOrRelationError(error?.message ?? "")) throw error;
+        const { data: simple, error: simpleError } = await (supabase as any)
+          .from("properties")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (simpleError || !simple) {
+          if (isPropertiesTableOrRelationError((simpleError?.message ?? "").toLowerCase())) {
+            throw new Error(PROPERTIES_MISSING_MESSAGE);
+          }
+          throw simpleError ?? new Error("Property not found");
+        }
+        property = { ...simple, contact_property_links: [] } as PropertyWithLinks;
       }
-      if (!isPropertiesTableOrRelationError(error?.message ?? "")) throw error;
-      const { data: simple, error: simpleError } = await (supabase as any)
-        .from("properties")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (!simpleError && simple) {
-        return {
-          ...simple,
-          contact_property_links: [],
-        } as PropertyWithLinks;
+      const { data: links, error: linksErr } = await (supabase as any)
+        .from("contact_property_links")
+        .select("id, contact_id, property_id, role, notes")
+        .eq("property_id", id);
+      if (!linksErr && Array.isArray(links) && links.length > 0) {
+        const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
+        const { data: contactRows } = await (supabase as any)
+          .from("contacts")
+          .select("id, name, first_name, last_name, email, phone")
+          .in("id", contactIds);
+        const contactMap = new Map(
+          (contactRows ?? []).map((c: { id: string }) => [c.id, c])
+        );
+        property.contact_property_links = links.map((l: { contact_id: string; [k: string]: unknown }) => ({
+          ...l,
+          contacts: contactMap.get(l.contact_id) ?? null,
+        }));
+      } else if (!linksErr && Array.isArray(links)) {
+        property.contact_property_links = links;
       }
-      if (isPropertiesTableOrRelationError((simpleError?.message ?? "").toLowerCase())) {
-        throw new Error(PROPERTIES_MISSING_MESSAGE);
-      }
-      throw simpleError ?? new Error("Property not found");
+      return property;
     },
     enabled: !!id,
   });

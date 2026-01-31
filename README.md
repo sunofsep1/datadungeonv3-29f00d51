@@ -90,14 +90,18 @@ The app calls the **google-calendar** Edge Function using `VITE_SUPABASE_URL`, s
 ### Run migrations
 
 ```sh
-# Link to your remote project (once)
-npx supabase link --project-ref <YOUR_PROJECT_REF>
+# 1. Log in (once)
+npx supabase login
 
-# Apply migrations
+# 2. Link to your remote project (once; project ref in supabase/config.toml)
+npm run supabase:link
+# When prompted, enter the database password from Supabase Dashboard → Project Settings → Database.
+
+# 3. Apply migrations
 npm run db:push
-# or
-npx supabase db push
 ```
+
+Other Supabase scripts: `npm run supabase:gen-types` regenerates TypeScript types from the linked project.
 
 ### Contacts & Properties upgrade (new migrations)
 
@@ -120,8 +124,18 @@ Two **additive, non-destructive** migrations extend the data model:
 
 If **Contacts** or **Properties** stay empty or show an error (“Couldn’t load contacts” / “Couldn’t load properties”):
 
-1. Run migrations: `npx supabase link --project-ref <YOUR_PROJECT_REF>` then `npm run db:push`. See [Contacts & Properties upgrade](#contacts--properties-upgrade-new-migrations) above.
+1. Run migrations: `npm run supabase:link` then `npm run db:push`. See [Contacts & Properties upgrade](#contacts--properties-upgrade-new-migrations) above.
 2. Use **Retry** on the error screen, then check the browser **Network** tab for failed Supabase requests and the **Console** for errors.
+
+If **db:push** fails with "relation X already exists" (e.g. the remote DB already has the schema from an earlier run or Dashboard SQL), mark the failing migration as applied and push again:
+
+```sh
+# Mark the failing migration (use the timestamp from the error, e.g. 20260114004913)
+npm run supabase:repair -- 20260114004913 --status applied --linked
+npm run db:push
+```
+
+If another migration fails with "already exists", repeat: run `supabase:repair` for that migration's timestamp, then `db:push` again.
 
 ### Contacts schema (current)
 
@@ -227,3 +241,15 @@ scripts/
 - **Edit in Lovable**: [Lovable project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) → changes sync to the repo.
 - **Edit locally**: Push to the connected repo → Lovable stays in sync.
 - **Custom domain**: Lovable → Project → Settings → Domains. [Docs](https://docs.lovable.dev/features/custom-domain#custom-domain).
+
+---
+
+## 11. Pushing to the repo
+
+To push `main` to the `sunofsep1/datadungeonv3-29f00d51` repo (remote name: `latest`):
+
+```sh
+git push latest main
+```
+
+You need write access: use credentials for the account that owns the repo (e.g. SSH key or Personal Access Token for **sunofsep1**), or have **gregleigh** added as a collaborator. If you get "Permission denied", see the plan in `.cursor/plans/` for options.

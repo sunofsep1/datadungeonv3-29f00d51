@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-// Manual types for contact_property_links (not in auto-generated types)
+// Manual types for contact_property_links (spec: owner, seller, buyer, tenant, investor, agent, interested, other)
 export interface ContactPropertyLink {
   id: string;
   contact_id: string;
@@ -10,6 +10,11 @@ export interface ContactPropertyLink {
   notes?: string | null;
   user_id?: string;
   created_at?: string;
+  ownership_percentage?: number | null;
+  acquisition_date?: string | null;
+  holding_period_months?: number | null;
+  purchase_price?: number | null;
+  sale_price?: number | null;
 }
 
 export interface ContactPropertyLinkInsert {
@@ -17,6 +22,11 @@ export interface ContactPropertyLinkInsert {
   property_id: string;
   role?: string;
   notes?: string | null;
+  ownership_percentage?: number | null;
+  acquisition_date?: string | null;
+  holding_period_months?: number | null;
+  purchase_price?: number | null;
+  sale_price?: number | null;
 }
 
 export function useCreateContactPropertyLink() {
@@ -27,10 +37,9 @@ export function useCreateContactPropertyLink() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const payload = { ...link, user_id: user.id };
       const { data, error } = await (supabase as any)
         .from("contact_property_links")
-        .insert(payload)
+        .insert(link)
         .select()
         .single();
       if (error) throw error;
@@ -41,6 +50,8 @@ export function useCreateContactPropertyLink() {
       qc.invalidateQueries({ queryKey: ["property", d.property_id] });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", d.contact_id] });
+      qc.refetchQueries({ queryKey: ["contact", d.contact_id] });
+      qc.refetchQueries({ queryKey: ["property", d.property_id] });
     },
   });
 }

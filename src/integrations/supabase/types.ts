@@ -16,45 +16,61 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
-          appointments_set: number | null
-          calls_made: number | null
-          closings: number | null
-          contracts_signed: number | null
-          created_at: string
-          date: string
-          gci_earned: number | null
+          activity_type: string
+          contact_id: string | null
+          created_at: string | null
+          deal_id: string | null
+          description: string | null
           id: string
-          listings_taken: number | null
-          offers_written: number | null
-          user_id: string
+          property_id: string | null
+          title: string
+          user_id: string | null
         }
         Insert: {
-          appointments_set?: number | null
-          calls_made?: number | null
-          closings?: number | null
-          contracts_signed?: number | null
-          created_at?: string
-          date?: string
-          gci_earned?: number | null
+          activity_type: string
+          contact_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          description?: string | null
           id?: string
-          listings_taken?: number | null
-          offers_written?: number | null
-          user_id: string
+          property_id?: string | null
+          title: string
+          user_id?: string | null
         }
         Update: {
-          appointments_set?: number | null
-          calls_made?: number | null
-          closings?: number | null
-          contracts_signed?: number | null
-          created_at?: string
-          date?: string
-          gci_earned?: number | null
+          activity_type?: string
+          contact_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          description?: string | null
           id?: string
-          listings_taken?: number | null
-          offers_written?: number | null
-          user_id?: string
+          property_id?: string | null
+          title?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointments: {
         Row: {
@@ -106,6 +122,82 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          all_day: boolean | null
+          contact_id: string | null
+          created_at: string | null
+          deal_id: string | null
+          description: string | null
+          end_time: string
+          event_type: string | null
+          id: string
+          location: string | null
+          property_id: string | null
+          reminder_minutes: number | null
+          start_time: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          all_day?: boolean | null
+          contact_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          description?: string | null
+          end_time: string
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          property_id?: string | null
+          reminder_minutes?: number | null
+          start_time: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          all_day?: boolean | null
+          contact_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          description?: string | null
+          end_time?: string
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          property_id?: string | null
+          reminder_minutes?: number | null
+          start_time?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
           call_date: string
@@ -153,33 +245,89 @@ export type Database = {
           },
         ]
       }
-      contact_channels: {
+      contact_addresses: {
         Row: {
-          channel_type: string
-          channel_value: string
+          address_line1: string | null
+          address_line2: string | null
+          address_type: string | null
+          city: string | null
           contact_id: string
+          country: string | null
           created_at: string
           id: string
           is_primary: boolean | null
+          postal_code: string | null
+          state: string | null
           updated_at: string
         }
         Insert: {
-          channel_type: string
-          channel_value: string
+          address_line1?: string | null
+          address_line2?: string | null
+          address_type?: string | null
+          city?: string | null
           contact_id: string
+          country?: string | null
           created_at?: string
           id?: string
           is_primary?: boolean | null
+          postal_code?: string | null
+          state?: string | null
           updated_at?: string
         }
         Update: {
-          channel_type?: string
-          channel_value?: string
+          address_line1?: string | null
+          address_line2?: string | null
+          address_type?: string | null
+          city?: string | null
           contact_id?: string
+          country?: string | null
           created_at?: string
           id?: string
           is_primary?: boolean | null
+          postal_code?: string | null
+          state?: string | null
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_addresses_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_channels: {
+        Row: {
+          channel_type: string
+          contact_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          label: string | null
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          channel_type: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          channel_type?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          updated_at?: string
+          value?: string
         }
         Relationships: [
           {
@@ -193,31 +341,49 @@ export type Database = {
       }
       contact_property_links: {
         Row: {
+          acquisition_date: string | null
           contact_id: string
           created_at: string
+          holding_period_months: number | null
           id: string
           notes: string | null
+          ownership_percentage: number | null
           property_id: string
-          role: string
+          purchase_price: number | null
+          role: string | null
+          sale_price: number | null
           updated_at: string
+          user_id: string
         }
         Insert: {
+          acquisition_date?: string | null
           contact_id: string
           created_at?: string
+          holding_period_months?: number | null
           id?: string
           notes?: string | null
+          ownership_percentage?: number | null
           property_id: string
-          role?: string
+          purchase_price?: number | null
+          role?: string | null
+          sale_price?: number | null
           updated_at?: string
+          user_id: string
         }
         Update: {
+          acquisition_date?: string | null
           contact_id?: string
           created_at?: string
+          holding_period_months?: number | null
           id?: string
           notes?: string | null
+          ownership_percentage?: number | null
           property_id?: string
-          role?: string
+          purchase_price?: number | null
+          role?: string | null
+          sale_price?: number | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -240,19 +406,16 @@ export type Database = {
         Row: {
           contact_id: string
           created_at: string
-          id: string
           tag_id: string
         }
         Insert: {
           contact_id: string
           created_at?: string
-          id?: string
           tag_id: string
         }
         Update: {
           contact_id?: string
           created_at?: string
-          id?: string
           tag_id?: string
         }
         Relationships: [
@@ -274,60 +437,150 @@ export type Database = {
       }
       contacts: {
         Row: {
-          created_at: string
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          company: string | null
+          country: string | null
+          created_at: string | null
           current_situation_notes: string | null
           email: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           name: string
           notes: string | null
           pain_points: string | null
           phone: string | null
           pipeline_stage: string | null
           pleasure_points: string | null
+          postcode: string | null
+          role: string | null
           selling_intentions: string | null
           source: string | null
+          state: string | null
           status: string | null
           story: string | null
-          updated_at: string
-          user_id: string
+          updated_at: string | null
+          user_id: string | null
         }
         Insert: {
-          created_at?: string
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string | null
           current_situation_notes?: string | null
           email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name: string
           notes?: string | null
           pain_points?: string | null
           phone?: string | null
           pipeline_stage?: string | null
           pleasure_points?: string | null
+          postcode?: string | null
+          role?: string | null
           selling_intentions?: string | null
           source?: string | null
+          state?: string | null
           status?: string | null
           story?: string | null
-          updated_at?: string
-          user_id: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
-          created_at?: string
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string | null
           current_situation_notes?: string | null
           email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string
           notes?: string | null
           pain_points?: string | null
           phone?: string | null
           pipeline_stage?: string | null
           pleasure_points?: string | null
+          postcode?: string | null
+          role?: string | null
           selling_intentions?: string | null
           source?: string | null
+          state?: string | null
           status?: string | null
           story?: string | null
-          updated_at?: string
-          user_id?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
+      }
+      deals: {
+        Row: {
+          contact_id: string | null
+          created_at: string | null
+          expected_close_date: string | null
+          id: string
+          notes: string | null
+          probability: number | null
+          property_id: string | null
+          stage: string | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+          value: number | null
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          probability?: number | null
+          property_id?: string | null
+          stage?: string | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+          value?: number | null
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          probability?: number | null
+          property_id?: string | null
+          stage?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       interactions: {
         Row: {
@@ -574,60 +827,119 @@ export type Database = {
       }
       properties: {
         Row: {
+          address: string | null
           address_line1: string | null
           address_line2: string | null
           bathrooms: number | null
           bedrooms: number | null
+          building_size: number | null
+          cap_rate: number | null
           city: string | null
+          contact_id: string | null
           country: string | null
-          created_at: string
+          created_at: string | null
+          description: string | null
+          documents: Json | null
+          estimated_value: number | null
+          features: string[] | null
           id: string
+          images: string[] | null
+          listing_date: string | null
+          lot_size: number | null
           notes: string | null
           postcode: string | null
           price: number | null
+          price_listed: number | null
+          property_condition: string | null
           property_type: string | null
+          rental_yield: number | null
+          square_feet: number | null
           state: string | null
           status: string | null
-          updated_at: string
-          user_id: string
+          updated_at: string | null
+          user_id: string | null
+          year_built: number | null
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
           address_line1?: string | null
           address_line2?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
+          building_size?: number | null
+          cap_rate?: number | null
           city?: string | null
+          contact_id?: string | null
           country?: string | null
-          created_at?: string
+          created_at?: string | null
+          description?: string | null
+          documents?: Json | null
+          estimated_value?: number | null
+          features?: string[] | null
           id?: string
+          images?: string[] | null
+          listing_date?: string | null
+          lot_size?: number | null
           notes?: string | null
           postcode?: string | null
           price?: number | null
+          price_listed?: number | null
+          property_condition?: string | null
           property_type?: string | null
+          rental_yield?: number | null
+          square_feet?: number | null
           state?: string | null
           status?: string | null
-          updated_at?: string
-          user_id: string
+          updated_at?: string | null
+          user_id?: string | null
+          year_built?: number | null
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
           address_line1?: string | null
           address_line2?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
+          building_size?: number | null
+          cap_rate?: number | null
           city?: string | null
+          contact_id?: string | null
           country?: string | null
-          created_at?: string
+          created_at?: string | null
+          description?: string | null
+          documents?: Json | null
+          estimated_value?: number | null
+          features?: string[] | null
           id?: string
+          images?: string[] | null
+          listing_date?: string | null
+          lot_size?: number | null
           notes?: string | null
           postcode?: string | null
           price?: number | null
+          price_listed?: number | null
+          property_condition?: string | null
           property_type?: string | null
+          rental_yield?: number | null
+          square_feet?: number | null
           state?: string | null
           status?: string | null
-          updated_at?: string
-          user_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+          year_built?: number | null
+          zip_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "properties_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tags: {
         Row: {
@@ -635,6 +947,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -642,6 +955,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -649,6 +963,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -658,7 +973,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_contact_with_address: { Args: { payload: Json }; Returns: Json }
+      create_property_with_address: { Args: { payload: Json }; Returns: Json }
+      update_contact_with_address: { Args: { payload: Json }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

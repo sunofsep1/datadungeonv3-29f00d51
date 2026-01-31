@@ -7,7 +7,7 @@ export type Contact = Tables<"contacts">;
 export type ContactInsert = TablesInsert<"contacts">;
 export type ContactUpdate = TablesUpdate<"contacts">;
 
-/** Address fields on contacts (DB has these via migration; extend until types regenerated) */
+/** Address fields: stored in contact_addresses (or legacy on contact if migration added them) */
 export type ContactAddressFields = {
   address_line1?: string | null;
   address_line2?: string | null;
@@ -19,6 +19,26 @@ export type ContactAddressFields = {
   last_name?: string | null;
 };
 
+const ADDRESS_KEYS = ["address_line1", "address_line2", "city", "state", "postcode", "country"] as const;
+
+function pickContactInsert(payload: Record<string, unknown>): Record<string, unknown> {
+  const { address_line1, address_line2, city, state, postcode, country, first_name, last_name, ...rest } = payload;
+  return rest;
+}
+
+function pickAddressFields(payload: Record<string, unknown>): Record<string, unknown> | null {
+  const addr = {
+    address_line1: payload.address_line1 ?? null,
+    address_line2: payload.address_line2 ?? null,
+    city: payload.city ?? null,
+    state: payload.state ?? null,
+    postal_code: payload.postcode ?? payload.postal_code ?? null,
+    country: payload.country ?? "Australia",
+  };
+  const hasAny = ADDRESS_KEYS.some((k) => addr[k as keyof typeof addr] != null && String(addr[k as keyof typeof addr]).trim() !== "");
+  return hasAny ? addr : null;
+}
+
 export type ContactTagRow = { tag_id: string; tags: { name: string } | null };
 export type ContactPropertyLinkRow = {
   id?: string;
@@ -27,16 +47,48 @@ export type ContactPropertyLinkRow = {
   notes?: string | null;
   properties: { address_line1: string | null; city: string | null; state: string | null; postcode: string | null } | null;
 };
+export type ContactAddressRow = {
+  id: string;
+  contact_id: string;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  address_type: string | null;
+  is_primary: boolean;
+};
+
 export type ContactWithMeta = Contact & ContactAddressFields & {
   contact_channels?: ContactChannel[];
   contact_tags?: ContactTagRow[];
   contact_property_links?: ContactPropertyLinkRow[];
+  contact_addresses?: ContactAddressRow[];
 };
 
 const CONTACTS_SELECT =
-  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(address_line1, city, state, postcode))";
+  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(address_line1, city, state, postcode)), contact_addresses(*)";
 
 const CONTACTS_QUERY_KEYS = [["contacts"]];
+
+/** Map primary/first contact_address onto contact for display (address_line1, postcode, etc.) */
+export function mapContactAddressToDisplay(
+  c: ContactWithMeta & { contact_addresses?: ContactAddressRow[] }
+): ContactWithMeta {
+  const addrs = c.contact_addresses ?? [];
+  const primary = addrs.find((a) => a.is_primary) ?? addrs[0];
+  if (!primary) return c;
+  return {
+    ...c,
+    address_line1: primary.address_line1 ?? c.address_line1,
+    address_line2: primary.address_line2 ?? c.address_line2,
+    city: primary.city ?? c.city,
+    state: primary.state ?? c.state,
+    postcode: primary.postal_code ?? c.postcode,
+    country: primary.country ?? c.country,
+  };
+}
 
 export function useContacts() {
   return useQuery({
@@ -47,13 +99,17 @@ export function useContacts() {
         .from("contacts")
         .select(CONTACTS_SELECT)
         .order("created_at", { ascending: false });
-      if (!error) return (data ?? []) as unknown as ContactWithMeta[];
+      if (!error) {
+        const list = (data ?? []) as (ContactWithMeta & { contact_addresses?: ContactAddressRow[] })[];
+        return list.map((c) => mapContactAddressToDisplay(c)) as ContactWithMeta[];
+      }
       const msg = (error?.message ?? "").toLowerCase();
       const missingRelation =
         (msg.includes("relation") && msg.includes("does not exist")) ||
         msg.includes("contact_channels") ||
         msg.includes("contact_tags") ||
         msg.includes("contact_property_links") ||
+        msg.includes("contact_addresses") ||
         msg.includes("properties");
       if (!missingRelation) throw error;
       // Fallback to simple select
@@ -67,6 +123,7 @@ export function useContacts() {
         contact_channels: [],
         contact_tags: [],
         contact_property_links: [],
+        contact_addresses: [],
       })) as ContactWithMeta[];
     },
   });
@@ -82,16 +139,26 @@ export function useCreateContact() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const contactPayload = pickContactInsert({ ...contact, user_id: user.id });
       const { data, error } = await (supabase as any)
         .from("contacts")
-        .insert({ ...contact, user_id: user.id })
+        .insert(contactPayload)
         .select()
         .single();
       if (error) throw error;
+
+      const addressFields = pickAddressFields(contact as Record<string, unknown>);
+      if (addressFields && data?.id) {
+        await (supabase as any)
+          .from("contact_addresses")
+          .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
+      }
+
       return data as Contact & ContactAddressFields;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contact_addresses"] });
     },
   });
 }
@@ -107,19 +174,42 @@ export function useUpdateContact() {
         .eq("id", id)
         .single();
 
+      const contactPayload = pickContactInsert(updates as Record<string, unknown>);
       const { data, error } = await (supabase as any)
         .from("contacts")
-        .update(updates)
+        .update(contactPayload)
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
+
+      const addressFields = pickAddressFields(updates as Record<string, unknown>);
+      if (addressFields) {
+        const { data: existing } = await (supabase as any)
+          .from("contact_addresses")
+          .select("id")
+          .eq("contact_id", id)
+          .order("is_primary", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existing?.id) {
+          await (supabase as any)
+            .from("contact_addresses")
+            .update(addressFields)
+            .eq("id", existing.id);
+        } else {
+          await (supabase as any)
+            .from("contact_addresses")
+            .insert({ contact_id: id, ...addressFields, address_type: "home", is_primary: true });
+        }
+      }
 
       return { ...(data as Contact & ContactAddressFields), _oldStatus: current?.status };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["contact_addresses", variables.id] });
     },
   });
 }

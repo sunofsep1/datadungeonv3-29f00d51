@@ -12,8 +12,11 @@
     "preview": "vite preview",
     "health": "tsx scripts/health.ts",
     "export:contacts": "tsx scripts/export-contacts.ts",
-    "db:push": "supabase db push",
-    "db:migrate": "supabase migration up"
+    "db:push": "npx supabase db push",
+    "db:migrate": "npx supabase migration up",
+    "supabase:link": "npx supabase link --project-ref sujyalrzbubvhpkntwja",
+    "supabase:gen-types": "npx supabase gen types typescript --project-id sujyalrzbubvhpkntwja > src/integrations/supabase/types.ts",
+    "supabase:repair": "npx supabase migration repair"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
