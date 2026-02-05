@@ -21,7 +21,6 @@ import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
-import { PropertyPortfolioDashboard } from "@/components/dashboard/PropertyPortfolioDashboard";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -56,10 +55,10 @@ export default function Dashboard() {
   const createPost = useCreatePost();
 
   const stats = [
-    { label: "Contacts", value: contacts.length, icon: Users },
-    { label: "Leads", value: leads.length, icon: Megaphone },
-    { label: "Appointments", value: appointments.length, icon: Calendar },
-    { label: "Posts", value: posts.length, icon: TrendingUp },
+    { label: "Contacts", value: contacts.length, icon: Users, path: "/contacts" },
+    { label: "Leads", value: leads.length, icon: Megaphone, path: "/hot-leads" },
+    { label: "Appointments", value: appointments.length, icon: Calendar, path: "/appointments" },
+    { label: "Posts", value: posts.length, icon: TrendingUp, path: "/marketing" },
   ];
 
   const recentContacts = useMemo(
@@ -219,11 +218,6 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       <PageHeader title="Dashboard" description="Welcome back! Here's your command center." />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <VisionBoard />
-        <AffirmationsWidget />
-      </div>
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {contactsLoading ? (
           [...Array(4)].map((_, i) => (
@@ -239,26 +233,52 @@ export default function Dashboard() {
           ))
         ) : (
           stats.map((stat, index) => (
-            <Card key={index} className="zoho-card p-4 md:p-6">
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="p-2 rounded-lg zoho-accent-bg">
-                  <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+            <Card
+              key={index}
+              className="zoho-card p-4 md:p-6 cursor-pointer hover:bg-white/10 transition-colors duration-200 focus-within:ring-2 focus-within:ring-[#00BCD4] focus-within:ring-inset"
+              onClick={() => navigate(stat.path)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && navigate(stat.path)}
+            >
+              <div className="flex items-center justify-between gap-3 md:gap-4">
+                <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                  <div className="p-2 rounded-lg zoho-accent-bg shrink-0">
+                    <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs md:text-sm text-white/60">{stat.label}</p>
+                    <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs md:text-sm text-white/60">{stat.label}</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
-                </div>
+                <ChevronRight className="w-4 h-4 text-white/40 shrink-0" />
               </div>
             </Card>
           ))
         )}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <VisionBoard />
+        <AffirmationsWidget />
+      </div>
+
+      <div className="mb-6">
+        <DashboardCalendarWidget
+          onAddAppointmentRequest={(date) => {
+            setNewAppointment((prev) => ({
+              ...prev,
+              date: format(date, "yyyy-MM-dd"),
+              time: format(date, "HH:mm"),
+            }));
+            setAppointmentDialogOpen(true);
+          }}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <KPISnapshot />
-          <PropertyPortfolioDashboard />
-          <DashboardCalendarWidget />
         </div>
 
         <div className="space-y-6">
@@ -303,9 +323,12 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : recentContacts.length === 0 ? (
-              <div className="flex items-center gap-2 py-2 text-sm text-white/50">
-                <Users className="w-4 h-4 shrink-0 opacity-60" />
-                <span>No contacts yet</span>
+              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
+                <Users className="w-10 h-10 shrink-0 text-white/40" />
+                <p className="text-sm text-white/60 text-center">No contacts yet. Add your first contact to get started.</p>
+                <Button size="sm" className="gap-2" onClick={() => setContactDialogOpen(true)}>
+                  <Users className="w-4 h-4" /> Add Contact
+                </Button>
               </div>
             ) : (
               <ul className="space-y-2">
@@ -313,7 +336,7 @@ export default function Dashboard() {
                   <li key={c.id}>
                     <button
                       type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-inset"
+                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-inset"
                       onClick={() => navigate(`/contacts/${c.id}`)}
                     >
                       <span className="text-sm text-white truncate">{c.name}</span>
@@ -339,9 +362,12 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : upcomingAppointments.length === 0 ? (
-              <div className="flex items-center gap-2 py-2 text-sm text-white/50">
-                <Calendar className="w-4 h-4 shrink-0 opacity-60" />
-                <span>No upcoming appointments</span>
+              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
+                <Calendar className="w-10 h-10 shrink-0 text-white/40" />
+                <p className="text-sm text-white/60 text-center">No upcoming appointments. Schedule one to stay on top of your calendar.</p>
+                <Button size="sm" variant="outline" className="gap-2 border-white/20" onClick={() => setAppointmentDialogOpen(true)}>
+                  <Calendar className="w-4 h-4" /> Schedule
+                </Button>
               </div>
             ) : (
               <ul className="space-y-2">
@@ -349,7 +375,7 @@ export default function Dashboard() {
                   <li key={apt.id}>
                     <button
                       type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-inset"
+                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-inset"
                       onClick={() => navigate("/appointments")}
                     >
                       <div className="min-w-0">
@@ -366,21 +392,21 @@ export default function Dashboard() {
 
           <Card className="zoho-card p-4 md:p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
-                <Users className="w-4 h-4 zoho-accent" />
+            <div className="grid grid-cols-2 gap-3 justify-items-stretch">
+              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+                <Users className="w-4 h-4 zoho-accent shrink-0" />
                 <span className="text-sm font-medium">Add Contact</span>
               </button>
-              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
-                <Megaphone className="w-4 h-4 text-amber-400" />
+              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+                <Megaphone className="w-4 h-4 text-amber-400 shrink-0" />
                 <span className="text-sm font-medium">Add Lead</span>
               </button>
-              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
-                <Calendar className="w-4 h-4 text-blue-400" />
+              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+                <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
                 <span className="text-sm font-medium">Schedule</span>
               </button>
-              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white transition-colors duration-200 col-span-2 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
-                <Home className="w-4 h-4 zoho-accent" />
+              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+                <Home className="w-4 h-4 zoho-accent shrink-0" />
                 <span className="text-sm font-medium">Create Post</span>
               </button>
             </div>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,7 @@ const createEmptyAppointment = () => ({
 });
 
 export default function Appointments() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { data: appointments, isLoading } = useAppointments();
   const { data: contacts = [] } = useContacts();
@@ -145,6 +147,17 @@ export default function Appointments() {
     setIsDialogOpen(true);
   };
 
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId && appointments?.length) {
+      const apt = appointments.find((a) => a.id === editId);
+      if (apt) {
+        handleOpenDialog(apt);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, appointments]);
+
   const handleSaveAppointment = async () => {
     if (!formData.title.trim()) {
       toast({ title: "Error", description: "Please enter a title", variant: "destructive" });
@@ -191,6 +204,42 @@ export default function Appointments() {
       if (editingAppointment) {
         appointment = await updateAppointment.mutateAsync({ id: editingAppointment.id, ...appointmentData });
         toast({ title: "Success", description: "Appointment updated!" });
+
+        // Sync update to Google Calendar if event is linked
+        if (editingAppointment.google_event_id && formData.syncToGoogle && !gcalNeedsAuth && user) {
+          const gcalUrl = getGcalUrl();
+          if (gcalUrl) {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                const res = await fetch(`${gcalUrl}?action=update-event`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    eventId: editingAppointment.google_event_id,
+                    summary: formData.title,
+                    description: combinedNotes || formData.description || "",
+                    start: dateTime,
+                    end: endDateTime || addHours(new Date(dateTime), 1).toISOString(),
+                    location: formData.location || "",
+                  }),
+                });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  toast({ title: "Warning", description: err?.error || "Google Calendar sync failed", variant: "default" });
+                } else {
+                  toast({ title: "Synced", description: "Google Calendar event updated" });
+                }
+              }
+            } catch (e) {
+              console.error("Google Calendar sync failed:", e);
+              toast({ title: "Warning", description: "Google Calendar sync failed", variant: "default" });
+            }
+          }
+        }
       } else {
         appointment = await createAppointment.mutateAsync(appointmentData);
         toast({ title: "Success", description: "Appointment scheduled!" });
@@ -202,21 +251,27 @@ export default function Appointments() {
             try {
               const { data: { session } } = await supabase.auth.getSession();
               if (session) {
-                await fetch(`${gcalUrl}?action=create-event`, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  summary: formData.title,
-                  description: combinedNotes || formData.description || "",
-                  start: dateTime,
-                  end: endDateTime || addHours(new Date(dateTime), 1).toISOString(),
-                  location: formData.location || "",
-                }),
-              });
-                toast({ title: "Synced", description: "Appointment added to Google Calendar" });
+                const gcalRes = await fetch(`${gcalUrl}?action=create-event`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    summary: formData.title,
+                    description: combinedNotes || formData.description || "",
+                    start: dateTime,
+                    end: endDateTime || addHours(new Date(dateTime), 1).toISOString(),
+                    location: formData.location || "",
+                  }),
+                });
+                const gcalData = await gcalRes.json();
+                if (gcalRes.ok && gcalData?.event?.id) {
+                  await updateAppointment.mutateAsync({ id: appointment.id, google_event_id: gcalData.event.id });
+                  toast({ title: "Synced", description: "Appointment added to Google Calendar" });
+                } else {
+                  toast({ title: "Warning", description: "Appointment created but Google Calendar sync failed", variant: "default" });
+                }
               }
             } catch (e) {
               console.error("Google Calendar sync failed:", e);
@@ -239,6 +294,27 @@ export default function Appointments() {
 
   const handleDeleteAppointment = async (id: string) => {
     try {
+      const apt = appointments?.find((a) => a.id === id);
+      if (apt?.google_event_id && !gcalNeedsAuth && user) {
+        const gcalUrl = getGcalUrl();
+        if (gcalUrl) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              await fetch(`${gcalUrl}?action=delete-event`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ eventId: apt.google_event_id }),
+              });
+            }
+          } catch (e) {
+            console.error("Google Calendar delete failed:", e);
+          }
+        }
+      }
       await deleteAppointment.mutateAsync(id);
       toast({ title: "Deleted", description: "Appointment removed" });
     } catch (error: any) {

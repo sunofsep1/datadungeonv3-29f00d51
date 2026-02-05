@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Target, Calendar, Pencil, Trash2, Sparkles, ImageIcon } from "lucide-react";
+import { useRef } from "react";
+import { Plus, Target, Calendar, Pencil, Trash2, Sparkles, ImageIcon, Upload } from "lucide-react";
+
+const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500KB
 
 const STORAGE_KEY = "datadungeon-vision-board";
 
@@ -52,10 +55,12 @@ function saveCards(cards: VisionCard[]) {
 }
 
 export function VisionBoard() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [cards, setCards] = useState<VisionCard[]>(() => loadCards());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<VisionCard | null>(null);
   const [formData, setFormData] = useState({ title: "", color: COLORS[0], targetDate: "", imageUrl: "" });
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
     saveCards(cards);
@@ -86,6 +91,7 @@ export function VisionBoard() {
       targetDate: card.targetDate,
       imageUrl: card.imageUrl || "",
     });
+    setImageError(null);
     setIsDialogOpen(true);
   };
 
@@ -96,7 +102,29 @@ export function VisionBoard() {
   const openAddDialog = () => {
     setEditingCard(null);
     setFormData({ title: "", color: COLORS[0], targetDate: "", imageUrl: "" });
+    setImageError(null);
     setIsDialogOpen(true);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageError("Please select an image file (JPEG, PNG, GIF, WebP).");
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setImageError(`Image is too large. Max size is ${MAX_IMAGE_SIZE_BYTES / 1024}KB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   return (
@@ -186,14 +214,49 @@ export function VisionBoard() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input
-                placeholder="https://... (optional)"
-                className="bg-input"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+              <Label>Image</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
               />
-              <p className="text-xs text-muted-foreground">Paste a link to an image for this vision card.</p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4" />
+                  Choose from computer
+                </Button>
+                {formData.imageUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <Input
+                placeholder="Or paste image URL (optional)"
+                className="bg-input mt-1"
+                value={formData.imageUrl.startsWith("data:") ? "" : formData.imageUrl}
+                onChange={(e) => {
+                  setFormData({ ...formData, imageUrl: e.target.value });
+                  setImageError(null);
+                }}
+              />
+              {formData.imageUrl && formData.imageUrl.startsWith("data:") && (
+                <p className="text-xs text-muted-foreground">Image loaded from file.</p>
+              )}
+              {imageError && <p className="text-xs text-destructive">{imageError}</p>}
             </div>
             <div className="space-y-2">
               <Label>Target Date</Label>

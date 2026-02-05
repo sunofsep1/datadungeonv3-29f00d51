@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePosts, useCreatePost, useUpdatePost, useDeletePost, Post } from "@/hooks/usePosts";
 import { MarketingBudgetCalculator } from "@/components/marketing/MarketingBudgetCalculator";
 import { ContentCalendar } from "@/components/agent-ops/ContentCalendar";
+import { CampaignManager } from "@/components/agent-ops/CampaignManager";
 import { format } from "date-fns";
 
 export default function Marketing() {
@@ -181,11 +182,16 @@ export default function Marketing() {
         <TabsList className="bg-secondary">
           <TabsTrigger value="budget">Budget Calculator</TabsTrigger>
           <TabsTrigger value="posts">Posts & Campaigns</TabsTrigger>
+          <TabsTrigger value="campaigns">Email Campaigns</TabsTrigger>
           <TabsTrigger value="calendar">Content Calendar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="budget">
           <MarketingBudgetCalculator />
+        </TabsContent>
+
+        <TabsContent value="campaigns">
+          <CampaignManager />
         </TabsContent>
 
         <TabsContent value="posts">

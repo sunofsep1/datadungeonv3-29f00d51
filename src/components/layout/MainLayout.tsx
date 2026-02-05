@@ -15,7 +15,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const sidebarWidth = sidebarCollapsed ? layout.sidebarCollapsed : layout.sidebarWidth;
 
   return (
-    <div className="zoho-layout flex min-h-screen w-full bg-[#1a1a1a]">
+    <div className="zoho-layout flex min-h-screen w-full bg-background">
       <SidebarNavigation
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
@@ -33,7 +33,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         />
         <main
           className={cn(
-            "flex-1 overflow-auto p-4 sm:p-6 print:p-0 print:w-full bg-[#1a1a1a] text-white",
+            "flex-1 overflow-auto p-4 sm:p-6 print:p-0 print:w-full bg-background text-foreground",
             "pb-20 md:pb-6"
           )}
           style={{ paddingTop: `calc(${layout.headerHeight} + 1rem)` }}

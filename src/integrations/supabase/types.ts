@@ -141,9 +141,11 @@ export type Database = {
           contact_id: string | null
           created_at: string
           date: string
+          google_event_id: string | null
           id: string
           location: string | null
           notes: string | null
+          reminder_sent_at: string | null
           status: string | null
           title: string
           type: string | null
@@ -154,9 +156,11 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           date: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           notes?: string | null
+          reminder_sent_at?: string | null
           status?: string | null
           title: string
           type?: string | null
@@ -167,9 +171,11 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           date?: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           notes?: string | null
+          reminder_sent_at?: string | null
           status?: string | null
           title?: string
           type?: string | null

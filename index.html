@@ -2,6 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <style>
+      html, body, #root { background-color: #0f1219 !important; }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- TODO: Set the document title to the name of your application -->
     <title>Lovable App</title>
@@ -23,9 +26,21 @@
     <script>
       (function() {
         var theme = localStorage.getItem('theme');
-        var isDark = theme !== 'light';
-        document.documentElement.classList.add(isDark ? 'dark' : 'light');
-        document.documentElement.classList.remove(isDark ? 'light' : 'dark');
+        var themeClasses = ['dark', 'light', 'theme-tomorrow-night-blue', 'theme-dracula', 'theme-monokai', 'theme-github-dark', 'theme-one-dark', 'theme-solarized-dark'];
+        var themeToClass = {
+          dark: 'dark',
+          light: 'light',
+          tomorrowNightBlue: 'theme-tomorrow-night-blue',
+          dracula: 'theme-dracula',
+          monokai: 'theme-monokai',
+          githubDark: 'theme-github-dark',
+          oneDark: 'theme-one-dark',
+          solarizedDark: 'theme-solarized-dark'
+        };
+        var valid = ['dark', 'light', 'tomorrowNightBlue', 'dracula', 'monokai', 'githubDark', 'oneDark', 'solarizedDark'];
+        var cls = (valid.indexOf(theme) !== -1 && themeToClass[theme]) ? themeToClass[theme] : 'dark';
+        themeClasses.forEach(function(c) { document.documentElement.classList.remove(c); });
+        document.documentElement.classList.add(cls);
       })();
     </script>
     <div id="root"></div>

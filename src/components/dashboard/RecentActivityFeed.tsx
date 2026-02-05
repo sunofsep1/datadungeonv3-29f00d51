@@ -38,9 +38,10 @@ export function RecentActivityFeed() {
       <h3 className="font-semibold text-foreground mb-3">Recent activity</h3>
       <div className="space-y-2 max-h-[320px] overflow-y-auto">
         {items.length === 0 ? (
-          <div className="flex items-center gap-2 py-4 text-white/60 text-sm">
-            <MessageSquare className="w-4 h-4 shrink-0 opacity-60" />
-            <span>No activity yet.</span>
+          <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
+            <MessageSquare className="w-10 h-10 shrink-0 text-white/40" />
+            <p className="text-sm text-white/60 text-center">No activity yet. Log calls, notes, or interactions to see them here.</p>
+            <p className="text-xs text-white/50">Open a contact and add an activity to get started.</p>
           </div>
         ) : (
           items.map((row: ActivityLogRow) => {

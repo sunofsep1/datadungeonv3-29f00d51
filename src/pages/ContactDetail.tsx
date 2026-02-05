@@ -40,6 +40,7 @@ import { getInitials } from "@/lib/utils";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
+import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { format, formatDistanceToNow } from "date-fns";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
@@ -73,6 +74,7 @@ export default function ContactDetail() {
   const deleteLink = useDeleteContactPropertyLink();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [emailComposeOpen, setEmailComposeOpen] = useState(false);
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
   const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
   const [linkPropertyId, setLinkPropertyId] = useState("");
@@ -317,10 +319,25 @@ export default function ContactDetail() {
         <Button variant="outline" onClick={handlePrint} className="gap-2">
           <Printer className="w-4 h-4" /> Print
         </Button>
+        {(getPrimaryEmail(contact) ?? contact.email) && (
+          <Button variant="outline" onClick={() => setEmailComposeOpen(true)} className="gap-2">
+            <Mail className="w-4 h-4" /> Send Email
+          </Button>
+        )}
         <Button onClick={handleStartEdit} className="gap-2">
           <Edit className="w-4 h-4" /> Edit
         </Button>
       </div>
+
+      {(getPrimaryEmail(contact) ?? contact.email) && (
+        <EmailComposeDialog
+          open={emailComposeOpen}
+          onOpenChange={setEmailComposeOpen}
+          to={getPrimaryEmail(contact) ?? contact.email ?? ""}
+          contactName={contact.name ?? undefined}
+          onSent={() => id && createInteraction.mutate({ contact_id: id, type: "email", channel: "email", subject: "Email sent", body: null })}
+        />
+      )}
 
       {/* Print Header */}
       <div className="hidden print:block mb-6">

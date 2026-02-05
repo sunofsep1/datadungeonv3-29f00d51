@@ -5,13 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, User, Bell, Shield, Palette, Sun, Moon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings as SettingsIcon, User, Bell, Shield, Palette, Sun, Moon, Droplets, Ghost, Github, Atom, Sunset } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import type { Theme } from "@/contexts/ThemeContext";
+
+const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
+  { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
+  { value: "light", label: "Light", icon: Sun, desc: "Light theme for better visibility." },
+  { value: "tomorrowNightBlue", label: "Tomorrow Night Blue", icon: Droplets, desc: "Blue-tinted dark theme (VS Code)." },
+  { value: "dracula", label: "Dracula", icon: Ghost, desc: "Purple & pink accents." },
+  { value: "monokai", label: "Monokai", icon: Palette, desc: "Teal & orange (Sublime Text)." },
+  { value: "githubDark", label: "GitHub Dark", icon: Github, desc: "Near-black with blue accents." },
+  { value: "oneDark", label: "One Dark", icon: Atom, desc: "Atom / One Dark Pro style." },
+  { value: "solarizedDark", label: "Solarized Dark", icon: Sunset, desc: "Dark teal background." },
+];
 
 export default function Settings() {
   const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="animate-fade-in">
@@ -46,28 +59,26 @@ export default function Settings() {
             <h3 className="font-semibold text-white">Appearance</h3>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {theme === "dark" ? (
-                  <Moon className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <Sun className="w-5 h-5 text-warning" />
-                )}
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    {theme === "dark" ? "Dark Mode" : "Light Mode"}
-                  </p>
-                  <p className="text-xs text-white/60">
-                    {theme === "dark" 
-                      ? "Using dark theme for reduced eye strain" 
-                      : "Using light theme for better visibility"}
-                  </p>
-                </div>
-              </div>
-              <Switch 
-                checked={theme === "dark"} 
-                onCheckedChange={toggleTheme}
-              />
+            <div className="space-y-2">
+              <Label>Theme</Label>
+              <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+                <SelectTrigger className="bg-input w-full max-w-[240px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {THEME_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="flex items-center gap-2">
+                        <opt.icon className="w-4 h-4" />
+                        {opt.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-white/60">
+                {THEME_OPTIONS.find((o) => o.value === theme)?.desc ?? "Select your preferred theme."}
+              </p>
             </div>
             <div className="p-4 bg-secondary rounded-lg">
               <p className="text-sm text-white/60">

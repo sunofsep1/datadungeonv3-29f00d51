@@ -25,9 +25,10 @@ interface ContactKeyInfoPanelProps {
   lastActivity: string | null;
   onViewFull: () => void;
   onAddNote: () => void;
+  onSendEmail?: () => void;
 }
 
-export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNote }: ContactKeyInfoPanelProps) {
+export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNote, onSendEmail }: ContactKeyInfoPanelProps) {
   const email = getPrimaryEmail(contact) ?? contact.email;
   const phone = getPrimaryPhone(contact) ?? contact.phone;
 
@@ -96,7 +97,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
           </Button>
         )}
         {email && (
-          <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={() => window.open(`mailto:${email}`)}>
+          <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={onSendEmail ?? (() => window.open(`mailto:${email}`))}>
             <Mail className="w-3.5 h-3.5" /> Email
           </Button>
         )}

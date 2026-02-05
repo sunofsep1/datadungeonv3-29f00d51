@@ -14,6 +14,43 @@ body {
   background-color: hsl(222 47% 6%) !important;
 }
 
+/* Theme root background overrides */
+html.theme-tomorrow-night-blue,
+html.theme-tomorrow-night-blue body,
+html.theme-tomorrow-night-blue #root {
+  background-color: #002451 !important;
+}
+
+html.theme-dracula,
+html.theme-dracula body,
+html.theme-dracula #root {
+  background-color: #282a36 !important;
+}
+
+html.theme-monokai,
+html.theme-monokai body,
+html.theme-monokai #root {
+  background-color: #272822 !important;
+}
+
+html.theme-github-dark,
+html.theme-github-dark body,
+html.theme-github-dark #root {
+  background-color: #0d1117 !important;
+}
+
+html.theme-one-dark,
+html.theme-one-dark body,
+html.theme-one-dark #root {
+  background-color: #282c34 !important;
+}
+
+html.theme-solarized-dark,
+html.theme-solarized-dark body,
+html.theme-solarized-dark #root {
+  background-color: #002b36 !important;
+}
+
 @layer base {
   :root {
     --background: 222 47% 6%;
@@ -152,6 +189,276 @@ body {
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;
   }
+
+  /* Tomorrow Night Blue - VS Code-inspired dark theme */
+  .theme-tomorrow-night-blue {
+    --background: 210 100% 16%;
+    --foreground: 0 0% 100%;
+
+    --card: 210 100% 12%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 210 100% 10%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 214 100% 87%;
+    --primary-foreground: 210 100% 16%;
+
+    --secondary: 210 100% 20%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 100% 18%;
+    --muted-foreground: 0 0% 80%;
+
+    --accent: 180 100% 80%;
+    --accent-foreground: 210 100% 16%;
+
+    --destructive: 355 100% 81%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 100% 22%;
+    --input: 210 100% 10%;
+    --ring: 214 100% 87%;
+
+    --sidebar-background: 210 100% 8%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: 214 100% 87%;
+    --sidebar-primary-foreground: 210 100% 16%;
+    --sidebar-accent: 210 100% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 100% 18%;
+    --sidebar-ring: 214 100% 87%;
+
+    --success: 88 100% 83%;
+    --warning: 45 100% 84%;
+    --info: 180 100% 80%;
+    --teal: 180 100% 80%;
+  }
+
+  /* Dracula - purple/pink accent, dark purple-gray background */
+  .theme-dracula {
+    --background: 231 15% 18%;
+    --foreground: 60 30% 96%;
+
+    --card: 232 14% 15%;
+    --card-foreground: 60 30% 96%;
+
+    --popover: 231 10% 24%;
+    --popover-foreground: 60 30% 96%;
+
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 18%;
+
+    --secondary: 232 14% 31%;
+    --secondary-foreground: 60 30% 96%;
+
+    --muted: 225 27% 51%;
+    --muted-foreground: 60 30% 80%;
+
+    --accent: 326 100% 74%;
+    --accent-foreground: 231 15% 18%;
+
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+
+    --border: 232 14% 31%;
+    --input: 232 14% 15%;
+    --ring: 265 89% 78%;
+
+    --sidebar-background: 235 14% 15%;
+    --sidebar-foreground: 60 30% 80%;
+    --sidebar-primary: 265 89% 78%;
+    --sidebar-primary-foreground: 231 15% 18%;
+    --sidebar-accent: 232 15% 24%;
+    --sidebar-accent-foreground: 60 30% 96%;
+    --sidebar-border: 225 27% 40%;
+    --sidebar-ring: 265 89% 78%;
+
+    --success: 135 94% 65%;
+    --warning: 31 100% 71%;
+    --info: 191 97% 77%;
+    --teal: 191 97% 77%;
+  }
+
+  /* Monokai - teal/orange accent, charcoal background */
+  .theme-monokai {
+    --background: 47 9% 15%;
+    --foreground: 60 30% 96%;
+
+    --card: 47 9% 12%;
+    --card-foreground: 60 30% 96%;
+
+    --popover: 47 8% 20%;
+    --popover-foreground: 60 30% 96%;
+
+    --primary: 187 100% 67%;
+    --primary-foreground: 47 9% 15%;
+
+    --secondary: 47 9% 22%;
+    --secondary-foreground: 60 30% 96%;
+
+    --muted: 47 9% 25%;
+    --muted-foreground: 60 30% 75%;
+
+    --accent: 35 100% 56%;
+    --accent-foreground: 47 9% 15%;
+
+    --destructive: 350 100% 56%;
+    --destructive-foreground: 60 30% 96%;
+
+    --border: 47 9% 28%;
+    --input: 47 9% 12%;
+    --ring: 187 100% 67%;
+
+    --sidebar-background: 47 9% 11%;
+    --sidebar-foreground: 60 30% 75%;
+    --sidebar-primary: 187 100% 67%;
+    --sidebar-primary-foreground: 47 9% 15%;
+    --sidebar-accent: 47 9% 18%;
+    --sidebar-accent-foreground: 60 30% 96%;
+    --sidebar-border: 47 9% 22%;
+    --sidebar-ring: 187 100% 67%;
+
+    --success: 88 79% 53%;
+    --warning: 35 100% 56%;
+    --info: 187 100% 67%;
+    --teal: 187 100% 67%;
+  }
+
+  /* GitHub Dark - blue accent, near-black background */
+  .theme-github-dark {
+    --background: 215 28% 5%;
+    --foreground: 210 40% 96%;
+
+    --card: 215 25% 8%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 215 25% 10%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 211 100% 66%;
+    --primary-foreground: 215 28% 5%;
+
+    --secondary: 215 20% 14%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 215 20% 20%;
+    --muted-foreground: 215 15% 55%;
+
+    --accent: 211 100% 66%;
+    --accent-foreground: 215 28% 5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 96%;
+
+    --border: 215 20% 18%;
+    --input: 215 25% 8%;
+    --ring: 211 100% 66%;
+
+    --sidebar-background: 215 28% 3%;
+    --sidebar-foreground: 215 15% 65%;
+    --sidebar-primary: 211 100% 66%;
+    --sidebar-primary-foreground: 215 28% 5%;
+    --sidebar-accent: 215 20% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 215 20% 15%;
+    --sidebar-ring: 211 100% 66%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 211 100% 66%;
+    --teal: 173 80% 40%;
+  }
+
+  /* One Dark Pro - blue accent, dark blue-gray background */
+  .theme-one-dark {
+    --background: 220 13% 18%;
+    --foreground: 220 9% 92%;
+
+    --card: 220 13% 14%;
+    --card-foreground: 220 9% 92%;
+
+    --popover: 220 13% 12%;
+    --popover-foreground: 220 9% 92%;
+
+    --primary: 207 82% 66%;
+    --primary-foreground: 220 13% 18%;
+
+    --secondary: 220 13% 24%;
+    --secondary-foreground: 220 9% 92%;
+
+    --muted: 220 13% 28%;
+    --muted-foreground: 220 9% 65%;
+
+    --accent: 207 82% 66%;
+    --accent-foreground: 220 13% 18%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 220 9% 92%;
+
+    --border: 220 13% 22%;
+    --input: 220 13% 12%;
+    --ring: 207 82% 66%;
+
+    --sidebar-background: 220 13% 10%;
+    --sidebar-foreground: 220 9% 70%;
+    --sidebar-primary: 207 82% 66%;
+    --sidebar-primary-foreground: 220 13% 18%;
+    --sidebar-accent: 220 13% 18%;
+    --sidebar-accent-foreground: 220 9% 92%;
+    --sidebar-border: 220 13% 20%;
+    --sidebar-ring: 207 82% 66%;
+
+    --success: 95 38% 62%;
+    --warning: 29 100% 58%;
+    --info: 207 82% 66%;
+    --teal: 187 47% 55%;
+  }
+
+  /* Solarized Dark - blue accent, dark teal background */
+  .theme-solarized-dark {
+    --background: 193 100% 11%;
+    --foreground: 44 11% 92%;
+
+    --card: 193 100% 8%;
+    --card-foreground: 44 11% 92%;
+
+    --popover: 193 90% 14%;
+    --popover-foreground: 44 11% 92%;
+
+    --primary: 199 90% 48%;
+    --primary-foreground: 193 100% 11%;
+
+    --secondary: 193 80% 20%;
+    --secondary-foreground: 44 11% 92%;
+
+    --muted: 195 40% 35%;
+    --muted-foreground: 44 11% 70%;
+
+    --accent: 199 90% 48%;
+    --accent-foreground: 193 100% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 44 11% 92%;
+
+    --border: 193 50% 25%;
+    --input: 193 100% 8%;
+    --ring: 199 90% 48%;
+
+    --sidebar-background: 193 100% 6%;
+    --sidebar-foreground: 44 11% 75%;
+    --sidebar-primary: 199 90% 48%;
+    --sidebar-primary-foreground: 193 100% 11%;
+    --sidebar-accent: 193 80% 16%;
+    --sidebar-accent-foreground: 44 11% 92%;
+    --sidebar-border: 193 50% 22%;
+    --sidebar-ring: 199 90% 48%;
+
+    --success: 88 80% 40%;
+    --warning: 45 93% 47%;
+    --info: 199 90% 48%;
+    --teal: 175 74% 37%;
+  }
 }
 
 @layer base {
@@ -194,6 +501,97 @@ body {
   }
   .zoho-accent-bg {
     background-color: rgba(0, 188, 212, 0.15) !important;
+  }
+
+  /* Theme overrides for zoho components */
+  .theme-tomorrow-night-blue .zoho-layout,
+  .theme-tomorrow-night-blue .zoho-layout main {
+    background-color: #002451 !important;
+  }
+  .theme-tomorrow-night-blue .zoho-card {
+    background-color: #001733 !important;
+    border-color: rgba(187, 218, 255, 0.2) !important;
+  }
+  .theme-tomorrow-night-blue .zoho-accent {
+    color: #bbdaff !important;
+  }
+  .theme-tomorrow-night-blue .zoho-accent-bg {
+    background-color: rgba(187, 218, 255, 0.15) !important;
+  }
+
+  .theme-dracula .zoho-layout,
+  .theme-dracula .zoho-layout main {
+    background-color: #282a36 !important;
+  }
+  .theme-dracula .zoho-card {
+    background-color: #21222c !important;
+    border-color: rgba(189, 147, 249, 0.25) !important;
+  }
+  .theme-dracula .zoho-accent {
+    color: #bd93f9 !important;
+  }
+  .theme-dracula .zoho-accent-bg {
+    background-color: rgba(189, 147, 249, 0.15) !important;
+  }
+
+  .theme-monokai .zoho-layout,
+  .theme-monokai .zoho-layout main {
+    background-color: #272822 !important;
+  }
+  .theme-monokai .zoho-card {
+    background-color: #1e1f1c !important;
+    border-color: rgba(102, 217, 239, 0.25) !important;
+  }
+  .theme-monokai .zoho-accent {
+    color: #66d9ef !important;
+  }
+  .theme-monokai .zoho-accent-bg {
+    background-color: rgba(102, 217, 239, 0.15) !important;
+  }
+
+  .theme-github-dark .zoho-layout,
+  .theme-github-dark .zoho-layout main {
+    background-color: #0d1117 !important;
+  }
+  .theme-github-dark .zoho-card {
+    background-color: #161b22 !important;
+    border-color: rgba(88, 166, 255, 0.2) !important;
+  }
+  .theme-github-dark .zoho-accent {
+    color: #58a6ff !important;
+  }
+  .theme-github-dark .zoho-accent-bg {
+    background-color: rgba(88, 166, 255, 0.15) !important;
+  }
+
+  .theme-one-dark .zoho-layout,
+  .theme-one-dark .zoho-layout main {
+    background-color: #282c34 !important;
+  }
+  .theme-one-dark .zoho-card {
+    background-color: #21252b !important;
+    border-color: rgba(97, 175, 239, 0.2) !important;
+  }
+  .theme-one-dark .zoho-accent {
+    color: #61afef !important;
+  }
+  .theme-one-dark .zoho-accent-bg {
+    background-color: rgba(97, 175, 239, 0.15) !important;
+  }
+
+  .theme-solarized-dark .zoho-layout,
+  .theme-solarized-dark .zoho-layout main {
+    background-color: #002b36 !important;
+  }
+  .theme-solarized-dark .zoho-card {
+    background-color: #073642 !important;
+    border-color: rgba(38, 139, 210, 0.25) !important;
+  }
+  .theme-solarized-dark .zoho-accent {
+    color: #268bd2 !important;
+  }
+  .theme-solarized-dark .zoho-accent-bg {
+    background-color: rgba(38, 139, 210, 0.15) !important;
   }
   /* Zoho dialog: readable labels and inputs in dark dialogs */
   .zoho-dialog label,

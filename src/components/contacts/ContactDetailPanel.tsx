@@ -4,6 +4,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useContact } from "@/hooks/useContact";
+import { getPrimaryEmail } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
 import { useInteractions, useCreateInteraction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
@@ -14,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ContactKeyInfoPanel } from "./ContactKeyInfoPanel";
+import { EmailComposeDialog } from "./EmailComposeDialog";
 import { ContactAboutPanel } from "./ContactAboutPanel";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
 import { ContactPropertiesCard } from "./ContactPropertiesCard";
@@ -39,6 +41,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   const createInteraction = useCreateInteraction();
 
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
+  const [emailComposeOpen, setEmailComposeOpen] = useState(false);
   const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
   const [newInteraction, setNewInteraction] = useState({
     type: "call",
@@ -127,6 +130,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   lastActivity={lastActivity}
                   onViewFull={() => { onOpenChange(false); navigate(`/contacts/${contact.id}`); }}
                   onAddNote={() => setAddInteractionOpen(true)}
+                  onSendEmail={() => setEmailComposeOpen(true)}
                 />
               </div>
               {/* Center: main content */}
@@ -270,6 +274,19 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
         contactId={contactId}
         linkedPropertyIds={linkedPropertyIds}
       />
+
+      {contact && contactId && (() => {
+        const email = getPrimaryEmail(contact) ?? contact.email;
+        return email ? (
+          <EmailComposeDialog
+            open={emailComposeOpen}
+            onOpenChange={setEmailComposeOpen}
+            to={email}
+            contactName={contact.name ?? undefined}
+            onSent={() => createInteraction.mutate({ contact_id: contactId, type: "email", channel: "email", subject: "Email sent", body: null })}
+          />
+        ) : null;
+      })()}
     </>
   );
 }

@@ -80,11 +80,11 @@ function renderNavItem(item: NavItem, pathname: string) {
       to={item.url}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-        "text-white/70 hover:bg-white/10 hover:text-white",
-        active && "bg-[#00BCD4]/20 text-[#00BCD4] hover:bg-[#00BCD4]/25 hover:text-[#00BCD4]"
+        "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+        active && "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/90"
       )}
     >
-      <item.icon className={cn("h-5 w-5 shrink-0", active && "text-[#00BCD4]")} />
+      <item.icon className={cn("h-5 w-5 shrink-0", active && "text-sidebar-primary")} />
       <span className="truncate">{item.title}</span>
     </NavLink>
   );
@@ -121,24 +121,24 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         />
       )}
 
-      {/* Desktop sidebar — Zoho-style dark, collapsible */}
+      {/* Desktop sidebar — theme-aware, collapsible */}
       <aside
         className={cn(
           "fixed left-0 top-0 z-40 hidden md:flex flex-col print:hidden transition-[width] duration-250 ease-in-out",
-          "bg-[#1e1e1e] border-r border-white/10 min-h-screen"
+          "bg-sidebar border-r border-sidebar-border min-h-screen"
         )}
         style={{ width: desktopWidth }}
       >
         {/* Logo / brand */}
-        <div className="flex h-[60px] shrink-0 items-center border-b border-white/10 px-3">
+        <div className="flex h-[60px] shrink-0 items-center border-b border-sidebar-border px-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#00BCD4]">
-              <Database className="h-5 w-5 text-white" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
+              <Database className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
             {!collapsed && (
               <div className="min-w-0 flex flex-col">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Data</span>
-                <span className="text-sm font-semibold text-white truncate">Dungeon</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/70">Data</span>
+                <span className="text-sm font-semibold text-sidebar-primary truncate">Dungeon</span>
               </div>
             )}
           </div>
@@ -148,7 +148,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 text-white/60 hover:bg-white/10 hover:text-white"
+                  className="h-8 w-8 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                   onClick={onToggle}
                 >
                   <PanelLeftClose className="h-4 w-4" />
@@ -159,13 +159,13 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           )}
         </div>
         {collapsed && (
-          <div className="flex shrink-0 justify-center py-2 border-b border-white/10">
+          <div className="flex shrink-0 justify-center py-2 border-b border-sidebar-border">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-white/60 hover:bg-white/10 hover:text-white"
+                  className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                   onClick={onToggle}
                 >
                   <PanelLeft className="h-4 w-4" />
@@ -187,11 +187,11 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                   to={item.url}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    "text-white/70 hover:bg-white/10 hover:text-white",
-                    active && "bg-[#00BCD4]/20 text-[#00BCD4] hover:bg-[#00BCD4]/25 hover:text-[#00BCD4]"
+                    "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                    active && "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/90"
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5 shrink-0", active && "text-[#00BCD4]")} />
+                  <item.icon className={cn("h-5 w-5 shrink-0", active && "text-sidebar-primary")} />
                 </NavLink>
               );
               return (
@@ -204,7 +204,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           ) : (
             <>
               <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-white/50 hover:text-white/70 hover:bg-white/5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Home</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
@@ -213,7 +213,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 </CollapsibleContent>
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-white/50 hover:text-white/70 hover:bg-white/5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Client management</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
@@ -222,7 +222,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 </CollapsibleContent>
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-white/50 hover:text-white/70 hover:bg-white/5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Business</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
@@ -235,13 +235,13 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         </nav>
 
         {/* Footer: Settings + Sign out */}
-        <div className="shrink-0 border-t border-white/10 p-2 space-y-0.5">
+        <div className="shrink-0 border-t border-sidebar-border p-2 space-y-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start text-white/70 hover:bg-white/10 hover:text-white",
+                  "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                   collapsed && "justify-center px-0"
                 )}
               >
@@ -249,27 +249,27 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 {!collapsed && <span className="truncate ml-0">Settings</span>}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right" className="w-56 bg-[#2c2c2c] border-white/10">
+            <DropdownMenuContent align="start" side="right" className="w-56 bg-popover border-border">
               <DropdownMenuItem asChild>
-                <NavLink to="/scripts" className="flex items-center gap-2 text-white/90 focus:bg-white/10 focus:text-white">
+                <NavLink to="/scripts" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                   <FileText className="w-4 h-4" />
                   Scripts
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <NavLink to="/settings" className="flex items-center gap-2 text-white/90 focus:bg-white/10 focus:text-white">
+                <NavLink to="/settings" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                   <Settings className="w-4 h-4" />
                   Settings
                 </NavLink>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
-              <div className="px-2 py-1.5 text-xs text-white/50 truncate">{user?.email}</div>
+              <DropdownMenuSeparator className="bg-border" />
+              <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">{user?.email}</div>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-start text-white/70 hover:bg-white/10 hover:text-white",
+              "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
               collapsed && "justify-center px-0"
             )}
             onClick={signOut}
@@ -283,15 +283,15 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Mobile slide-out */}
       <aside
         className={cn(
-          "fixed z-50 w-[280px] h-full bg-[#1e1e1e] border-r border-white/10 flex flex-col transition-transform duration-250 print:hidden md:hidden",
+          "fixed z-50 w-[280px] h-full bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-250 print:hidden md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-14 items-center gap-3 border-b border-white/10 px-4 mt-12">
-          <div className="h-9 w-9 rounded-lg bg-[#00BCD4] flex items-center justify-center">
-            <Database className="h-5 w-5 text-white" />
+        <div className="flex h-14 items-center gap-3 border-b border-sidebar-border px-4 mt-12">
+          <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
+            <Database className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
-          <span className="text-sm font-semibold text-white">Data Dungeon</span>
+          <span className="text-sm font-semibold text-sidebar-primary">Data Dungeon</span>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
@@ -303,7 +303,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium",
-                  active ? "bg-[#00BCD4]/20 text-[#00BCD4]" : "text-white/70 hover:bg-white/10 hover:text-white"
+                  active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5 shrink-0" />
@@ -311,20 +311,20 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
               </NavLink>
             );
           })}
-          <div className="pt-4 mt-4 border-t border-white/10 space-y-1">
-            <NavLink to="/scripts" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-white/70 hover:bg-white/10">
+          <div className="pt-4 mt-4 border-t border-sidebar-border space-y-1">
+            <NavLink to="/scripts" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
               <FileText className="h-5 w-5" />
               Scripts
             </NavLink>
-            <NavLink to="/settings" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-white/70 hover:bg-white/10">
+            <NavLink to="/settings" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
               <Settings className="h-5 w-5" />
               Settings
             </NavLink>
           </div>
         </nav>
-        <div className="p-3 border-t border-white/10">
-          <div className="px-3 py-2 text-xs text-white/50 truncate mb-2">{user?.email}</div>
-          <Button variant="ghost" className="w-full justify-start gap-3 text-white/70 hover:bg-white/10" onClick={signOut}>
+        <div className="p-3 border-t border-sidebar-border">
+          <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate mb-2">{user?.email}</div>
+          <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent/50" onClick={signOut}>
             <LogOut className="h-4 w-4" />
             Sign out
           </Button>
@@ -332,46 +332,46 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       </aside>
 
       {/* Mobile bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#1e1e1e] border-t border-white/10 md:hidden print:hidden safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-sidebar border-t border-sidebar-border md:hidden print:hidden safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {mobileNavItems.map((item) => {
             if (item.url === "#more") {
               return (
                 <DropdownMenu key={item.title}>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex flex-col items-center justify-center gap-1 px-3 py-2 text-white/50">
+                    <button className="flex flex-col items-center justify-center gap-1 px-3 py-2 text-sidebar-foreground">
                       <item.icon className="w-5 h-5" />
                       <span className="text-[10px] font-medium">More</span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-[#2c2c2c] border-white/10">
+                  <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-popover border-border">
                     <DropdownMenuItem asChild>
-                      <NavLink to="/properties" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
+                      <NavLink to="/properties" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <Building2 className="w-4 h-4" />
                         Properties
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <NavLink to="/marketing" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
+                      <NavLink to="/marketing" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <Megaphone className="w-4 h-4" />
                         Marketing
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <NavLink to="/performance" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
+                      <NavLink to="/performance" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <BarChart3 className="w-4 h-4" />
                         Performance
                       </NavLink>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/10" />
+                    <DropdownMenuSeparator className="bg-border" />
                     <DropdownMenuItem asChild>
-                      <NavLink to="/scripts" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
+                      <NavLink to="/scripts" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <FileText className="w-4 h-4" />
                         Scripts
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <NavLink to="/settings" className="flex items-center gap-2 text-white/90 focus:bg-white/10">
+                      <NavLink to="/settings" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <Settings className="w-4 h-4" />
                         Settings
                       </NavLink>
@@ -387,7 +387,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 to={item.url}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[64px]",
-                  active ? "text-[#00BCD4]" : "text-white/50"
+                  active ? "text-sidebar-primary" : "text-sidebar-foreground"
                 )}
               >
                 <item.icon className="w-5 h-5" />

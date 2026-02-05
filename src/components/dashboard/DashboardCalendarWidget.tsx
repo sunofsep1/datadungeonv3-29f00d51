@@ -12,9 +12,12 @@ import {
   MapPin,
   ExternalLink,
   RefreshCw,
-  Unlink
+  Unlink,
+  Pencil,
+  Trash2,
+  MoreHorizontal
 } from "lucide-react";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useAppointments, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -36,6 +39,23 @@ import {
   subDays
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -64,10 +84,66 @@ const getGcalUrl = () => {
   return base ? `${base}/functions/v1/google-calendar` : null;
 };
 
-export function DashboardCalendarWidget() {
+function EventChip({
+  item,
+  onEdit,
+  onDelete,
+  onOpenGoogle,
+  size = "sm",
+}: {
+  item: CalendarItem;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onOpenGoogle?: () => void;
+  size?: "sm" | "md";
+}) {
+  const isApp = item.source === "app";
+  const content = (
+    <div className={cn(
+      "truncate text-[10px] px-1 rounded mb-0.5 cursor-pointer hover:opacity-90",
+      item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
+    )}>
+      {item.title}
+    </div>
+  );
+
+  if (isApp && (onEdit || onDelete)) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="w-full text-left" onClick={(e) => e.stopPropagation()}>
+            {content}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48" onClick={(e) => e.stopPropagation()}>
+          {onEdit && <DropdownMenuItem onClick={onEdit}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>}
+          {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+  if (onOpenGoogle) {
+    return (
+      <button type="button" className="w-full text-left" onClick={(e) => { e.stopPropagation(); onOpenGoogle(); }}>
+        {content}
+      </button>
+    );
+  }
+  return <div onClick={(e) => e.stopPropagation()}>{content}</div>;
+}
+
+interface DashboardCalendarWidgetProps {
+  onDayClick?: (date: Date) => void;
+  onAddAppointmentRequest?: (date: Date) => void;
+}
+
+export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }: DashboardCalendarWidgetProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { user } = useAuth();
   const { data: appointments = [], isError: appointmentsError, refetch: refetchAppointments } = useAppointments();
+  const deleteAppointment = useDeleteAppointment();
+  const handleDayOrAdd = onAddAppointmentRequest ?? onDayClick;
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -286,6 +362,21 @@ export function DashboardCalendarWidget() {
     }
   };
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  const handleDeleteAppointment = async (id: string) => {
+    const appId = id.startsWith("app-") ? id.replace("app-", "") : id;
+    try {
+      await deleteAppointment.mutateAsync(appId);
+      toast({ title: "Deleted", description: "Appointment removed." });
+      setDeleteTarget(null);
+      refetchAppointments();
+      fetchGcal();
+    } catch {
+      toast({ title: "Error", description: "Could not delete appointment", variant: "destructive" });
+    }
+  };
+
   const handleDisconnectGcal = async () => {
     if (!user) return;
     const gcalBase = getGcalUrl();
@@ -393,10 +484,12 @@ export function DashboardCalendarWidget() {
           {displayDays.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             return (
-              <div
+              <button
                 key={idx}
+                type="button"
+                onClick={() => handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[60px] p-1 border border-white/10 rounded text-xs",
+                  "min-h-[60px] p-1 border border-white/10 rounded text-xs text-left transition-colors hover:bg-white/5 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary",
                   !isSameMonth(day, currentDate) && "opacity-40"
                 )}
@@ -408,23 +501,14 @@ export function DashboardCalendarWidget() {
                   {format(day, "d")}
                 </div>
                 {dayEvents.slice(0, 2).map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "truncate text-[10px] px-1 rounded mb-0.5",
-                      item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
-                    )}
-                    title={item.source === "google" ? "Google Calendar" : "App"}
-                  >
-                    {item.title}
-                  </div>
+                  <EventChip key={item.id} item={item} onEdit={() => item.source === "app" && navigate(`/appointments?edit=${item.id.replace("app-", "")}`)} onDelete={() => item.source === "app" && setDeleteTarget(item.id)} onOpenGoogle={item.htmlLink ? () => window.open(item.htmlLink!) : undefined} />
                 ))}
                 {dayEvents.length > 2 && (
                   <div className="text-[10px] text-white/60">
                     +{dayEvents.length - 2} more
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -435,10 +519,12 @@ export function DashboardCalendarWidget() {
           {displayDays.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             return (
-              <div
+              <button
                 key={idx}
+                type="button"
+                onClick={() => handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[100px] p-2 border border-white/10 rounded",
+                  "min-h-[100px] p-2 border border-white/10 rounded text-left transition-colors hover:bg-white/5 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary"
                 )}
               >
@@ -450,18 +536,35 @@ export function DashboardCalendarWidget() {
                   <div className="text-lg">{format(day, "d")}</div>
                 </div>
                 {dayEvents.map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "text-xs px-1 py-0.5 rounded mb-1 truncate",
-                      item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
-                    )}
-                  >
-                    <div className="font-medium truncate">{item.title}</div>
-                    <div className="text-[10px] opacity-75">{formatEventTime(item)}</div>
+                  <div key={item.id} onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={cn(
+                            "w-full text-left text-xs px-1 py-0.5 rounded mb-1 truncate block hover:opacity-90",
+                            item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
+                          )}
+                        >
+                          <div className="font-medium truncate">{item.title}</div>
+                          <div className="text-[10px] opacity-75">{formatEventTime(item)}</div>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        {item.source === "app" && (
+                          <>
+                            <DropdownMenuItem onClick={() => navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeleteTarget(item.id)} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+                          </>
+                        )}
+                        {item.source === "google" && item.htmlLink && (
+                          <DropdownMenuItem onClick={() => window.open(item.htmlLink!)}><ExternalLink className="w-4 h-4 mr-2" /> Open in Google Calendar</DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 ))}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -469,10 +572,14 @@ export function DashboardCalendarWidget() {
 
       {viewMode === "day" && (
         <div className="mb-4">
-          <div className={cn(
-            "p-4 border border-white/10 rounded",
-            isToday(currentDate) && "bg-primary/5 border-primary"
-          )}>
+          <button
+            type="button"
+            onClick={() => handleDayOrAdd?.(currentDate)}
+            className={cn(
+              "w-full p-4 border border-white/10 rounded text-left transition-colors hover:bg-white/5 cursor-pointer",
+              isToday(currentDate) && "bg-primary/5 border-primary"
+            )}
+          >
             <div className="text-lg font-semibold mb-4 flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-primary" />
               {format(currentDate, "EEEE, MMMM d")}
@@ -481,27 +588,34 @@ export function DashboardCalendarWidget() {
               )}
             </div>
             {getEventsForDate(currentDate).length === 0 ? (
-              <p className="text-sm text-white/60">No appointments scheduled</p>
+              <p className="text-sm text-white/60">Click to add an appointment</p>
             ) : (
               <div className="space-y-3">
                 {getEventsForDate(currentDate).map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
+                  <div key={item.id} onClick={(e) => e.stopPropagation()} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-white">{item.title}</span>
                         <Badge variant={item.source === "google" ? "secondary" : "default"} className="text-[10px]">
                           {item.source === "google" ? "Google" : "App"}
                         </Badge>
-                        {item.htmlLink && (
-                          <a
-                            href={item.htmlLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-0.5"
-                          >
-                            <ExternalLink className="w-3 h-3" /> Open
+                        {item.source === "app" ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1">
+                                <MoreHorizontal className="w-3 h-3" /> Actions
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem onClick={() => navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeleteTarget(item.id)} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : item.htmlLink ? (
+                          <a href={item.htmlLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                            <ExternalLink className="w-3 h-3" /> Open in Google
                           </a>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
                         <Clock className="w-3 h-3" />
@@ -518,7 +632,7 @@ export function DashboardCalendarWidget() {
                 ))}
               </div>
             )}
-          </div>
+          </button>
         </div>
       )}
 
@@ -535,7 +649,7 @@ export function DashboardCalendarWidget() {
                 dateStr = format(parseISO(item.date), "MMM d, h:mm a");
               } catch {}
               return (
-                <div key={item.id} className="flex items-center gap-3 text-sm">
+                <div key={item.id} className="flex items-center gap-3 text-sm group">
                   <div
                     className={cn(
                       "w-2 h-2 rounded-full flex-shrink-0",
@@ -548,7 +662,19 @@ export function DashboardCalendarWidget() {
                       {item.source === "google" ? "Google" : "App"}
                     </Badge>
                   </div>
-                  {item.htmlLink ? (
+                  {item.source === "app" ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDeleteTarget(item.id)} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : item.htmlLink ? (
                     <a
                       href={item.htmlLink}
                       target="_blank"
@@ -566,6 +692,24 @@ export function DashboardCalendarWidget() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete appointment?</AlertDialogTitle>
+            <AlertDialogDescription>This will remove the appointment. This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && handleDeleteAppointment(deleteTarget)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
