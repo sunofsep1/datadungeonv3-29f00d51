@@ -176,12 +176,16 @@ export function useProperty(id: string | undefined) {
         const contactMap = new Map(
           (contactRows ?? []).map((c: { id: string }) => [c.id, c])
         );
-        property.contact_property_links = links.map((l: { contact_id: string; [k: string]: unknown }) => ({
-          ...l,
+        property.contact_property_links = links.map((l: { id: string; contact_id: string; property_id: string; role: string; notes: string | null }) => ({
+          id: l.id,
+          contact_id: l.contact_id,
+          property_id: l.property_id,
+          role: l.role,
+          notes: l.notes ?? "",
           contacts: contactMap.get(l.contact_id) ?? null,
-        }));
-      } else if (!linksErr && Array.isArray(links)) {
-        property.contact_property_links = links;
+        })) as PropertyWithLinks["contact_property_links"];
+      } else {
+        property.contact_property_links = [];
       }
       return property;
     },

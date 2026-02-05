@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type BadgeVariant = "default" | "outreach" | "planning" | "active" | "completed" | "cancelled" | "hot" | "warm" | "cold" | "entered";
+export type BadgeVariant = "default" | "outreach" | "planning" | "active" | "completed" | "cancelled" | "hot" | "warm" | "cold" | "entered" | "total";
 
 interface StatusBadgeProps {
   children: React.ReactNode;
@@ -19,6 +19,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   warm: "bg-warning/20 text-warning",
   cold: "bg-info/20 text-info",
   entered: "bg-secondary text-secondary-foreground",
+  total: "bg-muted text-muted-foreground",
 };
 
 export function StatusBadge({ children, variant = "default", className }: StatusBadgeProps) {

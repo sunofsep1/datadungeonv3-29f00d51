@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusBadge, type BadgeVariant } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,16 +19,16 @@ import { Search, Phone, Mail, ChevronRight, Users } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function getStatusVariant(status: string | null) {
+function getStatusVariant(status: string | null): BadgeVariant {
   switch (status) {
     case "hot":
-      return "cancelled";
+      return "hot";
     case "warm":
-      return "planning";
+      return "warm";
     case "cold":
-      return "active";
+      return "cold";
     default:
-      return "total";
+      return "default";
   }
 }
 
