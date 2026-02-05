@@ -13,6 +13,8 @@ import {
   LogOut,
   BarChart3,
   MoreHorizontal,
+  Home,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,14 +26,53 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-const navItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Calendar", url: "/calendar", icon: Calendar },
-  { title: "Marketing", url: "/marketing", icon: Megaphone },
-  { title: "Performance", url: "/performance", icon: BarChart3 },
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+  defaultOpen?: boolean;
+}
+
+const navGroups: NavGroup[] = [
+  {
+    label: "Home",
+    defaultOpen: true,
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Client Management",
+    defaultOpen: true,
+    items: [
+      { title: "Contacts", url: "/contacts", icon: Users },
+      { title: "Properties", url: "/properties", icon: Home },
+      { title: "Calendar", url: "/calendar", icon: Calendar },
+    ],
+  },
+  {
+    label: "Business",
+    defaultOpen: true,
+    items: [
+      { title: "Marketing", url: "/marketing", icon: Megaphone },
+      { title: "Performance", url: "/performance", icon: BarChart3 },
+    ],
+  },
 ];
+
+// Flat list for mobile
+const allNavItems: NavItem[] = navGroups.flatMap((g) => g.items);
 
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
@@ -44,6 +85,20 @@ export function AppSidebar() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { signOut, user } = useAuth();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
+    Object.fromEntries(navGroups.map((g) => [g.label, g.defaultOpen ?? true]))
+  );
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const isActive = (url: string) => {
+    if (url === "/dashboard") return location.pathname === "/dashboard";
+    if (url === "/calendar") return location.pathname.startsWith("/calendar") || location.pathname.startsWith("/appointments");
+    if (url === "/properties") return location.pathname.startsWith("/properties");
+    return location.pathname === url || location.pathname.startsWith(url + "/");
+  };
 
   return (
     <>
@@ -85,29 +140,45 @@ export function AppSidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.url || 
-              (item.url === "/listings" && location.pathname === "/listings") ||
-              (item.url === "/properties" && location.pathname.startsWith("/properties")) ||
-              (item.url === "/calendar" && (location.pathname.startsWith("/calendar") || location.pathname.startsWith("/appointments")));
-            return (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                onClick={() => setIsOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <item.icon className={cn("w-5 h-5", isActive && "text-primary")} />
-                <span>{item.title}</span>
-              </NavLink>
-            );
-          })}
+        <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
+          {navGroups.map((group) => (
+            <Collapsible
+              key={group.label}
+              open={openGroups[group.label]}
+              onOpenChange={() => toggleGroup(group.label)}
+            >
+              <CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                <span>{group.label}</span>
+                <ChevronDown
+                  className={cn(
+                    "w-3 h-3 transition-transform",
+                    openGroups[group.label] ? "" : "-rotate-90"
+                  )}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-0.5 mt-1">
+                {group.items.map((item) => {
+                  const active = isActive(item.url);
+                  return (
+                    <NavLink
+                      key={item.title}
+                      to={item.url}
+                      onClick={() => setIsOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        active
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <item.icon className={cn("w-4 h-4", active && "text-primary")} />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
         </nav>
 
         {/* User & Logout */}
@@ -165,8 +236,8 @@ export function AppSidebar() {
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.url;
+          {allNavItems.map((item) => {
+            const active = isActive(item.url);
             return (
               <NavLink
                 key={item.title}
@@ -174,12 +245,12 @@ export function AppSidebar() {
                 onClick={() => setIsOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
+                  active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", isActive && "text-primary")} />
+                <item.icon className={cn("w-5 h-5", active && "text-primary")} />
                 <span>{item.title}</span>
               </NavLink>
             );
@@ -230,6 +301,12 @@ export function AppSidebar() {
                       <NavLink to="/performance" className="flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
                         Performance
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/properties" className="flex items-center gap-2">
+                        <Home className="w-4 h-4" />
+                        Properties
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

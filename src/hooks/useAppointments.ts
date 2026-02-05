@@ -1,11 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
-export type Appointment = Tables<"appointments">;
-export type AppointmentInsert = TablesInsert<"appointments">;
-export type AppointmentUpdate = TablesUpdate<"appointments">;
+// Extended Appointment type to include google_event_id (recently added column)
+export interface Appointment {
+  id: string;
+  user_id: string;
+  contact_id: string | null;
+  title: string;
+  date: string;
+  location: string | null;
+  notes: string | null;
+  status: string | null;
+  type: string | null;
+  google_event_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AppointmentInsert = Partial<Omit<Appointment, "id" | "created_at" | "updated_at">> & {
+  title: string;
+  date: string;
+  user_id: string;
+  google_event_id?: string | null;
+};
+export type AppointmentUpdate = Partial<Omit<Appointment, "id" | "created_at" | "updated_at">> & { id: string };
 
 export function useAppointments() {
   // Subscribe to realtime changes
@@ -14,7 +33,7 @@ export function useAppointments() {
   return useQuery({
     queryKey: ["appointments"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("appointments")
         .select("*")
         .order("date", { ascending: true });
@@ -33,14 +52,14 @@ export function useCreateAppointment() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("appointments")
         .insert({ ...appointment, user_id: user.id })
         .select()
         .single();
       
       if (error) throw error;
-      return data;
+      return data as Appointment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -53,7 +72,7 @@ export function useUpdateAppointment() {
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: AppointmentUpdate & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("appointments")
         .update(updates)
         .eq("id", id)
@@ -61,7 +80,7 @@ export function useUpdateAppointment() {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as Appointment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -74,7 +93,7 @@ export function useDeleteAppointment() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("appointments")
         .delete()
         .eq("id", id);

@@ -56,11 +56,76 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_log: {
+        Row: {
+          activity_type: string
+          contact_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          listing_id: string | null
+          occurred_at: string
+          property_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type?: string
+          contact_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          listing_id?: string | null
+          occurred_at?: string
+          property_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          contact_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          listing_id?: string | null
+          occurred_at?: string
+          property_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           contact_id: string | null
           created_at: string
           date: string
+          google_event_id: string | null
           id: string
           location: string | null
           notes: string | null
@@ -74,6 +139,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           date: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           notes?: string | null
@@ -87,6 +153,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           date?: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           notes?: string | null
