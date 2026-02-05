@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { crypto } from "https://deno.land/std@0.208.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
       const state = url.searchParams.get("state"); // This contains the user ID
       const error = url.searchParams.get("error");
 
-      console.log("OAuth callback received. State (userId):", state);
+      console.log("OAuth callback received. State token:", state);
 
       if (error) {
         console.error("OAuth error:", error);
@@ -53,6 +54,39 @@ Deno.serve(async (req) => {
           },
         });
       }
+
+      // Validate the state token from database to prevent CSRF attacks
+      const { data: stateRecord, error: stateError } = await supabase
+        .from("oauth_states")
+        .select("user_id, expires_at")
+        .eq("token", state)
+        .single();
+
+      if (stateError || !stateRecord) {
+        console.error("Invalid or missing state token:", stateError);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: `${REDIRECT_BASE_URL}/dashboard?calendar_error=invalid_state`,
+          },
+        });
+      }
+
+      // Check if state token has expired (10 minute validity)
+      if (new Date(stateRecord.expires_at) < new Date()) {
+        console.error("State token expired");
+        // Clean up expired token
+        await supabase.from("oauth_states").delete().eq("token", state);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: `${REDIRECT_BASE_URL}/dashboard?calendar_error=state_expired`,
+          },
+        });
+      }
+
+      const validatedUserId = stateRecord.user_id;
+      console.log("State validated for user:", validatedUserId);
 
       const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar?action=callback`;
 
@@ -81,11 +115,11 @@ Deno.serve(async (req) => {
         });
       }
 
-      console.log("Token exchange successful for user:", state);
+      console.log("Token exchange successful for user:", validatedUserId);
 
-      // Store tokens in user metadata using the user ID from state
+      // Store tokens in user metadata using the VALIDATED user ID from database
       const { error: updateError } = await supabase.auth.admin.updateUserById(
-        state,
+        validatedUserId,
         {
           user_metadata: {
             google_access_token: tokens.access_token,
@@ -97,6 +131,8 @@ Deno.serve(async (req) => {
 
       if (updateError) {
         console.error("Error storing tokens:", updateError);
+        // Clean up used state token even on error
+        await supabase.from("oauth_states").delete().eq("token", state);
         return new Response(null, {
           status: 302,
           headers: {
@@ -104,6 +140,9 @@ Deno.serve(async (req) => {
           },
         });
       }
+
+      // Delete the used state token to prevent replay attacks
+      await supabase.from("oauth_states").delete().eq("token", state);
 
       console.log("Tokens stored successfully, redirecting to app");
 
@@ -144,6 +183,27 @@ Deno.serve(async (req) => {
       const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar?action=callback`;
       const scope = encodeURIComponent("https://www.googleapis.com/auth/calendar");
       
+      // Generate a secure random state token instead of using user ID directly
+      const stateToken = crypto.randomUUID();
+      
+      // Store state token with user ID and expiration (10 minutes)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const { error: insertError } = await supabase
+        .from("oauth_states")
+        .insert({
+          token: stateToken,
+          user_id: user.id,
+          expires_at: expiresAt,
+        });
+
+      if (insertError) {
+        console.error("Failed to store OAuth state:", insertError);
+        return new Response(JSON.stringify({ error: "Failed to initiate OAuth" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_CLIENT_ID}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -151,7 +211,7 @@ Deno.serve(async (req) => {
         `&scope=${scope}` +
         `&access_type=offline` +
         `&prompt=consent` +
-        `&state=${user.id}`;
+        `&state=${stateToken}`;
 
       console.log("Generated auth URL for user:", user.id);
       console.log("Redirect URI:", redirectUri);

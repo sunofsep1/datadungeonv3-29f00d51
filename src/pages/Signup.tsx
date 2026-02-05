@@ -28,10 +28,11 @@ export default function Signup() {
       return;
     }
 
-    if (password.length < 6) {
+    // Enforce minimum 12 character password for security
+    if (password.length < 12) {
       toast({
         title: "Password too short",
-        description: "Password must be at least 6 characters.",
+        description: "Password must be at least 12 characters for security.",
         variant: "destructive",
       });
       return;

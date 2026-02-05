@@ -16,136 +16,54 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
-          activity_type: string
-          contact_id: string | null
-          created_at: string | null
-          deal_id: string | null
-          description: string | null
-          id: string
-          property_id: string | null
-          title: string
-          user_id: string | null
-        }
-        Insert: {
-          activity_type: string
-          contact_id?: string | null
-          created_at?: string | null
-          deal_id?: string | null
-          description?: string | null
-          id?: string
-          property_id?: string | null
-          title: string
-          user_id?: string | null
-        }
-        Update: {
-          activity_type?: string
-          contact_id?: string | null
-          created_at?: string | null
-          deal_id?: string | null
-          description?: string | null
-          id?: string
-          property_id?: string | null
-          title?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "activities_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activities_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activities_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      activity_log: {
-        Row: {
-          id: string
-          user_id: string
-          activity_type: string
-          title: string
-          description: string | null
-          occurred_at: string
+          appointments_set: number | null
+          calls_made: number | null
+          closings: number | null
+          contracts_signed: number | null
           created_at: string
-          contact_id: string | null
-          property_id: string | null
-          listing_id: string | null
-          metadata: Json | null
+          date: string
+          gci_earned: number | null
+          id: string
+          listings_taken: number | null
+          offers_written: number | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          activity_type?: string
-          title: string
-          description?: string | null
-          occurred_at?: string
+          appointments_set?: number | null
+          calls_made?: number | null
+          closings?: number | null
+          contracts_signed?: number | null
           created_at?: string
-          contact_id?: string | null
-          property_id?: string | null
-          listing_id?: string | null
-          metadata?: Json | null
+          date?: string
+          gci_earned?: number | null
+          id?: string
+          listings_taken?: number | null
+          offers_written?: number | null
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          activity_type?: string
-          title?: string
-          description?: string | null
-          occurred_at?: string
+          appointments_set?: number | null
+          calls_made?: number | null
+          closings?: number | null
+          contracts_signed?: number | null
           created_at?: string
-          contact_id?: string | null
-          property_id?: string | null
-          listing_id?: string | null
-          metadata?: Json | null
+          date?: string
+          gci_earned?: number | null
+          id?: string
+          listings_taken?: number | null
+          offers_written?: number | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "activity_log_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activity_log_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activity_log_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "listings"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       appointments: {
         Row: {
           contact_id: string | null
           created_at: string
           date: string
-          google_event_id: string | null
           id: string
           location: string | null
           notes: string | null
-          reminder_sent_at: string | null
           status: string | null
           title: string
           type: string | null
@@ -156,11 +74,9 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           date: string
-          google_event_id?: string | null
           id?: string
           location?: string | null
           notes?: string | null
-          reminder_sent_at?: string | null
           status?: string | null
           title: string
           type?: string | null
@@ -171,11 +87,9 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           date?: string
-          google_event_id?: string | null
           id?: string
           location?: string | null
           notes?: string | null
-          reminder_sent_at?: string | null
           status?: string | null
           title?: string
           type?: string | null
@@ -188,82 +102,6 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      calendar_events: {
-        Row: {
-          all_day: boolean | null
-          contact_id: string | null
-          created_at: string | null
-          deal_id: string | null
-          description: string | null
-          end_time: string
-          event_type: string | null
-          id: string
-          location: string | null
-          property_id: string | null
-          reminder_minutes: number | null
-          start_time: string
-          title: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          all_day?: boolean | null
-          contact_id?: string | null
-          created_at?: string | null
-          deal_id?: string | null
-          description?: string | null
-          end_time: string
-          event_type?: string | null
-          id?: string
-          location?: string | null
-          property_id?: string | null
-          reminder_minutes?: number | null
-          start_time: string
-          title: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          all_day?: boolean | null
-          contact_id?: string | null
-          created_at?: string | null
-          deal_id?: string | null
-          description?: string | null
-          end_time?: string
-          event_type?: string | null
-          id?: string
-          location?: string | null
-          property_id?: string | null
-          reminder_minutes?: number | null
-          start_time?: string
-          title?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "calendar_events_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calendar_events_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "calendar_events_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -315,89 +153,33 @@ export type Database = {
           },
         ]
       }
-      contact_addresses: {
-        Row: {
-          address_line1: string | null
-          address_line2: string | null
-          address_type: string | null
-          city: string | null
-          contact_id: string
-          country: string | null
-          created_at: string
-          id: string
-          is_primary: boolean | null
-          postal_code: string | null
-          state: string | null
-          updated_at: string
-        }
-        Insert: {
-          address_line1?: string | null
-          address_line2?: string | null
-          address_type?: string | null
-          city?: string | null
-          contact_id: string
-          country?: string | null
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          postal_code?: string | null
-          state?: string | null
-          updated_at?: string
-        }
-        Update: {
-          address_line1?: string | null
-          address_line2?: string | null
-          address_type?: string | null
-          city?: string | null
-          contact_id?: string
-          country?: string | null
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          postal_code?: string | null
-          state?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contact_addresses_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       contact_channels: {
         Row: {
           channel_type: string
+          channel_value: string
           contact_id: string
           created_at: string
           id: string
-          is_primary: boolean
-          label: string | null
+          is_primary: boolean | null
           updated_at: string
-          value: string
         }
         Insert: {
           channel_type: string
+          channel_value: string
           contact_id: string
           created_at?: string
           id?: string
-          is_primary?: boolean
-          label?: string | null
+          is_primary?: boolean | null
           updated_at?: string
-          value: string
         }
         Update: {
           channel_type?: string
+          channel_value?: string
           contact_id?: string
           created_at?: string
           id?: string
-          is_primary?: boolean
-          label?: string | null
+          is_primary?: boolean | null
           updated_at?: string
-          value?: string
         }
         Relationships: [
           {
@@ -411,49 +193,31 @@ export type Database = {
       }
       contact_property_links: {
         Row: {
-          acquisition_date: string | null
           contact_id: string
           created_at: string
-          holding_period_months: number | null
           id: string
           notes: string | null
-          ownership_percentage: number | null
           property_id: string
-          purchase_price: number | null
-          role: string | null
-          sale_price: number | null
+          role: string
           updated_at: string
-          user_id: string
         }
         Insert: {
-          acquisition_date?: string | null
           contact_id: string
           created_at?: string
-          holding_period_months?: number | null
           id?: string
           notes?: string | null
-          ownership_percentage?: number | null
           property_id: string
-          purchase_price?: number | null
-          role?: string | null
-          sale_price?: number | null
+          role?: string
           updated_at?: string
-          user_id: string
         }
         Update: {
-          acquisition_date?: string | null
           contact_id?: string
           created_at?: string
-          holding_period_months?: number | null
           id?: string
           notes?: string | null
-          ownership_percentage?: number | null
           property_id?: string
-          purchase_price?: number | null
-          role?: string | null
-          sale_price?: number | null
+          role?: string
           updated_at?: string
-          user_id?: string
         }
         Relationships: [
           {
@@ -476,16 +240,19 @@ export type Database = {
         Row: {
           contact_id: string
           created_at: string
+          id: string
           tag_id: string
         }
         Insert: {
           contact_id: string
           created_at?: string
+          id?: string
           tag_id: string
         }
         Update: {
           contact_id?: string
           created_at?: string
+          id?: string
           tag_id?: string
         }
         Relationships: [
@@ -507,150 +274,60 @@ export type Database = {
       }
       contacts: {
         Row: {
-          address_line1: string | null
-          address_line2: string | null
-          city: string | null
-          company: string | null
-          country: string | null
-          created_at: string | null
+          created_at: string
           current_situation_notes: string | null
           email: string | null
-          first_name: string | null
           id: string
-          last_name: string | null
           name: string
           notes: string | null
           pain_points: string | null
           phone: string | null
           pipeline_stage: string | null
           pleasure_points: string | null
-          postcode: string | null
-          role: string | null
           selling_intentions: string | null
           source: string | null
-          state: string | null
           status: string | null
           story: string | null
-          updated_at: string | null
-          user_id: string | null
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          address_line1?: string | null
-          address_line2?: string | null
-          city?: string | null
-          company?: string | null
-          country?: string | null
-          created_at?: string | null
+          created_at?: string
           current_situation_notes?: string | null
           email?: string | null
-          first_name?: string | null
           id?: string
-          last_name?: string | null
           name: string
           notes?: string | null
           pain_points?: string | null
           phone?: string | null
           pipeline_stage?: string | null
           pleasure_points?: string | null
-          postcode?: string | null
-          role?: string | null
           selling_intentions?: string | null
           source?: string | null
-          state?: string | null
           status?: string | null
           story?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          address_line1?: string | null
-          address_line2?: string | null
-          city?: string | null
-          company?: string | null
-          country?: string | null
-          created_at?: string | null
+          created_at?: string
           current_situation_notes?: string | null
           email?: string | null
-          first_name?: string | null
           id?: string
-          last_name?: string | null
           name?: string
           notes?: string | null
           pain_points?: string | null
           phone?: string | null
           pipeline_stage?: string | null
           pleasure_points?: string | null
-          postcode?: string | null
-          role?: string | null
           selling_intentions?: string | null
           source?: string | null
-          state?: string | null
           status?: string | null
           story?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
-      }
-      deals: {
-        Row: {
-          contact_id: string | null
-          created_at: string | null
-          expected_close_date: string | null
-          id: string
-          notes: string | null
-          probability: number | null
-          property_id: string | null
-          stage: string | null
-          title: string
-          updated_at: string | null
-          user_id: string | null
-          value: number | null
-        }
-        Insert: {
-          contact_id?: string | null
-          created_at?: string | null
-          expected_close_date?: string | null
-          id?: string
-          notes?: string | null
-          probability?: number | null
-          property_id?: string | null
-          stage?: string | null
-          title: string
-          updated_at?: string | null
-          user_id?: string | null
-          value?: number | null
-        }
-        Update: {
-          contact_id?: string | null
-          created_at?: string | null
-          expected_close_date?: string | null
-          id?: string
-          notes?: string | null
-          probability?: number | null
-          property_id?: string | null
-          stage?: string | null
-          title?: string
-          updated_at?: string | null
-          user_id?: string | null
-          value?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "deals_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "deals_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       interactions: {
         Row: {
@@ -897,119 +574,60 @@ export type Database = {
       }
       properties: {
         Row: {
-          address: string | null
           address_line1: string | null
           address_line2: string | null
           bathrooms: number | null
           bedrooms: number | null
-          building_size: number | null
-          cap_rate: number | null
           city: string | null
-          contact_id: string | null
           country: string | null
-          created_at: string | null
-          description: string | null
-          documents: Json | null
-          estimated_value: number | null
-          features: string[] | null
+          created_at: string
           id: string
-          images: string[] | null
-          listing_date: string | null
-          lot_size: number | null
           notes: string | null
           postcode: string | null
           price: number | null
-          price_listed: number | null
-          property_condition: string | null
           property_type: string | null
-          rental_yield: number | null
-          square_feet: number | null
           state: string | null
           status: string | null
-          updated_at: string | null
-          user_id: string | null
-          year_built: number | null
-          zip_code: string | null
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          address?: string | null
           address_line1?: string | null
           address_line2?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
-          building_size?: number | null
-          cap_rate?: number | null
           city?: string | null
-          contact_id?: string | null
           country?: string | null
-          created_at?: string | null
-          description?: string | null
-          documents?: Json | null
-          estimated_value?: number | null
-          features?: string[] | null
+          created_at?: string
           id?: string
-          images?: string[] | null
-          listing_date?: string | null
-          lot_size?: number | null
           notes?: string | null
           postcode?: string | null
           price?: number | null
-          price_listed?: number | null
-          property_condition?: string | null
           property_type?: string | null
-          rental_yield?: number | null
-          square_feet?: number | null
           state?: string | null
           status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-          year_built?: number | null
-          zip_code?: string | null
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          address?: string | null
           address_line1?: string | null
           address_line2?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
-          building_size?: number | null
-          cap_rate?: number | null
           city?: string | null
-          contact_id?: string | null
           country?: string | null
-          created_at?: string | null
-          description?: string | null
-          documents?: Json | null
-          estimated_value?: number | null
-          features?: string[] | null
+          created_at?: string
           id?: string
-          images?: string[] | null
-          listing_date?: string | null
-          lot_size?: number | null
           notes?: string | null
           postcode?: string | null
           price?: number | null
-          price_listed?: number | null
-          property_condition?: string | null
           property_type?: string | null
-          rental_yield?: number | null
-          square_feet?: number | null
           state?: string | null
           status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-          year_built?: number | null
-          zip_code?: string | null
+          updated_at?: string
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "properties_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tags: {
         Row: {
@@ -1017,7 +635,6 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          updated_at: string
           user_id: string
         }
         Insert: {
@@ -1025,7 +642,6 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
-          updated_at?: string
           user_id: string
         }
         Update: {
@@ -1033,7 +649,6 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
-          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1043,12 +658,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_contact_with_address: { Args: { payload: Json }; Returns: Json }
-      create_property_with_address: { Args: { payload: Json }; Returns: Json }
-      update_contact_with_address: { Args: { payload: Json }; Returns: Json }
+      [_ in never]: never
     }
     Enums: {
-      activity_log_type: "note" | "call" | "email" | "inspection" | "status_change" | "system" | "open_house" | "settlement"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1175,8 +788,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      activity_log_type: ["note", "call", "email", "inspection", "status_change", "system", "open_house", "settlement"] as const,
-    },
+    Enums: {},
   },
 } as const
