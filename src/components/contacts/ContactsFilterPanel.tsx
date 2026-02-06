@@ -70,14 +70,14 @@ export function ContactsFilterPanel({
   return (
     <div className="space-y-6">
       <div>
-        <Label className="text-xs font-medium text-white/60 uppercase tracking-wider mb-2 block">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
           Search
         </Label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Name, email, phone..."
-            className="pl-9 bg-[#2c2c2c] border-white/10 text-white placeholder:text-white/40"
+            className="pl-9 bg-input border-border text-foreground placeholder:text-muted-foreground"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -85,12 +85,12 @@ export function ContactsFilterPanel({
       </div>
 
       <div>
-        <Label className="text-xs font-medium text-white/60 uppercase tracking-wider mb-2 block">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
           Quick filters
         </Label>
         <div className="space-y-2">
           <Select value={filterStatus} onValueChange={onFilterStatusChange}>
-            <SelectTrigger className="w-full bg-[#2c2c2c] border-white/10 text-white">
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -102,7 +102,7 @@ export function ContactsFilterPanel({
             </SelectContent>
           </Select>
           <Select value={filterSource} onValueChange={onFilterSourceChange}>
-            <SelectTrigger className="w-full bg-[#2c2c2c] border-white/10 text-white">
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
               <SelectValue placeholder="Source" />
             </SelectTrigger>
             <SelectContent>
@@ -121,8 +121,8 @@ export function ContactsFilterPanel({
               else onFilterHasPropertyChange(v === "has");
             }}
           >
-            <SelectTrigger className="w-full bg-[#2c2c2c] border-white/10 text-white">
-              <Building2 className="w-4 h-4 mr-1 text-white/60" />
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <Building2 className="w-4 h-4 mr-1 text-muted-foreground" />
               <SelectValue placeholder="Property" />
             </SelectTrigger>
             <SelectContent>
@@ -132,8 +132,8 @@ export function ContactsFilterPanel({
             </SelectContent>
           </Select>
           <Select value={filterLastTouched} onValueChange={onFilterLastTouchedChange}>
-            <SelectTrigger className="w-full bg-[#2c2c2c] border-white/10 text-white">
-              <Clock className="w-4 h-4 mr-1 text-white/60" />
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
               <SelectValue placeholder="Last touched" />
             </SelectTrigger>
             <SelectContent>
@@ -148,7 +148,7 @@ export function ContactsFilterPanel({
       </div>
 
       <div>
-        <Label className="text-xs font-medium text-white/60 uppercase tracking-wider mb-2 block">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
           Filter by fields
         </Label>
         <DropdownMenu>
@@ -156,37 +156,37 @@ export function ContactsFilterPanel({
             <Button
               variant="outline"
               size="sm"
-              className="w-full justify-start gap-2 bg-[#2c2c2c] border-white/10 text-white hover:bg-white/10"
+              className="w-full justify-start gap-2 bg-input border-border text-foreground hover:bg-accent"
             >
               <Tag className="w-4 h-4" />
               Tags {filterTagIds.length ? `(${filterTagIds.length})` : ""}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto bg-[#2c2c2c] border-white/10">
+          <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto bg-popover border-border">
             {(tags ?? []).map((t) => (
               <DropdownMenuCheckboxItem
                 key={t.id}
                 checked={filterTagIds.includes(t.id)}
                 onCheckedChange={() => onToggleTagFilter(t.id)}
-                className="text-white focus:bg-white/10 focus:text-white"
+                className="text-popover-foreground focus:bg-accent focus:text-foreground"
               >
                 {t.name}
               </DropdownMenuCheckboxItem>
             ))}
             {(!tags || tags.length === 0) && (
-              <div className="px-2 py-4 text-sm text-white/50">No tags yet</div>
+              <div className="px-2 py-4 text-sm text-muted-foreground">No tags yet</div>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <div>
-        <Label className="text-xs font-medium text-white/60 uppercase tracking-wider mb-2 block">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
           Sort
         </Label>
         <Select value={sortBy} onValueChange={(v) => onSortChange(v as SortOption)}>
-          <SelectTrigger className="w-full bg-[#2c2c2c] border-white/10 text-white">
-            <ArrowUpDown className="w-4 h-4 mr-1 text-white/60" />
+          <SelectTrigger className="w-full bg-input border-border text-foreground">
+            <ArrowUpDown className="w-4 h-4 mr-1 text-muted-foreground" />
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
@@ -206,7 +206,7 @@ export function ContactsFilterPanel({
         <Button
           variant="ghost"
           size="sm"
-          className="w-full text-white/70 hover:text-white hover:bg-white/10"
+          className="w-full text-muted-foreground hover:text-foreground hover:bg-accent"
           onClick={onClearFilters}
         >
           Clear filters

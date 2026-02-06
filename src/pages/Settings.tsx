@@ -35,10 +35,10 @@ export default function Settings() {
       
       <div className="max-w-2xl space-y-6">
         {/* Profile Settings */}
-        <Card className="zoho-card p-6 border-white/10">
+        <Card className="zoho-card p-6 border-border">
           <div className="flex items-center gap-3 mb-6">
             <User className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-white">Profile</h3>
+            <h3 className="font-semibold text-foreground">Profile</h3>
           </div>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -53,10 +53,10 @@ export default function Settings() {
         </Card>
 
         {/* Appearance */}
-        <Card className="zoho-card p-6 border-white/10">
+        <Card className="zoho-card p-6 border-border">
           <div className="flex items-center gap-3 mb-6">
             <Palette className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-white">Appearance</h3>
+            <h3 className="font-semibold text-foreground">Appearance</h3>
           </div>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -76,12 +76,12 @@ export default function Settings() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-muted-foreground">
                 {THEME_OPTIONS.find((o) => o.value === theme)?.desc ?? "Select your preferred theme."}
               </p>
             </div>
             <div className="p-4 bg-secondary rounded-lg">
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted-foreground">
                 Your theme preference is saved automatically and will persist across sessions.
               </p>
             </div>
@@ -89,23 +89,23 @@ export default function Settings() {
         </Card>
 
         {/* Notifications */}
-        <Card className="zoho-card p-6 border-white/10">
+        <Card className="zoho-card p-6 border-border">
           <div className="flex items-center gap-3 mb-6">
             <Bell className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-white">Notifications</h3>
+            <h3 className="font-semibold text-foreground">Notifications</h3>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-white">Email notifications</p>
-                <p className="text-xs text-white/60">Receive email updates about your activity</p>
+                <p className="text-sm font-medium text-foreground">Email notifications</p>
+                <p className="text-xs text-muted-foreground">Receive email updates about your activity</p>
               </div>
               <Switch />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-white">Appointment reminders</p>
-                <p className="text-xs text-white/60">Get reminded before appointments</p>
+                <p className="text-sm font-medium text-foreground">Appointment reminders</p>
+                <p className="text-xs text-muted-foreground">Get reminded before appointments</p>
               </div>
               <Switch defaultChecked />
             </div>

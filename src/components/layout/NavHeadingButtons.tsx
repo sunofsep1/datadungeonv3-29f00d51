@@ -30,10 +30,10 @@ export function NavHeadingButtons({
             key={path}
             to={path}
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#2c2c2c]",
+              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-card",
               isActive
-                ? "bg-[#00BCD4] text-[#1a1a1a]"
-                : "bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:text-foreground"
             )}
           >
             <Icon className="h-4 w-4" />
@@ -42,7 +42,7 @@ export function NavHeadingButtons({
               <span
                 className={cn(
                   "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-xs font-medium",
-                  isActive ? "bg-[#1a1a1a]/30" : "bg-white/15"
+                  isActive ? "bg-primary-foreground/30 text-primary-foreground" : "bg-muted text-muted-foreground"
                 )}
               >
                 {count > 99 ? "99+" : count}
