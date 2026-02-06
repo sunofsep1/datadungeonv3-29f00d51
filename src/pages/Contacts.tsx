@@ -631,7 +631,7 @@ export default function Contacts() {
     return (
       <div className="animate-fade-in">
         <PageHeader title="Contacts" description="Manage your contacts and leads" />
-        <div className="text-center py-12 text-white/60">
+        <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="font-medium text-foreground mb-2">Couldn&apos;t load contacts</p>
           <p className="text-sm mb-4">Check your connection and migrations, then retry.</p>
@@ -672,15 +672,15 @@ export default function Contacts() {
     const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
     const cardClass =
       _layout === "kanban"
-        ? "group flex flex-wrap items-center gap-2 p-3 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card text-sm"
-        : "group flex flex-wrap items-center gap-3 p-4 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card";
+        ? "group flex flex-wrap items-center gap-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card text-sm"
+        : "group flex flex-wrap items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
     return (
       <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <AvatarCircle name={contact.name} initials={initials} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-white">{contact.name}</span>
+              <span className="font-medium text-foreground">{contact.name}</span>
               <StatusBadge variant={getStatusVariant(contact.status)}>{contact.status ?? "lead"}</StatusBadge>
               {tagNames.length > 0 && (
                 <span className="flex flex-wrap gap-1">
@@ -748,7 +748,7 @@ export default function Contacts() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <ChevronRight className="w-4 h-4 text-white/50" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </div>
       </div>
     );

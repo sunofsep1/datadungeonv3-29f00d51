@@ -82,39 +82,39 @@ export function GlobalSearch() {
         if (!next) setQuery("");
       }}
     >
-      <DialogContent className="zoho-dialog overflow-hidden p-0 gap-0 max-w-2xl bg-[#242424] border-white/10 text-white shadow-xl">
+      <DialogContent className="zoho-dialog overflow-hidden p-0 gap-0 max-w-2xl bg-popover border-border text-popover-foreground shadow-xl">
         <Command
-          className="rounded-lg border-0 bg-transparent [&_[cmdk-group-heading]]:text-white/60 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-item][data-selected=true]]:bg-white/10 [&_[cmdk-item][data-selected=true]]:text-white"
+          className="rounded-lg border-0 bg-transparent [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-item][data-selected=true]]:bg-accent [&_[cmdk-item][data-selected=true]]:text-foreground"
           shouldFilter={false}
         >
           <CommandInput
             placeholder="Search contacts, properties, listings… (⌘K)"
             value={query}
             onValueChange={setQuery}
-            className="placeholder:text-white/50 text-white border-b border-white/10 h-12"
+            className="placeholder:text-muted-foreground text-foreground border-b border-border h-12"
           />
         </Command>
-        <div className="max-h-[320px] overflow-y-auto border-t border-white/10">
+        <div className="max-h-[320px] overflow-y-auto border-t border-border">
           {query && total === 0 && (
-            <div className="py-6 text-center text-sm text-white/60">No results. Try a different search.</div>
+            <div className="py-6 text-center text-sm text-muted-foreground">No results. Try a different search.</div>
           )}
           {!query && (
-            <div className="py-4 px-3 text-sm text-white/50">Type to search contacts, properties, or listings.</div>
+            <div className="py-4 px-3 text-sm text-muted-foreground">Type to search contacts, properties, or listings.</div>
           )}
           {filteredContacts.length > 0 && (
             <div className="py-1">
-              <div className="px-3 py-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Contacts</div>
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Contacts</div>
               {filteredContacts.slice(0, 6).map((c) => (
                 <button
                   key={`c-${c.id}`}
                   type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 rounded-none"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-none"
                   onClick={() => handleSelect(`/contacts/${c.id}`)}
                 >
-                  <Users className="h-4 w-4 shrink-0 text-[#00BCD4]" />
+                  <Users className="h-4 w-4 shrink-0 text-primary" />
                   <span className="truncate flex-1">{c.name}</span>
                   {(c.email ?? (c as { phone?: string }).phone) && (
-                    <Badge variant="secondary" className="text-[10px] font-normal bg-white/10 text-white/70 shrink-0">
+                    <Badge variant="secondary" className="text-[10px] font-normal bg-secondary text-secondary-foreground shrink-0">
                       {c.email ?? (c as { phone?: string }).phone}
                     </Badge>
                   )}
@@ -123,18 +123,18 @@ export function GlobalSearch() {
             </div>
           )}
           {filteredProperties.length > 0 && (
-            <div className="py-1 border-t border-white/5">
-              <div className="px-3 py-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Properties</div>
+            <div className="py-1 border-t border-border/50">
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Properties</div>
               {filteredProperties.slice(0, 4).map((p) => (
                 <button
                   key={`p-${p.id}`}
                   type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 rounded-none"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-none"
                   onClick={() => handleSelect(`/properties/${p.id}`)}
                 >
-                  <Building2 className="h-4 w-4 shrink-0 text-[#00BCD4]" />
+                  <Building2 className="h-4 w-4 shrink-0 text-primary" />
                   <span className="truncate flex-1">{formatPropertyAddress(p) || "Property"}</span>
-                  <Badge variant="secondary" className="text-[10px] font-normal bg-white/10 text-white/70 shrink-0">
+                  <Badge variant="secondary" className="text-[10px] font-normal bg-secondary text-secondary-foreground shrink-0">
                     Property
                   </Badge>
                 </button>
@@ -142,18 +142,18 @@ export function GlobalSearch() {
             </div>
           )}
           {filteredListings.length > 0 && (
-            <div className="py-1 border-t border-white/5">
-              <div className="px-3 py-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Listings</div>
+            <div className="py-1 border-t border-border/50">
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Listings</div>
               {filteredListings.slice(0, 4).map((l) => (
                 <button
                   key={`l-${l.id}`}
                   type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 rounded-none"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-none"
                   onClick={() => handleSelect(`/listings/${l.id}`)}
                 >
-                  <Home className="h-4 w-4 shrink-0 text-[#00BCD4]" />
+                  <Home className="h-4 w-4 shrink-0 text-primary" />
                   <span className="truncate flex-1">{(l as { address?: string }).address ?? "Listing"}</span>
-                  <Badge variant="secondary" className="text-[10px] font-normal bg-white/10 text-white/70 shrink-0">
+                  <Badge variant="secondary" className="text-[10px] font-normal bg-secondary text-secondary-foreground shrink-0">
                     Listing
                   </Badge>
                 </button>

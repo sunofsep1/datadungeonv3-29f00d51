@@ -473,34 +473,34 @@ html.theme-solarized-dark #root {
 }
 
 @layer components {
-  /* Force Zoho layout to dark so preview always shows Zoho look */
+  /* Force Zoho layout to theme-aware colors */
   .zoho-layout,
   .zoho-layout main {
-    background-color: #1a1a1a !important;
+    background-color: hsl(var(--background)) !important;
   }
   .zoho-layout main {
-    color: #e0e0e0;
+    color: hsl(var(--foreground));
   }
 
   /* Zoho-inspired content surfaces (Phase 2) - !important so they override Tailwind utilities */
   .zoho-card {
-    background-color: #242424 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background-color: hsl(var(--card)) !important;
+    border: 1px solid hsl(var(--border)) !important;
     border-radius: 0.5rem;
   }
   .zoho-card .text-foreground,
   .zoho-content-title {
-    color: #ffffff !important;
+    color: hsl(var(--foreground)) !important;
   }
   .zoho-card .text-muted-foreground,
   .zoho-content-muted {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: hsl(var(--muted-foreground)) !important;
   }
   .zoho-accent {
-    color: #00BCD4 !important;
+    color: hsl(var(--primary)) !important;
   }
   .zoho-accent-bg {
-    background-color: rgba(0, 188, 212, 0.15) !important;
+    background-color: hsl(var(--primary) / 0.15) !important;
   }
 
   /* Theme overrides for zoho components */
@@ -612,16 +612,16 @@ html.theme-solarized-dark #root {
 
   .zoho-card.stat-card,
   .stat-card.zoho-card {
-    background-color: #242424 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: hsl(var(--card)) !important;
+    border: 1px solid hsl(var(--border));
   }
   .zoho-card.stat-card .text-foreground,
   .stat-card.zoho-card .text-foreground {
-    color: #ffffff;
+    color: hsl(var(--foreground));
   }
   .zoho-card.stat-card .text-muted-foreground,
   .stat-card.zoho-card .text-muted-foreground {
-    color: rgba(255, 255, 255, 0.6);
+    color: hsl(var(--muted-foreground));
   }
 
   .stat-card {
@@ -667,8 +667,8 @@ html.theme-solarized-dark #root {
   }
 
   .pipeline-column {
-    background-color: #242424 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: hsl(var(--card)) !important;
+    border: 1px solid hsl(var(--border));
     @apply rounded-lg min-h-[400px] p-4;
   }
 
@@ -678,20 +678,20 @@ html.theme-solarized-dark #root {
 
   .contact-row {
     @apply flex items-center gap-4 p-4 rounded-lg transition-colors cursor-pointer;
-    background-color: #242424;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
   .contact-row:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: hsl(var(--accent));
   }
 
   .campaign-row {
     @apply flex items-center justify-between p-4 rounded-lg transition-colors;
-    background-color: #242424;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
   .campaign-row:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: hsl(var(--accent));
   }
 }
 
