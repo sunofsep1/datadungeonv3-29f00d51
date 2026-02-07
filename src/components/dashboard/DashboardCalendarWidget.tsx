@@ -762,10 +762,12 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
           {displayDays.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             return (
-              <button
+              <div
                 key={idx}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => handleDayOrAdd?.(day)}
+                onKeyDown={(e) => e.key === "Enter" && handleDayOrAdd?.(day)}
                 className={cn(
                   "min-h-[100px] p-2 border border-white/10 rounded text-left transition-colors hover:bg-white/5 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary"
@@ -773,7 +775,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
               >
                 <button
                   type="button"
-                  onClick={() => openNewAppointmentForSlot(day)}
+                  onClick={(e) => { e.stopPropagation(); openNewAppointmentForSlot(day); }}
                   className={cn(
                     "text-xs font-medium mb-2 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
                     isToday(day) && "text-primary"
@@ -784,19 +786,6 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                   <div className="text-lg">{format(day, "d")}</div>
                 </button>
                 <div className="flex-1 space-y-1">
-                  {dayEvents.map((item) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "text-xs px-1 py-0.5 rounded mb-1 truncate",
-                        item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
-                      )}
-                    >
-                      <div className="font-medium truncate">{item.title}</div>
-                      <div className="text-[10px] opacity-75">{formatEventTime(item)}</div>
-                    </div>
-                  ))}
-                </div>
                 {dayEvents.map((item) => (
                   <div key={item.id} onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -826,6 +815,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                     </DropdownMenu>
                   </div>
                 ))}
+                </div>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleDayOrAdd?.(day); }}
