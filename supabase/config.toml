@@ -1,4 +1,7 @@
-project_id = "sujyalrzbubvhpkntwja"
+project_id = "agflprqqvsndkwlpscvt"
 
 [functions.google-calendar]
+verify_jwt = false
+
+[functions.news-proxy]
 verify_jwt = false

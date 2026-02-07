@@ -99,6 +99,18 @@ export default function Calendar() {
     syncToGoogle: true,
   });
 
+  /** Open the New Appointment dialog with a specific date (and optional time) pre-filled (e.g. from clicking a calendar cell). */
+  const openNewAppointmentForSlot = (date: Date, startTime?: string) => {
+    setNewAppointment((prev) => ({
+      ...prev,
+      date: format(date, "yyyy-MM-dd"),
+      startTime: startTime ?? prev.startTime,
+      title: "",
+      notes: "",
+    }));
+    setIsDialogOpen(true);
+  };
+
   const fetchGcal = useCallback(async () => {
     if (!user) return;
     setGcalLoading(true);
@@ -295,7 +307,10 @@ export default function Calendar() {
           try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-              await fetch(`${gcalBase}?action=create-event`, {
+              const endDateTime = newAppointment.endTime
+                ? `${newAppointment.date}T${newAppointment.endTime}:00`
+                : format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
+              const gcalRes = await fetch(`${gcalBase}?action=create-event`, {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${session.access_token}`,
@@ -305,22 +320,36 @@ export default function Calendar() {
                   summary: newAppointment.title,
                   description: newAppointment.notes || "",
                   start: dateTime,
-                  end: newAppointment.endTime
-                    ? `${newAppointment.date}T${newAppointment.endTime}:00`
-                    : addHours(new Date(dateTime), 1).toISOString(),
+                  end: endDateTime,
                   location: newAppointment.location || "",
                 }),
               });
-              fetchGcal();
-              toast({ title: "Synced", description: "Added to Google Calendar" });
+              const gcalData = await gcalRes.json().catch(() => ({}));
+              if (!gcalRes.ok) {
+                toast({
+                  title: "Google Calendar sync failed",
+                  description: gcalData?.error ?? `Error ${gcalRes.status}. Check connection or try connecting Google again.`,
+                  variant: "destructive",
+                });
+              } else {
+                fetchGcal();
+                toast({ title: "Synced", description: "Added to Google Calendar" });
+              }
             }
           } catch (e) {
             console.error("Google Calendar sync failed:", e);
+            toast({
+              title: "Google Calendar sync failed",
+              description: e instanceof Error ? e.message : "Could not reach calendar. Check connection.",
+              variant: "destructive",
+            });
           }
         }
       }
 
       toast({ title: "Success", description: "Appointment created!" });
+      refetchAppointments();
+      fetchGcal(); // Refresh Google events so calendar view stays in sync
       setNewAppointment({
         title: "",
         date: format(new Date(), "yyyy-MM-dd"),
@@ -356,6 +385,13 @@ export default function Calendar() {
     return (
       <div className="space-y-2">
         <div className="text-lg font-semibold mb-4">{format(currentDate, "EEEE, MMMM d, yyyy")}</div>
+        <button
+          type="button"
+          onClick={() => openNewAppointmentForSlot(currentDate)}
+          className="w-full py-4 rounded-lg border border-dashed border-white/20 text-white/60 hover:border-primary hover:text-primary hover:bg-white/5 transition-colors text-sm mb-4"
+        >
+          + Add booking for this day
+        </button>
         {events.length === 0 ? (
           <p className="text-white/60 text-center py-8">No events scheduled</p>
         ) : (
@@ -412,17 +448,20 @@ export default function Calendar() {
         {weekDays.map((day) => {
           const events = getEventsForDate(day);
           return (
-            <div key={day.toISOString()} className="border border-white/10 rounded-lg p-2 min-h-[200px]">
-              <div
+            <div key={day.toISOString()} className="border border-white/10 rounded-lg p-2 min-h-[200px] flex flex-col">
+              <button
+                type="button"
+                onClick={() => openNewAppointmentForSlot(day)}
                 className={cn(
-                  "text-sm font-medium mb-2",
+                  "text-sm font-medium mb-2 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
                   isToday(day) && "text-primary font-bold",
                   !isSameMonth(day, currentDate) && "text-white/60"
                 )}
+                title="Click to add booking for this day"
               >
                 {format(day, "EEE d")}
-              </div>
-              <div className="space-y-1">
+              </button>
+              <div className="space-y-1 flex-1">
                 {events.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
@@ -439,6 +478,13 @@ export default function Calendar() {
                   <div className="text-xs text-white/60">+{events.length - 3} more</div>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => openNewAppointmentForSlot(day)}
+                className="mt-2 text-xs text-white/50 hover:text-primary transition-colors"
+              >
+                + Add booking
+              </button>
             </div>
           );
         })}
@@ -464,12 +510,15 @@ export default function Calendar() {
           const events = getEventsForDate(day);
           const isCurrentMonth = isSameMonth(day, currentDate);
           return (
-            <div
+            <button
               key={day.toISOString()}
+              type="button"
+              onClick={() => openNewAppointmentForSlot(day)}
               className={cn(
-                "border border-white/10 rounded p-1 min-h-[100px]",
+                "border border-white/10 rounded p-1 min-h-[100px] w-full text-left hover:bg-white/10 transition-colors",
                 !isCurrentMonth && "opacity-50"
               )}
+              title="Click to add booking"
             >
               <div
                 className={cn(
@@ -497,7 +546,7 @@ export default function Calendar() {
                   <div className="text-[10px] text-white/60">+{events.length - 2}</div>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -597,19 +646,26 @@ export default function Calendar() {
                     onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="sync-google"
-                    checked={newAppointment.syncToGoogle && !gcalNeedsAuth}
-                    disabled={gcalNeedsAuth}
-                    onCheckedChange={(checked) =>
-                      setNewAppointment({ ...newAppointment, syncToGoogle: checked as boolean })
-                    }
-                  />
-                  <Label htmlFor="sync-google" className="text-sm font-normal cursor-pointer">
-                    Sync to Google Calendar
-                    {gcalNeedsAuth && " (Connect Google Calendar first)"}
-                  </Label>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="sync-google"
+                      checked={newAppointment.syncToGoogle && !gcalNeedsAuth}
+                      disabled={gcalNeedsAuth}
+                      onCheckedChange={(checked) =>
+                        setNewAppointment({ ...newAppointment, syncToGoogle: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="sync-google" className="text-sm font-normal cursor-pointer">
+                      Sync to Google Calendar
+                      {gcalNeedsAuth && " (Connect Google below first)"}
+                    </Label>
+                  </div>
+                  {!gcalNeedsAuth && (
+                    <p className="text-xs text-white/50">
+                      Booking will be saved in the app and created in your Google Calendar so both stay in sync.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">

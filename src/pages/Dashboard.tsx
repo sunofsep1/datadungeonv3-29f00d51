@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DashboardWelcomeHeader } from "@/components/dashboard/DashboardWelcomeHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,8 @@ import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
+import { TopStoriesWidget } from "@/components/dashboard/TopStoriesWidget";
+import { NewsWidget } from "@/components/dashboard/NewsWidget";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const getGcalUrl = () => {
@@ -183,8 +185,8 @@ export default function Dashboard() {
             const checkData = await checkRes.json().catch(() => ({}));
             
             if (checkRes.ok && !checkData?.needsAuth && !checkData?.error) {
-              // Connected, create event
-              await fetch(`${gcalUrl}?action=create-event`, {
+              const endDateTime = format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
+              const createRes = await fetch(`${gcalUrl}?action=create-event`, {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${session.access_token}`,
@@ -194,10 +196,20 @@ export default function Dashboard() {
                   summary: newAppointment.title,
                   description: "",
                   start: dateTime,
-                  end: addHours(new Date(dateTime), 1).toISOString(),
+                  end: endDateTime,
                   location: newAppointment.location || "",
                 }),
               });
+              const createData = await createRes.json().catch(() => ({}));
+              if (!createRes.ok) {
+                toast({
+                  title: "Google Calendar sync failed",
+                  description: createData?.error ?? `Error ${createRes.status}. Check connection or try connecting Google again.`,
+                  variant: "destructive",
+                });
+              } else {
+                toast({ title: "Synced", description: "Added to Google Calendar" });
+              }
             }
           }
         } catch (e) {
@@ -215,8 +227,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader title="Dashboard" description="Welcome back! Here's your command center." />
+    <div className="animate-fade-in space-y-6">
+      <DashboardWelcomeHeader />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {contactsLoading ? (
@@ -258,6 +270,11 @@ export default function Dashboard() {
         )}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch mb-6">
+        <TopStoriesWidget />
+        <NewsWidget />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <VisionBoard />
         <AffirmationsWidget />
@@ -280,8 +297,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-6">
           <KPISnapshot />
         </div>
-
-        <div className="space-y-6">
+        <div className="space-y-4 flex flex-col">
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">

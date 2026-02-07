@@ -393,7 +393,28 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Build event object
+      // End time: use provided end, or start + 1 hour in same format (so Google interprets both as Sydney time)
+      let endDateTime = end;
+      if (!endDateTime) {
+        const startDate = new Date(start);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+        // Output local-style YYYY-MM-DDTHH:mm:ss so timeZone "Australia/Sydney" applies to both
+        const pad = (n: number) => String(n).padStart(2, "0");
+        endDateTime =
+          endDate.getFullYear() +
+          "-" +
+          pad(endDate.getMonth() + 1) +
+          "-" +
+          pad(endDate.getDate()) +
+          "T" +
+          pad(endDate.getHours()) +
+          ":" +
+          pad(endDate.getMinutes()) +
+          ":" +
+          pad(endDate.getSeconds());
+      }
+
+      // Build event object (floating time + timeZone so Google Calendar shows correct Sydney time)
       const eventData: any = {
         summary,
         description: description || "",
@@ -402,7 +423,7 @@ Deno.serve(async (req) => {
           timeZone: "Australia/Sydney",
         },
         end: {
-          dateTime: end || new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString(),
+          dateTime: endDateTime,
           timeZone: "Australia/Sydney",
         },
       };

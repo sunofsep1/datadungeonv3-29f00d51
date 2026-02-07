@@ -251,6 +251,7 @@ export default function Appointments() {
             try {
               const { data: { session } } = await supabase.auth.getSession();
               if (session) {
+                const endForGcal = endDateTime || format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
                 const gcalRes = await fetch(`${gcalUrl}?action=create-event`, {
                   method: "POST",
                   headers: {
@@ -261,24 +262,30 @@ export default function Appointments() {
                     summary: formData.title,
                     description: combinedNotes || formData.description || "",
                     start: dateTime,
-                    end: endDateTime || addHours(new Date(dateTime), 1).toISOString(),
+                    end: endForGcal,
                     location: formData.location || "",
                   }),
                 });
-                const gcalData = await gcalRes.json();
-                if (gcalRes.ok && gcalData?.event?.id) {
-                  await updateAppointment.mutateAsync({ id: appointment.id, google_event_id: gcalData.event.id });
-                  toast({ title: "Synced", description: "Appointment added to Google Calendar" });
+                const gcalData = await gcalRes.json().catch(() => ({}));
+                if (!gcalRes.ok) {
+                  toast({
+                    title: "Google Calendar sync failed",
+                    description: gcalData?.error ?? `Error ${gcalRes.status}. Check connection or try connecting Google again.`,
+                    variant: "destructive",
+                  });
                 } else {
-                  toast({ title: "Warning", description: "Appointment created but Google Calendar sync failed", variant: "default" });
+                  if (gcalData?.event?.id) {
+                    await updateAppointment.mutateAsync({ id: appointment.id, google_event_id: gcalData.event.id });
+                  }
+                  toast({ title: "Synced", description: "Appointment added to Google Calendar" });
                 }
               }
             } catch (e) {
               console.error("Google Calendar sync failed:", e);
               toast({
-                title: "Warning",
-                description: "Appointment created but Google Calendar sync failed",
-                variant: "default",
+                title: "Google Calendar sync failed",
+                description: e instanceof Error ? e.message : "Could not reach calendar. Check connection.",
+                variant: "destructive",
               });
             }
           }

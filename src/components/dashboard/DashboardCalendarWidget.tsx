@@ -4,9 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Calendar as CalendarIcon, 
-  ChevronLeft, 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
   ChevronRight,
   Clock,
   MapPin,
@@ -15,15 +21,17 @@ import {
   Unlink,
   Pencil,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  Plus,
 } from "lucide-react";
 import { useAppointments, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  format, 
-  parseISO, 
-  isToday, 
+import {
+  format,
+  parseISO,
+  isToday,
   isSameDay,
   isSameMonth,
   startOfMonth,
@@ -36,7 +44,8 @@ import {
   addWeeks,
   subWeeks,
   addDays,
-  subDays
+  subDays,
+  addHours,
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -55,7 +64,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -83,6 +91,8 @@ const getGcalUrl = () => {
   const base = import.meta.env.VITE_SUPABASE_URL;
   return base ? `${base}/functions/v1/google-calendar` : null;
 };
+
+type AppointmentType = "valuation" | "meeting" | "call" | "inspection";
 
 function EventChip({
   item,
@@ -151,6 +161,29 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
   const [gcalLoading, setGcalLoading] = useState(false);
   const [gcalNeedsAuth, setGcalNeedsAuth] = useState(false);
   const [gcalError, setGcalError] = useState<string | null>(null);
+
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [newBooking, setNewBooking] = useState({
+    title: "",
+    date: format(new Date(), "yyyy-MM-dd"),
+    startTime: "09:00",
+    endTime: "",
+    location: "",
+    type: "meeting" as AppointmentType,
+    notes: "",
+    syncToGoogle: true,
+  });
+
+  const openNewAppointmentForSlot = (date: Date, startTime?: string) => {
+    setNewBooking((prev) => ({
+      ...prev,
+      date: format(date, "yyyy-MM-dd"),
+      startTime: startTime ?? prev.startTime,
+      title: "",
+      notes: "",
+    }));
+    setIsBookingDialogOpen(true);
+  };
 
   const fetchGcal = useCallback(async () => {
     if (!user) return;
@@ -393,6 +426,93 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
     } catch {}
   };
 
+  const handleCreateBooking = async () => {
+    if (!newBooking.title.trim()) {
+      toast({ title: "Error", description: "Please enter a title", variant: "destructive" });
+      return;
+    }
+    if (!newBooking.startTime) {
+      toast({ title: "Error", description: "Please enter a start time", variant: "destructive" });
+      return;
+    }
+    try {
+      const dateTime = `${newBooking.date}T${newBooking.startTime}:00`;
+      await createAppointment.mutateAsync({
+        title: newBooking.title,
+        date: dateTime,
+        location: newBooking.location || null,
+        type: newBooking.type,
+        notes: newBooking.notes || null,
+      });
+
+      if (newBooking.syncToGoogle && !gcalNeedsAuth && user) {
+        const gcalBase = getGcalUrl();
+        if (gcalBase) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              const endDateTime = newBooking.endTime
+                ? `${newBooking.date}T${newBooking.endTime}:00`
+                : format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
+              const gcalRes = await fetch(`${gcalBase}?action=create-event`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  summary: newBooking.title,
+                  description: newBooking.notes || "",
+                  start: dateTime,
+                  end: endDateTime,
+                  location: newBooking.location || "",
+                }),
+              });
+              const gcalData = await gcalRes.json().catch(() => ({}));
+              if (!gcalRes.ok) {
+                toast({
+                  title: "Google Calendar sync failed",
+                  description: gcalData?.error ?? `Error ${gcalRes.status}. Check connection or try connecting Google again.`,
+                  variant: "destructive",
+                });
+              } else {
+                toast({ title: "Synced", description: "Added to Google Calendar" });
+              }
+            }
+          } catch (e) {
+            console.error("Google Calendar sync failed:", e);
+            toast({
+              title: "Google Calendar sync failed",
+              description: e instanceof Error ? e.message : "Could not reach calendar. Check connection.",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+
+      toast({ title: "Success", description: "Booking created!" });
+      refetchAppointments();
+      fetchGcal();
+      setNewBooking({
+        title: "",
+        date: format(new Date(), "yyyy-MM-dd"),
+        startTime: "09:00",
+        endTime: "",
+        location: "",
+        type: "meeting",
+        notes: "",
+        syncToGoogle: true,
+      });
+      setIsBookingDialogOpen(false);
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create booking",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="zoho-card p-4 md:p-6">
       {/* Header */}
@@ -429,17 +549,139 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
               <TabsTrigger value="month" className="text-xs px-2">Month</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => navigate("/appointments")}
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => openNewAppointmentForSlot(new Date())}
+            className="gap-1"
+          >
+            <Plus className="w-3 h-3" />
+            Add booking
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/calendar")}
             className="gap-1"
           >
             <ExternalLink className="w-3 h-3" />
-            <span className="hidden sm:inline">Full View</span>
+            <span className="hidden sm:inline">Full Calendar</span>
           </Button>
         </div>
       </div>
+
+      {/* New booking dialog */}
+      <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
+        <DialogContent className="sm:max-w-[440px] bg-[#242424] border-white/10">
+          <DialogHeader>
+            <DialogTitle>New booking</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-white/90">Title *</Label>
+              <Input
+                placeholder="Appointment title"
+                className="bg-input border-white/10"
+                value={newBooking.title}
+                onChange={(e) => setNewBooking({ ...newBooking, title: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-white/90">Date</Label>
+                <Input
+                  type="date"
+                  className="bg-input border-white/10"
+                  value={newBooking.date}
+                  onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-white/90">Type</Label>
+                <Select
+                  value={newBooking.type}
+                  onValueChange={(v: AppointmentType) => setNewBooking({ ...newBooking, type: v })}
+                >
+                  <SelectTrigger className="bg-input border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="valuation">Valuation</SelectItem>
+                    <SelectItem value="meeting">Meeting</SelectItem>
+                    <SelectItem value="call">Call</SelectItem>
+                    <SelectItem value="inspection">Inspection</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-white/90">Start time</Label>
+                <Input
+                  type="time"
+                  className="bg-input border-white/10"
+                  value={newBooking.startTime}
+                  onChange={(e) => setNewBooking({ ...newBooking, startTime: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-white/90">End time</Label>
+                <Input
+                  type="time"
+                  className="bg-input border-white/10"
+                  value={newBooking.endTime}
+                  onChange={(e) => setNewBooking({ ...newBooking, endTime: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-white/90">Location</Label>
+              <Input
+                placeholder="Meeting location"
+                className="bg-input border-white/10"
+                value={newBooking.location}
+                onChange={(e) => setNewBooking({ ...newBooking, location: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-white/90">Notes</Label>
+              <Textarea
+                placeholder="Optional notes..."
+                className="bg-input border-white/10 min-h-[60px]"
+                value={newBooking.notes}
+                onChange={(e) => setNewBooking({ ...newBooking, notes: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="dashboard-sync-google"
+                  checked={newBooking.syncToGoogle && !gcalNeedsAuth}
+                  disabled={gcalNeedsAuth}
+                  onCheckedChange={(checked) =>
+                    setNewBooking({ ...newBooking, syncToGoogle: checked as boolean })
+                  }
+                />
+                <Label htmlFor="dashboard-sync-google" className="text-sm font-normal cursor-pointer text-white/90">
+                  Sync to Google Calendar
+                  {gcalNeedsAuth && " (connect above first)"}
+                </Label>
+              </div>
+              {!gcalNeedsAuth && (
+                <p className="text-xs text-white/50">Saved in app and created in Google Calendar.</p>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" size="sm" onClick={() => setIsBookingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleCreateBooking} disabled={createAppointment.isPending}>
+              {createAppointment.isPending ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {appointmentsError && (
         <div className="flex items-center justify-between gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
@@ -493,6 +735,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                   isToday(day) && "bg-primary/10 border-primary",
                   !isSameMonth(day, currentDate) && "opacity-40"
                 )}
+                title="Click to add booking"
               >
                 <div className={cn(
                   "font-medium mb-1",
@@ -528,12 +771,31 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                   isToday(day) && "bg-primary/10 border-primary"
                 )}
               >
-                <div className={cn(
-                  "text-xs font-medium mb-2",
-                  isToday(day) && "text-primary"
-                )}>
+                <button
+                  type="button"
+                  onClick={() => openNewAppointmentForSlot(day)}
+                  className={cn(
+                    "text-xs font-medium mb-2 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
+                    isToday(day) && "text-primary"
+                  )}
+                  title="Click to add booking"
+                >
                   <div>{format(day, "EEE")}</div>
                   <div className="text-lg">{format(day, "d")}</div>
+                </button>
+                <div className="flex-1 space-y-1">
+                  {dayEvents.map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "text-xs px-1 py-0.5 rounded mb-1 truncate",
+                        item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
+                      )}
+                    >
+                      <div className="font-medium truncate">{item.title}</div>
+                      <div className="text-[10px] opacity-75">{formatEventTime(item)}</div>
+                    </div>
+                  ))}
                 </div>
                 {dayEvents.map((item) => (
                   <div key={item.id} onClick={(e) => e.stopPropagation()}>
@@ -564,7 +826,14 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                     </DropdownMenu>
                   </div>
                 ))}
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDayOrAdd?.(day); }}
+                  className="mt-2 text-[10px] text-white/50 hover:text-primary transition-colors text-left"
+                >
+                  + Add booking
+                </button>
+              </div>
             );
           })}
         </div>
@@ -587,6 +856,13 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 <Badge variant="secondary" className="text-xs">Today</Badge>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => openNewAppointmentForSlot(currentDate)}
+              className="w-full py-3 rounded-lg border border-dashed border-white/20 text-white/60 hover:border-primary hover:text-primary hover:bg-white/5 transition-colors text-sm mb-4"
+            >
+              + Add booking for this day
+            </button>
             {getEventsForDate(currentDate).length === 0 ? (
               <p className="text-sm text-white/60">Click to add an appointment</p>
             ) : (

@@ -14,9 +14,11 @@
     "export:contacts": "tsx scripts/export-contacts.ts",
     "db:push": "npx supabase db push",
     "db:migrate": "npx supabase migration up",
-    "supabase:link": "npx supabase link --project-ref sujyalrzbubvhpkntwja",
-    "supabase:gen-types": "npx supabase gen types typescript --project-id sujyalrzbubvhpkntwja > src/integrations/supabase/types.ts",
-    "supabase:repair": "npx supabase migration repair"
+    "supabase:sync": "node scripts/sync-supabase-project.mjs",
+    "supabase:link": "npx supabase link --project-ref agflprqqvsndkwlpscvt",
+    "supabase:gen-types": "npx supabase gen types typescript --project-id agflprqqvsndkwlpscvt > src/integrations/supabase/types.ts",
+    "supabase:repair": "npx supabase migration repair",
+    "supabase:deploy:news": "npx supabase functions deploy news-proxy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

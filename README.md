@@ -38,6 +38,7 @@ Open **http://localhost:8080**. Log in (or sign up) to use the app.
 | `npm run lint` | Run ESLint |
 | `npm run health` | Check Supabase connection & contact count |
 | `npm run export:contacts` | Export contacts to CSV (requires service-role key) |
+| `npm run supabase:sync` | Sync project ref from `supabase/project-ref` to config and package.json |
 | `npm run db:push` | Apply migrations (Supabase CLI) |
 | `npm run db:migrate` | Run `supabase migration up` |
 | `npm run build:safe` | Build using `vite.config.cjs` (use if TS config hits EPERM) |
@@ -62,6 +63,16 @@ Local and **production** (Lovable) use the **same Supabase project** so they sha
    - **Project ref** (optional) → `VITE_SUPABASE_PROJECT_ID`
 3. Use the **same** URL and anon key as in your Lovable project settings so local and live use the same DB.
 
+### Supabase project ref (single source of truth)
+
+The project ref is defined in **`supabase/project-ref`**. To change it:
+
+1. Edit `supabase/project-ref` (one line: your project ref, e.g. `agflprqqvsndkwlpscvt`)
+2. Run `npm run supabase:sync` to update `config.toml` and `package.json`
+3. Update `.env` so `VITE_SUPABASE_URL` matches (e.g. `https://agflprqqvsndkwlpscvt.supabase.co`)
+
+This keeps CLI, config, and app in sync so Edge Functions and migrations target the same project.
+
 ### Variables
 
 | Variable | Required | Description |
@@ -78,7 +89,17 @@ Never commit `.env` or `.env.local`. They are gitignored.
 The app calls the **google-calendar** Edge Function using `VITE_SUPABASE_URL`, so it uses the same project as your `.env`. If you deploy the Edge Function to Supabase:
 
 1. In **Supabase Dashboard** → **Edge Functions** → **google-calendar** → **Secrets**, set **`REDIRECT_BASE_URL`** to your app URL (e.g. `http://localhost:8080` for local, or your Lovable/production URL). This is where users are sent after connecting Google Calendar.
-2. In **Google Cloud Console** (OAuth client), add the callback URL: `https://<YOUR_PROJECT_REF>.supabase.co/functions/v1/google-calendar?action=callback`.
+2. In **Google Cloud Console** (OAuth client), add the callback URL: `https://<PROJECT_REF>.supabase.co/functions/v1/google-calendar?action=callback` (use the ref from `supabase/project-ref`).
+
+### News Widget (Dashboard Top Stories & Property News)
+
+The Dashboard shows real estate / property headlines via a **news-proxy** Edge Function that fetches from [NewsAPI.org](https://newsapi.org).
+
+1. Deploy the Edge Function: `npx supabase functions deploy news-proxy`
+2. Get a free API key at [newsapi.org](https://newsapi.org) (developer plan)
+3. In **Supabase Dashboard** → **Edge Functions** → **news-proxy** → **Secrets**, add **`NEWS_API_KEY`** with your key
+
+Without the key, the widgets show a placeholder message. The app works normally otherwise.
 
 ---
 
