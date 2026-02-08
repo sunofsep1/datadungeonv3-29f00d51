@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,24 @@ const getGcalUrl = () => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (searchParams.get("calendar_connected") === "true") {
+      toast({
+        title: "Google Calendar connected",
+        description: "Your calendar events will appear in the widget.",
+      });
+      // Remove the param
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete("calendar_connected");
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams, toast]);
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
