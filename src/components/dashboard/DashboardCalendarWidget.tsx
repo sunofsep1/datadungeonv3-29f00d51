@@ -454,6 +454,24 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             <Button variant="outline" size="sm" onClick={fetchGcal}>Retry</Button>
           </div>
           <p className="text-sm text-destructive/90">{gcalError}</p>
+          {gcalError.toLowerCase().includes("not configured") && (
+            <div className="text-xs text-destructive/80 mt-1 space-y-1">
+              <p>
+                Setup: add <strong>GOOGLE_CLIENT_ID</strong> and <strong>GOOGLE_CLIENT_SECRET</strong> in{" "}
+                <a 
+                  href="https://supabase.com/dashboard/project/sujyalrzbubvhpkntwja/functions/google-calendar"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-destructive font-medium"
+                >
+                  Supabase → Edge Functions → google-calendar
+                </a>
+              </p>
+              <p>
+                See <code className="bg-destructive/10 px-1 py-0.5 rounded font-mono">docs/GOOGLE_CALENDAR_SETUP.md</code> in the repo for step-by-step instructions.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
