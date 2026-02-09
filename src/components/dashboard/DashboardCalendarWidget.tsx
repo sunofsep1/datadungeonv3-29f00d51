@@ -24,7 +24,7 @@ import {
   MoreHorizontal,
   Plus,
 } from "lucide-react";
-import { useAppointments, useDeleteAppointment } from "@/hooks/useAppointments";
+import { useAppointments, useCreateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -152,6 +152,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: appointments = [], isError: appointmentsError, refetch: refetchAppointments } = useAppointments();
+  const createAppointment = useCreateAppointment();
   const deleteAppointment = useDeleteAppointment();
   const handleDayOrAdd = onAddAppointmentRequest ?? onDayClick;
   const [viewMode, setViewMode] = useState<ViewMode>("week");
