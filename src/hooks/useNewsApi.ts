@@ -13,6 +13,7 @@ interface NewsApiResponse {
   totalResults?: number;
   articles?: NewsArticle[];
   error?: string;
+  message?: string;
 }
 
 async function fetchNews(q = "real estate OR property OR housing Australia", pageSize = 10): Promise<NewsArticle[]> {
