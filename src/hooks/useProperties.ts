@@ -102,8 +102,7 @@ export function useProperties() {
           .select(PROPERTIES_SELECT)
           .order("created_at", { ascending: false });
         if (!error) return (data ?? []) as PropertyWithLinks[];
-        const msg = (error?.message ?? "").toLowerCase();
-        if (!isPropertiesTableOrRelationError(msg)) throw error;
+        // Fallback: full select can 400 if contact_property_links or relations don't exist
         const { data: simple, error: simpleError } = await (supabase as any)
           .from("properties")
           .select("*")

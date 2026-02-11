@@ -36,7 +36,7 @@ Open **http://localhost:8080**. Log in (or sign up) to use the app.
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
 | `npm run lint` | Run ESLint |
-| `npm run health` | Check Supabase connection & contact count |
+| `npm run health` | Check Supabase connection, contact count, and schema (contacts, tags, contact_tags, contact_channels, properties, contact_property_links). Confirms DB connectivity and core tables. |
 | `npm run export:contacts` | Export contacts to CSV (requires service-role key) |
 | `npm run supabase:sync` | Sync project ref from `supabase/project-ref` to config and package.json |
 | `npm run db:push` | Apply migrations (Supabase CLI) |
@@ -67,9 +67,9 @@ Local and **production** (Lovable) use the **same Supabase project** so they sha
 
 The project ref is defined in **`supabase/project-ref`**. To change it:
 
-1. Edit `supabase/project-ref` (one line: your project ref, e.g. `agflprqqvsndkwlpscvt`)
+1. Edit `supabase/project-ref` (one line: your project ref, e.g. `sujyalrzbubvhpkntwja`)
 2. Run `npm run supabase:sync` to update `config.toml` and `package.json`
-3. Update `.env` so `VITE_SUPABASE_URL` matches (e.g. `https://agflprqqvsndkwlpscvt.supabase.co`)
+3. Update `.env` so `VITE_SUPABASE_URL` matches (e.g. `https://sujyalrzbubvhpkntwja.supabase.co`)
 
 This keeps CLI, config, and app in sync so Edge Functions and migrations target the same project.
 
@@ -86,20 +86,21 @@ Never commit `.env` or `.env.local`. They are gitignored.
 
 ### Google Calendar (Edge Function)
 
-The app calls the **google-calendar** Edge Function using `VITE_SUPABASE_URL`, so it uses the same project as your `.env`. If you deploy the Edge Function to Supabase:
+### Edge Functions (deploy and configure)
 
-1. In **Supabase Dashboard** → **Edge Functions** → **google-calendar** → **Secrets**, set **`REDIRECT_BASE_URL`** to your app URL (e.g. `http://localhost:8080` for local, or your Lovable/production URL). This is where users are sent after connecting Google Calendar.
-2. In **Google Cloud Console** (OAuth client), add the callback URL: `https://<PROJECT_REF>.supabase.co/functions/v1/google-calendar?action=callback` (use the ref from `supabase/project-ref`).
+**Google Calendar**
 
-### News Widget (Dashboard Top Stories & Property News)
+1. Deploy: `npx supabase functions deploy google-calendar` (or use Supabase Dashboard → Edge Functions).
+2. In **Supabase Dashboard** → **Edge Functions** → **google-calendar** → **Secrets**, set **`REDIRECT_BASE_URL`** to your app URL (e.g. `http://localhost:8080` for local, or your production URL). This is where users are sent after connecting Google Calendar.
+3. In **Google Cloud Console** (OAuth client), add the callback URL: `https://<PROJECT_REF>.supabase.co/functions/v1/google-calendar?action=callback` (use the ref from `supabase/project-ref`).
+4. **Test:** Open the Calendar page or Dashboard calendar widget; use “Connect Google Calendar” and confirm redirect and event load.
 
-The Dashboard shows real estate / property headlines via a **news-proxy** Edge Function that fetches from [NewsAPI.org](https://newsapi.org).
+**News proxy (Dashboard Top Stories & Property News)**
 
-1. Deploy the Edge Function: `npx supabase functions deploy news-proxy`
-2. Get a free API key at [newsapi.org](https://newsapi.org) (developer plan)
-3. In **Supabase Dashboard** → **Edge Functions** → **news-proxy** → **Secrets**, add **`NEWS_API_KEY`** with your key
-
-Without the key, the widgets show a placeholder message. The app works normally otherwise.
+1. Deploy: `npm run supabase:deploy:news` or `npx supabase functions deploy news-proxy`.
+2. Get a free API key at [newsapi.org](https://newsapi.org) (developer plan).
+3. In **Supabase Dashboard** → **Edge Functions** → **news-proxy** → **Secrets**, add **`NEWS_API_KEY`** with your key.
+4. **Test:** Open the Dashboard; the news widgets should show property/real estate headlines. Without the key, they show a placeholder and the app works normally.
 
 ---
 
@@ -123,6 +124,8 @@ npm run db:push
 ```
 
 Other Supabase scripts: `npm run supabase:gen-types` regenerates TypeScript types from the linked project.
+
+**Schema verification:** Run `npm run health` to confirm the six core tables exist and are queryable: `contacts`, `tags`, `contact_tags`, `contact_channels`, `properties`, `contact_property_links`. If any table is missing, run `db:push` to apply migrations.
 
 ### Contacts & Properties upgrade (new migrations)
 
@@ -246,14 +249,16 @@ Use these to confirm persistence and UI updates:
 src/
   hooks/           useContacts, useContact, useRealtimeSubscription, …
   integrations/    supabase client & types
-  pages/           Contacts, ContactDetail, Dashboard, …
-  components/      contacts/CSVImportDialog, layout, ui, …
+  pages/           Contacts, ContactDetail, Dashboard, Performance, …
+  components/      contacts/CSVImportDialog, layout, ui, agent-ops/, performance/, …
 supabase/
   migrations/      versioned SQL migrations
 scripts/
   health.ts        Supabase connectivity check
   export-contacts  Backup contacts to CSV (service-role)
 ```
+
+**Agent ops:** Daily numbers, goals, and campaign features live under **Performance** (`/performance`) and **Marketing** (`/marketing`). The route `/agent-ops/*` redirects to `/performance`. Reusable building blocks are in `src/components/agent-ops/` (e.g. NumbersKPIGrid, LogActivityForm, GoalsSection, CampaignManager).
 
 ---
 

@@ -24,6 +24,7 @@ function isRelationError(msg: string): boolean {
 export function useContact(id: string | undefined) {
   return useQuery({
     queryKey: ["contact", id],
+    retry: 1,
     queryFn: async () => {
       if (!id) throw new Error("No contact ID provided");
       let contact: ContactWithMeta & { contact_addresses?: ContactAddressRow[] };

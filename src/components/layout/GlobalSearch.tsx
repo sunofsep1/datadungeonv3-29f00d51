@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Command, CommandInput } from "@/components/ui/command";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useContacts } from "@/hooks/useContacts";
 import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import { useListings } from "@/hooks/useListings";
@@ -82,7 +82,11 @@ export function GlobalSearch() {
         if (!next) setQuery("");
       }}
     >
-      <DialogContent className="zoho-dialog overflow-hidden p-0 gap-0 max-w-2xl bg-popover border-border text-popover-foreground shadow-xl">
+      <DialogContent className="zoho-dialog overflow-hidden p-0 gap-0 max-w-2xl bg-popover border-border text-popover-foreground shadow-xl" aria-describedby="global-search-desc">
+        <DialogTitle className="sr-only">Search</DialogTitle>
+        <DialogDescription id="global-search-desc" className="sr-only">
+          Search contacts, properties, and listings. Type to filter, then select a result to open it.
+        </DialogDescription>
         <Command
           className="rounded-lg border-0 bg-transparent [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-item][data-selected=true]]:bg-accent [&_[cmdk-item][data-selected=true]]:text-foreground"
           shouldFilter={false}

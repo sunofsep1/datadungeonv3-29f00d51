@@ -138,6 +138,21 @@ export default function Properties() {
       });
       return;
     }
+    const beds = formData.bedrooms;
+    const baths = formData.bathrooms;
+    const priceVal = formData.price;
+    if (beds != null && (Number.isNaN(Number(beds)) || beds < 0 || Math.floor(beds) !== beds)) {
+      toast({ title: "Error", description: "Bedrooms must be a non-negative whole number", variant: "destructive" });
+      return;
+    }
+    if (baths != null && (Number.isNaN(Number(baths)) || baths < 0)) {
+      toast({ title: "Error", description: "Bathrooms must be a non-negative number", variant: "destructive" });
+      return;
+    }
+    if (priceVal != null && (Number.isNaN(Number(priceVal)) || priceVal < 0)) {
+      toast({ title: "Error", description: "Price must be a non-negative number", variant: "destructive" });
+      return;
+    }
 
     try {
       let propertyId: string;

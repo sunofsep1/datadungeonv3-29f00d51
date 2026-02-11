@@ -1,6 +1,7 @@
 /**
- * Health check: verify Supabase connection and optionally contact count.
- * Run: npx tsx scripts/health.ts
+ * Health check: verify Supabase connection and core schema (contacts, tags,
+ * contact_tags, contact_channels, properties, contact_property_links).
+ * Run: npm run health  or  npx tsx scripts/health.ts
  * Requires: .env with VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
  */
 import "dotenv/config";
@@ -16,21 +17,56 @@ if (!url || !key) {
 
 const supabase = createClient(url, key);
 
+const CORE_TABLES = [
+  "contacts",
+  "tags",
+  "contact_tags",
+  "contact_channels",
+  "properties",
+  "contact_property_links",
+] as const;
+
+async function checkTable(table: string): Promise<{ ok: boolean; count: number | null; error?: string }> {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    return { ok: false, count: null, error: error.message };
+  }
+  return { ok: true, count: count ?? 0 };
+}
+
 async function main() {
   try {
-    const { count, error } = await supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true });
+    console.log("Supabase: connecting...\n");
 
-    if (error) {
-      console.error("Supabase error:", error.message);
+    const results: Record<string, { ok: boolean; count: number | null; error?: string }> = {};
+    for (const table of CORE_TABLES) {
+      results[table] = await checkTable(table);
+    }
+
+    const allOk = CORE_TABLES.every((t) => results[t].ok);
+    if (!allOk) {
+      console.error("Schema health: one or more tables missing or not queryable.\n");
+      for (const table of CORE_TABLES) {
+        const r = results[table];
+        console.log(`  ${table}: ${r.ok ? `ok (count: ${r.count})` : `error — ${r.error ?? "unknown"}`}`);
+      }
+      console.log("\nRun migrations: npm run supabase:link && npm run db:push");
       process.exit(1);
     }
 
-    console.log("Supabase: connected");
+    console.log("Schema health: all core tables present and queryable\n");
+    for (const table of CORE_TABLES) {
+      const r = results[table];
+      console.log(`  ${table}: ${r.count ?? 0} rows`);
+    }
+
+    console.log("\nSupabase: connected");
     console.log(
       "Contact count (anon, no auth):",
-      count ?? 0,
+      results.contacts.count ?? 0,
       "— RLS filters by user; log in via app to see your contacts."
     );
     console.log("To verify local vs production: log in, open /contacts, compare counts.");

@@ -326,8 +326,11 @@ export default function Contacts() {
     return Array.from(set).sort();
   }, [contacts]);
 
-  const handleExportCSV = () => {
-    const contactsList = filteredAndSortedContacts;
+  const handleExportCSV = (selectedOnly?: boolean) => {
+    const contactsList =
+      selectedOnly && selectedContactIds.size > 0
+        ? filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id))
+        : filteredAndSortedContacts;
     if (contactsList.length === 0) {
       toast({
         title: "No data",
@@ -427,6 +430,13 @@ export default function Contacts() {
     setIsDialogOpen(true);
   };
 
+  const nameToFirstLast = (name: string) => {
+    const t = name.trim();
+    const i = t.indexOf(" ");
+    if (i <= 0) return { first_name: t || null, last_name: null };
+    return { first_name: t.slice(0, i), last_name: t.slice(i + 1).trim() || null };
+  };
+
   const handleSaveContact = async () => {
     if (!formData.name.trim()) {
       toast({
@@ -436,6 +446,7 @@ export default function Contacts() {
       });
       return;
     }
+    const { first_name, last_name } = nameToFirstLast(formData.name);
     try {
       let contactId: string;
       if (editingContact) {
@@ -443,6 +454,8 @@ export default function Contacts() {
         const updated = await updateContact.mutateAsync({
           id: editingContact.id,
           name: formData.name,
+          first_name,
+          last_name,
           phone: formData.phone || null,
           email: formData.email || null,
           source: formData.source || null,
@@ -478,6 +491,8 @@ export default function Contacts() {
       } else {
         const created = await createContact.mutateAsync({
           name: formData.name,
+          first_name,
+          last_name,
           phone: formData.phone || null,
           email: formData.email || null,
           source: formData.source || null,
@@ -1265,22 +1280,54 @@ export default function Contacts() {
                 <SelectItem value="lead">Set to Lead</SelectItem>
               </SelectContent>
             </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Tag className="w-4 h-4 mr-1" />
+                  Add tag
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <p className="text-xs text-muted-foreground px-2 py-1">Select a tag to add to {selectedContactIds.size} contact(s)</p>
+                {tags && tags.length > 0 ? (
+                  <div className="max-h-48 overflow-y-auto space-y-0.5 mt-2">
+                    {tags.map((tag) => (
+                      <Button
+                        key={tag.id}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start font-normal"
+                        onClick={async () => {
+                          const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
+                          const existingTagIds = (c: ContactWithMeta) => (c.contact_tags ?? []).map((ct) => ct.tag_id);
+                          let added = 0;
+                          for (const c of toUpdate) {
+                            if (existingTagIds(c).includes(tag.id)) continue;
+                            try {
+                              await addContactTag.mutateAsync({ contact_id: c.id, tag_id: tag.id });
+                              added++;
+                            } catch {
+                              // skip duplicate or error
+                            }
+                          }
+                          toast({ title: "Tags added", description: `Added "${tag.name}" to ${added} contact(s)` });
+                          setSelectedContactIds(new Set());
+                        }}
+                      >
+                        {tag.name}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground px-2 py-2">No tags. Create one in a contact.</p>
+                )}
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                // Bulk tag - would need a dialog for tag selection
-                toast({ title: "Info", description: "Bulk tagging coming soon" });
-              }}
-            >
-              <Tag className="w-4 h-4 mr-1" />
-              Tag
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                handleExportCSV();
+                handleExportCSV(true);
                 setSelectedContactIds(new Set());
               }}
             >

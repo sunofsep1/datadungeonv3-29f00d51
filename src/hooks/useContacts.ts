@@ -22,7 +22,7 @@ export type ContactAddressFields = {
 const ADDRESS_KEYS = ["address_line1", "address_line2", "city", "state", "postcode", "country"] as const;
 
 function pickContactInsert(payload: Record<string, unknown>): Record<string, unknown> {
-  const { address_line1, address_line2, city, state, postcode, country, first_name, last_name, ...rest } = payload;
+  const { address_line1, address_line2, city, state, postcode, country, ...rest } = payload;
   return rest;
 }
 
@@ -90,12 +90,17 @@ export function mapContactAddressToDisplay(
   };
 }
 
+/**
+ * Fetches all contacts for the current user. Uses full select with relations when available,
+ * falls back to simple select if relation tables are missing (e.g. before migrations).
+ */
 export function useContacts() {
   return useQuery({
     queryKey: ["contacts"],
+    retry: 1,
     queryFn: async () => {
-      // Try full select with relations
-      const { data, error } = await (supabase as any)
+      // Try full select with relations (requires contact_channels, contact_tags, contact_property_links, contact_addresses)
+      const { data, error } = await supabase
         .from("contacts")
         .select(CONTACTS_SELECT)
         .order("created_at", { ascending: false });
@@ -103,16 +108,7 @@ export function useContacts() {
         const list = (data ?? []) as (ContactWithMeta & { contact_addresses?: ContactAddressRow[] })[];
         return list.map((c) => mapContactAddressToDisplay(c)) as ContactWithMeta[];
       }
-      const msg = (error?.message ?? "").toLowerCase();
-      const missingRelation =
-        (msg.includes("relation") && msg.includes("does not exist")) ||
-        msg.includes("contact_channels") ||
-        msg.includes("contact_tags") ||
-        msg.includes("contact_property_links") ||
-        msg.includes("contact_addresses") ||
-        msg.includes("properties");
-      if (!missingRelation) throw error;
-      // Fallback to simple select
+      // Fallback: full select can 400 if relations/tables don't exist (e.g. different Supabase schema)
       const { data: simple, error: simpleError } = await supabase
         .from("contacts")
         .select("*")
@@ -140,7 +136,7 @@ export function useCreateContact() {
       if (!user) throw new Error("Not authenticated");
 
       const contactPayload = pickContactInsert({ ...contact, user_id: user.id });
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("contacts")
         .insert(contactPayload)
         .select()
@@ -149,7 +145,7 @@ export function useCreateContact() {
 
       const addressFields = pickAddressFields(contact as Record<string, unknown>);
       if (addressFields && data?.id) {
-        await (supabase as any)
+        await supabase
           .from("contact_addresses")
           .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
       }
@@ -175,7 +171,7 @@ export function useUpdateContact() {
         .single();
 
       const contactPayload = pickContactInsert(updates as Record<string, unknown>);
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("contacts")
         .update(contactPayload)
         .eq("id", id)
@@ -185,7 +181,7 @@ export function useUpdateContact() {
 
       const addressFields = pickAddressFields(updates as Record<string, unknown>);
       if (addressFields) {
-        const { data: existing } = await (supabase as any)
+        const { data: existing } = await supabase
           .from("contact_addresses")
           .select("id")
           .eq("contact_id", id)
@@ -193,12 +189,12 @@ export function useUpdateContact() {
           .limit(1)
           .maybeSingle();
         if (existing?.id) {
-          await (supabase as any)
+          await supabase
             .from("contact_addresses")
             .update(addressFields)
             .eq("id", existing.id);
         } else {
-          await (supabase as any)
+          await supabase
             .from("contact_addresses")
             .insert({ contact_id: id, ...addressFields, address_type: "home", is_primary: true });
         }

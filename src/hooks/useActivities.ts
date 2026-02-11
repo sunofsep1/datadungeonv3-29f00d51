@@ -22,9 +22,13 @@ export function useActivities() {
         .from("activities")
         .select("*")
         .order("date", { ascending: false });
-      
-      if (error) throw error;
-      return data as Activity[];
+      if (!error) return (data ?? []) as Activity[];
+      // Table may not exist yet (migrations not run); return empty so UI doesn't break
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return [] as Activity[];
+      }
+      throw error;
     },
   });
 }
@@ -36,16 +40,18 @@ export function useCurrentMonthActivities() {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .gte("date", startOfMonth)
         .lte("date", endOfMonth)
         .order("date", { ascending: false });
-      
-      if (error) throw error;
-      return data as Activity[];
+      if (!error) return (data ?? []) as Activity[];
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return [] as Activity[];
+      }
+      throw error;
     },
   });
 }
@@ -58,15 +64,17 @@ export function useWeeklyActivities() {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
       const startDate = startOfWeek.toISOString().split('T')[0];
-      
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .gte("date", startDate)
         .order("date", { ascending: true });
-      
-      if (error) throw error;
-      return data as Activity[];
+      if (!error) return (data ?? []) as Activity[];
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return [] as Activity[];
+      }
+      throw error;
     },
   });
 }
@@ -99,15 +107,17 @@ export function useTodayActivity() {
     queryKey: ["activities", "today"],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
-      
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .eq("date", today)
         .maybeSingle();
-      
-      if (error) throw error;
-      return data as Activity | null;
+      if (!error) return data as Activity | null;
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return null;
+      }
+      throw error;
     },
   });
 }
