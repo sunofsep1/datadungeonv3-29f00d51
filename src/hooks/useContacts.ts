@@ -105,8 +105,17 @@ export function useContacts() {
         .select(CONTACTS_SELECT)
         .order("created_at", { ascending: false });
       if (!error) {
-        const list = (data ?? []) as (ContactWithMeta & { contact_addresses?: ContactAddressRow[] })[];
-        return list.map((c) => mapContactAddressToDisplay(c)) as ContactWithMeta[];
+        const list = (data as unknown as (ContactWithMeta & { contact_addresses?: ContactAddressRow[] })[]) ?? [];
+        return list.map((c) => {
+          // Map DB channel_value to ContactChannel.value
+          if (c.contact_channels) {
+            c.contact_channels = (c.contact_channels as any[]).map((ch: any) => ({
+              ...ch,
+              value: ch.value ?? ch.channel_value,
+            }));
+          }
+          return mapContactAddressToDisplay(c);
+        }) as ContactWithMeta[];
       }
       // Fallback: full select can 400 if relations/tables don't exist (e.g. different Supabase schema)
       const { data: simple, error: simpleError } = await supabase
@@ -136,7 +145,7 @@ export function useCreateContact() {
       if (!user) throw new Error("Not authenticated");
 
       const contactPayload = pickContactInsert({ ...contact, user_id: user.id });
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("contacts")
         .insert(contactPayload)
         .select()
@@ -145,7 +154,7 @@ export function useCreateContact() {
 
       const addressFields = pickAddressFields(contact as Record<string, unknown>);
       if (addressFields && data?.id) {
-        await supabase
+        await (supabase as any)
           .from("contact_addresses")
           .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
       }
@@ -181,7 +190,7 @@ export function useUpdateContact() {
 
       const addressFields = pickAddressFields(updates as Record<string, unknown>);
       if (addressFields) {
-        const { data: existing } = await supabase
+        const { data: existing } = await (supabase as any)
           .from("contact_addresses")
           .select("id")
           .eq("contact_id", id)
@@ -189,12 +198,12 @@ export function useUpdateContact() {
           .limit(1)
           .maybeSingle();
         if (existing?.id) {
-          await supabase
+          await (supabase as any)
             .from("contact_addresses")
             .update(addressFields)
             .eq("id", existing.id);
         } else {
-          await supabase
+          await (supabase as any)
             .from("contact_addresses")
             .insert({ contact_id: id, ...addressFields, address_type: "home", is_primary: true });
         }
