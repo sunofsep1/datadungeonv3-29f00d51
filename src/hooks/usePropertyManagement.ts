@@ -25,7 +25,7 @@ export type PropertyContactLinkWithContact = {
   property_id: string;
   role: string;
   notes: string | null;
-  contact: { id: string; name: string; first_name: string | null; last_name: string | null; email: string | null; phone: string | null } | null;
+  contact: { id: string; name: string; email: string | null; phone: string | null } | null;
 };
 
 /** Get properties linked to a contact (derived from useContact) */
