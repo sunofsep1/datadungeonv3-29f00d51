@@ -68,12 +68,12 @@ export type PropertyWithLinks = Property & {
     property_id: string;
     role: string;
     notes: string | null;
-    contacts: { id: string; name: string; first_name: string | null; last_name: string | null; email: string | null; phone: string | null } | null;
+    contacts: { id: string; name: string; email: string | null; phone: string | null } | null;
   }>;
 };
 
 const PROPERTIES_SELECT =
-  "*, contact_property_links(id, contact_id, property_id, role, notes, contacts(id, name, first_name, last_name, email, phone))";
+  "*, contact_property_links(id, contact_id, property_id, role, notes, contacts(id, name, email, phone))";
 
 const PROPERTIES_QUERY_KEYS = [["properties"]];
 
@@ -170,7 +170,7 @@ export function useProperty(id: string | undefined) {
         const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
         const { data: contactRows } = await (supabase as any)
           .from("contacts")
-          .select("id, name, first_name, last_name, email, phone")
+          .select("id, name, email, phone")
           .in("id", contactIds);
         const contactMap = new Map(
           (contactRows ?? []).map((c: { id: string }) => [c.id, c])
