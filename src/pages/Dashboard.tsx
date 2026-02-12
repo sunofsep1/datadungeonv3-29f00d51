@@ -24,6 +24,7 @@ import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalenda
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
 import { TopStoriesWidget } from "@/components/dashboard/TopStoriesWidget";
 import { NewsWidget } from "@/components/dashboard/NewsWidget";
+import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const getGcalUrl = () => {
@@ -309,18 +310,24 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <KPISnapshot />
-        </div>
-        <div className="space-y-4 flex flex-col">
+      {/* Row: KPI + Pipeline — balanced 2-col */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <KPISnapshot />
+        <PipelineSummary />
+      </div>
+
+      {/* Row: Activity + sidebar cards — balanced 2-col */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <RecentActivityFeed />
+
+        <div className="space-y-4">
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <CheckSquare className="w-5 h-5 zoho-accent" />
                 To-Do
               </h3>
-              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 -mr-2" onClick={() => navigate("/tasks")}>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/tasks")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
@@ -334,7 +341,7 @@ export default function Dashboard() {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-white/50">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckSquare className="w-4 h-4 shrink-0 opacity-60" />
                 <span>No overdue tasks</span>
               </div>
@@ -343,8 +350,8 @@ export default function Dashboard() {
 
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Recent Contacts</h3>
-              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 -mr-2" onClick={() => navigate("/contacts")}>
+              <h3 className="text-lg font-semibold text-foreground">Recent Contacts</h3>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/contacts")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
@@ -356,8 +363,8 @@ export default function Dashboard() {
               </div>
             ) : recentContacts.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
-                <Users className="w-10 h-10 shrink-0 text-white/40" />
-                <p className="text-sm text-white/60 text-center">No contacts yet. Add your first contact to get started.</p>
+                <Users className="w-10 h-10 shrink-0 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground text-center">No contacts yet. Add your first contact to get started.</p>
                 <Button size="sm" className="gap-2" onClick={() => setContactDialogOpen(true)}>
                   <Users className="w-4 h-4" /> Add Contact
                 </Button>
@@ -368,11 +375,11 @@ export default function Dashboard() {
                   <li key={c.id}>
                     <button
                       type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-inset"
+                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
                       onClick={() => navigate(`/contacts/${c.id}`)}
                     >
-                      <span className="text-sm text-white truncate">{c.name}</span>
-                      <ChevronRight className="w-4 h-4 shrink-0 text-white/40" />
+                      <span className="text-sm text-foreground truncate">{c.name}</span>
+                      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                     </button>
                   </li>
                 ))}
@@ -382,8 +389,8 @@ export default function Dashboard() {
 
           <Card className="zoho-card p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Upcoming Appointments</h3>
-              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 -mr-2" onClick={() => navigate("/appointments")}>
+              <h3 className="text-lg font-semibold text-foreground">Upcoming Appointments</h3>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/appointments")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
@@ -395,8 +402,8 @@ export default function Dashboard() {
               </div>
             ) : upcomingAppointments.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
-                <Calendar className="w-10 h-10 shrink-0 text-white/40" />
-                <p className="text-sm text-white/60 text-center">No upcoming appointments. Schedule one to stay on top of your calendar.</p>
+                <Calendar className="w-10 h-10 shrink-0 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground text-center">No upcoming appointments.</p>
                 <Button size="sm" variant="outline" className="gap-2 border-white/20" onClick={() => setAppointmentDialogOpen(true)}>
                   <Calendar className="w-4 h-4" /> Schedule
                 </Button>
@@ -407,14 +414,14 @@ export default function Dashboard() {
                   <li key={apt.id}>
                     <button
                       type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-inset"
+                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
                       onClick={() => navigate("/appointments")}
                     >
                       <div className="min-w-0">
-                        <p className="text-sm text-white truncate">{apt.title}</p>
-                        <p className="text-xs text-white/50">{format(new Date(apt.date), "EEE, d MMM · HH:mm")}</p>
+                        <p className="text-sm text-foreground truncate">{apt.title}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(apt.date), "EEE, d MMM · HH:mm")}</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 shrink-0 text-white/40" />
+                      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                     </button>
                   </li>
                 ))}
@@ -423,28 +430,26 @@ export default function Dashboard() {
           </Card>
 
           <Card className="zoho-card p-4 md:p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3 justify-items-stretch">
-              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Users className="w-4 h-4 zoho-accent shrink-0" />
                 <span className="text-sm font-medium">Add Contact</span>
               </button>
-              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Megaphone className="w-4 h-4 text-amber-400 shrink-0" />
                 <span className="text-sm font-medium">Add Lead</span>
               </button>
-              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
                 <span className="text-sm font-medium">Schedule</span>
               </button>
-              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-white transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#00BCD4] focus:ring-offset-2 focus:ring-offset-[#1a1a1a]">
+              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Home className="w-4 h-4 zoho-accent shrink-0" />
                 <span className="text-sm font-medium">Create Post</span>
               </button>
             </div>
           </Card>
-
-          <RecentActivityFeed />
         </div>
       </div>
 
