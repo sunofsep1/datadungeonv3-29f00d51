@@ -220,6 +220,59 @@ export type Database = {
           },
         ]
       }
+      contact_addresses: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          address_type: string | null
+          city: string | null
+          contact_id: string
+          country: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          postal_code: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          address_type?: string | null
+          city?: string | null
+          contact_id: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          address_type?: string | null
+          city?: string | null
+          contact_id?: string
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_addresses_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_channels: {
         Row: {
           channel_type: string
