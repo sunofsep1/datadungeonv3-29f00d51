@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import {
@@ -9,9 +8,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Phone, Mail, Clock, MessageSquare } from "lucide-react";
+import { Phone, Mail, Clock, MessageSquare, StickyNote, User, ExternalLink } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { getInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { ContactWithMeta } from "@/hooks/useContacts";
 import { getAllEmails, getAllPhones, getPrimaryEmail, getTagNames } from "@/hooks/useContacts";
 
@@ -39,118 +39,193 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
   const emails = getAllEmails(contact);
   const phones = getAllPhones(contact);
   const primaryEmail = getPrimaryEmail(contact) ?? contact.email;
+  const tagNames = getTagNames(contact);
 
   return (
-    <div className="p-4 md:p-5 space-y-5">
-      <div className="flex flex-col items-center text-center">
-        <AvatarCircle
-          name={contact.name}
-          size="lg"
-          initials={getInitials(contact.first_name, contact.last_name, contact.name)}
-        />
-        <h2 className="text-base font-semibold text-white mt-3 line-clamp-2">{contact.name}</h2>
-        <StatusBadge variant={getStatusVariant(contact.status)} className="mt-1.5">
-          {contact.status || "lead"}
-        </StatusBadge>
+    <div className="flex flex-col h-full">
+      {/* Hero: avatar + name + status */}
+      <div className="p-5 pb-4 border-b border-white/10">
+        <div className="flex flex-col items-center text-center">
+          <AvatarCircle
+            name={contact.name}
+            size="lg"
+            initials={getInitials(contact.first_name, contact.last_name, contact.name)}
+            className="ring-2 ring-white/10 ring-offset-2 ring-offset-[#242424]"
+          />
+          <h2 className="text-lg font-semibold text-foreground mt-4 line-clamp-2 tracking-tight">
+            {contact.name}
+          </h2>
+          <StatusBadge variant={getStatusVariant(contact.status)} className="mt-2">
+            {contact.status || "lead"}
+          </StatusBadge>
+          {contact.source && (
+            <p className="text-xs text-muted-foreground mt-1 font-medium uppercase tracking-wider">
+              {contact.source}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="space-y-3 text-sm">
-        {emails.length > 0 && (
-          <div className="space-y-1.5">
+
+      {/* Contact channels — scannable list */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+        <section>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+            <User className="w-3.5 h-3.5" />
+            Contact
+          </h3>
+          <ul className="space-y-2">
             {emails.map((e) => (
-              <a
-                key={e.value}
-                href={`mailto:${e.value}`}
-                className="flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
-                  <Mail className="w-4 h-4 text-white/70" />
-                </span>
-                <span className="truncate">{e.value}</span>
-                {e.label !== "Email" && <span className="text-white/60 text-xs">({e.label})</span>}
-              </a>
+              <li key={e.value}>
+                <a
+                  href={`mailto:${e.value}`}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg p-2.5 -mx-1 transition-colors",
+                    "text-foreground hover:bg-white/10 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium">{e.value}</span>
+                  {e.label !== "Email" && (
+                    <span className="text-xs text-muted-foreground shrink-0">{e.label}</span>
+                  )}
+                </a>
+              </li>
             ))}
-          </div>
-        )}
-        {phones.length > 0 && (
-          <div className="space-y-1.5">
             {phones.map((p) => (
-              <a
-                key={p.value}
-                href={`tel:${p.value}`}
-                className="flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
-                  <Phone className="w-4 h-4 text-white/70" />
-                </span>
-                <span>{p.value}</span>
-                <span className="text-white/60 text-xs">({p.label})</span>
-              </a>
+              <li key={p.value}>
+                <a
+                  href={`tel:${p.value}`}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg p-2.5 -mx-1 transition-colors",
+                    "text-foreground hover:bg-white/10 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <Phone className="w-4 h-4" />
+                  </span>
+                  <span className="flex-1 min-w-0 text-sm font-medium">{p.value}</span>
+                  {p.label !== "Phone" && (
+                    <span className="text-xs text-muted-foreground shrink-0">{p.label}</span>
+                  )}
+                </a>
+              </li>
             ))}
-          </div>
-        )}
-        {contact.source && (
-          <div className="pt-1">
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wide">Source</span>
-            <p className="text-white font-medium mt-0.5">{contact.source}</p>
-          </div>
+            {emails.length === 0 && phones.length === 0 && (
+              <li className="text-sm text-muted-foreground py-2">No contact details</li>
+            )}
+          </ul>
+        </section>
+
+        {/* Meta: dates + last activity */}
+        <section className="rounded-lg bg-white/[0.04] border border-white/5 p-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Activity
+          </h3>
+          <ul className="space-y-1.5 text-xs text-muted-foreground">
+            {contact.created_at && (
+              <li>Created {format(new Date(contact.created_at), "MMM d, yyyy")}</li>
+            )}
+            {contact.updated_at && (
+              <li>Updated {format(new Date(contact.updated_at), "MMM d, yyyy")}</li>
+            )}
+            {lastActivity && (
+              <li className="flex items-center gap-2 pt-1 border-t border-white/5 mt-1">
+                <Clock className="w-3.5 h-3.5 text-primary/80" />
+                Last activity {formatDistanceToNow(new Date(lastActivity), { addSuffix: true })}
+              </li>
+            )}
+          </ul>
+        </section>
+
+        {/* Tags */}
+        {tagNames.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Tags
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              {tagNames.map((t) => (
+                <Badge
+                  key={t}
+                  variant="secondary"
+                  className="text-xs font-normal bg-white/10 text-foreground/90 border-white/10 hover:bg-white/15"
+                >
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          </section>
         )}
       </div>
-      <Separator className="bg-white/10" />
-      <div className="space-y-1.5 text-xs text-white/50">
-        {contact.created_at && (
-          <p>Created {format(new Date(contact.created_at), "MMM d, yyyy")}</p>
-        )}
-        {contact.updated_at && (
-          <p>Updated {format(new Date(contact.updated_at), "MMM d, yyyy")}</p>
-        )}
-        {lastActivity && (
-          <p className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-white/40" />
-            Last activity {formatDistanceToNow(new Date(lastActivity), { addSuffix: true })}
-          </p>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {phones.length > 0 && (
-          phones.length === 1 ? (
-            <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={() => window.open(`tel:${phones[0].value}`)}>
-              <Phone className="w-3.5 h-3.5" /> Call
+
+      {/* Actions — sticky at bottom */}
+      <div className="shrink-0 p-4 pt-3 border-t border-white/10 bg-[#1e1e1e]/80 space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          {phones.length > 0 &&
+            (phones.length === 1 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-white/20 text-foreground hover:bg-white/10 hover:text-foreground h-9"
+                onClick={() => window.open(`tel:${phones[0].value}`)}
+              >
+                <Phone className="w-4 h-4" /> Call
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-white/20 text-foreground hover:bg-white/10 hover:text-foreground h-9"
+                  >
+                    <Phone className="w-4 h-4" /> Call
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[200px]">
+                  {phones.map((p) => (
+                    <DropdownMenuItem key={p.value} onClick={() => window.open(`tel:${p.value}`)}>
+                      {p.label}: {p.value}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ))}
+          {primaryEmail && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-white/20 text-foreground hover:bg-white/10 hover:text-foreground h-9"
+              onClick={onSendEmail ?? (() => window.open(`mailto:${primaryEmail}`))}
+            >
+              <Mail className="w-4 h-4" /> Email
+            </Button>
+          )}
+        </div>
+        {phones.length > 0 && onSendSms &&
+          (phones.length === 1 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 border-white/20 text-foreground hover:bg-white/10 hover:text-foreground h-9"
+              onClick={() => onSendSms(phones[0].value)}
+            >
+              <MessageSquare className="w-4 h-4" /> Send SMS
             </Button>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white">
-                  <Phone className="w-3.5 h-3.5" /> Call
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 border-white/20 text-foreground hover:bg-white/10 hover:text-foreground h-9"
+                >
+                  <MessageSquare className="w-4 h-4" /> Send SMS
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {phones.map((p) => (
-                  <DropdownMenuItem key={p.value} onClick={() => window.open(`tel:${p.value}`)}>
-                    {p.label}: {p.value}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )
-        )}
-        {primaryEmail && (
-          <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={onSendEmail ?? (() => window.open(`mailto:${primaryEmail}`))}>
-            <Mail className="w-3.5 h-3.5" /> Email
-          </Button>
-        )}
-        {phones.length > 0 && onSendSms ? (
-          phones.length === 1 ? (
-            <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white col-span-2" onClick={() => onSendSms(phones[0].value)}>
-              <MessageSquare className="w-3.5 h-3.5" /> Send SMS
-            </Button>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white col-span-2">
-                  <MessageSquare className="w-3.5 h-3.5" /> Send SMS
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="start" className="min-w-[200px]">
                 {phones.map((p) => (
                   <DropdownMenuItem key={p.value} onClick={() => onSendSms(p.value)}>
                     {p.label}: {p.value}
@@ -158,22 +233,24 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          )
-        ) : null}
-        <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white col-span-2" onClick={onAddNote}>
-          <MessageSquare className="w-3.5 h-3.5" /> Add note
+          ))}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2 border-white/20 text-foreground hover:bg-white/10 hover:text-foreground h-9"
+          onClick={onAddNote}
+        >
+          <StickyNote className="w-4 h-4" /> Add note
         </Button>
-        <Button variant="secondary" size="sm" className="gap-1.5 col-span-2 bg-white/10 text-white hover:bg-white/15 border-0" onClick={onViewFull}>
-          View full profile
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full gap-2 h-9 bg-primary/20 text-primary hover:bg-primary/30 border-0 font-medium"
+          onClick={onViewFull}
+        >
+          <ExternalLink className="w-4 h-4" /> View full profile
         </Button>
       </div>
-      {getTagNames(contact).length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {getTagNames(contact).map((t) => (
-            <Badge key={t} variant="secondary" className="text-xs font-normal bg-white/10 text-white/80 border-0">{t}</Badge>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

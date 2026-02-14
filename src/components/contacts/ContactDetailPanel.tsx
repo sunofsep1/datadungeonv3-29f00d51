@@ -128,7 +128,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
           ) : contact ? (
             <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
               {/* Left: key info — compact, scannable */}
-              <div className="shrink-0 w-full md:w-56 lg:w-64 border-b md:border-b-0 md:border-r border-white/10 bg-[#242424]/80 flex flex-col">
+              <div className="shrink-0 w-full md:w-64 lg:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-[#242424] flex flex-col">
                 <ContactKeyInfoPanel
                   contact={contact}
                   lastActivity={lastActivity}
