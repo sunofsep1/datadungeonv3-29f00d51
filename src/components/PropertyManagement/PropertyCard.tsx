@@ -82,7 +82,7 @@ export function PropertyCard({
           )}
         </div>
         <div
-          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {onEdit && (

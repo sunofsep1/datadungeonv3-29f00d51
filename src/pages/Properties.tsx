@@ -12,7 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Search, Plus } from "lucide-react";
+import { Building2, Search, Plus, LayoutGrid, List } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { PropertyViewMode } from "@/components/PropertyManagement/PropertyList";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   AlertDialog,
@@ -64,6 +66,8 @@ export default function Properties() {
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
+  const [viewMode, setViewMode] = useState<PropertyViewMode>("grid");
+  const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
   const itemsPerPage = 20;
 
   const filtered = useMemo(() => {
@@ -74,18 +78,24 @@ export default function Properties() {
     });
   }, [properties, debouncedSearch]);
 
-  // Pagination
-  const paginatedProperties = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filtered.slice(startIndex, startIndex + itemsPerPage);
-  }, [filtered, currentPage, itemsPerPage]);
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    const addr = (p: PropertyWithLinks) => formatPropertyAddress(p).toLowerCase();
+    const price = (p: PropertyWithLinks) => p.price_listed ?? p.price ?? 0;
+    const created = (p: PropertyWithLinks) => new Date(p.created_at ?? 0).getTime();
+    if (sortBy === "address") list.sort((a, b) => addr(a).localeCompare(addr(b)));
+    else if (sortBy === "price-asc") list.sort((a, b) => price(a) - price(b));
+    else if (sortBy === "price-desc") list.sort((a, b) => price(b) - price(a));
+    else if (sortBy === "newest") list.sort((a, b) => created(b) - created(a));
+    return list;
+  }, [filtered, sortBy]);
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const totalPages = Math.ceil(sorted.length / itemsPerPage);
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when search or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, sortBy]);
 
   const handleDeleteProperty = async (property: PropertyWithLinks) => {
     try {
@@ -516,17 +526,46 @@ export default function Properties() {
           </Dialog>
         }
       />
-      <div className="relative mt-6 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-        <Input
-          placeholder="Search by address..."
-          className="pl-10 bg-input h-11"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
+          <Input
+            placeholder="Search by address..."
+            className="pl-10 bg-input h-11"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(v) => v && setViewMode(v as PropertyViewMode)}
+            className="border border-white/10 rounded-md p-0.5 bg-input"
+          >
+            <ToggleGroupItem value="grid" aria-label="Grid view" className="gap-1.5 px-3">
+              <LayoutGrid className="w-4 h-4" /> Grid
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="List view" className="gap-1.5 px-3">
+              <List className="w-4 h-4" /> List
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-[160px] h-11 bg-input border-white/10">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="address">Address (A–Z)</SelectItem>
+              <SelectItem value="price-asc">Price (low–high)</SelectItem>
+              <SelectItem value="price-desc">Price (high–low)</SelectItem>
+              <SelectItem value="newest">Newest first</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <PropertyList
-        properties={filtered}
+        properties={sorted}
+        viewMode={viewMode}
         isLoading={isLoading}
         isError={isError}
         error={error instanceof Error ? error : null}

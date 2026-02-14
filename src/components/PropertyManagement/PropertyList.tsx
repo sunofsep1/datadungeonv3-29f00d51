@@ -11,7 +11,10 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { PropertyCard } from "./PropertyCard";
+import { PropertyListRow } from "./PropertyListRow";
 import type { PropertyWithLinks } from "@/hooks/useProperties";
+
+export type PropertyViewMode = "grid" | "list";
 
 interface PropertyListProps {
   properties: PropertyWithLinks[];
@@ -29,6 +32,7 @@ interface PropertyListProps {
   showEditButton?: boolean;
   emptyMessage?: string;
   showResultCount?: boolean;
+  viewMode?: PropertyViewMode;
 }
 
 const DEFAULT_ITEMS_PER_PAGE = 20;
@@ -49,6 +53,7 @@ export function PropertyList({
   showEditButton = false,
   emptyMessage = "No properties to show",
   showResultCount = false,
+  viewMode = "grid",
 }: PropertyListProps) {
   const totalPages =
     totalPagesProp ?? Math.max(1, Math.ceil(properties.length / itemsPerPage));
@@ -105,18 +110,33 @@ export function PropertyList({
           properties
         </p>
       )}
-      <div className="grid gap-3 mt-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {paginated.map((p) => (
-          <PropertyCard
-            key={p.id}
-            property={p}
-            onSelect={onSelectProperty ? () => onSelectProperty(p) : undefined}
-            onEdit={onEditProperty ? (e) => onEditProperty(p, e) : undefined}
-            onDelete={onDeleteProperty ? (e) => onDeleteProperty(p, e) : undefined}
-            showEditButton={showEditButton}
-          />
-        ))}
-      </div>
+      {viewMode === "list" ? (
+        <div className="space-y-2 mt-4">
+          {paginated.map((p) => (
+            <PropertyListRow
+              key={p.id}
+              property={p}
+              onSelect={onSelectProperty ? () => onSelectProperty(p) : undefined}
+              onEdit={onEditProperty ? (e) => onEditProperty(p, e) : undefined}
+              onDelete={onDeleteProperty ? (e) => onDeleteProperty(p, e) : undefined}
+              showEditButton={showEditButton}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 mt-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {paginated.map((p) => (
+            <PropertyCard
+              key={p.id}
+              property={p}
+              onSelect={onSelectProperty ? () => onSelectProperty(p) : undefined}
+              onEdit={onEditProperty ? (e) => onEditProperty(p, e) : undefined}
+              onDelete={onDeleteProperty ? (e) => onDeleteProperty(p, e) : undefined}
+              showEditButton={showEditButton}
+            />
+          ))}
+        </div>
+      )}
       {totalPages > 1 && onPageChange && (
         <Pagination className="mt-6">
           <PaginationContent>

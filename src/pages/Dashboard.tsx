@@ -192,6 +192,11 @@ export default function Dashboard() {
     <div className="animate-fade-in space-y-6">
       <DashboardWelcomeHeader />
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <VisionBoard />
+        <AffirmationsWidget />
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {contactsLoading ? (
           [...Array(4)].map((_, i) => (
@@ -235,11 +240,6 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch mb-6">
         <TopStoriesWidget />
         <NewsWidget />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <VisionBoard />
-        <AffirmationsWidget />
       </div>
 
       <div className="mb-6">
