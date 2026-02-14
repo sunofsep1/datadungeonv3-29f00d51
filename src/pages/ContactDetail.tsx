@@ -27,10 +27,12 @@ import {
   Tag,
   Building2,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
-import { useUpdateContact, getPrimaryEmail, getPrimaryPhone, getTagNames, formatContactAddress } from "@/hooks/useContacts";
+import { useContacts, useUpdateContact, getPrimaryEmail, getPrimaryPhone, getAllEmails, getAllPhones, getTagNames, formatContactAddress } from "@/hooks/useContacts";
 import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import {
   useCreateContactPropertyLink,
@@ -41,6 +43,14 @@ import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
 import { useAppointments } from "@/hooks/useAppointments";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
+import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
+import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow } from "date-fns";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
@@ -64,9 +74,14 @@ export default function ContactDetail() {
   const { toast } = useToast();
   
   const { data: contact, isLoading, isError, refetch } = useContact(id);
+  const { data: contactsList = [] } = useContacts();
   const { data: interactions = [] } = useInteractions(id);
   const { data: appointments = [] } = useAppointments();
   const { data: allProperties = [] } = useProperties();
+
+  const contactIndex = id ? contactsList.findIndex((c) => c.id === id) : -1;
+  const prevContactId = contactIndex > 0 ? contactsList[contactIndex - 1]?.id : null;
+  const nextContactId = contactIndex >= 0 && contactIndex < contactsList.length - 1 ? contactsList[contactIndex + 1]?.id : null;
   const updateContact = useUpdateContact();
   const createInteraction = useCreateInteraction();
   const deleteInteraction = useDeleteInteraction();
@@ -75,6 +90,8 @@ export default function ContactDetail() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
+  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [smsToNumber, setSmsToNumber] = useState<string>("");
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
   const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
   const [linkPropertyId, setLinkPropertyId] = useState("");
@@ -309,9 +326,21 @@ export default function ContactDetail() {
         className="mb-4 print:hidden"
       />
       <div className="flex items-center gap-4 mb-6 print:hidden">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/contacts")}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/contacts")} title="Back to list">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          {prevContactId && (
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/contacts/${prevContactId}`)} title="Previous contact">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          {nextContactId && (
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/contacts/${nextContactId}`)} title="Next contact">
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          )}
+        </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">{contact.name}</h1>
           <p className="text-white/60">Contact Details</p>
@@ -319,23 +348,54 @@ export default function ContactDetail() {
         <Button variant="outline" onClick={handlePrint} className="gap-2">
           <Printer className="w-4 h-4" /> Print
         </Button>
-        {(getPrimaryEmail(contact) ?? contact.email) && (
+        {getAllEmails(contact).length > 0 && (
           <Button variant="outline" onClick={() => setEmailComposeOpen(true)} className="gap-2">
             <Mail className="w-4 h-4" /> Send Email
           </Button>
+        )}
+        {getAllPhones(contact).length > 0 && (
+          getAllPhones(contact).length === 1 ? (
+            <Button variant="outline" onClick={() => { setSmsToNumber(getAllPhones(contact)[0].value); setSmsDialogOpen(true); }} className="gap-2">
+              <MessageSquare className="w-4 h-4" /> Send SMS
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <MessageSquare className="w-4 h-4" /> Send SMS
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {getAllPhones(contact).map((p) => (
+                  <DropdownMenuItem key={p.value} onClick={() => { setSmsToNumber(p.value); setSmsDialogOpen(true); }}>
+                    {p.label}: {p.value}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
         )}
         <Button onClick={handleStartEdit} className="gap-2">
           <Edit className="w-4 h-4" /> Edit
         </Button>
       </div>
 
-      {(getPrimaryEmail(contact) ?? contact.email) && (
+      {getAllEmails(contact).length > 0 && (
         <EmailComposeDialog
           open={emailComposeOpen}
           onOpenChange={setEmailComposeOpen}
           to={getPrimaryEmail(contact) ?? contact.email ?? ""}
           contactName={contact.name ?? undefined}
           onSent={() => id && createInteraction.mutate({ contact_id: id, type: "email", channel: "email", subject: "Email sent", body: null })}
+        />
+      )}
+      {getAllPhones(contact).length > 0 && (
+        <SendSmsDialog
+          open={smsDialogOpen}
+          onOpenChange={setSmsDialogOpen}
+          to={smsToNumber || (getAllPhones(contact)[0]?.value ?? "")}
+          contactName={contact.name ?? undefined}
+          onSent={() => id && createInteraction.mutate({ contact_id: id, type: "sms", channel: "sms", subject: "SMS sent", body: null })}
         />
       )}
 
@@ -362,17 +422,19 @@ export default function ContactDetail() {
                     {contact.status || "lead"}
                   </StatusBadge>
                 </div>
-                <div className="flex flex-wrap gap-4 text-sm text-white/60">
-                  {(getPrimaryPhone(contact) ?? contact.phone) && (
-                    <span className="flex items-center gap-1.5">
-                      <Phone className="w-4 h-4 shrink-0" /> {getPrimaryPhone(contact) ?? contact.phone}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/60">
+                  {getAllPhones(contact).map((p) => (
+                    <span key={p.value} className="flex items-center gap-1.5">
+                      <Phone className="w-4 h-4 shrink-0" /> {p.value}
+                      {p.label !== "Phone" && <span className="text-white/50">({p.label})</span>}
                     </span>
-                  )}
-                  {(getPrimaryEmail(contact) ?? contact.email) && (
-                    <span className="flex items-center gap-1.5">
-                      <Mail className="w-4 h-4 shrink-0" /> {getPrimaryEmail(contact) ?? contact.email}
+                  ))}
+                  {getAllEmails(contact).map((e) => (
+                    <span key={e.value} className="flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 shrink-0" /> {e.value}
+                      {e.label !== "Email" && <span className="text-white/50">({e.label})</span>}
                     </span>
-                  )}
+                  ))}
                 </div>
                 {contact.source && (
                   <p className="text-sm text-white/60 mt-1">Source: {contact.source}</p>
@@ -676,7 +738,12 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
+            {id && (
+              <div className="col-span-2 border-t border-white/10 pt-4 mt-2">
+                <ContactChannelsEdit contactId={id} />
+              </div>
+            )}
+            <div className="space-y-2 col-span-2">
               <Label>Source</Label>
               <Input
                 className="bg-input"

@@ -25,6 +25,7 @@ const HotLeads = lazy(() => import("./pages/HotLeads"));
 const Recent = lazy(() => import("./pages/Recent"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const Research = lazy(() => import("./pages/Research"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -68,6 +69,7 @@ const App = () => (
                 <Route path="/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
                 <Route path="/performance" element={<ProtectedRoute><MainLayout><ErrorBoundary><Performance /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/scripts" element={<ProtectedRoute><MainLayout><Scripts /></MainLayout></ProtectedRoute>} />
+                <Route path="/research" element={<ProtectedRoute><MainLayout><Research /></MainLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />
                 <Route path="/agent-ops/*" element={<Navigate to="/performance" replace />} />

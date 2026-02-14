@@ -252,6 +252,45 @@ export function getPrimaryPhone(c: ContactWithMeta): string | null {
   return c.phone ?? null;
 }
 
+const CHANNEL_LABELS: Record<string, string> = {
+  email: "Email",
+  phone: "Phone",
+  mobile: "Mobile",
+  other: "Other",
+};
+
+/** All emails from contact_channels plus legacy contact.email if no channels */
+export function getAllEmails(c: ContactWithMeta): { value: string; label: string; isPrimary: boolean }[] {
+  const channels = (c.contact_channels ?? []).filter((x) => x.channel_type === "email");
+  if (channels.length) {
+    return channels.map((ch) => ({
+      value: ch.value,
+      label: (ch as { label?: string | null }).label ?? CHANNEL_LABELS.email,
+      isPrimary: !!ch.is_primary,
+    }));
+  }
+  const legacy = c.email;
+  if (legacy) return [{ value: legacy, label: "Email", isPrimary: true }];
+  return [];
+}
+
+/** All phone numbers from contact_channels (phone, mobile, other) plus legacy contact.phone if no channels */
+export function getAllPhones(c: ContactWithMeta): { value: string; label: string; isPrimary: boolean }[] {
+  const channels = (c.contact_channels ?? []).filter(
+    (x) => x.channel_type === "phone" || x.channel_type === "mobile" || x.channel_type === "other"
+  );
+  if (channels.length) {
+    return channels.map((ch) => ({
+      value: ch.value,
+      label: (ch as { label?: string | null }).label ?? CHANNEL_LABELS[ch.channel_type] ?? ch.channel_type,
+      isPrimary: !!ch.is_primary,
+    }));
+  }
+  const legacy = c.phone;
+  if (legacy) return [{ value: legacy, label: "Phone", isPrimary: true }];
+  return [];
+}
+
 /** Tag names for a contact */
 export function getTagNames(c: ContactWithMeta): string[] {
   return (c.contact_tags ?? [])

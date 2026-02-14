@@ -18,14 +18,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, ArrowLeft, Building2, Plus } from "lucide-react";
+import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { useProperty, formatPropertyAddress } from "@/hooks/useProperties";
+import { useProperty, useUpdateProperty, useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
+import { supabase } from "@/integrations/supabase/client";
 import { PropertyGallery } from "@/components/PropertyManagement/PropertyGallery";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 
@@ -36,13 +38,36 @@ export default function PropertyDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: property, isLoading, isError, refetch } = useProperty(id);
+  const { data: propertiesList = [] } = useProperties();
   const { data: contacts = [] } = useContacts();
   const createLink = useCreateContactPropertyLink();
+  const updateProperty = useUpdateProperty();
+
+  const propertyIndex = id ? propertiesList.findIndex((p) => p.id === id) : -1;
+  const prevPropertyId = propertyIndex > 0 ? propertiesList[propertyIndex - 1]?.id : null;
+  const nextPropertyId = propertyIndex >= 0 && propertyIndex < propertiesList.length - 1 ? propertiesList[propertyIndex + 1]?.id : null;
 
   const [addOwnerOpen, setAddOwnerOpen] = useState(false);
   const [addOwnerContactId, setAddOwnerContactId] = useState<string>("");
   const [addOwnerRole, setAddOwnerRole] = useState<string>("owner");
   const [addOwnerNotes, setAddOwnerNotes] = useState("");
+  const [editPropertyOpen, setEditPropertyOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    state: "",
+    postcode: "",
+    country: "Australia",
+    property_type: "",
+    bedrooms: "" as string | number,
+    bathrooms: "" as string | number,
+    price: "" as string | number,
+    notes: "",
+  });
+  const [valuation, setValuation] = useState<{ estimateMin?: number | null; estimateMax?: number | null; lastSale?: unknown } | null>(null);
+  const [valuationLoading, setValuationLoading] = useState(false);
+  const [valuationUnconfigured, setValuationUnconfigured] = useState(false);
 
   const links = Array.isArray(property?.contact_property_links) ? property.contact_property_links : [];
   const linkedContactIds = useMemo(
@@ -131,6 +156,90 @@ export default function PropertyDetail() {
 
   const hasImages = Array.isArray(property.images) && (property.images as string[]).length > 0;
 
+  const handleOpenEdit = () => {
+    if (!property) return;
+    setEditForm({
+      address_line1: property.address_line1 ?? "",
+      address_line2: property.address_line2 ?? "",
+      city: property.city ?? "",
+      state: property.state ?? "",
+      postcode: property.postcode ?? "",
+      country: property.country ?? "Australia",
+      property_type: property.property_type ?? "",
+      bedrooms: property.bedrooms ?? "",
+      bathrooms: property.bathrooms ?? "",
+      price: property.price ?? "",
+      notes: property.notes ?? "",
+    });
+    setEditPropertyOpen(true);
+  };
+
+  const handleLoadValuation = async () => {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    const url = base ? `${base}/functions/v1/pricefinder-proxy` : null;
+    if (!url) {
+      toast({ title: "Error", description: "App URL not configured", variant: "destructive" });
+      return;
+    }
+    setValuationLoading(true);
+    setValuationUnconfigured(false);
+    setValuation(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: "Error", description: "Sign in to load estimate", variant: "destructive" });
+        return;
+      }
+      const address = formatPropertyAddress(property);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ address: address || property.address_line1 || id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 503) {
+        setValuationUnconfigured(true);
+        return;
+      }
+      if (!res.ok) {
+        toast({ title: "Error", description: data?.error || data?.message || "Failed to load estimate", variant: "destructive" });
+        return;
+      }
+      setValuation(data);
+    } catch {
+      toast({ title: "Error", description: "Could not reach valuation service", variant: "destructive" });
+    } finally {
+      setValuationLoading(false);
+    }
+  };
+
+  const handleSaveProperty = async () => {
+    if (!id) return;
+    try {
+      await updateProperty.mutateAsync({
+        id,
+        address_line1: editForm.address_line1.trim() || null,
+        address_line2: editForm.address_line2.trim() || null,
+        city: editForm.city.trim() || null,
+        state: editForm.state || null,
+        postcode: editForm.postcode.trim() || null,
+        country: editForm.country || "Australia",
+        property_type: editForm.property_type.trim() || null,
+        bedrooms: editForm.bedrooms === "" ? null : Number(editForm.bedrooms),
+        bathrooms: editForm.bathrooms === "" ? null : Number(editForm.bathrooms),
+        price: editForm.price === "" ? null : Number(editForm.price),
+        notes: editForm.notes.trim() || null,
+      });
+      toast({ title: "Success", description: "Property updated." });
+      setEditPropertyOpen(false);
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to update", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <PageBreadcrumbs
@@ -142,9 +251,21 @@ export default function PropertyDetail() {
         className="mb-4"
       />
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/properties")}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/properties")} title="Back to list">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          {prevPropertyId && (
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/properties/${prevPropertyId}`)} title="Previous property">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          {nextPropertyId && (
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/properties/${nextPropertyId}`)} title="Next property">
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2 truncate">
             <Building2 className="w-6 h-6 shrink-0" />
@@ -152,6 +273,9 @@ export default function PropertyDetail() {
           </h1>
           <p className="text-white/60 text-sm mt-0.5">Details and linked owners</p>
         </div>
+        <Button variant="outline" onClick={handleOpenEdit} className="gap-2">
+          <Edit className="w-4 h-4" /> Edit property
+        </Button>
       </div>
 
       {hasImages && <PropertyGallery images={property.images} className="mb-6" />}
@@ -302,6 +426,41 @@ export default function PropertyDetail() {
         </div>
       </Card>
 
+      {/* Valuation / Market data */}
+      <Card className="zoho-card p-6 mb-6 border-white/10">
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Valuation / Market data</h3>
+        {valuationUnconfigured ? (
+          <p className="text-sm text-muted-foreground">
+            Pricefinder integration available with API key. See docs/PRICEFINDER_INTEGRATION.md.
+          </p>
+        ) : valuation ? (
+          <div className="space-y-2 text-sm">
+            {(valuation.estimateMin != null || valuation.estimateMax != null) && (
+              <p className="text-foreground">
+                Estimate:{" "}
+                {valuation.estimateMin != null && valuation.estimateMax != null
+                  ? `$${Number(valuation.estimateMin).toLocaleString()} – $${Number(valuation.estimateMax).toLocaleString()}`
+                  : valuation.estimateMin != null
+                    ? `from $${Number(valuation.estimateMin).toLocaleString()}`
+                    : `up to $${Number(valuation.estimateMax).toLocaleString()}`}
+              </p>
+            )}
+            {valuation.lastSale != null && (
+              <p className="text-muted-foreground">Last sale: {String(valuation.lastSale)}</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleLoadValuation} disabled={valuationLoading}>
+              {valuationLoading ? "Loading..." : "Load estimate"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Optional: load AVM estimate from Pricefinder when API key is configured.
+            </p>
+          </div>
+        )}
+      </Card>
+
       <Card className="zoho-card p-6 mb-6 border-white/10">
         <ActivityTimeline entityType="property" entityId={id} showAddNote={true} />
       </Card>
@@ -374,6 +533,70 @@ export default function PropertyDetail() {
             >
               {createLink.isPending ? "Linking..." : "Link contact"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editPropertyOpen} onOpenChange={setEditPropertyOpen}>
+        <DialogContent className="sm:max-w-[520px] bg-[#242424] border-white/10 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit property</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 mt-4">
+            <div className="grid gap-2">
+              <Label>Address line 1</Label>
+              <Input className="bg-input" value={editForm.address_line1} onChange={(e) => setEditForm((f) => ({ ...f, address_line1: e.target.value }))} placeholder="Street address" />
+            </div>
+            <div className="grid gap-2">
+              <Label>Address line 2</Label>
+              <Input className="bg-input" value={editForm.address_line2} onChange={(e) => setEditForm((f) => ({ ...f, address_line2: e.target.value }))} placeholder="Unit, suite" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>City</Label>
+                <Input className="bg-input" value={editForm.city} onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>State</Label>
+                <Input className="bg-input" value={editForm.state} onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Postcode</Label>
+                <Input className="bg-input" value={editForm.postcode} onChange={(e) => setEditForm((f) => ({ ...f, postcode: e.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Country</Label>
+                <Input className="bg-input" value={editForm.country} onChange={(e) => setEditForm((f) => ({ ...f, country: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="grid gap-2">
+                <Label>Type</Label>
+                <Input className="bg-input" value={editForm.property_type} onChange={(e) => setEditForm((f) => ({ ...f, property_type: e.target.value }))} placeholder="House, Unit..." />
+              </div>
+              <div className="grid gap-2">
+                <Label>Bedrooms</Label>
+                <Input type="number" min={0} className="bg-input" value={editForm.bedrooms} onChange={(e) => setEditForm((f) => ({ ...f, bedrooms: e.target.value }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Bathrooms</Label>
+                <Input type="number" min={0} className="bg-input" value={editForm.bathrooms} onChange={(e) => setEditForm((f) => ({ ...f, bathrooms: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Price</Label>
+              <Input type="number" min={0} className="bg-input" value={editForm.price} onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))} placeholder="0" />
+            </div>
+            <div className="grid gap-2">
+              <Label>Notes</Label>
+              <Textarea className="bg-input min-h-[80px]" value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button variant="outline" onClick={() => setEditPropertyOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveProperty} disabled={updateProperty.isPending}>{updateProperty.isPending ? "Saving..." : "Save"}</Button>
           </div>
         </DialogContent>
       </Dialog>

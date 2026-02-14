@@ -22,7 +22,8 @@ import {
   Unlink,
   Plus,
 } from "lucide-react";
-import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
+import { useAppointments } from "@/hooks/useAppointments";
+import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -42,7 +43,6 @@ import {
   subWeeks,
   addDays,
   subDays,
-  addHours,
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -78,7 +78,7 @@ export default function Calendar() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { data: appointments = [], isError: appointmentsError, refetch: refetchAppointments } = useAppointments();
-  const createAppointment = useCreateAppointment();
+  const createAppointmentWithGcal = useCreateAppointmentWithGcal();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -292,64 +292,21 @@ export default function Calendar() {
 
     try {
       const dateTime = `${newAppointment.date}T${newAppointment.startTime}:00`;
-      const appointment = await createAppointment.mutateAsync({
+      const endDateTime = newAppointment.endTime
+        ? `${newAppointment.date}T${newAppointment.endTime}:00`
+        : undefined;
+      await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,
         date: dateTime,
         location: newAppointment.location || null,
-        type: newAppointment.type,
         notes: newAppointment.notes || null,
+        type: newAppointment.type,
+        syncToGoogle: newAppointment.syncToGoogle,
+        endDateTime,
       });
-
-      // Sync to Google Calendar if enabled
-      if (newAppointment.syncToGoogle && !gcalNeedsAuth && user) {
-        const gcalBase = getGcalUrl();
-        if (gcalBase) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              const endDateTime = newAppointment.endTime
-                ? `${newAppointment.date}T${newAppointment.endTime}:00`
-                : format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
-              const gcalRes = await fetch(`${gcalBase}?action=create-event`, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  summary: newAppointment.title,
-                  description: newAppointment.notes || "",
-                  start: dateTime,
-                  end: endDateTime,
-                  location: newAppointment.location || "",
-                }),
-              });
-              const gcalData = await gcalRes.json().catch(() => ({}));
-              if (!gcalRes.ok) {
-                toast({
-                  title: "Google Calendar sync failed",
-                  description: gcalData?.error ?? `Error ${gcalRes.status}. Check connection or try connecting Google again.`,
-                  variant: "destructive",
-                });
-              } else {
-                fetchGcal();
-                toast({ title: "Synced", description: "Added to Google Calendar" });
-              }
-            }
-          } catch (e) {
-            console.error("Google Calendar sync failed:", e);
-            toast({
-              title: "Google Calendar sync failed",
-              description: e instanceof Error ? e.message : "Could not reach calendar. Check connection.",
-              variant: "destructive",
-            });
-          }
-        }
-      }
-
       toast({ title: "Success", description: "Appointment created!" });
       refetchAppointments();
-      fetchGcal(); // Refresh Google events so calendar view stays in sync
+      fetchGcal();
       setNewAppointment({
         title: "",
         date: format(new Date(), "yyyy-MM-dd"),
@@ -670,8 +627,8 @@ export default function Calendar() {
               </div>
               <div className="flex justify-end gap-3 mt-6">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateAppointment} disabled={createAppointment.isPending}>
-                  {createAppointment.isPending ? "Creating..." : "Create"}
+                <Button onClick={handleCreateAppointment} disabled={createAppointmentWithGcal.isPending}>
+                  {createAppointmentWithGcal.isPending ? "Creating..." : "Create"}
                 </Button>
               </div>
             </DialogContent>

@@ -51,7 +51,6 @@ export function NumbersKPIGrid() {
   // Calculate totals from activities
   const totals = React.useMemo(() => {
     if (!activities) return {};
-    
     return activities.reduce((acc, activity) => {
       kpiConfig.forEach(kpi => {
         const value = activity[kpi.key as keyof typeof activity] as number | null;
@@ -60,6 +59,8 @@ export function NumbersKPIGrid() {
       return acc;
     }, {} as Record<string, number>);
   }, [activities]);
+
+  const hasAnyActivity = Object.values(totals).some((v) => v > 0);
 
   const formatValue = (value: number, format?: "number" | "currency") => {
     if (format === "currency") {
@@ -88,7 +89,11 @@ export function NumbersKPIGrid() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-4">
+      {!hasAnyActivity && (
+        <p className="text-sm text-muted-foreground">Log today&apos;s activity above to see your numbers here. Set goals in the Goals & Targets tab.</p>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {kpiConfig.map((kpi) => {
         const current = totals[kpi.key] || 0;
         const goal = goals?.[kpi.goalKey as keyof typeof goals] as number || 0;
@@ -137,6 +142,7 @@ export function NumbersKPIGrid() {
           </Card>
         );
       })}
+      </div>
     </div>
   );
 }

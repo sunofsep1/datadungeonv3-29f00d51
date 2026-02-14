@@ -3,11 +3,17 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Phone, Mail, Clock, MessageSquare } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { getInitials } from "@/lib/utils";
 import type { ContactWithMeta } from "@/hooks/useContacts";
-import { getPrimaryEmail, getPrimaryPhone, getTagNames } from "@/hooks/useContacts";
+import { getAllEmails, getAllPhones, getPrimaryEmail, getTagNames } from "@/hooks/useContacts";
 
 export type StatusVariant = "hot" | "warm" | "cold" | "entered";
 
@@ -26,11 +32,13 @@ interface ContactKeyInfoPanelProps {
   onViewFull: () => void;
   onAddNote: () => void;
   onSendEmail?: () => void;
+  onSendSms?: (phone: string) => void;
 }
 
-export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNote, onSendEmail }: ContactKeyInfoPanelProps) {
-  const email = getPrimaryEmail(contact) ?? contact.email;
-  const phone = getPrimaryPhone(contact) ?? contact.phone;
+export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNote, onSendEmail, onSendSms }: ContactKeyInfoPanelProps) {
+  const emails = getAllEmails(contact);
+  const phones = getAllPhones(contact);
+  const primaryEmail = getPrimaryEmail(contact) ?? contact.email;
 
   return (
     <div className="p-4 md:p-5 space-y-5">
@@ -46,27 +54,39 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
         </StatusBadge>
       </div>
       <div className="space-y-3 text-sm">
-        {email && (
-          <a
-            href={`mailto:${email}`}
-            className="flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
-              <Mail className="w-4 h-4 text-white/70" />
-            </span>
-            <span className="truncate">{email}</span>
-          </a>
+        {emails.length > 0 && (
+          <div className="space-y-1.5">
+            {emails.map((e) => (
+              <a
+                key={e.value}
+                href={`mailto:${e.value}`}
+                className="flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
+                  <Mail className="w-4 h-4 text-white/70" />
+                </span>
+                <span className="truncate">{e.value}</span>
+                {e.label !== "Email" && <span className="text-white/60 text-xs">({e.label})</span>}
+              </a>
+            ))}
+          </div>
         )}
-        {phone && (
-          <a
-            href={`tel:${phone}`}
-            className="flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
-              <Phone className="w-4 h-4 text-white/70" />
-            </span>
-            <span>{phone}</span>
-          </a>
+        {phones.length > 0 && (
+          <div className="space-y-1.5">
+            {phones.map((p) => (
+              <a
+                key={p.value}
+                href={`tel:${p.value}`}
+                className="flex items-center gap-2.5 text-white/90 hover:text-white transition-colors"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
+                  <Phone className="w-4 h-4 text-white/70" />
+                </span>
+                <span>{p.value}</span>
+                <span className="text-white/60 text-xs">({p.label})</span>
+              </a>
+            ))}
+          </div>
         )}
         {contact.source && (
           <div className="pt-1">
@@ -91,16 +111,55 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
         )}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {phone && (
-          <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={() => window.open(`tel:${phone}`)}>
-            <Phone className="w-3.5 h-3.5" /> Call
-          </Button>
+        {phones.length > 0 && (
+          phones.length === 1 ? (
+            <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={() => window.open(`tel:${phones[0].value}`)}>
+              <Phone className="w-3.5 h-3.5" /> Call
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white">
+                  <Phone className="w-3.5 h-3.5" /> Call
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {phones.map((p) => (
+                  <DropdownMenuItem key={p.value} onClick={() => window.open(`tel:${p.value}`)}>
+                    {p.label}: {p.value}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
         )}
-        {email && (
-          <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={onSendEmail ?? (() => window.open(`mailto:${email}`))}>
+        {primaryEmail && (
+          <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white" onClick={onSendEmail ?? (() => window.open(`mailto:${primaryEmail}`))}>
             <Mail className="w-3.5 h-3.5" /> Email
           </Button>
         )}
+        {phones.length > 0 && onSendSms ? (
+          phones.length === 1 ? (
+            <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white col-span-2" onClick={() => onSendSms(phones[0].value)}>
+              <MessageSquare className="w-3.5 h-3.5" /> Send SMS
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white col-span-2">
+                  <MessageSquare className="w-3.5 h-3.5" /> Send SMS
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {phones.map((p) => (
+                  <DropdownMenuItem key={p.value} onClick={() => onSendSms(p.value)}>
+                    {p.label}: {p.value}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        ) : null}
         <Button variant="outline" size="sm" className="gap-1.5 border-white/20 text-white/90 hover:bg-white/10 hover:text-white col-span-2" onClick={onAddNote}>
           <MessageSquare className="w-3.5 h-3.5" /> Add note
         </Button>

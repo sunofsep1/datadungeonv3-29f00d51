@@ -7,12 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-function getSendEmailUrl() {
+function getSendSmsUrl() {
   const base = import.meta.env.VITE_SUPABASE_URL;
-  return base ? `${base}/functions/v1/send-email` : null;
+  return base ? `${base}/functions/v1/send-sms` : null;
 }
 
-interface EmailComposeDialogProps {
+interface SendSmsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   to: string;
@@ -20,33 +20,36 @@ interface EmailComposeDialogProps {
   onSent?: () => void;
 }
 
-export function EmailComposeDialog({
+export function SendSmsDialog({
   open,
   onOpenChange,
   to,
   contactName,
   onSent,
-}: EmailComposeDialogProps) {
+}: SendSmsDialogProps) {
   const { toast } = useToast();
-  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
-    if (!subject.trim()) {
-      toast({ title: "Error", description: "Please enter a subject", variant: "destructive" });
+    if (!body.trim()) {
+      toast({ title: "Error", description: "Please enter a message", variant: "destructive" });
       return;
     }
-    const url = getSendEmailUrl();
+    if (!to.trim()) {
+      toast({ title: "Error", description: "No phone number for this contact", variant: "destructive" });
+      return;
+    }
+    const url = getSendSmsUrl();
     if (!url) {
-      toast({ title: "Error", description: "Email service not configured", variant: "destructive" });
+      toast({ title: "Error", description: "SMS service not configured", variant: "destructive" });
       return;
     }
     setSending(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({ title: "Error", description: "Please sign in to send email", variant: "destructive" });
+        toast({ title: "Error", description: "Please sign in to send SMS", variant: "destructive" });
         return;
       }
       const res = await fetch(url, {
@@ -55,29 +58,20 @@ export function EmailComposeDialog({
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          to,
-          subject: subject.trim(),
-          html: body.trim().replace(/\n/g, "<br>") || "<p></p>",
-        }),
+        body: JSON.stringify({ to: to.trim().replace(/\s/g, ""), body: body.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data?.error || res.statusText || "Failed to send");
       }
-      toast({ title: "Success", description: "Email sent!" });
-      setSubject("");
+      toast({ title: "Success", description: "SMS sent!" });
       setBody("");
       onOpenChange(false);
       onSent?.();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to send email";
-      const isNetworkError = message === "Failed to fetch" || message.toLowerCase().includes("network");
       toast({
         title: "Error",
-        description: isNetworkError
-          ? "Could not reach the email service. Check that VITE_SUPABASE_URL in .env matches your Supabase project and that RESEND_API_KEY is set in Edge Function secrets."
-          : message,
+        description: e instanceof Error ? e.message : "Failed to send SMS. Ensure TWILIO_* secrets are set and the number is E.164 (e.g. +61412345678).",
         variant: "destructive",
       });
     } finally {
@@ -86,49 +80,41 @@ export function EmailComposeDialog({
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setSubject("");
-      setBody("");
-    }
+    if (!next) setBody("");
     onOpenChange(next);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-popover border-border" aria-describedby="email-compose-desc">
+      <DialogContent className="sm:max-w-[440px] bg-popover border-border" aria-describedby="send-sms-desc">
         <DialogHeader>
-          <DialogTitle>Send Email</DialogTitle>
-          <DialogDescription id="email-compose-desc">Compose and send an email to this contact.</DialogDescription>
+          <DialogTitle>Send SMS</DialogTitle>
+          <DialogDescription id="send-sms-desc">
+            Send a text message to this contact. Number should include country code (e.g. +61 for Australia).
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label>To</Label>
-            <Input className="bg-input" value={to} disabled readOnly />
-          </div>
-          <div className="space-y-2">
-            <Label>Subject</Label>
-            <Input
-              className="bg-input"
-              placeholder={contactName ? `Re: ${contactName}` : "Subject"}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
+            <Input className="bg-input" value={to} disabled readOnly placeholder="+61412345678" />
           </div>
           <div className="space-y-2">
             <Label>Message</Label>
             <Textarea
-              className="bg-input min-h-[160px]"
-              placeholder="Write your message..."
+              className="bg-input min-h-[120px]"
+              placeholder="Your message..."
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              maxLength={1600}
             />
+            <p className="text-xs text-muted-foreground">{body.length} / 1600</p>
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button onClick={handleSend} disabled={sending}>
-              {sending ? "Sending..." : "Send"}
+              {sending ? "Sending..." : "Send SMS"}
             </Button>
           </div>
         </div>

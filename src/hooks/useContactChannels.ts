@@ -42,7 +42,10 @@ export function useContactChannels(contactId: string | undefined) {
         if (error.message?.includes("does not exist")) return [];
         throw error;
       }
-      return (data ?? []) as ContactChannel[];
+      return ((data ?? []) as any[]).map((row) => ({
+        ...row,
+        value: row.value ?? row.channel_value ?? "",
+      })) as ContactChannel[];
     },
     enabled: !!contactId,
   });
@@ -52,13 +55,21 @@ export function useCreateContactChannel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ch: ContactChannelInsert) => {
+      const row = {
+        contact_id: ch.contact_id,
+        channel_type: ch.channel_type,
+        channel_value: ch.value,
+        is_primary: ch.is_primary ?? false,
+        ...(ch.label != null && { label: ch.label }),
+      };
       const { data, error } = await (supabase as any)
         .from("contact_channels")
-        .insert(ch)
+        .insert(row)
         .select()
         .single();
       if (error) throw error;
-      return data as ContactChannel;
+      const out = data as any;
+      return { ...out, value: out?.value ?? out?.channel_value ?? ch.value } as ContactChannel;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contact_channels", d.contact_id] });
@@ -74,16 +85,19 @@ export function useUpdateContactChannel() {
     mutationFn: async ({
       id,
       contact_id,
-      ...updates
+      value,
+      ...rest
     }: ContactChannelUpdate & { id: string; contact_id: string }) => {
+      const payload = value !== undefined ? { ...rest, channel_value: value } : rest;
       const { data, error } = await (supabase as any)
         .from("contact_channels")
-        .update(updates)
+        .update(payload)
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
-      return data as ContactChannel;
+      const out = data as any;
+      return { ...out, value: out?.value ?? out?.channel_value ?? "" } as ContactChannel;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contact_channels", d.contact_id] });

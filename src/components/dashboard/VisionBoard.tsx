@@ -199,7 +199,7 @@ export function VisionBoard() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[400px] bg-popover border-border" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{editingCard ? "Edit Vision" : "Add Vision"}</DialogTitle>
           </DialogHeader>

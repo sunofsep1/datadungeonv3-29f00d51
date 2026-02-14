@@ -81,7 +81,7 @@ export function LogActivityForm() {
                   min="0"
                   step={field.isCurrency ? "0.01" : "1"}
                   className="bg-input"
-                  value={formData[field.key as keyof typeof formData] || ""}
+                  value={formData[field.key as keyof typeof formData] ?? ""}
                   onChange={(e) => setFormData({
                     ...formData,
                     [field.key]: field.isCurrency ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0

@@ -25,7 +25,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Calendar, Clock, MapPin, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppointments, useCreateAppointment, useUpdateAppointment, useDeleteAppointment, Appointment } from "@/hooks/useAppointments";
+import { useAppointments, useUpdateAppointment, useDeleteAppointment, type Appointment } from "@/hooks/useAppointments";
+import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useContacts } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
 import { useListings } from "@/hooks/useListings";
@@ -69,7 +70,7 @@ export default function Appointments() {
   const { data: contacts = [] } = useContacts();
   const { data: properties = [] } = useProperties();
   const { data: listings = [] } = useListings();
-  const createAppointment = useCreateAppointment();
+  const createAppointmentWithGcal = useCreateAppointmentWithGcal();
   const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
   
@@ -241,55 +242,17 @@ export default function Appointments() {
           }
         }
       } else {
-        appointment = await createAppointment.mutateAsync(appointmentData);
+        appointment = await createAppointmentWithGcal.mutateAsync({
+          title: formData.title,
+          date: dateTime,
+          location: formData.location || null,
+          notes: combinedNotes || null,
+          type: formData.type,
+          contact_id: formData.contact_id || null,
+          syncToGoogle: formData.syncToGoogle,
+          endDateTime: endDateTime || undefined,
+        });
         toast({ title: "Success", description: "Appointment scheduled!" });
-
-        // Sync to Google Calendar if enabled and connected
-        if (formData.syncToGoogle && !gcalNeedsAuth && user) {
-          const gcalUrl = getGcalUrl();
-          if (gcalUrl) {
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session) {
-                const endForGcal = endDateTime || format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
-                const gcalRes = await fetch(`${gcalUrl}?action=create-event`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    summary: formData.title,
-                    description: combinedNotes || formData.description || "",
-                    start: dateTime,
-                    end: endForGcal,
-                    location: formData.location || "",
-                  }),
-                });
-                const gcalData = await gcalRes.json().catch(() => ({}));
-                if (!gcalRes.ok) {
-                  toast({
-                    title: "Google Calendar sync failed",
-                    description: gcalData?.error ?? `Error ${gcalRes.status}. Check connection or try connecting Google again.`,
-                    variant: "destructive",
-                  });
-                } else {
-                  if (gcalData?.event?.id) {
-                    await updateAppointment.mutateAsync({ id: appointment.id, google_event_id: gcalData.event.id });
-                  }
-                  toast({ title: "Synced", description: "Appointment added to Google Calendar" });
-                }
-              }
-            } catch (e) {
-              console.error("Google Calendar sync failed:", e);
-              toast({
-                title: "Google Calendar sync failed",
-                description: e instanceof Error ? e.message : "Could not reach calendar. Check connection.",
-                variant: "destructive",
-              });
-            }
-          }
-        }
       }
       setIsDialogOpen(false);
       setFormData(createEmptyAppointment());

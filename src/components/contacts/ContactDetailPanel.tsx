@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ContactKeyInfoPanel } from "./ContactKeyInfoPanel";
 import { EmailComposeDialog } from "./EmailComposeDialog";
+import { SendSmsDialog } from "./SendSmsDialog";
+import { getAllPhones } from "@/hooks/useContacts";
 import { ContactAboutPanel } from "./ContactAboutPanel";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
 import { ContactPropertiesCard } from "./ContactPropertiesCard";
@@ -42,6 +44,8 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
   const [addInteractionOpen, setAddInteractionOpen] = useState(false);
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
+  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [smsToNumber, setSmsToNumber] = useState("");
   const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
   const [newInteraction, setNewInteraction] = useState({
     type: "call",
@@ -131,6 +135,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   onViewFull={() => { onOpenChange(false); navigate(`/contacts/${contact.id}`); }}
                   onAddNote={() => setAddInteractionOpen(true)}
                   onSendEmail={() => setEmailComposeOpen(true)}
+                  onSendSms={(phone) => { setSmsToNumber(phone); setSmsDialogOpen(true); }}
                 />
               </div>
               {/* Center: main content */}
@@ -287,6 +292,15 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
           />
         ) : null;
       })()}
+      {contact && contactId && getAllPhones(contact).length > 0 && (
+        <SendSmsDialog
+          open={smsDialogOpen}
+          onOpenChange={setSmsDialogOpen}
+          to={smsToNumber || (getAllPhones(contact)[0]?.value ?? "")}
+          contactName={contact.name ?? undefined}
+          onSent={() => createInteraction.mutate({ contact_id: contactId, type: "sms", channel: "sms", subject: "SMS sent", body: null })}
+        />
+      )}
     </>
   );
 }

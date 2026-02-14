@@ -34,6 +34,14 @@ export function PropertyContactsCard({ property, onLinkClick, className, contact
   const deleteLink = useDeleteContactPropertyLink();
   const links = property.contact_property_links ?? [];
   const contactById = useMemo(() => new Map(contactsList.map((c) => [c.id, c])), [contactsList]);
+  const owners = useMemo(() => {
+    const withRole = links.filter((l) => (l.role || "owner").toLowerCase() === "owner");
+    return withRole
+      .map((l) => (l as { contacts?: ContactLookup | null }).contacts ?? contactById.get(l.contact_id))
+      .map((c) => contactDisplayName(c))
+      .filter(Boolean);
+  }, [links, contactById]);
+  const coOwnersLabel = owners.length > 1 ? `Co-owners: ${owners.join(", ")}` : null;
 
   const handleRemove = async (linkId: string | undefined, contactId: string) => {
     if (!linkId) return;
@@ -56,8 +64,11 @@ export function PropertyContactsCard({ property, onLinkClick, className, contact
           <Plus className="w-4 h-4" /> Link contact
         </Button>
       </div>
+      {coOwnersLabel && (
+        <p className="text-white/60 text-sm mb-2">{coOwnersLabel}</p>
+      )}
       {links.length > 0 && (
-        <p className="text-white/50 text-xs mb-3">Click a contact to open their profile.</p>
+        <p className="text-white/50 text-xs mb-3">Click a contact to open their profile. You can add multiple owners or other roles.</p>
       )}
       {links.length === 0 ? (
         <p className="text-white/60 text-sm">No owners or linked contacts yet. Use &quot;Link contact&quot; to add someone (e.g. owner, buyer, agent).</p>

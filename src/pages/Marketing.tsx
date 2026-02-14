@@ -9,16 +9,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Calendar, FileText, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Calendar, FileText, Pencil, Trash2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePosts, useCreatePost, useUpdatePost, useDeletePost, Post } from "@/hooks/usePosts";
+import { useContacts } from "@/hooks/useContacts";
 import { MarketingBudgetCalculator } from "@/components/marketing/MarketingBudgetCalculator";
+import { CampaignEmailDialog } from "@/components/marketing/CampaignEmailDialog";
 import { ContentCalendar } from "@/components/agent-ops/ContentCalendar";
 import { CampaignManager } from "@/components/agent-ops/CampaignManager";
 import { format } from "date-fns";
 
 export default function Marketing() {
   const { data: posts = [], isLoading } = usePosts();
+  const { data: contacts = [] } = useContacts();
   const createPost = useCreatePost();
   const updatePost = useUpdatePost();
   const deletePost = useDeletePost();
@@ -26,6 +29,7 @@ export default function Marketing() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [campaignEmailOpen, setCampaignEmailOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -190,8 +194,19 @@ export default function Marketing() {
           <MarketingBudgetCalculator />
         </TabsContent>
 
-        <TabsContent value="campaigns">
+        <TabsContent value="campaigns" className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">Send one email to multiple contacts.</p>
+            <Button variant="outline" className="gap-2" onClick={() => setCampaignEmailOpen(true)}>
+              <Mail className="w-4 h-4" /> Send campaign email
+            </Button>
+          </div>
           <CampaignManager />
+          <CampaignEmailDialog
+            open={campaignEmailOpen}
+            onOpenChange={setCampaignEmailOpen}
+            contacts={contacts}
+          />
         </TabsContent>
 
         <TabsContent value="posts">

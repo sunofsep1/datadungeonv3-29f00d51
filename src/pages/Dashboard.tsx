@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { DashboardWelcomeHeader } from "@/components/dashboard/DashboardWelcomeHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,12 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, TrendingUp, Megaphone, Calendar, Home, ChevronRight, CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact } from "@/hooks/useContacts";
-import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
+import { useAppointments } from "@/hooks/useAppointments";
+import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useLeads, useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { addHours, format, isPast, isToday } from "date-fns";
+import { format, isPast, isToday } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
@@ -26,11 +26,6 @@ import { TopStoriesWidget } from "@/components/dashboard/TopStoriesWidget";
 import { NewsWidget } from "@/components/dashboard/NewsWidget";
 import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const getGcalUrl = () => {
-  const base = import.meta.env.VITE_SUPABASE_URL;
-  return base ? `${base}/functions/v1/google-calendar` : null;
-};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -69,7 +64,7 @@ export default function Dashboard() {
   const { data: posts = [] } = usePosts();
 
   const createContact = useCreateContact();
-  const createAppointment = useCreateAppointment();
+  const createAppointmentWithGcal = useCreateAppointmentWithGcal();
   const createLead = useCreateLead();
   const createPost = useCreatePost();
 
@@ -179,62 +174,12 @@ export default function Dashboard() {
         ? `${newAppointment.date}T${newAppointment.time}:00`
         : `${newAppointment.date}T09:00:00`;
       
-      const appointment = await createAppointment.mutateAsync({
+      await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,
         date: dateTime,
         location: newAppointment.location || null,
-        type: "meeting",
+        syncToGoogle: true,
       });
-      
-      // Try to sync to Google Calendar if connected
-      const gcalUrl = getGcalUrl();
-      if (user && gcalUrl) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            // Check if Google Calendar is connected
-            const checkRes = await fetch(`${gcalUrl}?action=events`, {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-                "Content-Type": "application/json",
-              },
-            });
-            const checkData = await checkRes.json().catch(() => ({}));
-            
-            if (checkRes.ok && !checkData?.needsAuth && !checkData?.error) {
-              const endDateTime = format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
-              const createRes = await fetch(`${gcalUrl}?action=create-event`, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  summary: newAppointment.title,
-                  description: "",
-                  start: dateTime,
-                  end: endDateTime,
-                  location: newAppointment.location || "",
-                }),
-              });
-              const createData = await createRes.json().catch(() => ({}));
-              if (!createRes.ok) {
-                toast({
-                  title: "Google Calendar sync failed",
-                  description: createData?.error ?? `Error ${createRes.status}. Check connection or try connecting Google again.`,
-                  variant: "destructive",
-                });
-              } else {
-                toast({ title: "Synced", description: "Added to Google Calendar" });
-              }
-            }
-          }
-        } catch (e) {
-          // Silent fail - appointment is already created
-          console.log("Google Calendar sync failed:", e);
-        }
-      }
-      
       toast({ title: "Success", description: "Appointment scheduled!" });
       setNewAppointment({ title: "", date: "", time: "", location: "" });
       setAppointmentDialogOpen(false);
@@ -455,8 +400,11 @@ export default function Dashboard() {
 
       {/* Dialogs */}
       <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader><DialogTitle>Add Contact</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[400px] bg-popover border-border" aria-describedby="add-contact-desc">
+          <DialogHeader>
+            <DialogTitle>Add Contact</DialogTitle>
+            <DialogDescription id="add-contact-desc">Add a new contact to your CRM.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2"><Label>Name *</Label><Input placeholder="Contact name" className="bg-input" value={newContact.name} onChange={(e) => setNewContact({ ...newContact, name: e.target.value })} /></div>
             <div className="space-y-2"><Label>Email</Label><Input placeholder="email@example.com" className="bg-input" value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} /></div>
@@ -470,8 +418,11 @@ export default function Dashboard() {
       </Dialog>
 
       <Dialog open={leadDialogOpen} onOpenChange={setLeadDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader><DialogTitle>Add Lead</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[400px] bg-popover border-border" aria-describedby="add-lead-desc">
+          <DialogHeader>
+            <DialogTitle>Add Lead</DialogTitle>
+            <DialogDescription id="add-lead-desc">Add a new lead with source and property interest.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2"><Label>Name *</Label><Input placeholder="Lead name" className="bg-input" value={newLead.name} onChange={(e) => setNewLead({ ...newLead, name: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
@@ -502,8 +453,11 @@ export default function Dashboard() {
       </Dialog>
 
       <Dialog open={appointmentDialogOpen} onOpenChange={setAppointmentDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
-          <DialogHeader><DialogTitle>Schedule Appointment</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[400px] bg-popover border-border" aria-describedby="schedule-appt-desc">
+          <DialogHeader>
+            <DialogTitle>Schedule Appointment</DialogTitle>
+            <DialogDescription id="schedule-appt-desc">Create an appointment. Optionally sync to Google Calendar from the calendar widget.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2"><Label>Title *</Label><Input placeholder="Meeting with client" className="bg-input" value={newAppointment.title} onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
@@ -514,14 +468,17 @@ export default function Dashboard() {
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setAppointmentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleScheduleAppointment} disabled={createAppointment.isPending}>{createAppointment.isPending ? "Scheduling..." : "Schedule"}</Button>
+            <Button onClick={handleScheduleAppointment} disabled={createAppointmentWithGcal.isPending}>{createAppointmentWithGcal.isPending ? "Scheduling..." : "Schedule"}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
-        <DialogContent className="sm:max-w-[450px] bg-popover border-border">
-          <DialogHeader><DialogTitle>Create Post</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[450px] bg-popover border-border" aria-describedby="create-post-desc">
+          <DialogHeader>
+            <DialogTitle>Create Post</DialogTitle>
+            <DialogDescription id="create-post-desc">Create a new marketing post.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2"><Label>Title *</Label><Input placeholder="Post title" className="bg-input" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} /></div>
             <div className="space-y-2"><Label>Content</Label><Textarea placeholder="Write your post content..." className="bg-input min-h-[100px]" value={newPost.content} onChange={(e) => setNewPost({ ...newPost, content: e.target.value })} /></div>

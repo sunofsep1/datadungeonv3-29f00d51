@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,8 @@ import {
   MoreHorizontal,
   Plus,
 } from "lucide-react";
-import { useAppointments, useCreateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
+import { useAppointments, useDeleteAppointment } from "@/hooks/useAppointments";
+import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -152,7 +153,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
   const { toast } = useToast();
   const { user } = useAuth();
   const { data: appointments = [], isError: appointmentsError, refetch: refetchAppointments } = useAppointments();
-  const createAppointment = useCreateAppointment();
+  const createAppointmentWithGcal = useCreateAppointmentWithGcal();
   const deleteAppointment = useDeleteAppointment();
   const handleDayOrAdd = onAddAppointmentRequest ?? onDayClick;
   const [viewMode, setViewMode] = useState<ViewMode>("week");
@@ -438,59 +439,18 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
     }
     try {
       const dateTime = `${newBooking.date}T${newBooking.startTime}:00`;
-      await createAppointment.mutateAsync({
+      const endDateTime = newBooking.endTime
+        ? `${newBooking.date}T${newBooking.endTime}:00`
+        : undefined;
+      await createAppointmentWithGcal.mutateAsync({
         title: newBooking.title,
         date: dateTime,
         location: newBooking.location || null,
-        type: newBooking.type,
         notes: newBooking.notes || null,
+        type: newBooking.type,
+        syncToGoogle: newBooking.syncToGoogle,
+        endDateTime,
       });
-
-      if (newBooking.syncToGoogle && !gcalNeedsAuth && user) {
-        const gcalBase = getGcalUrl();
-        if (gcalBase) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              const endDateTime = newBooking.endTime
-                ? `${newBooking.date}T${newBooking.endTime}:00`
-                : format(addHours(new Date(dateTime), 1), "yyyy-MM-dd'T'HH:mm:ss");
-              const gcalRes = await fetch(`${gcalBase}?action=create-event`, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  summary: newBooking.title,
-                  description: newBooking.notes || "",
-                  start: dateTime,
-                  end: endDateTime,
-                  location: newBooking.location || "",
-                }),
-              });
-              const gcalData = await gcalRes.json().catch(() => ({}));
-              if (!gcalRes.ok) {
-                toast({
-                  title: "Google Calendar sync failed",
-                  description: gcalData?.error ?? `Error ${gcalRes.status}. Check connection or try connecting Google again.`,
-                  variant: "destructive",
-                });
-              } else {
-                toast({ title: "Synced", description: "Added to Google Calendar" });
-              }
-            }
-          } catch (e) {
-            console.error("Google Calendar sync failed:", e);
-            toast({
-              title: "Google Calendar sync failed",
-              description: e instanceof Error ? e.message : "Could not reach calendar. Check connection.",
-              variant: "destructive",
-            });
-          }
-        }
-      }
-
       toast({ title: "Success", description: "Booking created!" });
       refetchAppointments();
       fetchGcal();
@@ -576,6 +536,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
         <DialogContent className="sm:max-w-[440px] bg-[#242424] border-white/10">
           <DialogHeader>
             <DialogTitle>New booking</DialogTitle>
+            <DialogDescription className="text-white/60">Create an appointment from the calendar.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 mt-2">
             <div className="space-y-1.5">
@@ -677,8 +638,8 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             <Button variant="outline" size="sm" onClick={() => setIsBookingDialogOpen(false)}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleCreateBooking} disabled={createAppointment.isPending}>
-              {createAppointment.isPending ? "Creating..." : "Create"}
+            <Button size="sm" onClick={handleCreateBooking} disabled={createAppointmentWithGcal.isPending}>
+              {createAppointmentWithGcal.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
         </DialogContent>

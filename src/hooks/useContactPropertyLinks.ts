@@ -39,7 +39,7 @@ export function useCreateContactPropertyLink() {
       if (!user) throw new Error("Not authenticated");
       const { data, error } = await (supabase as any)
         .from("contact_property_links")
-        .insert(link)
+        .insert({ ...link, user_id: user.id })
         .select()
         .single();
       if (error) throw error;

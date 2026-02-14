@@ -26,7 +26,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useAppointments, useCreateAppointment } from "@/hooks/useAppointments";
+import { useAppointments } from "@/hooks/useAppointments";
+import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useLeads } from "@/hooks/useLeads";
 import { 
   format, 
@@ -82,7 +83,7 @@ export function EnhancedCalendarWidget() {
   const { toast } = useToast();
   const { data: localAppointments = [] } = useAppointments();
   const { data: leads = [] } = useLeads();
-  const createAppointment = useCreateAppointment();
+  const createAppointmentWithGcal = useCreateAppointmentWithGcal();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -346,48 +347,20 @@ export function EnhancedCalendarWidget() {
 
     try {
       const dateTime = `${newAppointment.date}T${newAppointment.startTime}:00`;
-      
-      await createAppointment.mutateAsync({
+      const endDateTime = newAppointment.endTime
+        ? `${newAppointment.date}T${newAppointment.endTime}:00`
+        : undefined;
+      await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,
         date: dateTime,
         notes: newAppointment.description || null,
         location: newAppointment.location || null,
         type: newAppointment.type,
         contact_id: newAppointment.leadId || null,
+        syncToGoogle: !needsAuth,
+        endDateTime,
       });
-
-      // Try to create in Google Calendar if connected
-      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!needsAuth && baseUrl) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await fetch(
-              `${baseUrl}/functions/v1/google-calendar?action=create-event`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  summary: newAppointment.title,
-                  description: newAppointment.description,
-                  start: dateTime,
-                  end: newAppointment.endTime 
-                    ? `${newAppointment.date}T${newAppointment.endTime}:00`
-                    : undefined,
-                  location: newAppointment.location,
-                }),
-              }
-            );
-            fetchEvents(); // Refresh Google events
-          }
-        } catch (e) {
-          console.log("Could not create in Google Calendar:", e);
-        }
-      }
-
+      fetchEvents();
       toast({ title: "Success", description: "Appointment created!" });
       setNewAppointment({
         title: "",

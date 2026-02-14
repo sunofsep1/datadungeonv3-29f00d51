@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Home,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const navGroups: NavGroup[] = [
     items: [
       { title: "Marketing", url: "/marketing", icon: Megaphone },
       { title: "Performance", url: "/performance", icon: BarChart3 },
+      { title: "Research", url: "/research", icon: Search },
     ],
   },
 ];
