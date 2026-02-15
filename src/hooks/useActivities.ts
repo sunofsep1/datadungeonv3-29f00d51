@@ -93,7 +93,13 @@ export function useCreateActivity() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist")) {
+          throw new Error("Activities table is not set up. Run database migrations (npm run db:push) to enable activity tracking.");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -148,7 +154,13 @@ export function useUpsertTodayActivity() {
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          const msg = (error?.message ?? "").toLowerCase();
+          if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist")) {
+            throw new Error("Activities table is not set up. Run database migrations (npm run db:push) to enable activity tracking.");
+          }
+          throw error;
+        }
         return data;
       } else {
         const { data, error } = await supabase
@@ -157,7 +169,13 @@ export function useUpsertTodayActivity() {
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          const msg = (error?.message ?? "").toLowerCase();
+          if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist")) {
+            throw new Error("Activities table is not set up. Run database migrations (npm run db:push) to enable activity tracking.");
+          }
+          throw error;
+        }
         return data;
       }
     },

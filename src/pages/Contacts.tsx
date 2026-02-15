@@ -678,19 +678,97 @@ export default function Contacts() {
     onClearFilters: clearAllFilters,
   };
 
+  const listGridCols = "grid-cols-[auto_1fr_auto_auto] md:grid-cols-[auto_1fr_auto_120px_1fr_100px_minmax(0,1fr)_auto]";
+
   function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid" | "kanban") {
     if (!contact?.id) return null;
     const primaryEmail = getPrimaryEmail(contact);
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
+    const linkedProperty = getLinkedPropertyAddress(contact);
     const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
     const isCompact = _layout === "list" || _layout === "grid";
+    const isList = _layout === "list";
+
+    const actionButtons = (
+      <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); setSelectedContactIds((prev) => { const next = new Set(prev); if (next.has(contact.id)) next.delete(contact.id); else next.add(contact.id); return next; }); }}>
+          {selectedContactIds.has(contact.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
+          <Pencil className="w-4 h-4" />
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+              <AlertDialogDescription>Are you sure you want to delete {contact.name}? This action cannot be undone.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleDeleteContact(contact.id)}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      </div>
+    );
+
+    if (isList) {
+      return (
+        <div
+          key={contact.id}
+          className={cn("group grid gap-2 md:gap-4 items-center py-2.5 px-3 md:py-2 md:px-4 rounded-lg border border-transparent hover:border-border hover:bg-muted/40 transition-colors cursor-pointer", listGridCols)}
+          onClick={() => setSelectedContactId(contact.id)}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 sm:min-w-0">
+            <AvatarCircle name={contact.name} initials={initials} size="sm" />
+            <div className="min-w-0 flex-1">
+              <span className="font-medium text-foreground text-sm truncate block">{contact.name}</span>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-muted-foreground text-xs">
+                {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{primaryPhone}</span>}
+                {primaryEmail && <span className="truncate">{primaryEmail}</span>}
+              </div>
+              {tagNames.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {tagNames.slice(0, 3).map((t) => (
+                    <Badge key={t} variant="secondary" className="text-[10px] font-normal py-0 px-1.5">
+                      {t}
+                    </Badge>
+                  ))}
+                  {tagNames.length > 3 && <span className="text-[10px] text-muted-foreground">+{tagNames.length - 3}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="hidden md:block" />
+          <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs w-fit shrink-0">{contact.status ?? "lead"}</StatusBadge>
+          <span className="hidden md:block text-muted-foreground text-sm truncate" title={primaryPhone ?? ""}>
+            {primaryPhone ?? "—"}
+          </span>
+          <span className="hidden md:block text-muted-foreground text-sm truncate" title={primaryEmail ?? ""}>
+            {primaryEmail ?? "—"}
+          </span>
+          <span className="hidden md:block min-w-0">
+            {contact.source ? <span className="text-xs bg-secondary px-2 py-0.5 rounded truncate block max-w-[100px]" title={contact.source}>{contact.source}</span> : <span className="text-muted-foreground/60">—</span>}
+          </span>
+          <span className="hidden md:block text-muted-foreground text-sm truncate min-w-0" title={linkedProperty || ""}>
+            {linkedProperty || "—"}
+          </span>
+          {actionButtons}
+        </div>
+      );
+    }
+
     const cardClass =
       _layout === "kanban"
         ? "group flex flex-wrap items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card text-sm"
-        : _layout === "list"
-          ? "group flex flex-wrap items-center gap-2.5 py-2.5 px-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card"
-          : "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
+        : "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
     return (
       <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -728,45 +806,7 @@ export default function Contacts() {
             </div>
           </div>
         </div>
-        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedContactIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(contact.id)) next.delete(contact.id);
-                else next.add(contact.id);
-                return next;
-              });
-            }}
-          >
-            {selectedContactIds.has(contact.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
-            <Pencil className="w-4 h-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-                <AlertDialogDescription>Are you sure you want to delete {contact.name}? This action cannot be undone.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleDeleteContact(contact.id)}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        </div>
+        {actionButtons}
       </div>
     );
   }
@@ -1429,8 +1469,20 @@ export default function Contacts() {
               {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
             </div>
           ) : (
-            <div className="space-y-2">
-              {paginatedContacts.map((contact) => renderContactCard(contact, "list"))}
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div className={cn("sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider", listGridCols, "gap-2 md:gap-4 py-2.5 px-3 md:py-2 md:px-4 hidden md:grid")}>
+                <span className="col-span-2">Name</span>
+                <span />
+                <span>Status</span>
+                <span>Phone</span>
+                <span>Email</span>
+                <span>Source</span>
+                <span>Property</span>
+                <span className="w-20" />
+              </div>
+              <div className="divide-y divide-border/60">
+                {paginatedContacts.map((contact) => renderContactCard(contact, "list"))}
+              </div>
             </div>
           )}
           {totalPages > 1 && contactView !== "kanban" && (
