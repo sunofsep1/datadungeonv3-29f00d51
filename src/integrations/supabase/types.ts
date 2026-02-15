@@ -394,6 +394,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          category: string | null
           created_at: string
           current_situation_notes: string | null
           email: string | null
@@ -412,6 +413,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           current_situation_notes?: string | null
           email?: string | null
@@ -430,6 +432,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           current_situation_notes?: string | null
           email?: string | null

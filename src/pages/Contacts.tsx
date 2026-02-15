@@ -115,6 +115,19 @@ const AUSTRALIAN_STATES = [
   { value: "ACT", label: "Australian Capital Territory" },
 ];
 
+export type ContactCategory = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "gray";
+
+const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; border: string }[] = [
+  { value: "red", label: "Red", bg: "bg-red-500", border: "border-red-500" },
+  { value: "orange", label: "Orange", bg: "bg-orange-500", border: "border-orange-500" },
+  { value: "yellow", label: "Yellow", bg: "bg-amber-400", border: "border-amber-400" },
+  { value: "green", label: "Green", bg: "bg-emerald-500", border: "border-emerald-500" },
+  { value: "blue", label: "Blue", bg: "bg-blue-500", border: "border-blue-500" },
+  { value: "purple", label: "Purple", bg: "bg-violet-500", border: "border-violet-500" },
+  { value: "pink", label: "Pink", bg: "bg-pink-500", border: "border-pink-500" },
+  { value: "gray", label: "Gray", bg: "bg-slate-500", border: "border-slate-500" },
+];
+
 const createEmptyContact = () => ({
   name: "",
   phone: "",
@@ -122,6 +135,7 @@ const createEmptyContact = () => ({
   source: "",
   notes: "",
   status: "lead" as ContactStatus,
+  category: "",
   story: "",
   selling_intentions: "",
   pain_points: "",
@@ -404,6 +418,7 @@ export default function Contacts() {
         source: contact.source ?? "",
         notes: contact.notes ?? "",
         status: (contact.status as ContactStatus) ?? "lead",
+        category: (contact as { category?: string | null }).category ?? "",
         story: contact.story ?? "",
         selling_intentions: contact.selling_intentions ?? "",
         pain_points: contact.pain_points ?? "",
@@ -460,6 +475,7 @@ export default function Contacts() {
           source: formData.source || null,
           notes: formData.notes || null,
           status: formData.status,
+          category: (formData.category as string) || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
           pain_points: formData.pain_points || null,
@@ -497,6 +513,7 @@ export default function Contacts() {
           source: formData.source || null,
           notes: formData.notes || null,
           status: formData.status,
+          category: (formData.category as string) || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
           pain_points: formData.pain_points || null,
@@ -680,56 +697,70 @@ export default function Contacts() {
 
   const listGridCols = "grid-cols-[auto_1fr_auto_auto] md:grid-cols-[auto_1fr_auto_120px_1fr_100px_minmax(0,1fr)_auto]";
 
-  function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid" | "kanban") {
+  const listActionButtons = (contact: ContactWithMeta) => (
+    <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
+        <Pencil className="w-4 h-4" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to delete {contact.name}? This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeleteContact(contact.id)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+    </div>
+  );
+
+  function renderContactListRow(contact: ContactWithMeta) {
     if (!contact?.id) return null;
     const primaryEmail = getPrimaryEmail(contact);
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
     const linkedProperty = getLinkedPropertyAddress(contact);
     const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
-    const isCompact = _layout === "list" || _layout === "grid";
-    const isList = _layout === "list";
-
-    const actionButtons = (
-      <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); setSelectedContactIds((prev) => { const next = new Set(prev); if (next.has(contact.id)) next.delete(contact.id); else next.add(contact.id); return next; }); }}>
-          {selectedContactIds.has(contact.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0">
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-              <AlertDialogDescription>Are you sure you want to delete {contact.name}? This action cannot be undone.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleDeleteContact(contact.id)}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-      </div>
-    );
-
-    if (isList) {
-      return (
-        <div
-          key={contact.id}
-          className={cn("group grid gap-2 md:gap-4 items-center py-2.5 px-3 md:py-2 md:px-4 rounded-lg border border-transparent hover:border-border hover:bg-muted/40 transition-colors cursor-pointer", listGridCols)}
-          onClick={() => setSelectedContactId(contact.id)}
-        >
-          <div className="flex items-center gap-2.5 min-w-0 sm:min-w-0">
+    return (
+      <>
+        <td className="w-10 py-2 px-2 md:px-3 align-middle" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setSelectedContactIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(contact.id)) next.delete(contact.id);
+              else next.add(contact.id);
+              return next;
+            })}
+            aria-label={selectedContactIds.has(contact.id) ? "Deselect" : "Select"}
+          >
+            {selectedContactIds.has(contact.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </Button>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
+          <div className="flex items-center gap-2.5 min-w-0">
             <AvatarCircle name={contact.name} initials={initials} size="sm" />
             <div className="min-w-0 flex-1">
-              <span className="font-medium text-foreground text-sm truncate block">{contact.name}</span>
+              <div className="flex items-center gap-1.5">
+                {(contact as { category?: string | null }).category && CONTACT_CATEGORIES.some((c) => c.value === (contact as { category?: string | null }).category) && (
+                  <span
+                    className={cn("w-2.5 h-2.5 rounded-full shrink-0", CONTACT_CATEGORIES.find((c) => c.value === (contact as { category?: string | null }).category)?.bg)}
+                    title={CONTACT_CATEGORIES.find((c) => c.value === (contact as { category?: string | null }).category)?.label}
+                  />
+                )}
+                <span className="font-medium text-foreground text-sm truncate block">{contact.name}</span>
+              </div>
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-muted-foreground text-xs">
                 {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{primaryPhone}</span>}
                 {primaryEmail && <span className="truncate">{primaryEmail}</span>}
@@ -746,24 +777,39 @@ export default function Contacts() {
               )}
             </div>
           </div>
-          <div className="hidden md:block" />
-          <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs w-fit shrink-0">{contact.status ?? "lead"}</StatusBadge>
-          <span className="hidden md:block text-muted-foreground text-sm truncate" title={primaryPhone ?? ""}>
-            {primaryPhone ?? "—"}
-          </span>
-          <span className="hidden md:block text-muted-foreground text-sm truncate" title={primaryEmail ?? ""}>
-            {primaryEmail ?? "—"}
-          </span>
-          <span className="hidden md:block min-w-0">
-            {contact.source ? <span className="text-xs bg-secondary px-2 py-0.5 rounded truncate block max-w-[100px]" title={contact.source}>{contact.source}</span> : <span className="text-muted-foreground/60">—</span>}
-          </span>
-          <span className="hidden md:block text-muted-foreground text-sm truncate min-w-0" title={linkedProperty || ""}>
-            {linkedProperty || "—"}
-          </span>
-          {actionButtons}
-        </div>
-      );
-    }
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle hidden md:table-cell">
+          <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs w-fit">{contact.status ?? "lead"}</StatusBadge>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell max-w-[120px]" title={primaryPhone ?? ""}>
+          <span className="truncate block">{primaryPhone ?? "—"}</span>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell min-w-0 max-w-[200px]" title={primaryEmail ?? ""}>
+          <span className="truncate block">{primaryEmail ?? "—"}</span>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle hidden md:table-cell max-w-[100px]">
+          {contact.source ? <span className="text-xs bg-secondary px-2 py-0.5 rounded truncate block" title={contact.source}>{contact.source}</span> : <span className="text-muted-foreground/60">—</span>}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell min-w-0" title={linkedProperty || ""}>
+          <span className="truncate block">{linkedProperty || "—"}</span>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle w-[1%] whitespace-nowrap">
+          {listActionButtons(contact)}
+        </td>
+      </>
+    );
+  }
+
+  function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid" | "kanban") {
+    if (!contact?.id) return null;
+    const primaryEmail = getPrimaryEmail(contact);
+    const primaryPhone = getPrimaryPhone(contact);
+    const tagNames = getTagNames(contact);
+    const linkedProperty = getLinkedPropertyAddress(contact);
+    const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
+    const isCompact = _layout === "list" || _layout === "grid";
+
+    const actionButtons = listActionButtons(contact);
 
     const cardClass =
       _layout === "kanban"
@@ -876,6 +922,30 @@ export default function Contacts() {
                             <SelectItem value="warm">Warm</SelectItem>
                             <SelectItem value="cold">Cold</SelectItem>
                             <SelectItem value="lead">Lead</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Category</Label>
+                        <Select
+                          value={formData.category || "none"}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, category: value === "none" ? "" : value })
+                          }
+                        >
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Colour category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {CONTACT_CATEGORIES.map((cat) => (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                <span className="flex items-center gap-2">
+                                  <span className={cn("w-3 h-3 rounded-full shrink-0", cat.bg)} />
+                                  {cat.label}
+                                </span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1405,6 +1475,59 @@ export default function Contacts() {
                 )}
               </PopoverContent>
             </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/30 mr-1.5" />
+                  Categorise
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="end">
+                <p className="text-xs text-muted-foreground mb-2">Assign colour to {selectedContactIds.size} contact(s)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {CONTACT_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors hover:opacity-90", cat.bg, "border-transparent text-white")}
+                      onClick={async () => {
+                        const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
+                        try {
+                          for (const c of toUpdate) {
+                            await updateContact.mutateAsync({ id: c.id, category: cat.value });
+                          }
+                          toast({ title: "Category set", description: `Set ${toUpdate.length} contact(s) to ${cat.label}` });
+                          setSelectedContactIds(new Set());
+                        } catch (e: unknown) {
+                          toast({ title: "Error", description: (e as Error).message || "Failed to update", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full bg-white/30" />
+                      {cat.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80"
+                    onClick={async () => {
+                      const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
+                      try {
+                        for (const c of toUpdate) {
+                          await updateContact.mutateAsync({ id: c.id, category: null });
+                        }
+                        toast({ title: "Category cleared", description: `Cleared category for ${toUpdate.length} contact(s)` });
+                        setSelectedContactIds(new Set());
+                      } catch (e: unknown) {
+                        toast({ title: "Error", description: (e as Error).message || "Failed to update", variant: "destructive" });
+                      }
+                    }}
+                  >
+                    Clear category
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               size="sm"
@@ -1470,18 +1593,56 @@ export default function Contacts() {
             </div>
           ) : (
             <div className="rounded-lg border border-border bg-card overflow-hidden">
-              <div className={cn("sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider", listGridCols, "gap-2 md:gap-4 py-2.5 px-3 md:py-2 md:px-4 hidden md:grid")}>
-                <span className="col-span-2">Name</span>
-                <span />
-                <span>Status</span>
-                <span>Phone</span>
-                <span>Email</span>
-                <span>Source</span>
-                <span>Property</span>
-                <span className="w-20" />
-              </div>
-              <div className="divide-y divide-border/60">
-                {paginatedContacts.map((contact) => renderContactCard(contact, "list"))}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="w-10 py-2.5 px-2 md:px-3 font-medium align-middle">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const pageIds = new Set(paginatedContacts.map((c) => c.id));
+                            const allOnPageSelected = pageIds.size > 0 && [...pageIds].every((id) => selectedContactIds.has(id));
+                            setSelectedContactIds((prev) => {
+                              const next = new Set(prev);
+                              if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+                              else pageIds.forEach((id) => next.add(id));
+                              return next;
+                            });
+                          }}
+                          aria-label={paginatedContacts.every((c) => selectedContactIds.has(c.id)) ? "Deselect all on page" : "Select all on page"}
+                        >
+                          {paginatedContacts.length > 0 && paginatedContacts.every((c) => selectedContactIds.has(c.id)) ? (
+                            <CheckSquare className="w-4 h-4" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Name</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Status</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[120px]">Phone</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Email</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Source</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Property</th>
+                      <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedContacts.map((contact) => (
+                      <tr
+                        key={contact.id}
+                        className="group border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => setSelectedContactId(contact.id)}
+                      >
+                        {renderContactListRow(contact)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
