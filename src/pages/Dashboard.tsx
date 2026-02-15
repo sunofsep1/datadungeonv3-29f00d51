@@ -364,7 +364,7 @@ export default function Dashboard() {
                     >
                       <div className="min-w-0">
                         <p className="text-sm text-foreground truncate">{apt.title}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(apt.date), "EEE, d MMM · HH:mm")}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(apt.date), "EEEE, d MMM · HH:mm")}</p>
                       </div>
                       <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                     </button>

@@ -65,6 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -100,12 +101,14 @@ function EventChip({
   onEdit,
   onDelete,
   onOpenGoogle,
+  tooltipContent,
   size = "sm",
 }: {
   item: CalendarItem;
   onEdit?: () => void;
   onDelete?: () => void;
   onOpenGoogle?: () => void;
+  tooltipContent?: React.ReactNode;
   size?: "sm" | "md";
 }) {
   const isApp = item.source === "app";
@@ -118,8 +121,22 @@ function EventChip({
     </div>
   );
 
+  const wrapWithTooltip = (node: React.ReactNode) =>
+    tooltipContent ? (
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <span className="block w-full">{node}</span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[240px]">
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    ) : (
+      node
+    );
+
   if (isApp && (onEdit || onDelete)) {
-    return (
+    return wrapWithTooltip(
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" className="w-full text-left" onClick={(e) => e.stopPropagation()}>
@@ -134,13 +151,13 @@ function EventChip({
     );
   }
   if (onOpenGoogle) {
-    return (
+    return wrapWithTooltip(
       <button type="button" className="w-full text-left" onClick={(e) => { e.stopPropagation(); onOpenGoogle(); }}>
         {content}
       </button>
     );
   }
-  return <div onClick={(e) => e.stopPropagation()}>{content}</div>;
+  return wrapWithTooltip(<div onClick={(e) => e.stopPropagation()}>{content}</div>);
 }
 
 interface DashboardCalendarWidgetProps {
@@ -724,7 +741,20 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                   {format(day, "d")}
                 </div>
                 {dayEvents.slice(0, 2).map((item) => (
-                  <EventChip key={item.id} item={item} onEdit={() => item.source === "app" && navigate(`/appointments?edit=${item.id.replace("app-", "")}`)} onDelete={() => item.source === "app" && setDeleteTarget(item.id)} onOpenGoogle={item.htmlLink ? () => window.open(item.htmlLink!) : undefined} />
+                  <EventChip
+                    key={item.id}
+                    item={item}
+                    onEdit={() => item.source === "app" && navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}
+                    onDelete={() => item.source === "app" && setDeleteTarget(item.id)}
+                    onOpenGoogle={item.htmlLink ? () => window.open(item.htmlLink!) : undefined}
+                    tooltipContent={
+                      <div className="space-y-0.5 text-left">
+                        <p className="font-medium">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{formatEventTime(item)}</p>
+                        {item.location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3 shrink-0" />{item.location}</p>}
+                      </div>
+                    }
+                  />
                 ))}
                 {dayEvents.length > 2 && (
                   <div className="text-[10px] text-muted-foreground">
@@ -768,31 +798,44 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 <div className="flex-1 space-y-1">
                 {dayEvents.map((item) => (
                   <div key={item.id} onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className={cn(
-                            "w-full text-left text-xs px-1 py-0.5 rounded mb-1 truncate block hover:opacity-90",
-                            item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
-                          )}
-                        >
-                          <div className="font-medium truncate">{item.title}</div>
-                          <div className="text-[10px] opacity-75">{formatEventTime(item)}</div>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48">
-                        {item.source === "app" && (
-                          <>
-                            <DropdownMenuItem onClick={() => navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDeleteTarget(item.id)} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
-                          </>
-                        )}
-                        {item.source === "google" && item.htmlLink && (
-                          <DropdownMenuItem onClick={() => window.open(item.htmlLink!)}><ExternalLink className="w-4 h-4 mr-2" /> Open in Google Calendar</DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Tooltip delayDuration={300}>
+                      <TooltipTrigger asChild>
+                        <span className="block w-full">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "w-full text-left text-xs px-1 py-0.5 rounded mb-1 truncate block hover:opacity-90",
+                                  item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
+                                )}
+                              >
+                                <div className="font-medium truncate">{item.title}</div>
+                                <div className="text-[10px] opacity-75">{formatEventTime(item)}</div>
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-48">
+                              {item.source === "app" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setDeleteTarget(item.id)} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+                                </>
+                              )}
+                              {item.source === "google" && item.htmlLink && (
+                                <DropdownMenuItem onClick={() => window.open(item.htmlLink!)}><ExternalLink className="w-4 h-4 mr-2" /> Open in Google Calendar</DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[240px]">
+                        <div className="space-y-0.5 text-left">
+                          <p className="font-medium">{item.title}</p>
+                          <p className="text-xs text-muted-foreground">{formatEventTime(item)}</p>
+                          {item.location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3 shrink-0" />{item.location}</p>}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 ))}
                 </div>
@@ -892,7 +935,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             {upcomingItems.map((item) => {
               let dateStr = "";
               try {
-                dateStr = format(parseISO(item.date), "MMM d, h:mm a");
+                dateStr = format(parseISO(item.date), "EEEE, MMM d, h:mm a");
               } catch {}
               return (
                 <div key={item.id} className="flex items-center gap-3 text-sm group">

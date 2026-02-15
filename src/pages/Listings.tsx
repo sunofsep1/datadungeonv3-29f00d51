@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,12 +22,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, Calendar } from "lucide-react";
+import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, Calendar, CheckSquare, Square, ChevronRight, LayoutList, LayoutGrid, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
 import { useContacts } from "@/hooks/useContacts";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
@@ -67,7 +69,10 @@ export default function Listings() {
   const [formData, setFormData] = useState(createEmptyListing());
   const [selectedContact, setSelectedContact] = useState<typeof contacts[0] | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [listView, setListView] = useState<"list" | "grid">("list");
+  const [selectedListingIds, setSelectedListingIds] = useState<Set<string>>(new Set());
+  const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
   const { toast } = useToast();
 
   // Update selected contact when contact_id changes
@@ -193,6 +198,125 @@ export default function Listings() {
     if (!contactId) return null;
     return contacts.find(c => c.id === contactId);
   };
+
+  const handleExportCSV = (selectedOnly?: boolean) => {
+    const list = selectedOnly && selectedListingIds.size > 0
+      ? (listings ?? []).filter((l) => selectedListingIds.has(l.id))
+      : (listings ?? []);
+    if (list.length === 0) {
+      toast({ title: "No data", description: "No listings to export", variant: "destructive" });
+      return;
+    }
+    const headers = ["Address", "Type", "Status", "Price", "Bedrooms", "Bathrooms", "Contact", "Listed"];
+    const rows = list.map((l) => {
+      const owner = getContactForListing(l);
+      return [
+        l.address ?? "",
+        l.property_type ?? "",
+        l.status ?? "",
+        String(l.price ?? ""),
+        String(l.bedrooms ?? ""),
+        String(l.bathrooms ?? ""),
+        owner?.name ?? "",
+        l.created_at ? format(new Date(l.created_at), "yyyy-MM-dd") : "",
+      ];
+    });
+    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `listings-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${list.length} listings exported to CSV` });
+  };
+
+  const listActionButtons = (listing: Listing) => (
+    <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog(listing); }}>
+        <Pencil className="w-4 h-4" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this listing? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeleteListing(listing.id)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+    </div>
+  );
+
+  function renderListingListRow(listing: Listing) {
+    const owner = getContactForListing(listing);
+    return (
+      <>
+        <td className="w-10 py-2 px-2 md:px-3 align-middle" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setSelectedListingIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(listing.id)) next.delete(listing.id);
+              else next.add(listing.id);
+              return next;
+            })}
+            aria-label={selectedListingIds.has(listing.id) ? "Deselect" : "Select"}
+          >
+            {selectedListingIds.has(listing.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </Button>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
+          <div className="flex items-center gap-2 min-w-0">
+            <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="font-medium text-foreground text-sm truncate block" title={listing.address ?? ""}>{listing.address ?? "—"}</span>
+          </div>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
+          {listing.property_type ? (
+            <Badge variant="secondary" className="text-xs capitalize">{listing.property_type}</Badge>
+          ) : (
+            <span className="text-muted-foreground/60">—</span>
+          )}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
+          <StatusBadge variant={getStatusVariant(listing.status)} className="text-xs w-fit">{listing.status ?? "active"}</StatusBadge>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-foreground font-medium whitespace-nowrap">
+          {formatPrice(Number(listing.price))}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm">
+          {listing.bedrooms != null ? listing.bedrooms : "—"}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm">
+          {listing.bathrooms != null ? listing.bathrooms : "—"}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm truncate max-w-[140px]" title={owner?.name ?? ""}>
+          <span className="truncate block">{owner?.name ?? "—"}</span>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm">
+          {listing.created_at ? format(new Date(listing.created_at), "MMM d, yyyy") : "—"}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle w-[1%] whitespace-nowrap">
+          {listActionButtons(listing)}
+        </td>
+      </>
+    );
+  }
 
   // Pagination
   const paginatedListings = useMemo(() => {
@@ -620,103 +744,206 @@ export default function Listings() {
         }
       />
 
-      {/* Listings Grid */}
+      {/* Listings: same paginated table layout as Contacts */}
       {listings && listings.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {paginatedListings.map((listing) => {
-            const owner = getContactForListing(listing);
-            return (
-              <Card key={listing.id} className="zoho-card p-0 overflow-hidden hover:shadow-md transition-shadow border border-white/10">
-                {/* Property Image Placeholder */}
-                <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                  <Building2 className="w-16 h-16 text-primary/40" />
+          <div className="flex-1 min-w-0">
+            {/* Toolbar: title, total, view toggle, Add Listing, Actions, per page — same as Contacts */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4 min-w-0">
+                <span className="font-semibold text-foreground truncate">My Properties</span>
+                <span className="text-sm text-muted-foreground shrink-0">
+                  Total records {listings.length}
+                </span>
+                <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+                  <button
+                    type="button"
+                    aria-label="List view"
+                    onClick={() => setListView("list")}
+                    className={cn("rounded-md px-3 py-1.5", listView === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    <LayoutList className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Grid view"
+                    onClick={() => setListView("grid")}
+                    className={cn("rounded-md px-3 py-1.5", listView === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {listing.property_type && (
-                          <Badge variant="secondary" className="text-xs capitalize">
-                            {listing.property_type}
-                          </Badge>
-                        )}
-                        <StatusBadge variant={getStatusVariant(listing.status)} className="text-xs">
-                          {listing.status || "active"}
-                        </StatusBadge>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => handleOpenDialog()}>
+                  <Plus className="w-4 h-4" />
+                  Add Listing
+                </Button>
+                <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-foreground border-border hover:bg-muted">
+                      Actions
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-48 p-1 bg-popover border-border text-foreground">
+                    <button
+                      type="button"
+                      className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
+                      onClick={() => { handleExportCSV(); setActionsPopoverOpen(false); }}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export
+                    </button>
+                  </PopoverContent>
+                </Popover>
+                <Select value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[100px] bg-popover border-border text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Bulk Actions — same card style as Contacts */}
+            {selectedListingIds.size > 0 && (
+              <div className="mb-4 p-3 zoho-card rounded-lg flex items-center justify-between">
+                <span className="text-sm text-foreground">
+                  {selectedListingIds.size} listing{selectedListingIds.size !== 1 ? "s" : ""} selected
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { handleExportCSV(true); setSelectedListingIds(new Set()); }}
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Export
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedListingIds(new Set())}>
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Showing {(currentPage - 1) * itemsPerPage + 1}–
+              {Math.min(currentPage * itemsPerPage, listings.length)} of {listings.length} listings
+            </p>
+
+          {listView === "list" ? (
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="w-10 py-2.5 px-2 md:px-3 font-medium align-middle">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const pageIds = new Set(paginatedListings.map((l) => l.id));
+                            const allOnPageSelected = pageIds.size > 0 && [...pageIds].every((id) => selectedListingIds.has(id));
+                            setSelectedListingIds((prev) => {
+                              const next = new Set(prev);
+                              if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+                              else pageIds.forEach((id) => next.add(id));
+                              return next;
+                            });
+                          }}
+                          aria-label={paginatedListings.every((l) => selectedListingIds.has(l.id)) ? "Deselect all on page" : "Select all on page"}
+                        >
+                          {paginatedListings.length > 0 && paginatedListings.every((l) => selectedListingIds.has(l.id)) ? (
+                            <CheckSquare className="w-4 h-4" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Address</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium w-[100px]">Type</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium w-[90px]">Status</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Price</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium w-[60px]">Beds</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium w-[60px]">Baths</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Contact</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Listed</th>
+                      <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedListings.map((listing) => (
+                      <tr
+                        key={listing.id}
+                        className="group border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => handleOpenDialog(listing)}
+                      >
+                        {renderListingListRow(listing)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedListings.map((listing) => {
+                const owner = getContactForListing(listing);
+                return (
+                  <Card key={listing.id} className="zoho-card p-0 overflow-hidden hover:shadow-md transition-shadow border border-border group cursor-pointer" onClick={() => handleOpenDialog(listing)}>
+                    <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                      <Building2 className="w-16 h-16 text-primary/40" />
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {listing.property_type && (
+                              <Badge variant="secondary" className="text-xs capitalize">{listing.property_type}</Badge>
+                            )}
+                            <StatusBadge variant={getStatusVariant(listing.status)} className="text-xs">{listing.status || "active"}</StatusBadge>
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono mb-1">ID: {listing.id.slice(0, 8)}</p>
+                        </div>
+                        <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {listActionButtons(listing)}
+                        </div>
                       </div>
-                      <p className="text-xs text-white/60 font-mono mb-1">
-                        ID: {listing.id.slice(0, 8)}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 ml-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(listing)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this listing? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteListing(listing.id)}>Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                  <h3 className="font-semibold text-white mb-2 line-clamp-2">{listing.address}</h3>
-                  <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
-                  <div className="flex items-center gap-4 text-sm text-white/60 mb-3">
-                    {listing.bedrooms !== null && (
-                      <span className="flex items-center gap-1.5">
-                        <Bed className="w-4 h-4" />
-                        {listing.bedrooms}
-                      </span>
-                    )}
-                    {listing.bathrooms !== null && (
-                      <span className="flex items-center gap-1.5">
-                        <Bath className="w-4 h-4" />
-                        {listing.bathrooms}
-                      </span>
-                    )}
-                  </div>
-                  {listing.created_at && (
-                    <div className="flex items-center gap-1.5 text-xs text-white/60 mb-3">
-                      <Calendar className="w-3 h-3" />
-                      Listed: {format(new Date(listing.created_at), "MMM d, yyyy")}
-                    </div>
-                  )}
-                  {/* Property Owner Info */}
-                  {owner && (
-                    <div className="pt-3 border-t border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Property Owner</p>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium text-foreground">{owner.name}</span>
+                      <h3 className="font-semibold text-foreground mb-2 line-clamp-2">{listing.address}</h3>
+                      <p className="text-2xl font-bold text-primary mb-3">{formatPrice(Number(listing.price))}</p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                        {listing.bedrooms != null && <span className="flex items-center gap-1.5"><Bed className="w-4 h-4" />{listing.bedrooms}</span>}
+                        {listing.bathrooms != null && <span className="flex items-center gap-1.5"><Bath className="w-4 h-4" />{listing.bathrooms}</span>}
                       </div>
-                      {owner.phone && (
-                        <p className="text-xs text-white/60 flex items-center gap-1 mt-1">
-                          <Phone className="w-3 h-3" /> {owner.phone}
-                        </p>
+                      {listing.created_at && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                          <Calendar className="w-3 h-3" /> Listed: {format(new Date(listing.created_at), "MMM d, yyyy")}
+                        </div>
+                      )}
+                      {owner && (
+                        <div className="pt-3 border-t border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Property Owner</p>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-primary" />
+                            <span className="text-sm font-medium text-foreground">{owner.name}</span>
+                          </div>
+                          {owner.phone && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {owner.phone}</p>}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
-          </div>
-          {totalPages > 1 && (
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {totalPages > 1 && listView === "list" && (
             <Pagination className="mt-6">
               <PaginationContent>
                 <PaginationItem>
@@ -760,6 +987,7 @@ export default function Listings() {
               </PaginationContent>
             </Pagination>
           )}
+          </div>
         </>
       ) : (
         <div className="text-center py-12 text-white/60">
