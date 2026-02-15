@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ContactDetailPanel } from "@/components/contacts/ContactDetailPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
@@ -685,18 +684,21 @@ export default function Contacts() {
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
     const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
+    const isCompact = _layout === "list" || _layout === "grid";
     const cardClass =
       _layout === "kanban"
-        ? "group flex flex-wrap items-center gap-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card text-sm"
-        : "group flex flex-wrap items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
+        ? "group flex flex-wrap items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card text-sm"
+        : _layout === "list"
+          ? "group flex flex-wrap items-center gap-2.5 py-2.5 px-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card"
+          : "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
     return (
       <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <AvatarCircle name={contact.name} initials={initials} />
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <AvatarCircle name={contact.name} initials={initials} size={isCompact ? "sm" : "md"} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-foreground">{contact.name}</span>
-              <StatusBadge variant={getStatusVariant(contact.status)}>{contact.status ?? "lead"}</StatusBadge>
+              <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{contact.name}</span>
+              <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs">{contact.status ?? "lead"}</StatusBadge>
               {tagNames.length > 0 && (
                 <span className="flex flex-wrap gap-1">
                   {tagNames.map((t) => (
@@ -707,7 +709,7 @@ export default function Contacts() {
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
+            <div className={cn("flex flex-wrap items-center gap-3 mt-0.5 text-muted-foreground", isCompact ? "text-xs" : "text-sm")}>
               {primaryPhone && (
                 <span className="flex items-center gap-1">
                   <Phone className="w-3 h-3" />
@@ -726,7 +728,7 @@ export default function Contacts() {
             </div>
           </div>
         </div>
-        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="icon"
@@ -1106,10 +1108,50 @@ export default function Contacts() {
       </Dialog>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <StatCard value={stats.total} label="Total Contacts" variant="total" className="zoho-card" />
-        <StatCard value={stats.hot} label="Hot Leads" variant="cancelled" className="zoho-card" />
-        <StatCard value={stats.warm} label="Warm Leads" variant="planning" className="zoho-card" />
-        <StatCard value={stats.cold} label="Cold Leads" variant="active" className="zoho-card" />
+        <button
+          type="button"
+          onClick={() => setFilterStatus("all")}
+          className={cn(
+            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-primary/60",
+            filterStatus === "all" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+          )}
+        >
+          <div className="text-3xl font-bold text-foreground">{stats.total}</div>
+          <div className="text-sm text-muted-foreground mt-1">Total Contacts</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterStatus("hot")}
+          className={cn(
+            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-destructive/60",
+            filterStatus === "hot" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+          )}
+        >
+          <div className="text-3xl font-bold text-foreground">{stats.hot}</div>
+          <div className="text-sm text-muted-foreground mt-1">Hot Leads</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterStatus("warm")}
+          className={cn(
+            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-warning/60",
+            filterStatus === "warm" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+          )}
+        >
+          <div className="text-3xl font-bold text-foreground">{stats.warm}</div>
+          <div className="text-sm text-muted-foreground mt-1">Warm Leads</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterStatus("cold")}
+          className={cn(
+            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-info/60",
+            filterStatus === "cold" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+          )}
+        >
+          <div className="text-3xl font-bold text-foreground">{stats.cold}</div>
+          <div className="text-sm text-muted-foreground mt-1">Cold Leads</div>
+        </button>
       </div>
 
       <div className="flex gap-8 mt-8">
@@ -1383,11 +1425,11 @@ export default function Contacts() {
               })}
             </div>
           ) : contactView === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {paginatedContacts.map((contact) => renderContactCard(contact, "list"))}
             </div>
           )}

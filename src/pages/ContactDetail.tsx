@@ -422,19 +422,33 @@ export default function ContactDetail() {
                     {contact.status || "lead"}
                   </StatusBadge>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/60">
-                  {getAllPhones(contact).map((p) => (
-                    <span key={p.value} className="flex items-center gap-1.5">
-                      <Phone className="w-4 h-4 shrink-0" /> {p.value}
-                      {p.label !== "Phone" && <span className="text-white/50">({p.label})</span>}
-                    </span>
-                  ))}
-                  {getAllEmails(contact).map((e) => (
-                    <span key={e.value} className="flex items-center gap-1.5">
-                      <Mail className="w-4 h-4 shrink-0" /> {e.value}
-                      {e.label !== "Email" && <span className="text-white/50">({e.label})</span>}
-                    </span>
-                  ))}
+                <div className="flex flex-col gap-3 text-sm">
+                  {getAllPhones(contact).flatMap((p) =>
+                    p.value.split(/[;,]/).map((part, i) => {
+                      const num = part.trim();
+                      if (!num) return null;
+                      return (
+                        <div key={`phone-${p.value}-${i}`} className="flex items-center gap-2 rounded-lg py-2.5 px-3 border border-white/10 bg-white/[0.06] shadow-sm">
+                          <Phone className="w-4 h-4 shrink-0 text-white/60" />
+                          <span className="text-white">{num}</span>
+                          {p.label !== "Phone" && <span className="text-white/50 text-xs">({p.label})</span>}
+                        </div>
+                      );
+                    })
+                  ).filter(Boolean)}
+                  {getAllEmails(contact).flatMap((e) =>
+                    e.value.split(/[;,]/).map((part, i) => {
+                      const addr = part.trim();
+                      if (!addr) return null;
+                      return (
+                        <div key={`email-${e.value}-${i}`} className="flex items-center gap-2 rounded-lg py-2.5 px-3 border border-white/10 bg-white/[0.06] shadow-sm">
+                          <Mail className="w-4 h-4 shrink-0 text-white/60" />
+                          <span className="text-white truncate">{addr}</span>
+                          {e.label !== "Email" && <span className="text-white/50 text-xs shrink-0">({e.label})</span>}
+                        </div>
+                      );
+                    })
+                  ).filter(Boolean)}
                 </div>
                 {contact.source && (
                   <p className="text-sm text-white/60 mt-1">Source: {contact.source}</p>

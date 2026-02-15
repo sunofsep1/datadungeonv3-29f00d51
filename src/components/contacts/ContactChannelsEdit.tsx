@@ -182,7 +182,7 @@ export function ContactChannelsEdit({ contactId, onClose }: ContactChannelsEditP
             <div className="grid gap-2">
               <Label>Label (optional)</Label>
               <Input
-                placeholder="e.g. Work, Home"
+                placeholder="e.g. Work, Home, or person name for joint contacts"
                 value={form.label}
                 onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
               />
@@ -236,7 +236,7 @@ export function ContactChannelsEdit({ contactId, onClose }: ContactChannelsEditP
             <div className="grid gap-2">
               <Label>Label (optional)</Label>
               <Input
-                placeholder="e.g. Work, Home"
+                placeholder="e.g. Work, Home, or person name for joint contacts"
                 value={form.label}
                 onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
               />

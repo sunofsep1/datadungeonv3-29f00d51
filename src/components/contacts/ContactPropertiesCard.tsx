@@ -149,10 +149,7 @@ export function ContactPropertiesCard({
       ) : (
         <div className="text-center py-6">
           <MapPin className="w-10 h-10 mx-auto mb-2 text-white/40" />
-          <p className="text-sm text-white/60 mb-3">No properties linked</p>
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleLinkClick}>
-            <Plus className="w-4 h-4" /> Link property
-          </Button>
+          <p className="text-sm text-white/60">No properties linked. Use the button above to link one.</p>
         </div>
       )}
     </Card>

@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useContact } from "@/hooks/useContact";
 import { getPrimaryEmail } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
@@ -20,7 +19,6 @@ import { SendSmsDialog } from "./SendSmsDialog";
 import { getAllPhones } from "@/hooks/useContacts";
 import { ContactAboutPanel } from "./ContactAboutPanel";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
-import { ContactPropertiesCard } from "./ContactPropertiesCard";
 import { PropertiesTab } from "./tabs/PropertiesTab";
 import { AddressesTab } from "./tabs/AddressesTab";
 import { LinkPropertyModal } from "./modals/LinkPropertyModal";
@@ -138,49 +136,34 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                   onSendSms={(phone) => { setSmsToNumber(phone); setSmsDialogOpen(true); }}
                 />
               </div>
-              {/* Center: main content */}
+              {/* Center: single scrollable column with sections */}
               <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-                <Tabs defaultValue="about" className="h-full flex flex-col">
-                  <div className="shrink-0 px-4 pt-4 pb-2 border-b border-white/10 bg-[#1a1a1a]">
-                    <TabsList className="bg-white/5 p-0.5 rounded-lg gap-0.5 h-9">
-                      <TabsTrigger value="about" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">About</TabsTrigger>
-                      <TabsTrigger value="activities" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">Activity</TabsTrigger>
-                      <TabsTrigger value="properties" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">Properties</TabsTrigger>
-                      <TabsTrigger value="addresses" className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-white/70 rounded-md px-3 text-sm">Addresses</TabsTrigger>
-                    </TabsList>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <TabsContent value="about" className="mt-0 px-4 py-5 pb-8">
-                      <ContactAboutPanel contact={contact} />
-                    </TabsContent>
-                    <TabsContent value="activities" className="mt-0 px-4 py-5 pb-8">
-                      <ContactActivityTimeline
-                        contactId={contactId}
-                        onAddNote={() => setAddInteractionOpen(true)}
-                      />
-                    </TabsContent>
-                    <TabsContent value="properties" className="mt-0 px-4 py-5 pb-8">
-                      <PropertiesTab
-                        contactId={contactId}
-                        onLinkPropertyClick={() => setLinkPropertyOpen(true)}
-                        onViewProperty={(propertyId) => { onOpenChange(false); navigate(`/properties/${propertyId}`); }}
-                        onOpenChange={onOpenChange}
-                      />
-                    </TabsContent>
-                    <TabsContent value="addresses" className="mt-0 px-4 py-5 pb-8">
-                      <AddressesTab contactId={contactId} />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </div>
-              {/* Right: linked properties — hide on small screens to avoid cramping */}
-              <div className="hidden lg:flex w-72 shrink-0 border-l border-white/10 flex-col overflow-y-auto bg-[#242424]/50 p-4">
-                <ContactPropertiesCard
-                  contactId={contactId}
-                  onOpenChange={onOpenChange}
-                  onLinkPropertyClick={() => setLinkPropertyOpen(true)}
-                  onViewProperty={(propertyId) => { onOpenChange(false); navigate(`/properties/${propertyId}`); }}
-                />
+                <div className="flex-1 overflow-y-auto px-4 py-5 pb-8 space-y-8">
+                  <section>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">About</h3>
+                    <ContactAboutPanel contact={contact} />
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Activity</h3>
+                    <ContactActivityTimeline
+                      contactId={contactId}
+                      onAddNote={() => setAddInteractionOpen(true)}
+                    />
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Linked properties</h3>
+                    <PropertiesTab
+                      contactId={contactId}
+                      onLinkPropertyClick={() => setLinkPropertyOpen(true)}
+                      onViewProperty={(propertyId) => { onOpenChange(false); navigate(`/properties/${propertyId}`); }}
+                      onOpenChange={onOpenChange}
+                    />
+                  </section>
+                  <section>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Addresses</h3>
+                    <AddressesTab contactId={contactId} />
+                  </section>
+                </div>
               </div>
             </div>
           ) : null}
