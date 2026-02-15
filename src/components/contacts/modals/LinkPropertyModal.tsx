@@ -87,7 +87,7 @@ export function LinkPropertyModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] bg-popover border-white/10">
+      <DialogContent className="sm:max-w-[420px] bg-popover border-border">
         <DialogHeader>
           <DialogTitle>Link property to contact</DialogTitle>
         </DialogHeader>
@@ -118,7 +118,7 @@ export function LinkPropertyModal({
               </SelectContent>
             </Select>
             {availableProperties.length === 0 && (
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-muted-foreground">
                 Create properties first, or they may all be linked already.
               </p>
             )}

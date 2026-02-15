@@ -22,7 +22,7 @@ export function RecentActivityFeed() {
 
   if (isLoading) {
     return (
-      <Card className="zoho-card p-4 border-white/10">
+      <Card className="zoho-card p-4 border-border">
         <h3 className="font-semibold text-foreground mb-3">Recent activity</h3>
         <div className="space-y-2">
           <div className="h-10 bg-white/10 rounded animate-pulse" />
@@ -34,13 +34,13 @@ export function RecentActivityFeed() {
   }
 
   return (
-    <Card className="zoho-card p-4 border-white/10">
+    <Card className="zoho-card p-4 border-border">
       <h3 className="font-semibold text-foreground mb-3">Recent activity</h3>
       <div className="space-y-2 max-h-[320px] overflow-y-auto">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
-            <MessageSquare className="w-10 h-10 shrink-0 text-white/40" />
-            <p className="text-sm text-white/60 text-center">No activity yet. Log calls, notes, or interactions to see them here.</p>
+          <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-border">
+            <MessageSquare className="w-10 h-10 shrink-0 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground text-center">No activity yet. Log calls, notes, or interactions to see them here.</p>
             <p className="text-xs text-white/50">Open a contact and add an activity to get started.</p>
           </div>
         ) : (
@@ -57,12 +57,12 @@ export function RecentActivityFeed() {
                 }}
               >
                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-4 h-4 text-white/60" />
+                  <Icon className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-foreground truncate">{row.title}</p>
                   {row.description && (
-                    <p className="text-xs text-white/60 truncate">{row.description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{row.description}</p>
                   )}
                   <p className="text-xs text-white/50 mt-0.5">
                     {formatDistanceToNow(new Date(row.occurred_at), { addSuffix: true })}

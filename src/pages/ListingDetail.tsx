@@ -102,8 +102,8 @@ export default function ListingDetail() {
   if (isError) {
     return (
       <div className="animate-fade-in text-center py-12">
-        <Home className="w-12 h-12 mx-auto mb-4 text-white/60 opacity-50" />
-        <p className="font-medium text-white mb-2">Couldn&apos;t load listing</p>
+        <Home className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+        <p className="font-medium text-foreground mb-2">Couldn&apos;t load listing</p>
         <Button variant="outline" onClick={() => refetch()}>Retry</Button>
         <Button variant="ghost" onClick={() => navigate("/dashboard")}>Back</Button>
       </div>
@@ -113,7 +113,7 @@ export default function ListingDetail() {
   if (!listing) {
     return (
       <div className="animate-fade-in text-center py-12">
-        <p className="text-white/60">Listing not found</p>
+        <p className="text-muted-foreground">Listing not found</p>
         <Button variant="outline" onClick={() => navigate("/dashboard")} className="mt-4">Back</Button>
       </div>
     );
@@ -138,7 +138,7 @@ export default function ListingDetail() {
             <Home className="w-6 h-6 shrink-0" />
             {listing.address || "Listing"}
           </h1>
-          <p className="text-white/60 text-sm mt-0.5">
+          <p className="text-muted-foreground text-sm mt-0.5">
             {listing.pipeline_stage ? String(listing.pipeline_stage).replace(/-/g, " ") : "—"} · Updated {listing.updated_at ? format(new Date(listing.updated_at), "PP") : ""}
           </p>
         </div>
@@ -166,7 +166,7 @@ export default function ListingDetail() {
       </div>
 
       {/* Hero placeholder (no images in schema) */}
-      <Card className="zoho-card mb-6 border-white/10 overflow-hidden">
+      <Card className="zoho-card mb-6 border-border overflow-hidden">
         <div className="aspect-video bg-muted/30 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <Home className="w-16 h-16 mx-auto mb-2 opacity-50" />
@@ -176,50 +176,50 @@ export default function ListingDetail() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card className="zoho-card p-6 border-white/10 lg:col-span-2">
-          <h3 className="text-sm font-medium text-white/80 mb-4">Details</h3>
+        <Card className="zoho-card p-6 border-border lg:col-span-2">
+          <h3 className="text-sm font-medium text-foreground/90 mb-4">Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             {listing.price != null && (
               <div>
-                <span className="text-white/60">Price</span>
+                <span className="text-muted-foreground">Price</span>
                 <p className="font-medium">${Number(listing.price).toLocaleString()}</p>
               </div>
             )}
             {listing.property_type && (
               <div>
-                <span className="text-white/60">Type</span>
+                <span className="text-muted-foreground">Type</span>
                 <p className="font-medium capitalize">{listing.property_type}</p>
               </div>
             )}
             {listing.bedrooms != null && (
               <div>
-                <span className="text-white/60">Bedrooms</span>
+                <span className="text-muted-foreground">Bedrooms</span>
                 <p className="font-medium">{listing.bedrooms}</p>
               </div>
             )}
             {listing.bathrooms != null && (
               <div>
-                <span className="text-white/60">Bathrooms</span>
+                <span className="text-muted-foreground">Bathrooms</span>
                 <p className="font-medium">{listing.bathrooms}</p>
               </div>
             )}
             {listing.status && (
               <div>
-                <span className="text-white/60">Status</span>
+                <span className="text-muted-foreground">Status</span>
                 <p className="font-medium capitalize">{listing.status}</p>
               </div>
             )}
             {listing.notes && (
               <div className="sm:col-span-2">
-                <span className="text-white/60">Notes</span>
+                <span className="text-muted-foreground">Notes</span>
                 <p className="font-medium whitespace-pre-wrap mt-1">{listing.notes}</p>
               </div>
             )}
           </div>
         </Card>
 
-        <Card className="zoho-card p-6 border-white/10">
-          <h3 className="text-sm font-medium text-white/80 mb-4 flex items-center gap-2">
+        <Card className="zoho-card p-6 border-border">
+          <h3 className="text-sm font-medium text-foreground/90 mb-4 flex items-center gap-2">
             <User className="w-4 h-4" />
             Linked contact
           </h3>
@@ -227,7 +227,7 @@ export default function ListingDetail() {
             <div>
               <p className="font-medium text-foreground">{linkedContact.name}</p>
               {(linkedContact.email || (linkedContact as { phone?: string }).phone) && (
-                <p className="text-sm text-white/60 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {linkedContact.email ?? (linkedContact as { phone?: string }).phone}
                 </p>
               )}
@@ -236,17 +236,17 @@ export default function ListingDetail() {
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-white/50">No linked contact</p>
+            <p className="text-sm text-muted-foreground">No linked contact</p>
           )}
         </Card>
       </div>
 
-      <Card className="zoho-card p-6 border-white/10">
+      <Card className="zoho-card p-6 border-border">
         <ActivityTimeline entityType="listing" entityId={id} showAddNote={true} />
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-[#242424] border-white/10">
+        <DialogContent className="sm:max-w-[500px] bg-card border-border">
           <DialogHeader>
             <DialogTitle>Edit listing</DialogTitle>
           </DialogHeader>

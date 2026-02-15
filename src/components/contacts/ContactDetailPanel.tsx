@@ -113,20 +113,20 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-4xl overflow-hidden flex flex-col p-0 bg-[#1a1a1a] border-l border-white/10 text-white shadow-xl"
+          className="w-full sm:max-w-4xl overflow-hidden flex flex-col p-0 bg-background border-l border-border text-foreground shadow-xl"
         >
           {isLoading ? (
             <div className="p-8 flex items-center justify-center min-h-[200px]">
               <div className="animate-pulse space-y-4 w-full max-w-xs">
-                <div className="h-10 bg-white/10 rounded w-3/4" />
-                <div className="h-4 bg-white/10 rounded w-1/2" />
-                <div className="h-4 bg-white/10 rounded w-2/3" />
+                <div className="h-10 bg-muted rounded w-3/4" />
+                <div className="h-4 bg-muted rounded w-1/2" />
+                <div className="h-4 bg-muted rounded w-2/3" />
               </div>
             </div>
           ) : contact ? (
             <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
               {/* Left: key info — compact, scannable */}
-              <div className="shrink-0 w-full md:w-64 lg:w-72 border-b md:border-b-0 md:border-r border-white/10 bg-[#242424] flex flex-col">
+              <div className="shrink-0 w-full md:w-64 lg:w-72 border-b md:border-b-0 md:border-r border-border bg-card flex flex-col">
                 <ContactKeyInfoPanel
                   contact={contact}
                   lastActivity={lastActivity}
@@ -172,7 +172,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
 
       {/* Add Interaction Dialog */}
       <Dialog open={addInteractionOpen} onOpenChange={setAddInteractionOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-popover border-white/10">
+        <DialogContent className="sm:max-w-[400px] bg-popover border-border">
           <DialogHeader>
             <DialogTitle>Log Interaction</DialogTitle>
           </DialogHeader>

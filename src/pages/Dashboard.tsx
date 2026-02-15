@@ -226,11 +226,11 @@ export default function Dashboard() {
                     <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs md:text-sm text-white/60">{stat.label}</p>
-                    <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-xl md:text-2xl font-bold text-foreground">{stat.value}</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/40 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
               </div>
             </Card>
           ))
@@ -307,7 +307,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : recentContacts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
+              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-border">
                 <Users className="w-10 h-10 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground text-center">No contacts yet. Add your first contact to get started.</p>
                 <Button size="sm" className="gap-2" onClick={() => setContactDialogOpen(true)}>
@@ -346,10 +346,10 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : upcomingAppointments.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
+              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-border">
                 <Calendar className="w-10 h-10 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground text-center">No upcoming appointments.</p>
-                <Button size="sm" variant="outline" className="gap-2 border-white/20" onClick={() => setAppointmentDialogOpen(true)}>
+                <Button size="sm" variant="outline" className="gap-2 border-border" onClick={() => setAppointmentDialogOpen(true)}>
                   <Calendar className="w-4 h-4" /> Schedule
                 </Button>
               </div>
@@ -377,19 +377,19 @@ export default function Dashboard() {
           <Card className="zoho-card p-4 md:p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3 justify-items-stretch">
-              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Users className="w-4 h-4 zoho-accent shrink-0" />
                 <span className="text-sm font-medium">Add Contact</span>
               </button>
-              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Megaphone className="w-4 h-4 text-amber-400 shrink-0" />
                 <span className="text-sm font-medium">Add Lead</span>
               </button>
-              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
                 <span className="text-sm font-medium">Schedule</span>
               </button>
-              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-white/10 hover:bg-white/15 hover:scale-[1.02] border border-white/10 text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
                 <Home className="w-4 h-4 zoho-accent shrink-0" />
                 <span className="text-sm font-medium">Create Post</span>
               </button>

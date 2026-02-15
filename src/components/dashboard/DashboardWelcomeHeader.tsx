@@ -42,39 +42,23 @@ export function DashboardWelcomeHeader() {
         {/* 80s/90s LED-style digital clock */}
         <div className="inline-block">
           <div
-            className="relative overflow-hidden rounded-lg px-5 py-3"
-            style={{
-              background: "linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)",
-              boxShadow:
-                "inset 0 2px 4px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(0,0,0,0.3)",
-            }}
+            className="relative overflow-hidden rounded-lg px-5 py-3 bg-card border border-border shadow-inner"
+            style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.2)" }}
           >
             <div
-              className="font-mono text-2xl sm:text-3xl font-bold tabular-nums tracking-[0.15em]"
-              style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                color: "#4ade80",
-                textShadow:
-                  "0 0 6px #4ade80, 0 0 12px rgba(74, 222, 128, 0.6), 0 0 24px rgba(74, 222, 128, 0.3)",
-              }}
+              className="font-mono text-2xl sm:text-3xl font-bold tabular-nums tracking-[0.15em] text-teal dashboard-clock-glow"
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}
               aria-live="polite"
               aria-label={`Current time ${format(now, "h:mm:ss a")}`}
             >
               {format(now, "h:mm:ss")}
-              <span
-                className="ml-1.5 text-lg sm:text-xl font-medium opacity-90"
-                style={{ textShadow: "0 0 4px #4ade80, 0 0 8px rgba(74, 222, 128, 0.4)" }}
-              >
+              <span className="ml-1.5 text-lg sm:text-xl font-medium opacity-90">
                 {format(now, "a")}
               </span>
             </div>
             <div
-              className="mt-1 text-[10px] sm:text-xs font-medium tracking-widest uppercase"
-              style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                color: "rgba(74, 222, 128, 0.75)",
-                textShadow: "0 0 4px rgba(74, 222, 128, 0.3)",
-              }}
+              className="mt-1 text-[10px] sm:text-xs font-medium tracking-widest uppercase text-muted-foreground"
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}
             >
               {format(now, "EEEE, MMM d")}
             </div>

@@ -250,20 +250,20 @@ export default function Properties() {
     return (
       <div className="animate-fade-in">
         <PageHeader title="Properties" description="Properties and linked owners" />
-        <div className="text-center py-12 rounded-lg border border-white/10 bg-[#242424]/80 p-8 max-w-lg mx-auto mt-6">
-          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-white/60" />
-          <p className="font-medium text-white mb-2">Couldn&apos;t load properties</p>
-          <p className="text-sm text-white/70 mb-4">
+        <div className="text-center py-12 rounded-lg border border-border bg-card/80 p-8 max-w-lg mx-auto mt-6">
+          <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-muted-foreground" />
+          <p className="font-medium text-foreground mb-2">Couldn&apos;t load properties</p>
+          <p className="text-sm text-muted-foreground mb-4">
             {error instanceof Error ? error.message : "Check your connection and migrations, then retry."}
           </p>
             {isMissingTable && (
-            <p className="text-xs text-white/50 mb-4 text-left bg-white/5 rounded p-3">
+            <p className="text-xs text-muted-foreground mb-4 text-left bg-muted/50 rounded p-3">
               Run migrations so the <code className="text-[#00BCD4]">properties</code> table exists:{" "}
-              <code className="block mt-2 text-white/70">npm run db:push</code> or in Supabase Dashboard → SQL Editor run the SQL from{" "}
+              <code className="block mt-2 text-muted-foreground">npm run db:push</code> or in Supabase Dashboard → SQL Editor run the SQL from{" "}
               <code className="text-[#00BCD4]">supabase/migrations/RUN_IN_SUPABASE_DASHBOARD_properties_only.sql</code>.
             </p>
           )}
-          <Button onClick={() => refetch()} variant="outline" className="border-white/20 text-white hover:bg-white/10">
+          <Button onClick={() => refetch()} variant="outline" className="border-border text-foreground hover:bg-muted">
             Retry
           </Button>
         </div>
@@ -294,7 +294,7 @@ export default function Properties() {
                 <span className="hidden sm:inline">Add Property</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-[#242424] border-white/10 max-h-[90vh] overflow-hidden flex flex-col text-white">
+            <DialogContent className="sm:max-w-[600px] bg-card border-border max-h-[90vh] overflow-hidden flex flex-col text-foreground">
               <DialogHeader>
                 <DialogTitle>
                   {editingProperty ? "Edit Property" : "Add New Property"}
@@ -453,7 +453,7 @@ export default function Properties() {
                     {!editingProperty ? (
                       <div className="space-y-2">
                         <Label>Property Owners</Label>
-                        <div className="border border-white/10 rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
+                        <div className="border border-border rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
                           {contacts && contacts.length > 0 ? (
                             <div className="flex flex-col gap-2">
                               {contacts.map((contact) => (
@@ -481,14 +481,14 @@ export default function Properties() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-white/60">
+                            <p className="text-sm text-muted-foreground">
                               No contacts available. Create contacts first.
                             </p>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-white/60">Property owners cannot be edited after creation.</p>
+                      <p className="text-sm text-muted-foreground">Property owners cannot be edited after creation.</p>
                     )}
                   </TabsContent>
                   <TabsContent value="notes" className="space-y-4 mt-4">
@@ -506,7 +506,7 @@ export default function Properties() {
                   </TabsContent>
                 </Tabs>
               </ScrollArea>
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/10">
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -528,7 +528,7 @@ export default function Properties() {
       />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search by address..."
             className="pl-10 bg-input h-11"
@@ -541,7 +541,7 @@ export default function Properties() {
             type="single"
             value={viewMode}
             onValueChange={(v) => v && setViewMode(v as PropertyViewMode)}
-            className="border border-white/10 rounded-md p-0.5 bg-input"
+            className="border border-border rounded-md p-0.5 bg-input"
           >
             <ToggleGroupItem value="grid" aria-label="Grid view" className="gap-1.5 px-3">
               <LayoutGrid className="w-4 h-4" /> Grid
@@ -551,7 +551,7 @@ export default function Properties() {
             </ToggleGroupItem>
           </ToggleGroup>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-[160px] h-11 bg-input border-white/10">
+            <SelectTrigger className="w-[160px] h-11 bg-input border-border">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>

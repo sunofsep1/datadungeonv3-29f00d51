@@ -87,7 +87,7 @@ export default function HotLeads() {
         />
       </div>
       {hotLeads.length === 0 ? (
-        <div className="text-center py-12 text-white/60">
+        <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="mb-4">
             {!contacts?.length
@@ -118,7 +118,7 @@ export default function HotLeads() {
               return (
                 <div
                   key={contact.id}
-                  className="group flex flex-wrap items-center gap-3 p-2.5 rounded-lg border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card"
+                  className="group flex flex-wrap items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer zoho-card"
                   onClick={() => setSelectedContactId(contact.id)}
                 >
                   <AvatarCircle name={contact.name} initials={initials} />
@@ -153,7 +153,7 @@ export default function HotLeads() {
                       )}
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-white/50 flex-shrink-0" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                 </div>
               );
             })}

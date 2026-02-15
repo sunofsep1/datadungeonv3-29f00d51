@@ -72,17 +72,17 @@ export function PropertyList({
 
   if (isError) {
     return (
-      <div className="text-center py-12 rounded-lg border border-white/10 bg-[#242424]/80 p-8 max-w-lg mx-auto mt-6">
-        <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-white/60" />
-        <p className="font-medium text-white mb-2">Couldn&apos;t load properties</p>
-        <p className="text-sm text-white/70 mb-4">
+      <div className="text-center py-12 rounded-lg border border-border bg-card/80 p-8 max-w-lg mx-auto mt-6">
+        <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-muted-foreground" />
+        <p className="font-medium text-foreground mb-2">Couldn&apos;t load properties</p>
+        <p className="text-sm text-muted-foreground mb-4">
           {error?.message ?? "Check your connection and migrations, then retry."}
         </p>
         {onRetry && (
           <Button
             onClick={onRetry}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/10"
+            className="border-border text-foreground hover:bg-muted"
           >
             Retry
           </Button>
@@ -93,9 +93,9 @@ export function PropertyList({
 
   if (properties.length === 0) {
     return (
-      <div className="text-center py-12 text-white/60 mt-6 rounded-lg border border-white/10 bg-[#242424]/50 p-8">
-        <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-white/60" />
-        <p className="text-white/80 font-medium mb-1">No properties to show</p>
+      <div className="text-center py-12 text-muted-foreground mt-6 rounded-lg border border-border bg-card/50 p-8">
+        <Building2 className="w-12 h-12 mx-auto mb-4 opacity-70 text-muted-foreground" />
+        <p className="text-foreground font-medium mb-1">No properties to show</p>
         <p className="text-sm">{emptyMessage}</p>
       </div>
     );

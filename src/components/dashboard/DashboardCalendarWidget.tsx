@@ -480,7 +480,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <CalendarIcon className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-white">Calendar</h3>
+          <h3 className="text-lg font-semibold text-foreground">Calendar</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {user && (
@@ -533,38 +533,38 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
 
       {/* New booking dialog */}
       <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
-        <DialogContent className="sm:max-w-[440px] bg-[#242424] border-white/10">
+        <DialogContent className="sm:max-w-[440px] bg-card border-border">
           <DialogHeader>
             <DialogTitle>New booking</DialogTitle>
-            <DialogDescription className="text-white/60">Create an appointment from the calendar.</DialogDescription>
+            <DialogDescription className="text-muted-foreground">Create an appointment from the calendar.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 mt-2">
             <div className="space-y-1.5">
-              <Label className="text-white/90">Title *</Label>
+              <Label className="text-foreground">Title *</Label>
               <Input
                 placeholder="Appointment title"
-                className="bg-input border-white/10"
+                className="bg-input border-border"
                 value={newBooking.title}
                 onChange={(e) => setNewBooking({ ...newBooking, title: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-white/90">Date</Label>
+                <Label className="text-foreground">Date</Label>
                 <Input
                   type="date"
-                  className="bg-input border-white/10"
+                  className="bg-input border-border"
                   value={newBooking.date}
                   onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-white/90">Type</Label>
+                <Label className="text-foreground">Type</Label>
                 <Select
                   value={newBooking.type}
                   onValueChange={(v: AppointmentType) => setNewBooking({ ...newBooking, type: v })}
                 >
-                  <SelectTrigger className="bg-input border-white/10">
+                  <SelectTrigger className="bg-input border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -578,38 +578,38 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-white/90">Start time</Label>
+                <Label className="text-foreground">Start time</Label>
                 <Input
                   type="time"
-                  className="bg-input border-white/10"
+                  className="bg-input border-border"
                   value={newBooking.startTime}
                   onChange={(e) => setNewBooking({ ...newBooking, startTime: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-white/90">End time</Label>
+                <Label className="text-foreground">End time</Label>
                 <Input
                   type="time"
-                  className="bg-input border-white/10"
+                  className="bg-input border-border"
                   value={newBooking.endTime}
                   onChange={(e) => setNewBooking({ ...newBooking, endTime: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-white/90">Location</Label>
+              <Label className="text-foreground">Location</Label>
               <Input
                 placeholder="Meeting location"
-                className="bg-input border-white/10"
+                className="bg-input border-border"
                 value={newBooking.location}
                 onChange={(e) => setNewBooking({ ...newBooking, location: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-white/90">Notes</Label>
+              <Label className="text-foreground">Notes</Label>
               <Textarea
                 placeholder="Optional notes..."
-                className="bg-input border-white/10 min-h-[60px]"
+                className="bg-input border-border min-h-[60px]"
                 value={newBooking.notes}
                 onChange={(e) => setNewBooking({ ...newBooking, notes: e.target.value })}
               />
@@ -624,13 +624,13 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                     setNewBooking({ ...newBooking, syncToGoogle: checked as boolean })
                   }
                 />
-                <Label htmlFor="dashboard-sync-google" className="text-sm font-normal cursor-pointer text-white/90">
+                <Label htmlFor="dashboard-sync-google" className="text-sm font-normal cursor-pointer text-foreground">
                   Sync to Google Calendar
                   {gcalNeedsAuth && " (connect above first)"}
                 </Label>
               </div>
               {!gcalNeedsAuth && (
-                <p className="text-xs text-white/50">Saved in app and created in Google Calendar.</p>
+                <p className="text-xs text-muted-foreground">Saved in app and created in Google Calendar.</p>
               )}
             </div>
           </div>
@@ -692,14 +692,14 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
-        <h4 className="text-sm font-medium text-white">{getViewTitle()}</h4>
+        <h4 className="text-sm font-medium text-foreground">{getViewTitle()}</h4>
       </div>
 
       {/* Calendar Grid */}
       {viewMode === "month" && (
         <div className="grid grid-cols-7 gap-1 mb-4">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-            <div key={day} className="text-center text-xs font-medium text-white/60 py-2">
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               {day}
             </div>
           ))}
@@ -711,7 +711,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 type="button"
                 onClick={() => handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[60px] p-1 border border-white/10 rounded text-xs text-left transition-colors hover:bg-white/5 cursor-pointer",
+                  "min-h-[60px] p-1 border border-border rounded text-xs text-left transition-colors hover:bg-muted/50 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary",
                   !isSameMonth(day, currentDate) && "opacity-40"
                 )}
@@ -727,7 +727,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                   <EventChip key={item.id} item={item} onEdit={() => item.source === "app" && navigate(`/appointments?edit=${item.id.replace("app-", "")}`)} onDelete={() => item.source === "app" && setDeleteTarget(item.id)} onOpenGoogle={item.htmlLink ? () => window.open(item.htmlLink!) : undefined} />
                 ))}
                 {dayEvents.length > 2 && (
-                  <div className="text-[10px] text-white/60">
+                  <div className="text-[10px] text-muted-foreground">
                     +{dayEvents.length - 2} more
                   </div>
                 )}
@@ -749,7 +749,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 onClick={() => handleDayOrAdd?.(day)}
                 onKeyDown={(e) => e.key === "Enter" && handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[100px] p-2 border border-white/10 rounded text-left transition-colors hover:bg-white/5 cursor-pointer",
+                  "min-h-[100px] p-2 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary"
                 )}
               >
@@ -799,7 +799,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleDayOrAdd?.(day); }}
-                  className="mt-2 text-[10px] text-white/50 hover:text-primary transition-colors text-left"
+                  className="mt-2 text-[10px] text-muted-foreground hover:text-primary transition-colors text-left"
                 >
                   + Add booking
                 </button>
@@ -815,7 +815,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             type="button"
             onClick={() => handleDayOrAdd?.(currentDate)}
             className={cn(
-              "w-full p-4 border border-white/10 rounded text-left transition-colors hover:bg-white/5 cursor-pointer",
+              "w-full p-4 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
               isToday(currentDate) && "bg-primary/5 border-primary"
             )}
           >
@@ -829,19 +829,19 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             <button
               type="button"
               onClick={() => openNewAppointmentForSlot(currentDate)}
-              className="w-full py-3 rounded-lg border border-dashed border-white/20 text-white/60 hover:border-primary hover:text-primary hover:bg-white/5 transition-colors text-sm mb-4"
+              className="w-full py-3 rounded-lg border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-muted/50 transition-colors text-sm mb-4"
             >
               + Add booking for this day
             </button>
             {getEventsForDate(currentDate).length === 0 ? (
-              <p className="text-sm text-white/60">Click to add an appointment</p>
+              <p className="text-sm text-muted-foreground">Click to add an appointment</p>
             ) : (
               <div className="space-y-3">
                 {getEventsForDate(currentDate).map((item) => (
                   <div key={item.id} onClick={(e) => e.stopPropagation()} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-white">{item.title}</span>
+                        <span className="font-medium text-foreground">{item.title}</span>
                         <Badge variant={item.source === "google" ? "secondary" : "default"} className="text-[10px]">
                           {item.source === "google" ? "Google" : "App"}
                         </Badge>
@@ -863,12 +863,12 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                           </a>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                         <Clock className="w-3 h-3" />
                         {formatEventTime(item)}
                       </div>
                       {item.location && (
-                        <div className="flex items-center gap-2 text-xs text-white/60 mt-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                           <MapPin className="w-3 h-3" />
                           {item.location}
                         </div>
@@ -883,10 +883,10 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       )}
 
       {/* Upcoming */}
-      <div className="border-t border-white/10 pt-4">
-        <h4 className="text-sm font-medium text-white mb-3">Upcoming</h4>
+      <div className="border-t border-border pt-4">
+        <h4 className="text-sm font-medium text-foreground mb-3">Upcoming</h4>
         {upcomingItems.length === 0 ? (
-          <p className="text-sm text-white/60">No upcoming appointments or Google Calendar events</p>
+          <p className="text-sm text-muted-foreground">No upcoming appointments or Google Calendar events</p>
         ) : (
           <div className="space-y-2">
             {upcomingItems.map((item) => {
@@ -931,7 +931,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : null}
-                  <div className="text-xs text-white/60 flex-shrink-0">{dateStr}</div>
+                  <div className="text-xs text-muted-foreground flex-shrink-0">{dateStr}</div>
                 </div>
               );
             })}

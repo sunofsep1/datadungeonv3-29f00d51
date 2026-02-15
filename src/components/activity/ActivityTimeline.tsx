@@ -128,7 +128,7 @@ export function ActivityTimeline({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-white">Activity</h3>
+        <h3 className="font-semibold text-foreground">Activity</h3>
         {showAddNote && entityId && (
           <>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setNoteOpen(true)} disabled={createLog.isPending}>
@@ -178,21 +178,21 @@ export function ActivityTimeline({
           ) : (
             <div
               key={`apt-${item.data.id}`}
-              className="flex gap-3 pb-4 border-b border-white/10 last:border-0"
+              className="flex gap-3 pb-4 border-b border-border last:border-0"
             >
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <Calendar className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-white">{item.data.title}</p>
-                <p className="text-xs text-white/60">{format(new Date(item.data.date), "PPp")}</p>
-                {item.data.location && <p className="text-xs text-white/60">{item.data.location}</p>}
+                <p className="font-medium text-sm text-foreground">{item.data.title}</p>
+                <p className="text-xs text-muted-foreground">{format(new Date(item.data.date), "PPp")}</p>
+                {item.data.location && <p className="text-xs text-muted-foreground">{item.data.location}</p>}
               </div>
             </div>
           )
         )}
         {items.length === 0 && (
-          <p className="text-white/60 text-sm text-center py-6">No activity yet. Log your first interaction.</p>
+          <p className="text-muted-foreground text-sm text-center py-6">No activity yet. Log your first interaction.</p>
         )}
       </div>
     </div>
@@ -202,16 +202,16 @@ export function ActivityTimeline({
 function ActivityLogItem({ row }: { row: ActivityLogRow }) {
   const Icon = ACTIVITY_ICONS[row.activity_type] ?? FileText;
   return (
-    <div className="flex gap-3 pb-4 border-b border-white/10 last:border-0">
+    <div className="flex gap-3 pb-4 border-b border-border last:border-0">
       <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-white/60" />
+        <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-white">{row.title}</p>
-        {row.description && <p className="text-xs text-white/60 mt-0.5">{row.description}</p>}
+        <p className="font-medium text-sm text-foreground">{row.title}</p>
+        {row.description && <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>}
         <div className="flex items-center gap-2 mt-1">
-          <Clock className="w-3 h-3 text-white/60" />
-          <span className="text-xs text-white/60">
+          <Clock className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(row.occurred_at), { addSuffix: true })}
           </span>
           <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded capitalize">{row.activity_type.replace("_", " ")}</span>

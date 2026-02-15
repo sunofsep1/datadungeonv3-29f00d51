@@ -1161,14 +1161,14 @@ export default function Contacts() {
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-between text-white/80 hover:text-white hover:bg-white/10 mb-3"
+                className="w-full justify-between text-foreground/80 hover:text-foreground hover:bg-muted mb-3"
               >
                 <span className="font-medium">Filter contacts by</span>
                 <ChevronDown className={cn("h-4 w-4 transition-transform", filterPanelOpen && "rotate-180")} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="rounded-lg border border-white/10 bg-[#242424] p-4">
+              <div className="rounded-lg border border-border bg-card p-4">
                 <ContactsFilterPanel {...filterPanelProps} />
               </div>
             </CollapsibleContent>
@@ -1179,16 +1179,16 @@ export default function Contacts() {
           {/* List toolbar: view name, total, view toggle, Create, Actions, Records per page */}
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4 min-w-0">
-              <span className="font-semibold text-white truncate">My Contacts</span>
-              <span className="text-sm text-white/60 shrink-0">
+              <span className="font-semibold text-foreground truncate">My Contacts</span>
+              <span className="text-sm text-muted-foreground shrink-0">
                 Total records {filteredAndSortedContacts.length}
               </span>
-              <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
+              <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
                 <button
                   type="button"
                   aria-label="List view"
                   onClick={() => setContactView("list")}
-                  className={`rounded-md px-3 py-1.5 ${contactView === "list" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                  className={`rounded-md px-3 py-1.5 ${contactView === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <LayoutList className="h-4 w-4" />
                 </button>
@@ -1196,7 +1196,7 @@ export default function Contacts() {
                   type="button"
                   aria-label="Grid view"
                   onClick={() => setContactView("grid")}
-                  className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                  className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </button>
@@ -1204,21 +1204,21 @@ export default function Contacts() {
                   type="button"
                   aria-label="Kanban view"
                   onClick={() => setContactView("kanban")}
-                  className={`rounded-md px-3 py-1.5 ${contactView === "kanban" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                  className={`rounded-md px-3 py-1.5 ${contactView === "kanban" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <Columns className="h-4 w-4" />
                 </button>
               </div>
               <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden gap-1.5 text-white border-white/20 hover:bg-white/10">
+                  <Button variant="outline" size="sm" className="lg:hidden gap-1.5 text-foreground border-border hover:bg-muted">
                     <SlidersHorizontal className="w-4 h-4" />
                     Filters
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] bg-[#242424] border-white/10 text-white overflow-y-auto">
+                <SheetContent side="left" className="w-[280px] bg-card border-border text-foreground overflow-y-auto">
                   <SheetHeader>
-                    <SheetTitle className="text-white">Filter contacts by</SheetTitle>
+                    <SheetTitle className="text-foreground">Filter contacts by</SheetTitle>
                   </SheetHeader>
                   <div className="pt-6">
                     <ContactsFilterPanel {...filterPanelProps} />
@@ -1227,20 +1227,20 @@ export default function Contacts() {
               </Sheet>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button className="gap-2 bg-[#4A90E2] hover:bg-[#357ABD] text-white" onClick={() => handleOpenDialog()}>
+              <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => handleOpenDialog()}>
                 <Plus className="w-4 h-4" />
                 Create Contact
               </Button>
               <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-white border-white/20 hover:bg-white/10">
+                  <Button variant="outline" size="sm" className="text-foreground border-border hover:bg-muted">
                     Actions
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-1 bg-[#2c2c2c] border-white/10 text-white">
+                <PopoverContent align="end" className="w-48 p-1 bg-popover border-border text-foreground">
                   <button
                     type="button"
-                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-white/90 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
                     onClick={() => { setIsImportOpen(true); setActionsPopoverOpen(false); }}
                   >
                     <Upload className="w-4 h-4 mr-2" />
@@ -1248,7 +1248,7 @@ export default function Contacts() {
                   </button>
                   <button
                     type="button"
-                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-white/90 hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
                     onClick={() => { handleExportCSV(); setActionsPopoverOpen(false); }}
                   >
                     <Download className="w-4 h-4 mr-2" />
@@ -1257,7 +1257,7 @@ export default function Contacts() {
                 </PopoverContent>
               </Popover>
               <Select value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[100px] bg-[#2c2c2c] border-white/10 text-white">
+                <SelectTrigger className="w-[100px] bg-popover border-border text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1271,7 +1271,7 @@ export default function Contacts() {
       {/* Bulk Actions */}
       {selectedContactIds.size > 0 && (
         <div className="mb-4 p-3 zoho-card rounded-lg flex items-center justify-between">
-          <span className="text-sm text-white">
+          <span className="text-sm text-foreground">
             {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""} selected
           </span>
           <div className="flex gap-2">
@@ -1388,7 +1388,7 @@ export default function Contacts() {
       )}
 
       {filteredAndSortedContacts.length === 0 ? (
-        <div className="text-center py-16 text-white/60">
+        <div className="text-center py-16 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-6 opacity-50" />
           <p className="mb-6 text-base">
             {!contacts?.length
@@ -1412,10 +1412,10 @@ export default function Contacts() {
               {(["hot", "warm", "cold", "lead"] as const).map((status) => {
                 const columnContacts = paginatedContacts.filter((c) => (c.status ?? "lead") === status);
                 return (
-                  <div key={status} className="flex-shrink-0 w-[280px] rounded-lg border border-white/10 bg-[#242424]/80 p-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 flex items-center gap-2">
+                  <div key={status} className="flex-shrink-0 w-[280px] rounded-lg border border-border bg-card/80 p-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                       <StatusBadge variant={getStatusVariant(status)}>{status}</StatusBadge>
-                      <span className="text-white/40">({columnContacts.length})</span>
+                      <span className="text-muted-foreground">({columnContacts.length})</span>
                     </h3>
                     <div className="space-y-3">
                       {columnContacts.map((contact) => renderContactCard(contact, "kanban"))}

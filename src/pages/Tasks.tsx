@@ -84,7 +84,7 @@ export default function Tasks() {
         )}
       </div>
       {tasks.length === 0 ? (
-        <div className="text-center py-12 text-white/60">
+        <div className="text-center py-12 text-muted-foreground">
           <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="mb-4">
             {filter !== "all"
@@ -104,7 +104,7 @@ export default function Tasks() {
             return (
               <Card
                 key={apt.id}
-                className={`p-3 border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card ${isOverdue ? "border-amber-500/30" : ""}`}
+                className={`p-3 border border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer zoho-card ${isOverdue ? "border-amber-500/30" : ""}`}
                 onClick={() => navigate("/appointments")}
               >
                 <div className="flex items-center gap-3">
@@ -115,7 +115,7 @@ export default function Tasks() {
                     className="pointer-events-none"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white">{apt.title}</p>
+                    <p className="font-medium text-foreground">{apt.title}</p>
                     <p className="text-sm text-muted-foreground">
                       {format(date, "EEE, d MMM · HH:mm")}
                       {apt.location && ` · ${apt.location}`}

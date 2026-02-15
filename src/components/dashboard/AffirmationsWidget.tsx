@@ -140,8 +140,8 @@ export function AffirmationsWidget() {
   const current = affirmations[currentIndex];
 
   return (
-    <Card className="zoho-card overflow-hidden border border-white/10 shadow-lg">
-      <div className="px-5 py-4 border-b border-white/10 bg-white/[0.02]">
+    <Card className="zoho-card overflow-hidden border border-border shadow-lg">
+      <div className="px-5 py-4 border-b border-border bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20">
@@ -155,7 +155,7 @@ export function AffirmationsWidget() {
             </div>
           </div>
           {!showAll && !isEmpty && (
-            <Button size="sm" variant="outline" className="gap-2 border-white/20" onClick={() => setShowAll(true)}>
+            <Button size="sm" variant="outline" className="gap-2 border-border" onClick={() => setShowAll(true)}>
               <List className="h-4 w-4" />
               Manage
             </Button>
@@ -171,7 +171,7 @@ export function AffirmationsWidget() {
 
       <div className="p-4">
         {isEmpty ? (
-          <div className="rounded-xl border border-dashed border-white/20 bg-white/[0.02] p-8 text-center">
+          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
             <p className="text-muted-foreground text-sm mb-4">Add a daily affirmation to stay focused.</p>
             <Button size="sm" className="gap-2" onClick={handleAdd}>
               <Plus className="h-4 w-4" />
@@ -179,14 +179,14 @@ export function AffirmationsWidget() {
             </Button>
           </div>
         ) : !showAll ? (
-          <div className="rounded-xl border border-white/10 bg-gradient-to-b from-rose-500/10 to-transparent p-5">
+          <div className="rounded-xl border border-border bg-gradient-to-b from-rose-500/10 to-transparent p-5">
             {isEditing ? (
               <div className="flex gap-2">
                 <Input
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
-                  className="bg-background/80 flex-1 border-white/20"
+                  className="bg-background/80 flex-1 border-border"
                   autoFocus
                   aria-label="Edit affirmation"
                 />
@@ -214,7 +214,7 @@ export function AffirmationsWidget() {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-9 w-9 border-white/20"
+                    className="h-9 w-9 border-border"
                     onClick={handlePrev}
                     disabled={affirmations.length <= 1}
                     aria-label="Previous affirmation"
@@ -227,7 +227,7 @@ export function AffirmationsWidget() {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-9 w-9 border-white/20"
+                    className="h-9 w-9 border-border"
                     onClick={handleNext}
                     disabled={affirmations.length <= 1}
                     aria-label="Next affirmation"
@@ -247,7 +247,7 @@ export function AffirmationsWidget() {
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, index)}
                 className={cn(
-                  "flex items-center gap-2 p-3 rounded-lg border bg-white/[0.03] border-white/10 transition-all",
+                  "flex items-center gap-2 p-3 rounded-lg border bg-muted/30 border-border transition-all",
                   draggedIndex === index && "opacity-50",
                   dropTargetIndex === index && "ring-2 ring-primary/50 ring-offset-2 ring-offset-card"
                 )}
@@ -274,7 +274,7 @@ export function AffirmationsWidget() {
                 </Button>
               </div>
             ))}
-            <Button size="sm" variant="outline" className="w-full mt-2 gap-2 border-white/20" onClick={handleAdd}>
+            <Button size="sm" variant="outline" className="w-full mt-2 gap-2 border-border" onClick={handleAdd}>
               <Plus className="h-4 w-4" />
               Add affirmation
             </Button>

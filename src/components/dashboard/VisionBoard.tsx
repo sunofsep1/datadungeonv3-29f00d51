@@ -174,8 +174,8 @@ export function VisionBoard() {
   };
 
   return (
-    <Card className="zoho-card overflow-hidden border border-white/10 shadow-lg">
-      <div className="px-5 py-4 border-b border-white/10 bg-white/[0.02]">
+    <Card className="zoho-card overflow-hidden border border-border shadow-lg">
+      <div className="px-5 py-4 border-b border-border bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20">
@@ -186,7 +186,7 @@ export function VisionBoard() {
               <p className="text-xs text-muted-foreground mt-0.5">Goals and milestones · Drag grip to reorder</p>
             </div>
           </div>
-          <Button size="sm" variant="outline" className="gap-2 border-white/20" onClick={openAddDialog}>
+          <Button size="sm" variant="outline" className="gap-2 border-border" onClick={openAddDialog}>
             <Plus className="h-4 w-4" />
             Add vision
           </Button>
@@ -222,7 +222,7 @@ export function VisionBoard() {
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                    <ImageIcon className="w-12 h-12 text-white/30" />
+                    <ImageIcon className="w-12 h-12 text-foreground/30" />
                   </div>
                 )}
                 {/* Gradient overlay for text */}
@@ -236,7 +236,7 @@ export function VisionBoard() {
                       handleDragStart(e, card.id);
                     }}
                     onDragEnd={handleDragEnd}
-                    className="flex items-center justify-center h-8 w-8 rounded-lg bg-white/20 text-white/90 cursor-grab active:cursor-grabbing touch-none"
+                    className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted text-foreground cursor-grab active:cursor-grabbing touch-none"
                     aria-label="Drag to reorder"
                   >
                     <GripVertical className="h-4 w-4 pointer-events-none" />
@@ -269,7 +269,7 @@ export function VisionBoard() {
                   </div>
                 </div>
                 {/* Title and date over image */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-foreground">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Target className="h-4 w-4 text-primary shrink-0 opacity-90" />
                     <p className="font-semibold text-sm leading-tight line-clamp-2 drop-shadow-sm">
@@ -277,7 +277,7 @@ export function VisionBoard() {
                     </p>
                   </div>
                   {card.targetDate && (
-                    <div className="flex items-center gap-1.5 text-xs text-white/80">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5 shrink-0" />
                       <span>{new Date(card.targetDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
                     </div>
@@ -296,7 +296,7 @@ export function VisionBoard() {
         </div>
 
         {cards.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02]">
+          <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-border bg-muted/30">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
               <Target className="h-7 w-7 text-primary" />
             </div>
@@ -304,7 +304,7 @@ export function VisionBoard() {
             <p className="text-xs text-muted-foreground text-center max-w-[240px] mb-4">
               Add goals with images and target dates to keep them front of mind.
             </p>
-            <Button variant="outline" className="gap-2 border-white/20" onClick={openAddDialog}>
+            <Button variant="outline" className="gap-2 border-border" onClick={openAddDialog}>
               <Plus className="h-4 w-4" />
               Add your first vision
             </Button>
@@ -313,7 +313,7 @@ export function VisionBoard() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[440px] bg-[#242424] border-white/10 shadow-2xl" aria-describedby={undefined}>
+        <DialogContent className="sm:max-w-[440px] bg-card border-border shadow-2xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="text-lg">
               {editingCard ? "Edit vision" : "Add vision"}
@@ -324,7 +324,7 @@ export function VisionBoard() {
               <Label className="text-foreground">Vision / goal *</Label>
               <Input
                 placeholder="What do you want to achieve?"
-                className="bg-input border-white/10"
+                className="bg-input border-border"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
@@ -343,7 +343,7 @@ export function VisionBoard() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-white/20"
+                  className="gap-2 border-border"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="h-4 w-4" />
@@ -362,7 +362,7 @@ export function VisionBoard() {
               </div>
               <Input
                 placeholder="Or paste image URL"
-                className="bg-input border-white/10 mt-1"
+                className="bg-input border-border mt-1"
                 value={formData.imageUrl.startsWith("data:") ? "" : formData.imageUrl}
                 onChange={(e) => {
                   setFormData({ ...formData, imageUrl: e.target.value });
@@ -378,7 +378,7 @@ export function VisionBoard() {
               <Label className="text-foreground">Target date</Label>
               <Input
                 type="date"
-                className="bg-input border-white/10"
+                className="bg-input border-border"
                 value={formData.targetDate}
                 onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
               />
@@ -394,7 +394,7 @@ export function VisionBoard() {
                     className={cn(
                       "h-9 w-9 rounded-lg border-2 bg-gradient-to-b transition-all",
                       color,
-                      formData.color === color ? "ring-2 ring-primary ring-offset-2 ring-offset-[#242424]" : "opacity-80 hover:opacity-100"
+                      formData.color === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "opacity-80 hover:opacity-100"
                     )}
                     aria-label="Select color"
                   />
@@ -402,8 +402,8 @@ export function VisionBoard() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-white/20">
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-border">
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={!formData.title.trim()}>

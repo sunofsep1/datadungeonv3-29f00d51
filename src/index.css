@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Prevent white flash: app shell stays dark so dashboard never shows white */
+/* Base: dark default so no white flash before theme loads */
 html {
   background-color: hsl(222 47% 6%);
 }
@@ -12,6 +12,13 @@ body {
 #root {
   min-height: 100vh;
   background-color: hsl(222 47% 6%) !important;
+}
+
+/* Light theme: root background so it's not left dark */
+html.light,
+html.light body,
+html.light #root {
+  background-color: #ffffff !important;
 }
 
 /* Theme root background overrides */
@@ -618,6 +625,11 @@ html.theme-high-contrast #root {
   }
 }
 
+/* Dashboard clock: theme-aware glow (dark themes only) */
+html:not(.light) .dashboard-clock-glow {
+  text-shadow: 0 0 6px hsl(var(--teal) / 0.8), 0 0 12px hsl(var(--teal) / 0.4);
+}
+
 /* Density: compact reduces spacing */
 html.density-compact {
   --content-padding: 0.75rem;
@@ -809,21 +821,21 @@ html.density-compact [data-slot="row"] {
     background-color: rgba(255, 213, 0, 0.2) !important;
   }
 
-  /* Zoho dialog: readable labels and inputs in dark dialogs */
+  /* Zoho dialog: theme-aware labels and inputs */
   .zoho-dialog label,
   .zoho-dialog [data-slot="label"] {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: hsl(var(--foreground)) !important;
   }
   .zoho-dialog input,
   .zoho-dialog textarea,
   .zoho-dialog select {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: #fff !important;
+    background-color: hsl(var(--input)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
   }
   .zoho-dialog input::placeholder,
   .zoho-dialog textarea::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: hsl(var(--muted-foreground));
   }
 
   .zoho-card.stat-card,

@@ -107,13 +107,13 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
   return (
     <div className="flex flex-col h-full">
       {/* Hero: avatar + name + status */}
-      <div className="p-4 pb-3 border-b border-white/10">
+      <div className="p-4 pb-3 border-b border-border">
         <div className="flex flex-col items-center text-center">
           <AvatarCircle
             name={contact.name}
             size="lg"
             initials={getInitials(contact.first_name, contact.last_name, contact.name)}
-            className="ring-2 ring-white/10 ring-offset-2 ring-offset-[#242424]"
+            className="ring-2 ring-border ring-offset-2 ring-offset-background"
           />
           <h2 className="text-lg font-semibold text-foreground mt-3 line-clamp-2 tracking-tight">
             {contact.name}
@@ -156,12 +156,12 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                           const v = part.trim();
                           if (!v) return null;
                           return item.type === "email" ? (
-                            <li key={`email-${item.value}-${i}`} className="rounded-lg border border-white/10 bg-white/[0.06] shadow-sm overflow-hidden">
+                            <li key={`email-${item.value}-${i}`} className="rounded-lg border border-border bg-muted/50 shadow-sm overflow-hidden">
                               <a
                                 href={`mailto:${v}`}
                                 className={cn(
                                   "flex items-center gap-2 p-2.5 transition-colors block",
-                                  "text-foreground hover:bg-white/10 hover:text-foreground"
+                                  "text-foreground hover:bg-muted hover:text-foreground"
                                 )}
                               >
                                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
@@ -174,12 +174,12 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                               </a>
                             </li>
                           ) : (
-                            <li key={`phone-${item.value}-${i}`} className="rounded-lg border border-white/10 bg-white/[0.06] shadow-sm overflow-hidden">
+                            <li key={`phone-${item.value}-${i}`} className="rounded-lg border border-border bg-muted/50 shadow-sm overflow-hidden">
                               <a
                                 href={`tel:${v}`}
                                 className={cn(
                                   "flex items-center gap-2 p-2.5 transition-colors block",
-                                  "text-foreground hover:bg-white/10 hover:text-foreground"
+                                  "text-foreground hover:bg-muted hover:text-foreground"
                                 )}
                               >
                                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
@@ -228,7 +228,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
               </li>
             ) : (
               <li className="flex items-center gap-2 rounded-lg p-2 -mx-1 text-muted-foreground">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/50">
                   <Clock className="w-3.5 h-3.5" />
                 </span>
                 <span className="text-sm">No activity yet</span>
@@ -258,7 +258,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                 <Badge
                   key={t}
                   variant="secondary"
-                  className="text-xs font-normal bg-white/10 text-foreground/90 border-white/10 hover:bg-white/15"
+                  className="text-xs font-normal bg-muted text-foreground/90 border-border hover:bg-muted/80"
                 >
                   {t}
                 </Badge>
@@ -269,14 +269,14 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
       </div>
 
       {/* Actions — compact sticky footer */}
-      <div className="shrink-0 p-3 pt-2 border-t border-white/10 bg-[#1e1e1e]/80 space-y-2">
+      <div className="shrink-0 p-3 pt-2 border-t border-border bg-card/95 space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {phones.length > 0 &&
             (phones.length === 1 ? (
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 border-white/20 text-foreground hover:bg-white/10 shrink-0"
+                className="h-8 w-8 border-border text-foreground hover:bg-muted shrink-0"
                 onClick={() => window.open(`tel:${phones[0].value}`)}
                 title="Call"
               >
@@ -288,7 +288,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 border-white/20 text-foreground hover:bg-white/10 shrink-0"
+                    className="h-8 w-8 border-border text-foreground hover:bg-muted shrink-0"
                     title="Call"
                   >
                     <Phone className="w-3.5 h-3.5" />
@@ -307,7 +307,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8 border-white/20 text-foreground hover:bg-white/10 shrink-0"
+              className="h-8 w-8 border-border text-foreground hover:bg-muted shrink-0"
               onClick={onSendEmail ?? (() => window.open(`mailto:${primaryEmail}`))}
               title="Email"
             >
@@ -319,7 +319,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 border-white/20 text-foreground hover:bg-white/10 shrink-0"
+                className="h-8 w-8 border-border text-foreground hover:bg-muted shrink-0"
                 onClick={() => onSendSms(phones[0].value)}
                 title="Send SMS"
               >
@@ -331,7 +331,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 border-white/20 text-foreground hover:bg-white/10 shrink-0"
+                    className="h-8 w-8 border-border text-foreground hover:bg-muted shrink-0"
                     title="Send SMS"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
@@ -351,7 +351,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 gap-1.5 border-white/20 text-foreground hover:bg-white/10 h-8 text-xs"
+            className="flex-1 gap-1.5 border-border text-foreground hover:bg-muted h-8 text-xs"
             onClick={onAddNote}
           >
             <StickyNote className="w-3.5 h-3.5" /> Note

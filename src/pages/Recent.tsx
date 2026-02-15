@@ -73,7 +73,7 @@ export default function Recent() {
         description="Recent contacts and appointments"
       />
       {recentItems.length === 0 ? (
-        <div className="text-center py-12 text-white/60">
+        <div className="text-center py-12 text-muted-foreground">
           <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="mb-4">No recent activity yet.</p>
           <Button variant="default" onClick={() => navigate("/contacts")}>
@@ -85,7 +85,7 @@ export default function Recent() {
           {recentItems.map((item) => (
             <Card
               key={item.id}
-              className="p-3 border border-white/10 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer zoho-card"
+              className="p-3 border border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer zoho-card"
               onClick={() => navigate(item.link)}
             >
               <div className="flex items-start gap-3">
@@ -97,7 +97,7 @@ export default function Recent() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white">{item.title}</p>
+                  <p className="font-medium text-foreground">{item.title}</p>
                   <p className="text-sm text-muted-foreground">{item.subtitle}</p>
                 </div>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">

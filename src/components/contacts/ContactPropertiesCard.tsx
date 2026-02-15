@@ -98,9 +98,9 @@ export function ContactPropertiesCard({
   };
 
   return (
-    <Card className="zoho-card p-4 border-white/10">
+    <Card className="zoho-card p-4 border-border">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-white flex items-center gap-2">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Building2 className="w-4 h-4" />
           Properties
         </h3>
@@ -115,21 +115,21 @@ export function ContactPropertiesCard({
             if (!property) return null;
             const addr = formatPropertyAddress(property);
             return (
-              <div key={link.id} className="rounded-lg border border-white/10 p-3 space-y-2">
+              <div key={link.id} className="rounded-lg border border-border p-3 space-y-2">
                 <button
                   type="button"
                   onClick={() => handleView(property.id)}
-                  className="font-medium text-sm text-white hover:underline text-left block w-full"
+                  className="font-medium text-sm text-foreground hover:underline text-left block w-full"
                 >
                   {addr}
                 </button>
-                <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/60">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   {property.property_type && <Badge variant="secondary" className="text-xs">{property.property_type}</Badge>}
                   {property.bedrooms != null && <span>{property.bedrooms} bed</span>}
                   {property.bathrooms != null && <span>{property.bathrooms} bath</span>}
                 </div>
                 {property.price != null && property.price > 0 && (
-                  <p className="text-sm font-semibold text-white">${Number(property.price).toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-foreground">${Number(property.price).toLocaleString()}</p>
                 )}
                 {link.role && <Badge variant="outline" className="text-xs capitalize">{link.role}</Badge>}
                 <div className="flex gap-2 pt-1">
@@ -148,8 +148,8 @@ export function ContactPropertiesCard({
         </div>
       ) : (
         <div className="text-center py-6">
-          <MapPin className="w-10 h-10 mx-auto mb-2 text-white/40" />
-          <p className="text-sm text-white/60">No properties linked. Use the button above to link one.</p>
+          <MapPin className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No properties linked. Use the button above to link one.</p>
         </div>
       )}
     </Card>
