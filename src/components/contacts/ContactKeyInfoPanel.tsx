@@ -118,7 +118,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
           <h2 className="text-lg font-semibold text-foreground mt-3 line-clamp-2 tracking-tight">
             {contact.name}
           </h2>
-          <StatusBadge variant={getStatusVariant(contact.status)} className="mt-2 max-w-full min-w-0 truncate" title={contact.status || "lead"}>
+          <StatusBadge variant={getStatusVariant(contact.status)} className="mt-2 max-w-full min-w-0 truncate">
             <span className="truncate block">{contact.status || "lead"}</span>
           </StatusBadge>
           {contact.source && (

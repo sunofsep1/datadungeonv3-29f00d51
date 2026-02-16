@@ -475,12 +475,11 @@ export default function Contacts() {
           source: formData.source || null,
           notes: formData.notes || null,
           status: formData.status,
-          category: (formData.category as string) || null,
+          pipeline_stage: formData.pipeline_stage || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
           pain_points: formData.pain_points || null,
           pleasure_points: formData.pleasure_points || null,
-          pipeline_stage: formData.pipeline_stage || null,
           current_situation_notes: formData.current_situation_notes || null,
           // Store address directly on contact
           address_line1: formData.address_line1?.trim() || null,
@@ -513,12 +512,11 @@ export default function Contacts() {
           source: formData.source || null,
           notes: formData.notes || null,
           status: formData.status,
-          category: (formData.category as string) || null,
+          pipeline_stage: formData.pipeline_stage || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
           pain_points: formData.pain_points || null,
           pleasure_points: formData.pleasure_points || null,
-          pipeline_stage: formData.pipeline_stage || null,
           current_situation_notes: formData.current_situation_notes || null,
           // Store address directly on contact
           address_line1: formData.address_line1?.trim() || null,
@@ -1494,7 +1492,7 @@ export default function Contacts() {
                         const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
                         try {
                           for (const c of toUpdate) {
-                            await updateContact.mutateAsync({ id: c.id, category: cat.value });
+                            await updateContact.mutateAsync({ id: c.id, status: cat.value });
                           }
                           toast({ title: "Category set", description: `Set ${toUpdate.length} contact(s) to ${cat.label}` });
                           setSelectedContactIds(new Set());
@@ -1514,7 +1512,7 @@ export default function Contacts() {
                       const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
                       try {
                         for (const c of toUpdate) {
-                          await updateContact.mutateAsync({ id: c.id, category: null });
+                          await updateContact.mutateAsync({ id: c.id, status: null });
                         }
                         toast({ title: "Category cleared", description: `Cleared category for ${toUpdate.length} contact(s)` });
                         setSelectedContactIds(new Set());
