@@ -847,8 +847,8 @@ export function EnhancedCalendarWidget() {
           
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddAppointment} disabled={createAppointment.isPending}>
-              {createAppointment.isPending ? "Creating..." : "Add Appointment"}
+            <Button onClick={handleAddAppointment} disabled={createAppointmentWithGcal.isPending}>
+              {createAppointmentWithGcal.isPending ? "Creating..." : "Add Appointment"}
             </Button>
           </div>
         </DialogContent>

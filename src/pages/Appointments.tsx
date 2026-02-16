@@ -579,9 +579,9 @@ export default function Appointments() {
                 </Button>
                 <Button
                   onClick={handleSaveAppointment}
-                  disabled={createAppointment.isPending || updateAppointment.isPending}
+                  disabled={createAppointmentWithGcal.isPending || updateAppointment.isPending}
                 >
-                  {(createAppointment.isPending || updateAppointment.isPending)
+                  {(createAppointmentWithGcal.isPending || updateAppointment.isPending)
                     ? "Saving..."
                     : editingAppointment
                       ? "Update"
