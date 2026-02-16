@@ -64,9 +64,19 @@ export function DashboardWelcomeHeader() {
             </div>
           </div>
         </div>
-        <h1 className="text-lg sm:text-xl font-semibold text-foreground mt-2">
-          {firstName ? `${greeting}, ${displayName}!` : `${greeting}!`}
-        </h1>
+        <p
+          className="mt-2.5 text-[15px] sm:text-base font-normal tracking-tight text-muted-foreground/90"
+          style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
+          aria-label={firstName ? `${greeting}, ${displayName}` : greeting}
+        >
+          {firstName ? (
+            <>
+              <span className="text-foreground/95">{greeting}</span>, {displayName}!
+            </>
+          ) : (
+            `${greeting}!`
+          )}
+        </p>
       </div>
     </div>
   );
