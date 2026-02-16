@@ -1,25 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useRef } from "react";
-import { Plus, Target, Calendar, Pencil, Trash2, Sparkles, ImageIcon, Upload, GripVertical } from "lucide-react";
+import { Plus, Target, Calendar, Pencil, Trash2, Sparkles, ImageIcon, Upload, GripVertical, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const DRAG_DATA_KEY = "vision-card-id";
-
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-
-const STORAGE_KEY = "datadungeon-vision-board";
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 interface VisionCard {
   id: string;
   title: string;
   color: string;
-  targetDate: string;
-  imageUrl?: string;
+  target_date: string | null;
+  image_url: string | null;
+  sort_order: number;
 }
 
 const COLORS = [
@@ -31,66 +31,114 @@ const COLORS = [
   "from-rose-500/30 to-rose-500/5 border-rose-500/40",
 ];
 
-const DEFAULT_CARDS: VisionCard[] = [
-  { id: "1", title: "Close 12 Deals This Year", color: COLORS[0], targetDate: "2026-12-31" },
-  { id: "2", title: "Build $5M Portfolio", color: COLORS[1], targetDate: "2027-06-30" },
-];
-
-function loadCards(): VisionCard[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as VisionCard[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_CARDS;
-}
-
-function saveCards(cards: VisionCard[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-  } catch {
-    // ignore
-  }
-}
-
 function formatMaxSize(): string {
   const mb = MAX_IMAGE_SIZE_BYTES / (1024 * 1024);
   return mb >= 1 ? `${mb}MB` : `${MAX_IMAGE_SIZE_BYTES / 1024}KB`;
 }
 
 export function VisionBoard() {
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [cards, setCards] = useState<VisionCard[]>(() => loadCards());
+  const [cards, setCards] = useState<VisionCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<VisionCard | null>(null);
   const [formData, setFormData] = useState({ title: "", color: COLORS[0], targetDate: "", imageUrl: "" });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
-  useEffect(() => {
-    saveCards(cards);
-  }, [cards]);
+  const fetchCards = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("vision_board_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("sort_order", { ascending: true });
 
-  const handleSave = () => {
-    if (!formData.title.trim()) return;
-
-    const payload = {
-      ...formData,
-      imageUrl: formData.imageUrl.trim() || undefined,
-    };
-    if (editingCard) {
-      setCards(cards.map((c) => (c.id === editingCard.id ? { ...c, ...payload } : c)));
-    } else {
-      setCards([...cards, { id: Date.now().toString(), ...payload }]);
+    if (error) {
+      console.error("Failed to fetch vision board:", error);
+      return;
     }
+    setCards(data ?? []);
+    setIsLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("vision-board").upload(path, file);
+    if (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from("vision-board").getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
+  const handleSave = async () => {
+    if (!formData.title.trim() || !user) return;
+    setIsSaving(true);
+
+    let imageUrl = formData.imageUrl.trim() || null;
+
+    // If user selected a file, upload it
+    if (selectedFile) {
+      const uploaded = await uploadImage(selectedFile);
+      if (uploaded) imageUrl = uploaded;
+      else {
+        setIsSaving(false);
+        return;
+      }
+    }
+
+    if (editingCard) {
+      const { error } = await supabase
+        .from("vision_board_items")
+        .update({
+          title: formData.title.trim(),
+          color: formData.color,
+          target_date: formData.targetDate || null,
+          image_url: imageUrl,
+        })
+        .eq("id", editingCard.id);
+
+      if (error) {
+        toast.error("Failed to update vision card");
+        console.error(error);
+      }
+    } else {
+      const { error } = await supabase
+        .from("vision_board_items")
+        .insert({
+          user_id: user.id,
+          title: formData.title.trim(),
+          color: formData.color,
+          target_date: formData.targetDate || null,
+          image_url: imageUrl,
+          sort_order: cards.length,
+        });
+
+      if (error) {
+        toast.error("Failed to add vision card");
+        console.error(error);
+      }
+    }
+
+    setIsSaving(false);
     setIsDialogOpen(false);
     setEditingCard(null);
+    setSelectedFile(null);
     setFormData({ title: "", color: COLORS[0], targetDate: "", imageUrl: "" });
+    fetchCards();
   };
 
   const handleEdit = (card: VisionCard) => {
@@ -98,14 +146,20 @@ export function VisionBoard() {
     setFormData({
       title: card.title,
       color: card.color,
-      targetDate: card.targetDate,
-      imageUrl: card.imageUrl || "",
+      targetDate: card.target_date ?? "",
+      imageUrl: card.image_url ?? "",
     });
+    setSelectedFile(null);
     setImageError(null);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("vision_board_items").delete().eq("id", id);
+    if (error) {
+      toast.error("Failed to delete vision card");
+      return;
+    }
     setCards(cards.filter((c) => c.id !== id));
   };
 
@@ -113,7 +167,7 @@ export function VisionBoard() {
     setDraggedId(cardId);
     e.dataTransfer.setData(DRAG_DATA_KEY, cardId);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", ""); // required for some browsers
+    e.dataTransfer.setData("text/plain", "");
   };
 
   const handleDragEnd = () => {
@@ -131,7 +185,7 @@ export function VisionBoard() {
     setDropTargetId(null);
   };
 
-  const handleDrop = (e: React.DragEvent, dropTargetIdParam: string) => {
+  const handleDrop = async (e: React.DragEvent, dropTargetIdParam: string) => {
     e.preventDefault();
     setDropTargetId(null);
     const sourceId = e.dataTransfer.getData(DRAG_DATA_KEY);
@@ -143,11 +197,18 @@ export function VisionBoard() {
     const [removed] = next.splice(fromIndex, 1);
     next.splice(toIndex, 0, removed);
     setCards(next);
+
+    // Update sort_order in DB
+    const updates = next.map((card, i) =>
+      supabase.from("vision_board_items").update({ sort_order: i }).eq("id", card.id)
+    );
+    await Promise.all(updates);
   };
 
   const openAddDialog = () => {
     setEditingCard(null);
     setFormData({ title: "", color: COLORS[0], targetDate: "", imageUrl: "" });
+    setSelectedFile(null);
     setImageError(null);
     setIsDialogOpen(true);
   };
@@ -164,10 +225,11 @@ export function VisionBoard() {
       setImageError(`Image is too large. Max size is ${formatMaxSize()}.`);
       return;
     }
+    setSelectedFile(file);
+    // Show preview
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+      setFormData((prev) => ({ ...prev, imageUrl: reader.result as string }));
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -194,108 +256,109 @@ export function VisionBoard() {
       </div>
 
       <div className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {cards.map((card) => (
-            <div
-              key={card.id}
-              onDragOver={(e) => handleDragOver(e, card.id)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, card.id)}
-              className={cn(
-                "group relative rounded-xl border bg-gradient-to-b overflow-hidden",
-                "shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5",
-                draggedId === card.id && "opacity-50 scale-[0.98]",
-                dropTargetId === card.id && "ring-2 ring-primary ring-offset-2 ring-offset-card",
-                card.color
-              )}
-            >
-              {/* Image or placeholder */}
-              <div className="aspect-[4/3] w-full relative overflow-hidden">
-                {card.imageUrl ? (
-                  <img
-                    src={card.imageUrl}
-                    alt=""
-                    className="absolute inset-0 w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                    <ImageIcon className="w-12 h-12 text-foreground/30" />
-                  </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {cards.map((card) => (
+              <div
+                key={card.id}
+                onDragOver={(e) => handleDragOver(e, card.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, card.id)}
+                className={cn(
+                  "group relative rounded-xl border bg-gradient-to-b overflow-hidden",
+                  "shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5",
+                  draggedId === card.id && "opacity-50 scale-[0.98]",
+                  dropTargetId === card.id && "ring-2 ring-primary ring-offset-2 ring-offset-card",
+                  card.color
                 )}
-                {/* Gradient overlay for text */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                {/* Drag handle + actions on hover */}
-                <div className="absolute top-3 left-3 right-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.stopPropagation();
-                      handleDragStart(e, card.id);
-                    }}
-                    onDragEnd={handleDragEnd}
-                    className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted text-foreground cursor-grab active:cursor-grabbing touch-none"
-                    aria-label="Drag to reorder"
-                  >
-                    <GripVertical className="h-4 w-4 pointer-events-none" />
-                  </div>
-                  <div className="flex gap-1.5">
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg bg-white/90 hover:bg-white text-foreground shadow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(card);
-                    }}
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg bg-white/90 hover:bg-destructive/20 text-destructive shadow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(card.id);
-                    }}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                  </div>
-                </div>
-                {/* Title and date over image */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-foreground">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Target className="h-4 w-4 text-primary shrink-0 opacity-90" />
-                    <p className="font-semibold text-sm leading-tight line-clamp-2 drop-shadow-sm">
-                      {card.title}
-                    </p>
-                  </div>
-                  {card.targetDate && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      <span>{new Date(card.targetDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
+              >
+                <div className="aspect-[4/3] w-full relative overflow-hidden">
+                  {card.image_url ? (
+                    <img
+                      src={card.image_url}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                      <ImageIcon className="w-12 h-12 text-foreground/30" />
                     </div>
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <div
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        handleDragStart(e, card.id);
+                      }}
+                      onDragEnd={handleDragEnd}
+                      className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted text-foreground cursor-grab active:cursor-grabbing touch-none"
+                      aria-label="Drag to reorder"
+                    >
+                      <GripVertical className="h-4 w-4 pointer-events-none" />
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-lg bg-white/90 hover:bg-white text-foreground shadow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(card);
+                        }}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-lg bg-white/90 hover:bg-destructive/20 text-destructive shadow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(card.id);
+                        }}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-4 text-foreground">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Target className="h-4 w-4 text-primary shrink-0 opacity-90" />
+                      <p className="font-semibold text-sm leading-tight line-clamp-2 drop-shadow-sm">
+                        {card.title}
+                      </p>
+                    </div>
+                    {card.target_date && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5 shrink-0" />
+                        <span>{new Date(card.target_date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="absolute inset-0 z-[1]"
+                  onClick={() => handleEdit(card)}
+                  aria-label={`Edit ${card.title}`}
+                />
               </div>
-              {/* Click overlay to edit */}
-              <button
-                type="button"
-                className="absolute inset-0 z-[1]"
-                onClick={() => handleEdit(card)}
-                aria-label={`Edit ${card.title}`}
-              />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {cards.length === 0 && (
+        {!isLoading && cards.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-border bg-muted/30">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
               <Target className="h-7 w-7 text-primary" />
@@ -349,12 +412,15 @@ export function VisionBoard() {
                   <Upload className="h-4 w-4" />
                   Choose file
                 </Button>
-                {formData.imageUrl && (
+                {(formData.imageUrl || selectedFile) && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                    onClick={() => {
+                      setFormData({ ...formData, imageUrl: "" });
+                      setSelectedFile(null);
+                    }}
                   >
                     Clear image
                   </Button>
@@ -366,11 +432,12 @@ export function VisionBoard() {
                 value={formData.imageUrl.startsWith("data:") ? "" : formData.imageUrl}
                 onChange={(e) => {
                   setFormData({ ...formData, imageUrl: e.target.value });
+                  setSelectedFile(null);
                   setImageError(null);
                 }}
               />
-              {formData.imageUrl && formData.imageUrl.startsWith("data:") && (
-                <p className="text-xs text-muted-foreground">Image loaded from file.</p>
+              {selectedFile && (
+                <p className="text-xs text-muted-foreground">Image loaded from file: {selectedFile.name}</p>
               )}
               {imageError && <p className="text-xs text-destructive">{imageError}</p>}
             </div>
@@ -406,7 +473,8 @@ export function VisionBoard() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-border">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!formData.title.trim()}>
+            <Button onClick={handleSave} disabled={!formData.title.trim() || isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {editingCard ? "Update" : "Add"}
             </Button>
           </div>
