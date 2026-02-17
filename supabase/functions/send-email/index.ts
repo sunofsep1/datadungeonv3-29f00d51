@@ -56,6 +56,14 @@ Deno.serve(async (req) => {
 
     const userEmail = data.claims.email as string | undefined;
 
+    // Sanitize HTML: strip script tags, event handlers, javascript: URIs
+    const sanitize = (h: string): string =>
+      h
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/\bon\w+\s*=\s*"[^"]*"/gi, "")
+        .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
+        .replace(/javascript\s*:/gi, "");
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -66,7 +74,7 @@ Deno.serve(async (req) => {
         from: EMAIL_FROM,
         to: Array.isArray(to) ? to : [to],
         subject,
-        html: html || "",
+        html: sanitize(html || ""),
         reply_to: replyTo || userEmail,
       }),
     });

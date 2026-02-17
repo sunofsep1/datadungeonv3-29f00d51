@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, subject, html } = body;
+    const { to, subject, html: rawHtml } = body;
 
     if (!to || !Array.isArray(to) || to.length === 0 || !subject) {
       return new Response(JSON.stringify({ error: "Missing to (array) or subject" }), {
@@ -57,7 +57,14 @@ Deno.serve(async (req) => {
     }
 
     const emails = [...new Set(to)].filter((e) => typeof e === "string" && e.includes("@"));
-    const htmlBody = html || "<p></p>";
+    // Sanitize HTML: strip script tags, event handlers, javascript: URIs
+    const sanitize = (h: string): string =>
+      h
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/\bon\w+\s*=\s*"[^"]*"/gi, "")
+        .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
+        .replace(/javascript\s*:/gi, "");
+    const htmlBody = sanitize(rawHtml || "<p></p>");
     const userEmail = data.claims.email as string | undefined;
 
     let sent = 0;

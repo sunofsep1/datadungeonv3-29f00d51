@@ -28,8 +28,8 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !data?.claims) {
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -83,14 +83,14 @@ Deno.serve(async (req) => {
       }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const resData = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       return new Response(
         JSON.stringify({
           error: "Perplexity API error",
           status: res.status,
-          data,
+          data: resData,
         }),
         {
           status: 502,
@@ -99,11 +99,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    const content = (data as any)?.choices?.[0]?.message?.content ?? "";
-    const citations = (data as any)?.citations ?? null;
+    const content = (resData as any)?.choices?.[0]?.message?.content ?? "";
+    const citations = (resData as any)?.citations ?? null;
 
     return new Response(
-      JSON.stringify({ answer: content, citations, raw: data }),
+      JSON.stringify({ answer: content, citations, raw: resData }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
