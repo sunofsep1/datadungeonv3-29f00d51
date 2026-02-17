@@ -80,8 +80,13 @@ export function VisionBoard() {
       toast.error("Failed to upload image");
       return null;
     }
-    const { data: urlData } = supabase.storage.from("vision-board").getPublicUrl(path);
-    return urlData.publicUrl;
+    const { data: urlData, error: urlError } = await supabase.storage.from("vision-board").createSignedUrl(path, 60 * 60 * 24 * 365);
+    if (urlError || !urlData?.signedUrl) {
+      console.error("Signed URL error:", urlError);
+      toast.error("Failed to get image URL");
+      return null;
+    }
+    return urlData.signedUrl;
   };
 
   const handleSave = async () => {

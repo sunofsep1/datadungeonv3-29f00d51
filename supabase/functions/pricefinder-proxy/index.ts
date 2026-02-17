@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !data?.claims) {
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -80,11 +80,11 @@ Deno.serve(async (req) => {
     });
 
     const text = await res.text();
-    let data: unknown;
+    let pfData: unknown;
     try {
-      data = text ? JSON.parse(text) : null;
+      pfData = text ? JSON.parse(text) : null;
     } catch {
-      data = { raw: text };
+      pfData = { raw: text };
     }
 
     if (!res.ok) {
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           error: "Pricefinder API error",
           status: res.status,
-          data,
+          data: pfData,
         }),
         {
           status: 502,
@@ -103,10 +103,10 @@ Deno.serve(async (req) => {
 
     // Return simplified shape for the frontend. Adjust keys to match Pricefinder response.
     const simplified = {
-      estimateMin: (data as any)?.estimateMin ?? (data as any)?.low ?? null,
-      estimateMax: (data as any)?.estimateMax ?? (data as any)?.high ?? null,
-      lastSale: (data as any)?.lastSale ?? (data as any)?.last_sale ?? null,
-      raw: data,
+      estimateMin: (pfData as any)?.estimateMin ?? (pfData as any)?.low ?? null,
+      estimateMax: (pfData as any)?.estimateMax ?? (pfData as any)?.high ?? null,
+      lastSale: (pfData as any)?.lastSale ?? (pfData as any)?.last_sale ?? null,
+      raw: pfData,
     };
 
     return new Response(JSON.stringify(simplified), {
