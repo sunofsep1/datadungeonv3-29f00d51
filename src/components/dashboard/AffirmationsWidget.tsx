@@ -6,6 +6,8 @@ import { Pencil, Check, Plus, Trash2, Heart, ChevronLeft, ChevronRight, List, Qu
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "datadungeon-affirmations";
+const STORAGE_VERSION_KEY = "datadungeon-affirmations-v";
+const CURRENT_VERSION = 2; // bump to force refresh when defaults change
 const DRAG_DATA_KEY = "affirmation-index";
 
 const DEFAULT_AFFIRMATIONS = [
@@ -38,10 +40,13 @@ const DEFAULT_AFFIRMATIONS = [
 
 function loadAffirmations(): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as string[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    const savedVersion = Number(localStorage.getItem(STORAGE_VERSION_KEY) || "0");
+    if (savedVersion >= CURRENT_VERSION) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     }
   } catch {
     // ignore
@@ -52,6 +57,7 @@ function loadAffirmations(): string[] {
 function saveAffirmations(list: string[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_VERSION));
   } catch {
     // ignore
   }
