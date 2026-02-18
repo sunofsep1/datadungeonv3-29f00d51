@@ -9,21 +9,27 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { PageFallbackSkeleton } from "@/components/PageFallbackSkeleton";
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Contacts = lazy(() => import("./pages/Contacts"));
-const ContactDetail = lazy(() => import("./pages/ContactDetail"));
-const Properties = lazy(() => import("./pages/Properties"));
-const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
-const Appointments = lazy(() => import("./pages/Appointments"));
-const Calendar = lazy(() => import("./pages/Calendar"));
+// Core workflow chunk (Dashboard, Contacts, Properties + details) — one download for main nav
+const Dashboard = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.Dashboard })));
+const Contacts = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.Contacts })));
+const ContactDetail = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.ContactDetail })));
+const Properties = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.Properties })));
+const PropertyDetail = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.PropertyDetail })));
+
+// Calendar/scheduling chunk
+const Appointments = lazy(() => import("./pages/CalendarPages").then((m) => ({ default: m.Appointments })));
+const Calendar = lazy(() => import("./pages/CalendarPages").then((m) => ({ default: m.Calendar })));
+const Tasks = lazy(() => import("./pages/CalendarPages").then((m) => ({ default: m.Tasks })));
+
+// Other routes (individual chunks)
 const Marketing = lazy(() => import("./pages/Marketing"));
 const Performance = lazy(() => import("./pages/Performance"));
 const Scripts = lazy(() => import("./pages/Scripts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const HotLeads = lazy(() => import("./pages/HotLeads"));
 const Recent = lazy(() => import("./pages/Recent"));
-const Tasks = lazy(() => import("./pages/Tasks"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const Research = lazy(() => import("./pages/Research"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -31,14 +37,6 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 
 const queryClient = new QueryClient();
-
-function PageFallback() {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">
-      <p>Loading…</p>
-    </div>
-  );
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -48,7 +46,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
-            <Suspense fallback={<PageFallback />}>
+            <Suspense fallback={<PageFallbackSkeleton />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/login" element={<Login />} />

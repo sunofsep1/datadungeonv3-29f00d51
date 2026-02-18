@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Home, Pencil, Calendar, Tag, User } from "lucide-react";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { format } from "date-fns";
 import { useListing, useUpdateListing, type Listing } from "@/hooks/useListings";
 import { useContact } from "@/hooks/useContact";
@@ -228,7 +229,7 @@ export default function ListingDetail() {
               <p className="font-medium text-foreground">{linkedContact.name}</p>
               {(linkedContact.email || (linkedContact as { phone?: string }).phone) && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  {linkedContact.email ?? (linkedContact as { phone?: string }).phone}
+                  {linkedContact.email ?? formatPhoneDisplay((linkedContact as { phone?: string }).phone)}
                 </p>
               )}
               <Button variant="ghost" size="sm" className="mt-2 px-0" onClick={() => navigate(`/contacts/${contactId}`)}>

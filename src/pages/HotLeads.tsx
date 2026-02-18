@@ -16,6 +16,7 @@ import {
 import { getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Search, Phone, Mail, ChevronRight, Users } from "lucide-react";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -142,7 +143,7 @@ export default function HotLeads() {
                       {primaryPhone && (
                         <span className="flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          {primaryPhone}
+                          {formatPhoneDisplay(primaryPhone)}
                         </span>
                       )}
                       {primaryEmail && (

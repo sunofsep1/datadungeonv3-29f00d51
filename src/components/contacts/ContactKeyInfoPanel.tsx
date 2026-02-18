@@ -13,6 +13,7 @@ import { Phone, Mail, Clock, MessageSquare, StickyNote, User, ExternalLink } fro
 import { format, formatDistanceToNow } from "date-fns";
 import { getInitials } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import type { ContactWithMeta } from "@/hooks/useContacts";
 import { getAllEmails, getAllPhones, getPrimaryEmail, getTagNames } from "@/hooks/useContacts";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -185,7 +186,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
                                   <Phone className="w-3.5 h-3.5" />
                                 </span>
-                                <span className="flex-1 min-w-0 text-sm font-medium">{v}</span>
+                                <span className="flex-1 min-w-0 text-sm font-medium">{formatPhoneDisplay(v)}</span>
                                 {groups.length === 1 && item.label !== "Phone" && (
                                   <span className="text-xs text-muted-foreground shrink-0">{item.label}</span>
                                 )}
@@ -297,7 +298,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                 <DropdownMenuContent align="start" className="min-w-[200px]">
                   {phones.map((p) => (
                     <DropdownMenuItem key={p.value} onClick={() => window.open(`tel:${p.value}`)}>
-                      {p.label}: {p.value}
+                      {p.label}: {formatPhoneDisplay(p.value)}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -340,7 +341,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
                 <DropdownMenuContent align="start" className="min-w-[200px]">
                   {phones.map((p) => (
                     <DropdownMenuItem key={p.value} onClick={() => onSendSms(p.value)}>
-                      {p.label}: {p.value}
+                      {p.label}: {formatPhoneDisplay(p.value)}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

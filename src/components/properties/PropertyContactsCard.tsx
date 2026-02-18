@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { User, Plus, Trash2, Phone, Mail, ChevronRight } from "lucide-react";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useCreateContactPropertyLink, useDeleteContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import type { PropertyWithLinks } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";

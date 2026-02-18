@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
 import { useContacts, useUpdateContact, getPrimaryEmail, getPrimaryPhone, getAllEmails, getAllPhones, getTagNames, formatContactAddress } from "@/hooks/useContacts";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import {
   useCreateContactPropertyLink,
@@ -368,7 +369,7 @@ export default function ContactDetail() {
               <DropdownMenuContent align="end">
                 {getAllPhones(contact).map((p) => (
                   <DropdownMenuItem key={p.value} onClick={() => { setSmsToNumber(p.value); setSmsDialogOpen(true); }}>
-                    {p.label}: {p.value}
+                    {p.label}: {formatPhoneDisplay(p.value)}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -430,7 +431,7 @@ export default function ContactDetail() {
                       return (
                         <div key={`phone-${p.value}-${i}`} className="flex items-center gap-2 rounded-lg py-2.5 px-3 border border-border bg-muted/50 shadow-sm">
                           <Phone className="w-4 h-4 shrink-0 text-muted-foreground" />
-                          <span className="text-foreground">{num}</span>
+                          <span className="text-foreground">{formatPhoneDisplay(num)}</span>
                           {p.label !== "Phone" && <span className="text-muted-foreground text-xs">({p.label})</span>}
                         </div>
                       );

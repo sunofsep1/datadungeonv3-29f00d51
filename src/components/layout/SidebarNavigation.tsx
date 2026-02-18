@@ -129,16 +129,16 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         )}
         style={{ width: desktopWidth }}
       >
-        {/* Logo / brand */}
+        {/* Logo / brand — teal to match main page (dashboard clock, KPIs) */}
         <div className="flex h-[60px] shrink-0 items-center border-b border-sidebar-border px-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Database className="h-5 w-5 text-sidebar-primary-foreground" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal">
+              <Database className="h-5 w-5 text-teal-foreground" />
             </div>
             {!collapsed && (
               <div className="min-w-0 flex flex-col">
                 <span className="text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/70">Data</span>
-                <span className="text-sm font-semibold text-sidebar-primary truncate">Dungeon</span>
+                <span className="text-sm font-semibold text-teal truncate">Dungeon</span>
               </div>
             )}
           </div>
@@ -288,10 +288,10 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         )}
       >
         <div className="flex h-14 items-center gap-3 border-b border-sidebar-border px-4 mt-12">
-          <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <Database className="h-5 w-5 text-sidebar-primary-foreground" />
+          <div className="h-9 w-9 rounded-lg bg-teal flex items-center justify-center">
+            <Database className="h-5 w-5 text-teal-foreground" />
           </div>
-          <span className="text-sm font-semibold text-sidebar-primary">Data Dungeon</span>
+          <span className="text-sm font-semibold text-teal">Data Dungeon</span>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {

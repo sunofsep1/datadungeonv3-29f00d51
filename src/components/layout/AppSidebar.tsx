@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { prefetchRoute } from "@/lib/prefetchRoutes";
 import {
   LayoutDashboard,
   Users,
@@ -128,15 +129,15 @@ export function AppSidebar() {
           "fixed md:relative z-50 w-[220px] min-h-screen bg-sidebar border-r border-sidebar-border flex-col transition-transform duration-300 print:hidden hidden md:flex"
         )}
       >
-        {/* Logo */}
+        {/* Logo — teal/green to match main page (dashboard clock, KPIs, etc.) */}
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Database className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
+              <Database className="w-5 h-5 text-teal-foreground" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground font-medium">DATA</span>
-              <span className="text-sm font-bold text-primary">DUNGEON</span>
+              <span className="text-xs font-medium text-sidebar-foreground/80">DATA</span>
+              <span className="text-sm font-bold text-teal">DUNGEON</span>
             </div>
           </div>
         </div>
@@ -165,6 +166,8 @@ export function AppSidebar() {
                     <NavLink
                       key={item.title}
                       to={item.url}
+                      onMouseEnter={() => prefetchRoute(item.url)}
+                      onFocus={() => prefetchRoute(item.url)}
                       onClick={() => setIsOpen(false)}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
@@ -173,7 +176,7 @@ export function AppSidebar() {
                           : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                       )}
                     >
-                      <item.icon className={cn("w-4 h-4", active && "text-primary")} />
+                      <item.icon className={cn("w-4 h-4", active && "text-sidebar-primary")} />
                       <span>{item.title}</span>
                     </NavLink>
                   );
@@ -194,13 +197,13 @@ export function AppSidebar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuItem asChild>
-                <NavLink to="/scripts" className="flex items-center gap-2">
+                <NavLink to="/scripts" onMouseEnter={() => prefetchRoute("/scripts")} onFocus={() => prefetchRoute("/scripts")} className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Scripts
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <NavLink to="/settings" className="flex items-center gap-2">
+                <NavLink to="/settings" onMouseEnter={() => prefetchRoute("/settings")} onFocus={() => prefetchRoute("/settings")} className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
                   Settings
                 </NavLink>
@@ -231,10 +234,10 @@ export function AppSidebar() {
       >
         <div className="p-4 border-b border-sidebar-border mt-12">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Database className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
+              <Database className="w-5 h-5 text-teal-foreground" />
             </div>
-            <span className="text-sm font-bold text-primary">DATA DUNGEON</span>
+            <span className="text-sm font-bold text-teal">DATA DUNGEON</span>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -244,6 +247,8 @@ export function AppSidebar() {
               <NavLink
                 key={item.title}
                 to={item.url}
+                onMouseEnter={() => prefetchRoute(item.url)}
+                onFocus={() => prefetchRoute(item.url)}
                 onClick={() => setIsOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200",
@@ -252,17 +257,17 @@ export function AppSidebar() {
                     : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", active && "text-primary")} />
+                <item.icon className={cn("w-5 h-5", active && "text-sidebar-primary")} />
                 <span>{item.title}</span>
               </NavLink>
             );
           })}
           <div className="pt-4 border-t border-sidebar-border mt-4">
-            <NavLink to="/scripts" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
+            <NavLink to="/scripts" onMouseEnter={() => prefetchRoute("/scripts")} onFocus={() => prefetchRoute("/scripts")} onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
               <FileText className="w-5 h-5" />
               <span>Scripts</span>
             </NavLink>
-            <NavLink to="/settings" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
+            <NavLink to="/settings" onMouseEnter={() => prefetchRoute("/settings")} onFocus={() => prefetchRoute("/settings")} onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
               <Settings className="w-5 h-5" />
               <span>Settings</span>
             </NavLink>
@@ -336,7 +341,7 @@ export function AppSidebar() {
                 to={item.url}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[64px]",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-sidebar-primary" : "text-muted-foreground"
                 )}
               >
                 <item.icon className="w-5 h-5" />

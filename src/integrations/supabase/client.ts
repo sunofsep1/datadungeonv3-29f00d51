@@ -2,12 +2,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+/** Expected Supabase project ref (single source: supabase/project-ref). Must match VITE_SUPABASE_URL. */
+const EXPECTED_PROJECT_REF = "sujyalrzbubvhpkntwja";
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error(
     "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Copy .env.example to .env and set them."
+  );
+}
+
+if (import.meta.env.DEV && !SUPABASE_URL.includes(EXPECTED_PROJECT_REF)) {
+  console.warn(
+    `[Supabase] VITE_SUPABASE_URL points to a different project than expected. ` +
+      `Expected: https://${EXPECTED_PROJECT_REF}.supabase.co. ` +
+      `Update .env and restart the dev server to fix 400 errors and missing columns (e.g. first_name).`
   );
 }
 

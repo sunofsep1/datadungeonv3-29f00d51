@@ -68,7 +68,7 @@ export default function Properties() {
   const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
   const [viewMode, setViewMode] = useState<PropertyViewMode>("grid");
   const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
-  const itemsPerPage = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const filtered = useMemo(() => {
     return (properties ?? []).filter((p) => {
@@ -92,10 +92,10 @@ export default function Properties() {
 
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
 
-  // Reset to page 1 when search or sort changes
+  // Reset to page 1 when search, sort, or itemsPerPage changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, sortBy]);
+  }, [debouncedSearch, sortBy, itemsPerPage]);
 
   const handleDeleteProperty = async (property: PropertyWithLinks) => {
     try {
@@ -526,17 +526,24 @@ export default function Properties() {
           </Dialog>
         }
       />
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by address..."
-            className="pl-10 bg-input h-11"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* Toolbar: total, search, view toggle, sort, per page */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-6 mb-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <span className="font-semibold text-foreground truncate">My Properties</span>
+          <span className="text-sm text-muted-foreground shrink-0">
+            Total records {sorted.length}
+          </span>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+          <div className="relative w-full sm:w-auto sm:min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by address..."
+              className="pl-10 bg-input h-11"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -559,6 +566,22 @@ export default function Properties() {
               <SelectItem value="price-asc">Price (low–high)</SelectItem>
               <SelectItem value="price-desc">Price (high–low)</SelectItem>
               <SelectItem value="newest">Newest first</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(itemsPerPage)}
+            onValueChange={(v) => {
+              setItemsPerPage(Number(v));
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[110px] h-11 bg-popover border-border text-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20">20 per page</SelectItem>
+              <SelectItem value="25">25 per page</SelectItem>
+              <SelectItem value="50">50 per page</SelectItem>
             </SelectContent>
           </Select>
         </div>

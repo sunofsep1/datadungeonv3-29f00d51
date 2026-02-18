@@ -7,6 +7,7 @@ import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import { useListings } from "@/hooks/useListings";
 import { Users, Building2, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 
 const GLOBAL_SEARCH_EVENT = "open-global-search";
 
@@ -119,7 +120,7 @@ export function GlobalSearch() {
                   <span className="truncate flex-1">{c.name}</span>
                   {(c.email ?? (c as { phone?: string }).phone) && (
                     <Badge variant="secondary" className="text-[10px] font-normal bg-secondary text-secondary-foreground shrink-0">
-                      {c.email ?? (c as { phone?: string }).phone}
+                      {c.email ?? formatPhoneDisplay((c as { phone?: string }).phone)}
                     </Badge>
                   )}
                 </button>

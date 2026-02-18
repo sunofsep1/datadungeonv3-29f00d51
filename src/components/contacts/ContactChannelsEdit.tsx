@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Phone, Mail, Plus, Pencil, Trash2 } from "lucide-react";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useToast } from "@/hooks/use-toast";
 import {
   useContactChannels,
@@ -143,7 +144,7 @@ export function ContactChannelsEdit({ contactId, onClose }: ContactChannelsEditP
             <span className="flex items-center gap-2">
               {ch.channel_type === "email" ? <Mail className="w-4 h-4 text-muted-foreground" /> : <Phone className="w-4 h-4 text-muted-foreground" />}
               <span>{(ch as { label?: string | null }).label || ch.channel_type}</span>
-              <span className="text-muted-foreground">{ch.value}</span>
+              <span className="text-muted-foreground">{ch.channel_type === "email" ? ch.value : formatPhoneDisplay(ch.value)}</span>
               {ch.is_primary && <span className="text-xs text-muted-foreground">(primary)</span>}
             </span>
             <span className="flex gap-1">

@@ -1,6 +1,7 @@
-import { Building2 } from "lucide-react";
+import { Building2, MapPin, Pencil, Trash2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Pagination,
   PaginationContent,
@@ -11,8 +12,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { PropertyCard } from "./PropertyCard";
-import { PropertyListRow } from "./PropertyListRow";
-import type { PropertyWithLinks } from "@/hooks/useProperties";
+import { formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
+import { cn } from "@/lib/utils";
 
 export type PropertyViewMode = "grid" | "list";
 
@@ -111,17 +112,107 @@ export function PropertyList({
         </p>
       )}
       {viewMode === "list" ? (
-        <div className="space-y-2 mt-4">
-          {paginated.map((p) => (
-            <PropertyListRow
-              key={p.id}
-              property={p}
-              onSelect={onSelectProperty ? () => onSelectProperty(p) : undefined}
-              onEdit={onEditProperty ? (e) => onEditProperty(p, e) : undefined}
-              onDelete={onDeleteProperty ? (e) => onDeleteProperty(p, e) : undefined}
-              showEditButton={showEditButton}
-            />
-          ))}
+        <div className="rounded-lg border border-border bg-card overflow-hidden mt-4">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Address</th>
+                  <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden sm:table-cell w-[100px]">Type</th>
+                  <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[80px]">Beds</th>
+                  <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[80px]">Baths</th>
+                  <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium w-[110px]">Price</th>
+                  <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden lg:table-cell">Owners</th>
+                  <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((p) => (
+                  <tr
+                    key={p.id}
+                    className={cn(
+                      "group border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer",
+                      "align-middle"
+                    )}
+                    onClick={() => onSelectProperty ? onSelectProperty(p) : undefined}
+                  >
+                    <td className="py-2 px-3 md:py-2 md:px-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-teal/20 flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-4 h-4 text-teal" />
+                        </div>
+                        <span className="font-medium text-foreground truncate">
+                          {formatPropertyAddress(p) || "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 md:py-2 md:px-4 hidden sm:table-cell">
+                      {p.property_type ? (
+                        <Badge variant="secondary" className="text-xs font-normal capitalize">
+                          {p.property_type}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-2 px-3 md:py-2 md:px-4 text-muted-foreground hidden md:table-cell">
+                      {p.bedrooms != null ? p.bedrooms : "—"}
+                    </td>
+                    <td className="py-2 px-3 md:py-2 md:px-4 text-muted-foreground hidden md:table-cell">
+                      {p.bathrooms != null ? p.bathrooms : "—"}
+                    </td>
+                    <td className="py-2 px-3 md:py-2 md:px-4 font-medium text-foreground">
+                      {(p.price_listed ?? p.price ?? 0) > 0
+                        ? `$${(p.price_listed ?? p.price ?? 0).toLocaleString()}`
+                        : "—"}
+                    </td>
+                    <td className="py-2 px-3 md:py-2 md:px-4 text-muted-foreground text-xs hidden lg:table-cell max-w-[180px] truncate">
+                      {(p.contact_property_links ?? []).length > 0
+                        ? (p.contact_property_links ?? [])
+                            .filter((l) => l.role === "owner" || !l.role)
+                            .map((l) => (l.contacts as { name?: string } | null)?.name ?? "—")
+                            .filter(Boolean)
+                            .join(", ") || "—"
+                        : "—"}
+                    </td>
+                    <td className="py-2 px-3 md:py-2 md:px-4 w-[1%] whitespace-nowrap">
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {showEditButton && onEditProperty && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditProperty(p, e);
+                            }}
+                            aria-label="Edit property"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {showEditButton && onDeleteProperty && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteProperty(p, e);
+                            }}
+                            aria-label="Delete property"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 mt-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">

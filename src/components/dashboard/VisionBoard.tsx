@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ interface VisionCard {
   color: string;
   target_date: string | null;
   image_url: string | null;
+  image_path?: string | null;
   sort_order: number;
 }
 
@@ -36,6 +37,18 @@ function formatMaxSize(): string {
   return mb >= 1 ? `${mb}MB` : `${MAX_IMAGE_SIZE_BYTES / 1024}KB`;
 }
 
+/** Extract storage path from a Supabase signed URL so we can create a fresh signed URL. */
+function parseStoragePathFromSignedUrl(url: string | null | undefined, bucket: string): string | null {
+  if (!url || typeof url !== "string") return null;
+  const marker = `/object/sign/${bucket}/`;
+  const i = url.indexOf(marker);
+  if (i === -1) return null;
+  const start = i + marker.length;
+  const end = url.indexOf("?", start);
+  const path = end === -1 ? url.slice(start) : url.slice(start, end);
+  return path ? decodeURIComponent(path) : null;
+}
+
 export function VisionBoard() {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +62,7 @@ export function VisionBoard() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
 
   const fetchCards = useCallback(async () => {
     if (!user) return;
@@ -60,9 +74,27 @@ export function VisionBoard() {
 
     if (error) {
       console.error("Failed to fetch vision board:", error);
+      setIsLoading(false);
       return;
     }
-    setCards(data ?? []);
+
+    const rows = (data ?? []) as VisionCard[];
+    const SIGNED_URL_EXPIRY = 60 * 60 * 24;
+
+    const withFreshUrls = await Promise.all(
+      rows.map(async (card) => {
+        const path = card.image_path ?? parseStoragePathFromSignedUrl(card.image_url, "vision-board");
+        if (path) {
+          const { data: urlData } = await supabase.storage
+            .from("vision-board")
+            .createSignedUrl(path, SIGNED_URL_EXPIRY);
+          return { ...card, image_url: urlData?.signedUrl ?? card.image_url };
+        }
+        return card;
+      })
+    );
+
+    setCards(withFreshUrls);
     setIsLoading(false);
   }, [user]);
 
@@ -70,7 +102,15 @@ export function VisionBoard() {
     fetchCards();
   }, [fetchCards]);
 
-  const uploadImage = async (file: File): Promise<string | null> => {
+  const cardsImageKey = useMemo(
+    () => cards.map((c) => `${c.id}:${c.image_url ?? ""}`).join(","),
+    [cards]
+  );
+  useEffect(() => {
+    setLoadedImageIds(new Set());
+  }, [cardsImageKey]);
+
+  const uploadImage = async (file: File): Promise<{ url: string; path: string } | null> => {
     if (!user) return null;
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
@@ -80,13 +120,15 @@ export function VisionBoard() {
       toast.error("Failed to upload image");
       return null;
     }
-    const { data: urlData, error: urlError } = await supabase.storage.from("vision-board").createSignedUrl(path, 60 * 60 * 24 * 365);
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from("vision-board")
+      .createSignedUrl(path, 60 * 60 * 24);
     if (urlError || !urlData?.signedUrl) {
       console.error("Signed URL error:", urlError);
       toast.error("Failed to get image URL");
       return null;
     }
-    return urlData.signedUrl;
+    return { url: urlData.signedUrl, path };
   };
 
   const handleSave = async () => {
@@ -95,11 +137,13 @@ export function VisionBoard() {
 
     let imageUrl = formData.imageUrl.trim() || null;
 
-    // If user selected a file, upload it
+    let imagePath: string | null = null;
     if (selectedFile) {
       const uploaded = await uploadImage(selectedFile);
-      if (uploaded) imageUrl = uploaded;
-      else {
+      if (uploaded) {
+        imageUrl = uploaded.url;
+        imagePath = uploaded.path;
+      } else {
         setIsSaving(false);
         return;
       }
@@ -113,6 +157,7 @@ export function VisionBoard() {
           color: formData.color,
           target_date: formData.targetDate || null,
           image_url: imageUrl,
+          ...(imagePath !== null && { image_path: imagePath }),
         })
         .eq("id", editingCard.id);
 
@@ -129,6 +174,7 @@ export function VisionBoard() {
           color: formData.color,
           target_date: formData.targetDate || null,
           image_url: imageUrl,
+          image_path: imagePath ?? undefined,
           sort_order: cards.length,
         });
 
@@ -281,16 +327,28 @@ export function VisionBoard() {
                   card.color
                 )}
               >
-                <div className="aspect-[4/3] w-full relative overflow-hidden">
+                <div className="aspect-[4/3] w-full relative overflow-hidden bg-muted/50">
                   {card.image_url ? (
-                    <img
-                      src={card.image_url}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                    <>
+                      {!loadedImageIds.has(card.id) && (
+                        <div className="absolute inset-0 bg-muted animate-pulse" aria-hidden />
+                      )}
+                      <img
+                        src={card.image_url}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className={cn(
+                          "absolute inset-0 w-full h-full object-cover transition-opacity duration-200",
+                          loadedImageIds.has(card.id) ? "opacity-100" : "opacity-0"
+                        )}
+                        onLoad={() => setLoadedImageIds((prev) => new Set(prev).add(card.id))}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          setLoadedImageIds((prev) => new Set(prev).add(card.id));
+                        }}
+                      />
+                    </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                       <ImageIcon className="w-12 h-12 text-foreground/30" />

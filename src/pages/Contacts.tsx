@@ -73,6 +73,7 @@ import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { getInitials, cn } from "@/lib/utils";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -760,7 +761,7 @@ export default function Contacts() {
                 <span className="font-medium text-foreground text-sm truncate block">{contact.name}</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-muted-foreground text-xs">
-                {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{primaryPhone}</span>}
+                {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{formatPhoneDisplay(primaryPhone)}</span>}
                 {primaryEmail && <span className="truncate">{primaryEmail}</span>}
               </div>
               {tagNames.length > 0 && (
@@ -780,7 +781,7 @@ export default function Contacts() {
           <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs w-fit">{contact.status ?? "lead"}</StatusBadge>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell max-w-[120px]" title={primaryPhone ?? ""}>
-          <span className="truncate block">{primaryPhone ?? "—"}</span>
+          <span className="truncate block">{primaryPhone ? formatPhoneDisplay(primaryPhone) : "—"}</span>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell min-w-0 max-w-[200px]" title={primaryEmail ?? ""}>
           <span className="truncate block">{primaryEmail ?? "—"}</span>
@@ -835,7 +836,7 @@ export default function Contacts() {
               {primaryPhone && (
                 <span className="flex items-center gap-1">
                   <Phone className="w-3 h-3" />
-                  {primaryPhone}
+                  {formatPhoneDisplay(primaryPhone)}
                 </span>
               )}
               {primaryEmail && (

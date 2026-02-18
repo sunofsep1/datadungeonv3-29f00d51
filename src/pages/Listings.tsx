@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, Calendar, CheckSquare, Square, ChevronRight, LayoutList, LayoutGrid, Download } from "lucide-react";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
@@ -400,7 +401,7 @@ export default function Listings() {
                       <p className="text-sm font-medium text-white">{selectedContact.name}</p>
                       {selectedContact.phone && (
                         <p className="text-xs text-white/60 flex items-center gap-1 mt-1">
-                          <Phone className="w-3 h-3" /> {selectedContact.phone}
+                          <Phone className="w-3 h-3" /> {formatPhoneDisplay(selectedContact.phone)}
                         </p>
                       )}
                       {selectedContact.email && (
@@ -933,7 +934,7 @@ export default function Listings() {
                             <User className="w-4 h-4 text-primary" />
                             <span className="text-sm font-medium text-foreground">{owner.name}</span>
                           </div>
-                          {owner.phone && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {owner.phone}</p>}
+                          {owner.phone && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {formatPhoneDisplay(owner.phone)}</p>}
                         </div>
                       )}
                     </div>

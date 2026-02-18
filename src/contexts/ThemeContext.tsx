@@ -55,6 +55,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = "theme";
 const DENSITY_STORAGE_KEY = "density";
 
+/** Default theme when none is saved (used on first visit / new devices). */
+export const DEFAULT_THEME: Theme = "dark";
+
 export type Density = "comfortable" | "compact";
 
 function themeToClass(theme: Theme): string {
@@ -71,7 +74,7 @@ function themeToClass(theme: Theme): string {
     catppuccin: "theme-catppuccin",
     highContrast: "theme-high-contrast",
   };
-  return map[theme] ?? "dark";
+  return map[theme] ?? DEFAULT_THEME;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -80,7 +83,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme;
       if (VALID_THEMES.includes(stored)) return stored;
     }
-    return "dark";
+    return DEFAULT_THEME;
   });
 
   const [density, setDensityState] = useState<Density>(() => {
