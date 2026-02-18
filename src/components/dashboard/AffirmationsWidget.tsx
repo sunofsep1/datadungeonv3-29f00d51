@@ -14,6 +14,26 @@ const DEFAULT_AFFIRMATIONS = [
   "Every call I make brings me closer to success.",
   "I am confident, capable, and closing deals.",
   "My pipeline is full of quality opportunities.",
+  "I provide outstanding service that generates referrals.",
+  "I am a trusted advisor in my community.",
+  "Abundance flows to me through consistent daily action.",
+  "I am resilient — setbacks fuel my growth.",
+  "I listen deeply and connect authentically with every person I meet.",
+  "I deserve every success that comes my way.",
+  "My expertise helps families find their perfect home.",
+  "I show up with energy, purpose, and gratitude every single day.",
+  "I am building generational wealth through real estate.",
+  "I turn challenges into opportunities effortlessly.",
+  "People are drawn to my positive energy and professionalism.",
+  "I am disciplined with my time and focused on income-producing activities.",
+  "Every 'no' brings me closer to a 'yes'.",
+  "I celebrate progress, not just perfection.",
+  "My reputation is my greatest asset — I protect it fiercely.",
+  "I am constantly learning, growing, and levelling up.",
+  "I create win-win outcomes for everyone I work with.",
+  "Today I will do what others won't, so tomorrow I can live how others can't.",
+  "I am worthy of the goals I have set for myself.",
+  "My best days in real estate are still ahead of me.",
 ];
 
 function loadAffirmations(): string[] {
@@ -49,6 +69,19 @@ export function AffirmationsWidget() {
   useEffect(() => {
     saveAffirmations(affirmations);
   }, [affirmations]);
+
+  // Shuffle order on mount (each login / page load)
+  useEffect(() => {
+    setAffirmations((prev) => {
+      const shuffled = [...prev];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
+    setCurrentIndex(0);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep current index in bounds
   useEffect(() => {
