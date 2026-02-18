@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface NewsArticle {
   title: string;
@@ -17,9 +18,11 @@ interface NewsApiResponse {
 }
 
 async function fetchNews(q = "real estate OR property OR housing Australia", pageSize = 10): Promise<NewsArticle[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return [];
+
   const base = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!base || !anonKey) return [];
+  if (!base) return [];
 
   const url =
     `${base}/functions/v1/news-proxy?` +
@@ -28,11 +31,11 @@ async function fetchNews(q = "real estate OR property OR housing Australia", pag
 
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${anonKey}`,
+      Authorization: `Bearer ${session.access_token}`,
       "Content-Type": "application/json",
     },
   });
-  const data: NewsApiResponse & { error?: string } = await res.json().catch(() => ({}));
+  const data: NewsApiResponse = await res.json().catch(() => ({}));
 
   if (!res.ok || data.status === "error") {
     throw new Error(data.error ?? data.message ?? "Failed to fetch news");
