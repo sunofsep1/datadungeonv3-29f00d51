@@ -802,7 +802,6 @@ export type Database = {
           color: string
           created_at: string
           id: string
-          image_path: string | null
           image_url: string | null
           sort_order: number
           target_date: string | null
@@ -814,7 +813,6 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
-          image_path?: string | null
           image_url?: string | null
           sort_order?: number
           target_date?: string | null
@@ -826,7 +824,6 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
-          image_path?: string | null
           image_url?: string | null
           sort_order?: number
           target_date?: string | null
