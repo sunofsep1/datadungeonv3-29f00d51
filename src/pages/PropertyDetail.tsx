@@ -26,6 +26,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
+import { PropertySuiteCard } from "@/components/properties/PropertySuiteCard";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyGallery } from "@/components/PropertyManagement/PropertyGallery";
@@ -63,11 +64,23 @@ export default function PropertyDetail() {
     bedrooms: "" as string | number,
     bathrooms: "" as string | number,
     price: "" as string | number,
+    lot_size: "" as string | number,
     notes: "",
   });
-  const [valuation, setValuation] = useState<{ estimateMin?: number | null; estimateMax?: number | null; lastSale?: unknown } | null>(null);
-  const [valuationLoading, setValuationLoading] = useState(false);
-  const [valuationUnconfigured, setValuationUnconfigured] = useState(false);
+  type PricefinderEnriched = {
+    address?: string;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    property_type?: string | null;
+    last_sale_price?: number | null;
+    last_sale_date?: string | null;
+    land_area_sqm?: number | null;
+    carspaces?: number | null;
+    lot_plan?: string | null;
+  };
+  const [enrichedData, setEnrichedData] = useState<PricefinderEnriched | null>(null);
+  const [enrichLoading, setEnrichLoading] = useState(false);
+  const [enrichUnconfigured, setEnrichUnconfigured] = useState(false);
 
   const links = Array.isArray(property?.contact_property_links) ? property.contact_property_links : [];
   const linkedContactIds = useMemo(
@@ -169,50 +182,76 @@ export default function PropertyDetail() {
       bedrooms: property.bedrooms ?? "",
       bathrooms: property.bathrooms ?? "",
       price: property.price ?? "",
+      lot_size: property.lot_size ?? "",
       notes: property.notes ?? "",
     });
     setEditPropertyOpen(true);
   };
 
-  const handleLoadValuation = async () => {
+  const handleEnrichFromPricefinder = async () => {
     const base = import.meta.env.VITE_SUPABASE_URL;
     const url = base ? `${base}/functions/v1/pricefinder-proxy` : null;
     if (!url) {
       toast({ title: "Error", description: "App URL not configured", variant: "destructive" });
       return;
     }
-    setValuationLoading(true);
-    setValuationUnconfigured(false);
-    setValuation(null);
+    setEnrichLoading(true);
+    setEnrichUnconfigured(false);
+    setEnrichedData(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({ title: "Error", description: "Sign in to load estimate", variant: "destructive" });
+        toast({ title: "Error", description: "Sign in to load property data", variant: "destructive" });
         return;
       }
       const address = formatPropertyAddress(property);
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
+          ...(anonKey && { apikey: anonKey }),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ address: address || property.address_line1 || id }),
+        body: JSON.stringify({ full_address: address || property.address_line1 || "" }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 503) {
-        setValuationUnconfigured(true);
+        setEnrichUnconfigured(true);
         return;
       }
       if (!res.ok) {
-        toast({ title: "Error", description: data?.error || data?.message || "Failed to load estimate", variant: "destructive" });
+        const desc = [data?.message, data?.error, data?.status ? `(HTTP ${data.status})` : "", "Failed to load property data"].filter(Boolean).join(" ");
+        toast({ title: "Error", description: desc, variant: "destructive" });
         return;
       }
-      setValuation(data);
+      if (res.status === 404) {
+        toast({ title: "Not found", description: data?.message || "No property match for this address", variant: "destructive" });
+        return;
+      }
+      setEnrichedData(data);
+      toast({ title: "Success", description: "Property data loaded from Pricefinder" });
     } catch {
-      toast({ title: "Error", description: "Could not reach valuation service", variant: "destructive" });
+      toast({ title: "Error", description: "Could not reach Pricefinder", variant: "destructive" });
     } finally {
-      setValuationLoading(false);
+      setEnrichLoading(false);
+    }
+  };
+
+  const handleApplyEnrichedData = async () => {
+    if (!id || !enrichedData) return;
+    try {
+      const updates: Record<string, unknown> = {};
+      if (enrichedData.bedrooms != null) updates.bedrooms = enrichedData.bedrooms;
+      if (enrichedData.bathrooms != null) updates.bathrooms = enrichedData.bathrooms;
+      if (enrichedData.property_type) updates.property_type = enrichedData.property_type;
+      if (enrichedData.land_area_sqm != null) updates.lot_size = enrichedData.land_area_sqm;
+      if (enrichedData.last_sale_price != null && !property?.price) updates.price = enrichedData.last_sale_price;
+      await updateProperty.mutateAsync({ id, ...updates });
+      toast({ title: "Success", description: "Property updated with Pricefinder data" });
+      setEnrichedData(null);
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to update", variant: "destructive" });
     }
   };
 
@@ -231,6 +270,7 @@ export default function PropertyDetail() {
         bedrooms: editForm.bedrooms === "" ? null : Number(editForm.bedrooms),
         bathrooms: editForm.bathrooms === "" ? null : Number(editForm.bathrooms),
         price: editForm.price === "" ? null : Number(editForm.price),
+        lot_size: editForm.lot_size === "" ? null : Number(editForm.lot_size),
         notes: editForm.notes.trim() || null,
       });
       toast({ title: "Success", description: "Property updated." });
@@ -281,6 +321,15 @@ export default function PropertyDetail() {
       {hasImages && <PropertyGallery images={property.images} className="mb-6" />}
 
       <PropertyContactsCard property={property} onLinkClick={handleOpenAddOwner} className="mb-6" contactsList={contacts} />
+
+      {id && (
+        <div className="mb-6">
+          <PropertySuiteCard
+            propertyId={id}
+            linkedContacts={(contacts as { id: string; name: string }[]).filter((c) => linkedContactIds.has(c.id)).map((c) => ({ id: c.id, name: c.name }))}
+          />
+        </div>
+      )}
 
       <Card className="zoho-card p-6 mb-6 border-white/10">
         <div className="flex items-start gap-3 mb-4">
@@ -426,36 +475,81 @@ export default function PropertyDetail() {
         </div>
       </Card>
 
-      {/* Valuation / Market data */}
+      {/* Property data from Pricefinder */}
       <Card className="zoho-card p-6 mb-6 border-white/10">
-        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Valuation / Market data</h3>
-        {valuationUnconfigured ? (
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Property data from Pricefinder</h3>
+        {enrichUnconfigured ? (
           <p className="text-sm text-muted-foreground">
             Pricefinder integration available with API key. See docs/PRICEFINDER_INTEGRATION.md.
           </p>
-        ) : valuation ? (
-          <div className="space-y-2 text-sm">
-            {(valuation.estimateMin != null || valuation.estimateMax != null) && (
-              <p className="text-foreground">
-                Estimate:{" "}
-                {valuation.estimateMin != null && valuation.estimateMax != null
-                  ? `$${Number(valuation.estimateMin).toLocaleString()} – $${Number(valuation.estimateMax).toLocaleString()}`
-                  : valuation.estimateMin != null
-                    ? `from $${Number(valuation.estimateMin).toLocaleString()}`
-                    : `up to $${Number(valuation.estimateMax).toLocaleString()}`}
-              </p>
-            )}
-            {valuation.lastSale != null && (
-              <p className="text-muted-foreground">Last sale: {String(valuation.lastSale)}</p>
-            )}
+        ) : enrichedData ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              {enrichedData.bedrooms != null && (
+                <div>
+                  <span className="text-white/60">Bedrooms</span>
+                  <p className="font-medium">{enrichedData.bedrooms}</p>
+                </div>
+              )}
+              {enrichedData.bathrooms != null && (
+                <div>
+                  <span className="text-white/60">Bathrooms</span>
+                  <p className="font-medium">{enrichedData.bathrooms}</p>
+                </div>
+              )}
+              {enrichedData.property_type && (
+                <div>
+                  <span className="text-white/60">Type</span>
+                  <p className="font-medium capitalize">{enrichedData.property_type}</p>
+                </div>
+              )}
+              {enrichedData.land_area_sqm != null && (
+                <div>
+                  <span className="text-white/60">Lot size</span>
+                  <p className="font-medium">{enrichedData.land_area_sqm} m²</p>
+                </div>
+              )}
+              {enrichedData.last_sale_price != null && (
+                <div>
+                  <span className="text-white/60">Last sale price</span>
+                  <p className="font-medium">${Number(enrichedData.last_sale_price).toLocaleString()}</p>
+                </div>
+              )}
+              {enrichedData.last_sale_date && (
+                <div>
+                  <span className="text-white/60">Last sale date</span>
+                  <p className="font-medium">{enrichedData.last_sale_date}</p>
+                </div>
+              )}
+              {enrichedData.carspaces != null && (
+                <div>
+                  <span className="text-white/60">Car spaces</span>
+                  <p className="font-medium">{enrichedData.carspaces}</p>
+                </div>
+              )}
+              {enrichedData.lot_plan && (
+                <div>
+                  <span className="text-white/60">Lot/plan</span>
+                  <p className="font-medium">{enrichedData.lot_plan}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={handleApplyEnrichedData} disabled={updateProperty.isPending}>
+                {updateProperty.isPending ? "Applying..." : "Apply to property"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEnrichedData(null)}>
+                Dismiss
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleLoadValuation} disabled={valuationLoading}>
-              {valuationLoading ? "Loading..." : "Load estimate"}
+            <Button variant="outline" size="sm" onClick={handleEnrichFromPricefinder} disabled={enrichLoading}>
+              {enrichLoading ? "Loading..." : "Enrich from Pricefinder"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Optional: load AVM estimate from Pricefinder when API key is configured.
+              Load beds, baths, lot size, last sale and more from Pricefinder.
             </p>
           </div>
         )}
@@ -585,9 +679,15 @@ export default function PropertyDetail() {
                 <Input type="number" min={0} className="bg-input" value={editForm.bathrooms} onChange={(e) => setEditForm((f) => ({ ...f, bathrooms: e.target.value }))} />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Price</Label>
-              <Input type="number" min={0} className="bg-input" value={editForm.price} onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))} placeholder="0" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Price</Label>
+                <Input type="number" min={0} className="bg-input" value={editForm.price} onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))} placeholder="0" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Lot size (m²)</Label>
+                <Input type="number" min={0} className="bg-input" value={editForm.lot_size} onChange={(e) => setEditForm((f) => ({ ...f, lot_size: e.target.value }))} placeholder="0" />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label>Notes</Label>

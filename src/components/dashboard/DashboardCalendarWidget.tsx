@@ -65,7 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -102,6 +102,7 @@ function EventChip({
   onDelete,
   onOpenGoogle,
   tooltipContent,
+  titleAttribute,
   size = "sm",
 }: {
   item: CalendarItem;
@@ -109,6 +110,8 @@ function EventChip({
   onDelete?: () => void;
   onOpenGoogle?: () => void;
   tooltipContent?: React.ReactNode;
+  /** Native title for fallback tooltip when hover preview is not shown */
+  titleAttribute?: string;
   size?: "sm" | "md";
 }) {
   const isApp = item.source === "app";
@@ -123,14 +126,16 @@ function EventChip({
 
   const wrapWithTooltip = (node: React.ReactNode) =>
     tooltipContent ? (
-      <Tooltip delayDuration={300}>
+      <Tooltip delayDuration={200}>
         <TooltipTrigger asChild>
-          <span className="block w-full">{node}</span>
+          <span className="block w-full min-h-[1em]" title={titleAttribute}>{node}</span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[240px]">
+        <TooltipContent side="top" className="max-w-[240px] z-[100]" sideOffset={6}>
           {tooltipContent}
         </TooltipContent>
       </Tooltip>
+    ) : titleAttribute ? (
+      <span className="block w-full" title={titleAttribute}>{node}</span>
     ) : (
       node
     );
@@ -493,6 +498,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
 
   return (
     <Card className="zoho-card p-4 md:p-6">
+      <TooltipProvider delayDuration={200} skipDelayDuration={0}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
@@ -747,6 +753,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                     onEdit={() => item.source === "app" && navigate(`/appointments?edit=${item.id.replace("app-", "")}`)}
                     onDelete={() => item.source === "app" && setDeleteTarget(item.id)}
                     onOpenGoogle={item.htmlLink ? () => window.open(item.htmlLink!) : undefined}
+                    titleAttribute={[item.title, formatEventTime(item), item.location ?? ""].filter(Boolean).join(" · ")}
                     tooltipContent={
                       <div className="space-y-0.5 text-left">
                         <p className="font-medium">{item.title}</p>
@@ -798,13 +805,14 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 <div className="flex-1 space-y-1">
                 {dayEvents.map((item) => (
                   <div key={item.id} onClick={(e) => e.stopPropagation()}>
-                    <Tooltip delayDuration={300}>
+                    <Tooltip delayDuration={200}>
                       <TooltipTrigger asChild>
-                        <span className="block w-full">
+                        <span className="block w-full min-h-[1em]">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
+                                title={[item.title, formatEventTime(item), item.location].filter(Boolean).join(" · ")}
                                 className={cn(
                                   "w-full text-left text-xs px-1 py-0.5 rounded mb-1 truncate block hover:opacity-90",
                                   item.source === "google" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-primary/20 text-primary"
@@ -828,7 +836,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                           </DropdownMenu>
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[240px]">
+                      <TooltipContent side="top" className="max-w-[240px] z-[100]" sideOffset={6}>
                         <div className="space-y-0.5 text-left">
                           <p className="font-medium">{item.title}</p>
                           <p className="text-xs text-muted-foreground">{formatEventTime(item)}</p>
@@ -999,6 +1007,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </TooltipProvider>
     </Card>
   );
 }

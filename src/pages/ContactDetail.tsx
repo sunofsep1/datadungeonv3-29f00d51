@@ -46,6 +46,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
+import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -705,9 +706,18 @@ export default function ContactDetail() {
             )}
           </div>
         </Card>
+
+        {id && (
+          <div className="lg:col-span-3">
+            <ContactSuiteCard
+              contactId={id}
+              interactions={interactions}
+              linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Edit Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-[600px] bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader>

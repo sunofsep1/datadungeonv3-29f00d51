@@ -19,6 +19,7 @@
     "supabase:gen-types": "npx supabase gen types typescript --project-id sujyalrzbubvhpkntwja > src/integrations/supabase/types.ts",
     "supabase:repair": "npx supabase migration repair",
     "supabase:deploy:news": "npx supabase functions deploy news-proxy",
+    "supabase:deploy:pricefinder": "npx supabase functions deploy pricefinder-proxy --no-verify-jwt",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
