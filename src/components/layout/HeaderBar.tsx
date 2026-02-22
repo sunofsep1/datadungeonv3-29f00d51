@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { openGlobalSearch } from "./GlobalSearch";
+import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { NavHeadingButtons } from "./NavHeadingButtons";
 import { useNavCounts } from "@/hooks/useNavCounts";
 import { cn } from "@/lib/utils";
@@ -126,6 +127,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         >
           <Search className="h-5 w-5" />
         </Button>
+        <AskAIAssistant />
         <Button
           variant="default"
           size="sm"

@@ -20,7 +20,7 @@ Do **not** hardcode the key in the app. Use one of:
 
 ## How the app uses it
 
-- The app has a **Research** / **Ask** entry point (e.g. in the sidebar or on the Dashboard).
+- The app shows an **Ask AI** button (sparkles icon) in the header bar on every page.
 - If Perplexity is enabled (API key set in the `perplexity-proxy` function secrets), you can enter a query and get an AI answer with optional citations.
 - If no key is configured, the UI shows a short message and a link to this doc.
 
