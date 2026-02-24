@@ -190,8 +190,8 @@ export function ContactsFilterPanel({
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="name-asc">Name A–Z</SelectItem>
-            <SelectItem value="name-desc">Name Z–A</SelectItem>
+            <SelectItem value="name-asc">Last name A–Z</SelectItem>
+            <SelectItem value="name-desc">Last name Z–A</SelectItem>
             <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
             <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
             <SelectItem value="property-count-desc">Properties (most)</SelectItem>

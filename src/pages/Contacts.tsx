@@ -261,9 +261,18 @@ export default function Contacts() {
     }
     
     // Sorting
+    // Derive last name for sorting: use stored last_name if populated, or parse from full name (last word = surname)
+    const getLastNameForSort = (c: ContactWithMeta): string => {
+      const ln = c.last_name;
+      if (ln?.trim()) return ln.trim();
+      const name = (c.name || "").trim();
+      if (!name) return "";
+      const parts = name.split(/\s+/);
+      return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+    };
     const sorted = [...list].sort((a, b) => {
-      if (sortBy === "name-asc") return (a.name || "").localeCompare(b.name || "");
-      if (sortBy === "name-desc") return (b.name || "").localeCompare(a.name || "");
+      if (sortBy === "name-asc") return getLastNameForSort(a).localeCompare(getLastNameForSort(b)) || (a.name || "").localeCompare(b.name || "");
+      if (sortBy === "name-desc") return getLastNameForSort(b).localeCompare(getLastNameForSort(a)) || (a.name || "").localeCompare(b.name || "");
       if (sortBy === "status-asc") {
         const sa = a.status ?? "lead";
         const sb = b.status ?? "lead";
@@ -1292,6 +1301,22 @@ export default function Contacts() {
               <span className="text-sm text-muted-foreground shrink-0">
                 Total records {filteredAndSortedContacts.length}
               </span>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                <SelectTrigger className="w-[180px] bg-popover border-border text-foreground hover:bg-muted">
+                  <ArrowUpDown className="w-4 h-4 mr-2 shrink-0" />
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Last name A→Z</SelectItem>
+                  <SelectItem value="name-desc">Last name Z→A</SelectItem>
+                  <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
+                  <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
+                  <SelectItem value="status-asc">Status A→Z</SelectItem>
+                  <SelectItem value="status-desc">Status Z→A</SelectItem>
+                  <SelectItem value="property-count-desc">Properties (most)</SelectItem>
+                  <SelectItem value="property-count-asc">Properties (least)</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
                 <button
                   type="button"

@@ -66,7 +66,7 @@ export default function Properties() {
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
-  const [viewMode, setViewMode] = useState<PropertyViewMode>("grid");
+  const [viewMode, setViewMode] = useState<PropertyViewMode>("list");
   const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
   const [itemsPerPage, setItemsPerPage] = useState(20);
 

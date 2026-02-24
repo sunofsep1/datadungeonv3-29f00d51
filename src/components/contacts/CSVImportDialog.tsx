@@ -15,7 +15,7 @@ import { Upload, FileSpreadsheet, Check, AlertCircle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact, useUpdateContact, getPrimaryEmail, getPrimaryPhone } from "@/hooks/useContacts";
-import { useCreateProperty } from "@/hooks/useProperties";
+import { useProperties, useCreateProperty } from "@/hooks/useProperties";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag } from "@/hooks/useContactTags";
@@ -86,12 +86,20 @@ function normalizeEmail(s: string): string {
 function normalizePhone(s: string): string {
   return s.trim().replace(/\s/g, "").replace(/^\+61/, "0");
 }
+function normalizeAddressKey(addr: { address_line1: string; city?: string; state?: string; postcode?: string }): string {
+  const a = (addr.address_line1 || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const c = (addr.city || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const s = (addr.state || "").trim().toUpperCase();
+  const p = (addr.postcode || "").replace(/\D/g, "").slice(0, 4);
+  return [a, c, s, p].filter(Boolean).join("|");
+}
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { data: existingContacts = [] } = useContacts();
+  const { data: existingProperties = [] } = useProperties();
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const createProperty = useCreateProperty();
@@ -133,6 +141,20 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     existingTags.forEach((t) => m.set(t.name.toLowerCase().trim(), t.id));
     return m;
   }, [existingTags]);
+
+  const addressToProperty = useMemo(() => {
+    const m = new Map<string, string>();
+    existingProperties.forEach((p) => {
+      const key = normalizeAddressKey({
+        address_line1: p.address_line1 ?? "",
+        city: p.city ?? "",
+        state: p.state ?? "",
+        postcode: p.postcode ?? "",
+      });
+      if (key) m.set(key, p.id);
+    });
+    return m;
+  }, [existingProperties]);
 
   const reset = () => {
     setStep("upload");
@@ -228,6 +250,16 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     const total = mappedRows.length;
     const tagMap = new Map(tagNameToId);
 
+    // Track contacts created/updated in this batch to prevent duplicates within the CSV
+    const batchEmailToContact = new Map<string, { id: string }>(
+      Array.from(emailToContact.entries()).map(([k, c]) => [k, { id: c.id }])
+    );
+    const batchPhoneToContact = new Map<string, { id: string }>(
+      Array.from(phoneToContact.entries()).map(([k, c]) => [k, { id: c.id }])
+    );
+    // Track properties by address to prevent duplicate properties from same CSV or existing DB
+    const batchAddressToProperty = new Map<string, string>(addressToProperty);
+
     for (let i = 0; i < mappedRows.length; i++) {
       const r = mappedRows[i];
       const rowNum = i + 2;
@@ -254,9 +286,9 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       const phoneNorm = r.phone ? normalizePhone(r.phone) : null;
       const mobileNorm = r.mobile ? normalizePhone(r.mobile) : null;
       const match =
-        (emailNorm && emailToContact.get(emailNorm)) ??
-        (phoneNorm && phoneToContact.get(phoneNorm)) ??
-        (mobileNorm && phoneToContact.get(mobileNorm)) ??
+        (emailNorm && batchEmailToContact.get(emailNorm)) ??
+        (phoneNorm && batchPhoneToContact.get(phoneNorm)) ??
+        (mobileNorm && batchPhoneToContact.get(mobileNorm)) ??
         null;
 
       let contactId: string;
@@ -285,6 +317,12 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           contactId = (created as { id: string }).id;
           cr++;
         }
+
+        // Add to batch maps so duplicate rows in this CSV update instead of creating
+        const ref = { id: contactId };
+        if (emailNorm) batchEmailToContact.set(emailNorm, ref);
+        if (phoneNorm) batchPhoneToContact.set(phoneNorm, ref);
+        if (mobileNorm) batchPhoneToContact.set(mobileNorm, ref);
 
         if (contactId && r.tags) {
           const tagNames = r.tags.split(",").map((t) => t.trim()).filter(Boolean);
@@ -366,19 +404,38 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           // Only create property if we have at least address_line1
           if (addressLine1.trim()) {
             try {
-              const prop = await createProperty.mutateAsync({
+              const addrKey = normalizeAddressKey({
                 address_line1: addressLine1.trim(),
-                address_line2: null,
-                city: suburb.trim() || null,
-                state: state || null,
-                postcode: postcode || null,
-                country: "Australia",
+                city: suburb.trim(),
+                state: state || undefined,
+                postcode: postcode || undefined,
               });
-              await createLink.mutateAsync({ 
-                contact_id: contactId, 
-                property_id: prop.id, 
-                role: "owner" 
-              });
+              let propertyId = batchAddressToProperty.get(addrKey);
+              if (!propertyId) {
+                const prop = await createProperty.mutateAsync({
+                  address_line1: addressLine1.trim(),
+                  address_line2: null,
+                  city: suburb.trim() || null,
+                  state: state || null,
+                  postcode: postcode || null,
+                  country: "Australia",
+                });
+                propertyId = (prop as { id: string }).id;
+                batchAddressToProperty.set(addrKey, propertyId);
+              }
+              try {
+                await createLink.mutateAsync({ 
+                  contact_id: contactId, 
+                  property_id: propertyId, 
+                  role: "owner" 
+                });
+              } catch (linkErr) {
+                // Ignore duplicate link (contact already linked to this property)
+                const msg = (linkErr as Error).message.toLowerCase();
+                if (!msg.includes("duplicate") && !msg.includes("unique") && !msg.includes("already exists")) {
+                  errs.push(`Row ${rowNum}: Could not link property: ${(linkErr as Error).message}`);
+                }
+              }
             } catch (e) {
               errs.push(`Row ${rowNum}: Could not create property: ${(e as Error).message}`);
             }
@@ -434,7 +491,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Map columns to: contact (name, email, phone, mobile), address, source, tags. We’ll preview the first {PREVIEW_ROWS} rows, validate, and de‑duplicate by email/mobile.
+              Map columns to: contact (name, email, phone, mobile), address, source, tags. We’ll preview the first {PREVIEW_ROWS} rows, validate, and de‑duplicate contacts by email/phone and properties by address.
             </p>
           </div>
         )}
