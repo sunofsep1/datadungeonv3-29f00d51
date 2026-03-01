@@ -8,13 +8,14 @@ import { Target, Plus, Trash2, Pencil, TrendingUp, TrendingDown } from "lucide-r
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useKPIGoals } from "@/hooks/useKPIGoals";
+import { useKPIGoals, useUpsertKPIGoals } from "@/hooks/useKPIGoals";
 import { useActivities } from "@/hooks/useActivities";
 import { useCalls } from "@/hooks/useCalls";
 
 export function GoalsManager() {
   const { toast } = useToast();
   const { data: kpiGoals, isLoading: goalsLoading, isError: goalsError, refetch: refetchGoals } = useKPIGoals();
+  const upsertGoals = useUpsertKPIGoals();
   const { data: activities = [], isError: activitiesError, refetch: refetchActivities } = useActivities();
   const { data: calls = [], isError: callsError, refetch: refetchCalls } = useCalls();
 
@@ -32,7 +33,10 @@ export function GoalsManager() {
           <Target className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold text-foreground">Goals Progress</h3>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">Couldn&apos;t load goals data.</p>
+        <p className="text-sm text-muted-foreground mb-2">Couldn&apos;t load goals data.</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Run database migrations: <code className="bg-secondary px-1 rounded">npm run db:push</code>. See README for setup.
+        </p>
         <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
       </Card>
     );
@@ -118,6 +122,24 @@ export function GoalsManager() {
     return (
       <Card className="p-6 bg-card border-border">
         <div className="text-center py-8 text-muted-foreground">Loading goals...</div>
+      </Card>
+    );
+  }
+
+  if (!kpiGoals && goals.length === 0) {
+    return (
+      <Card className="p-6 bg-card border-border">
+        <div className="flex items-center justify-between mb-4">
+          <Target className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-foreground">Goals Progress</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">Set up your KPI goals to track progress. Goals include calls, appointments, listings, contracts, closings, and GCI.</p>
+        <Button
+          onClick={() => upsertGoals.mutateAsync({}).then(() => toast({ title: "Goals set", description: "Default goals created. You can adjust them in Daily Numbers." })).catch((e) => toast({ title: "Error", description: e.message, variant: "destructive" }))}
+          disabled={upsertGoals.isPending}
+        >
+          {upsertGoals.isPending ? "Setting up..." : "Set up goals"}
+        </Button>
       </Card>
     );
   }

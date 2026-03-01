@@ -28,6 +28,8 @@ export default function Marketing() {
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [campaignEmailOpen, setCampaignEmailOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
@@ -79,8 +81,9 @@ export default function Marketing() {
         toast({ title: "Success", description: "Post created!" });
       }
       setIsDialogOpen(false);
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save post", variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to save post";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -88,14 +91,18 @@ export default function Marketing() {
     try {
       await deletePost.mutateAsync(id);
       toast({ title: "Deleted", description: "Post removed" });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete post", variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to delete post";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
-  const filteredPosts = posts.filter((post) =>
-    post.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPlatform = platformFilter === "all" || (post.platform || "") === platformFilter;
+    const matchesStatus = statusFilter === "all" || (post.status || "") === statusFilter;
+    return matchesSearch && matchesPlatform && matchesStatus;
+  });
 
   const getStatusColor = (status: string | null) => {
     switch (status) {
@@ -128,7 +135,7 @@ export default function Marketing() {
                 <Plus className="w-4 h-4" /> Create Post
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[400px] bg-[#242424] border-white/10">
+            <DialogContent className="sm:max-w-[400px]">
               <DialogHeader>
                 <DialogTitle>{editingPost ? "Edit Post" : "Create Post"}</DialogTitle>
               </DialogHeader>
@@ -210,20 +217,45 @@ export default function Marketing() {
         </TabsContent>
 
         <TabsContent value="posts">
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-            <Input placeholder="Search posts..." className="pl-10 bg-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search posts..." className="pl-10 bg-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger className="w-[140px] bg-input">
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All platforms</SelectItem>
+                <SelectItem value="facebook">Facebook</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] bg-input">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {filteredPosts.length === 0 ? (
-            <div className="text-center py-12 text-white/60">
+            <div className="text-center py-12 text-muted-foreground">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No posts yet. Create your first post!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredPosts.map((post) => (
-                <Card key={post.id} className="zoho-card p-4 border-white/10">
+                <Card key={post.id} className="zoho-card p-4 border-border">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{getPlatformIcon(post.platform)}</span>
@@ -240,10 +272,10 @@ export default function Marketing() {
                       </Button>
                     </div>
                   </div>
-                  <h4 className="font-medium text-white mb-2 line-clamp-2">{post.title}</h4>
-                  {post.content && <p className="text-sm text-white/60 line-clamp-3 mb-3">{post.content}</p>}
+                  <h4 className="font-medium text-foreground mb-2 line-clamp-2">{post.title}</h4>
+                  {post.content && <p className="text-sm text-muted-foreground line-clamp-3 mb-3">{post.content}</p>}
                   {post.scheduled_date && (
-                    <div className="flex items-center gap-1 text-xs text-white/60">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
                       {format(new Date(post.scheduled_date), "MMM d, yyyy")}
                     </div>

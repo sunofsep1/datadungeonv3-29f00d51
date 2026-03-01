@@ -125,6 +125,8 @@ npm run db:push
 
 Other Supabase scripts: `npm run supabase:gen-types` regenerates TypeScript types from the linked project.
 
+**First-time setup (Performance & Marketing):** The **Performance** page (activity tracking, goals, calls) and **Marketing** page (posts) require the `activities`, `kpi_goals`, `calls`, and `posts` tables. Run `npm run db:push` before using these features. If you see errors like "Activities table is not set up" or "Posts table is not set up", run migrations: `npm run supabase:link` (once) then `npm run db:push`. See [Run migrations](#run-migrations) above.
+
 **Schema verification:** Run `npm run health` to confirm the six core tables exist and are queryable: `contacts`, `tags`, `contact_tags`, `contact_channels`, `properties`, `contact_property_links`. If any table is missing, run `db:push` to apply migrations.
 
 ### Contacts & Properties upgrade (new migrations)

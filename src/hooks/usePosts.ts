@@ -40,9 +40,12 @@ export function usePosts() {
         .from("posts" as any) as any)
         .select("*")
         .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      return data as Post[];
+      if (!error) return (data ?? []) as Post[];
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("posts") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return [] as Post[];
+      }
+      throw error;
     },
   });
 }
@@ -60,8 +63,13 @@ export function useCreatePost() {
         .insert({ ...post, user_id: user.id })
         .select()
         .single();
-      
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("posts") || msg.includes("does not exist")) {
+          throw new Error("Posts table is not set up. Run database migrations (npm run db:push) to enable posts.");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -81,8 +89,13 @@ export function useUpdatePost() {
         .eq("id", id)
         .select()
         .single();
-      
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("posts") || msg.includes("does not exist")) {
+          throw new Error("Posts table is not set up. Run database migrations (npm run db:push) to enable posts.");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -100,8 +113,13 @@ export function useDeletePost() {
         .from("posts" as any) as any)
         .delete()
         .eq("id", id);
-
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("posts") || msg.includes("does not exist")) {
+          throw new Error("Posts table is not set up. Run database migrations (npm run db:push) to enable posts.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });

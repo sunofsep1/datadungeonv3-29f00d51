@@ -41,7 +41,10 @@ export function NumbersKPIGrid() {
     return (
       <Card className="bg-card border-border">
         <CardContent className="p-6">
-          <p className="text-sm text-muted-foreground mb-4">Couldn&apos;t load daily numbers.</p>
+          <p className="text-sm text-muted-foreground mb-2">Couldn&apos;t load daily numbers.</p>
+          <p className="text-xs text-muted-foreground mb-4">
+            Run migrations: <code className="bg-secondary px-1 rounded">npm run db:push</code>. See README for setup.
+          </p>
           <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
         </CardContent>
       </Card>

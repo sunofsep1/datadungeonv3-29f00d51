@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useUpsertTodayActivity, useTodayActivity } from "@/hooks/useActivities";
+import { useUpsertTodayActivity, useTodayActivity, useActivities } from "@/hooks/useActivities";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, Copy } from "lucide-react";
 
 export function LogActivityForm() {
   const { data: todayActivity } = useTodayActivity();
+  const { data: activities = [] } = useActivities();
   const upsertActivity = useUpsertTodayActivity();
   const { toast } = useToast();
   
@@ -36,6 +37,25 @@ export function LogActivityForm() {
       });
     }
   }, [todayActivity]);
+
+  const yesterdayActivity = activities.find((a) => {
+    const d = typeof a.date === "string" ? a.date : "";
+    return d && d < new Date().toISOString().split("T")[0];
+  });
+
+  const handleCopyYesterday = () => {
+    if (!yesterdayActivity) return;
+    setFormData({
+      calls_made: yesterdayActivity.calls_made || 0,
+      appointments_set: yesterdayActivity.appointments_set || 0,
+      listings_taken: yesterdayActivity.listings_taken || 0,
+      offers_written: yesterdayActivity.offers_written || 0,
+      contracts_signed: yesterdayActivity.contracts_signed || 0,
+      closings: yesterdayActivity.closings || 0,
+      gci_earned: Number(yesterdayActivity.gci_earned) || 0,
+    });
+    toast({ title: "Copied", description: "Yesterday's numbers pre-filled." });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,10 +110,18 @@ export function LogActivityForm() {
               </div>
             ))}
           </div>
-          <Button type="submit" disabled={upsertActivity.isPending} className="w-full sm:w-auto">
-            <Save className="w-4 h-4 mr-2" />
-            {upsertActivity.isPending ? "Saving..." : "Save Today's Activity"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" disabled={upsertActivity.isPending} className="w-full sm:w-auto">
+              <Save className="w-4 h-4 mr-2" />
+              {upsertActivity.isPending ? "Saving..." : "Save Today's Activity"}
+            </Button>
+            {yesterdayActivity && (
+              <Button type="button" variant="outline" size="sm" onClick={handleCopyYesterday}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copy yesterday
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>

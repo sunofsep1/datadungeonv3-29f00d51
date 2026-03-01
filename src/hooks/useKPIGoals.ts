@@ -28,9 +28,12 @@ export function useKPIGoals() {
         .from("kpi_goals")
         .select("*")
         .maybeSingle();
-      
-      if (error) throw error;
-      return data as KPIGoals | null;
+      if (!error) return data as KPIGoals | null;
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("kpi_goals") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return null;
+      }
+      throw error;
     },
   });
 }
@@ -44,11 +47,18 @@ export function useUpsertKPIGoals() {
       if (!user) throw new Error("Not authenticated");
       
       // Check if goals exist for user
-      const { data: existing } = await supabase
+      const { data: existing, error: fetchError } = await supabase
         .from("kpi_goals")
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
+      if (fetchError) {
+        const msg = (fetchError?.message ?? "").toLowerCase();
+        if (fetchError.code === "PGRST204" || String(fetchError.code) === "400" || msg.includes("relation") || msg.includes("kpi_goals") || msg.includes("does not exist")) {
+          throw new Error("KPI goals table is not set up. Run database migrations (npm run db:push) to enable goals.");
+        }
+        throw fetchError;
+      }
       
       if (existing) {
         const { data, error } = await supabase
@@ -57,8 +67,13 @@ export function useUpsertKPIGoals() {
           .eq("id", existing.id)
           .select()
           .single();
-        
-        if (error) throw error;
+        if (error) {
+          const msg = (error?.message ?? "").toLowerCase();
+          if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("kpi_goals") || msg.includes("does not exist")) {
+            throw new Error("KPI goals table is not set up. Run database migrations (npm run db:push) to enable goals.");
+          }
+          throw error;
+        }
         return data;
       } else {
         const { data, error } = await supabase
@@ -66,8 +81,13 @@ export function useUpsertKPIGoals() {
           .insert({ ...defaultGoals, ...goals, user_id: user.id })
           .select()
           .single();
-        
-        if (error) throw error;
+        if (error) {
+          const msg = (error?.message ?? "").toLowerCase();
+          if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("kpi_goals") || msg.includes("does not exist")) {
+            throw new Error("KPI goals table is not set up. Run database migrations (npm run db:push) to enable goals.");
+          }
+          throw error;
+        }
         return data;
       }
     },

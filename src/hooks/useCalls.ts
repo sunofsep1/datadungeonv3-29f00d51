@@ -40,14 +40,16 @@ export function useCalls() {
   return useQuery({
     queryKey: ["calls"],
     queryFn: async () => {
-      // Note: calls table added via migration, types will be available after refresh
       const { data, error } = await supabase
         .from("calls")
         .select("*")
         .order("call_date", { ascending: false });
-      
-      if (error) throw error;
-      return data as Call[];
+      if (!error) return (data ?? []) as Call[];
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return [] as Call[];
+      }
+      throw error;
     },
   });
 }
@@ -65,8 +67,13 @@ export function useCreateCall() {
         .insert({ ...call, user_id: user.id })
         .select()
         .single();
-      
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist")) {
+          throw new Error("Calls table is not set up. Run database migrations (npm run db:push) to enable call tracking.");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -86,8 +93,13 @@ export function useUpdateCall() {
         .eq("id", id)
         .select()
         .single();
-      
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist")) {
+          throw new Error("Calls table is not set up. Run database migrations (npm run db:push) to enable call tracking.");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -105,8 +117,13 @@ export function useDeleteCall() {
         .from("calls")
         .delete()
         .eq("id", id);
-      
-      if (error) throw error;
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist")) {
+          throw new Error("Calls table is not set up. Run database migrations (npm run db:push) to enable call tracking.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["calls"] });

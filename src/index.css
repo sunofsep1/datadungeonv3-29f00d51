@@ -76,6 +76,66 @@ html.theme-high-contrast #root {
   background-color: #0c0c0c !important;
 }
 
+html.theme-tokyo-night,
+html.theme-tokyo-night body,
+html.theme-tokyo-night #root {
+  background-color: #1a1b26 !important;
+}
+
+html.theme-gruvbox,
+html.theme-gruvbox body,
+html.theme-gruvbox #root {
+  background-color: #282828 !important;
+}
+
+html.theme-rose-pine,
+html.theme-rose-pine body,
+html.theme-rose-pine #root {
+  background-color: #191724 !important;
+}
+
+html.theme-synthwave,
+html.theme-synthwave body,
+html.theme-synthwave #root {
+  background-color: #2b213a !important;
+}
+
+html.theme-ayu-mirage,
+html.theme-ayu-mirage body,
+html.theme-ayu-mirage #root {
+  background-color: #1f2430 !important;
+}
+
+html.theme-material-palenight,
+html.theme-material-palenight body,
+html.theme-material-palenight #root {
+  background-color: #292d3e !important;
+}
+
+html.theme-kanagawa,
+html.theme-kanagawa body,
+html.theme-kanagawa #root {
+  background-color: #1f1f28 !important;
+}
+
+html.theme-oceanic-next,
+html.theme-oceanic-next body,
+html.theme-oceanic-next #root {
+  background-color: #1b2b34 !important;
+}
+
+html.theme-horizon,
+html.theme-horizon body,
+html.theme-horizon #root {
+  background-color: #1c1e26 !important;
+}
+
+html.theme-everforest,
+html.theme-everforest body,
+html.theme-everforest #root {
+  background-color: #2f383e !important;
+}
+
 @layer base {
   :root {
     --background: 222 47% 6%;
@@ -623,6 +683,456 @@ html.theme-high-contrast #root {
     --info: 199 89% 55%;
     --teal: 168 76% 45%;
   }
+
+  /* Tokyo Night - deep indigo, blue accents */
+  .theme-tokyo-night {
+    --background: 234 32% 12%;
+    --foreground: 226 64% 88%;
+
+    --card: 234 32% 10%;
+    --card-foreground: 226 64% 88%;
+
+    --popover: 234 28% 14%;
+    --popover-foreground: 226 64% 88%;
+
+    --primary: 230 100% 73%;
+    --primary-foreground: 234 32% 12%;
+
+    --secondary: 234 25% 22%;
+    --secondary-foreground: 226 64% 88%;
+
+    --muted: 234 20% 35%;
+    --muted-foreground: 225 20% 65%;
+
+    --accent: 195 79% 92%;
+    --accent-foreground: 234 32% 12%;
+
+    --destructive: 350 100% 60%;
+    --destructive-foreground: 226 64% 88%;
+
+    --border: 234 20% 28%;
+    --input: 234 32% 10%;
+    --ring: 230 100% 73%;
+
+    --sidebar-background: 234 32% 8%;
+    --sidebar-foreground: 226 30% 75%;
+    --sidebar-primary: 230 100% 73%;
+    --sidebar-primary-foreground: 234 32% 12%;
+    --sidebar-accent: 234 25% 18%;
+    --sidebar-accent-foreground: 226 64% 88%;
+    --sidebar-border: 234 20% 22%;
+    --sidebar-ring: 230 100% 73%;
+
+    --success: 95 50% 55%;
+    --warning: 41 99% 60%;
+    --info: 195 79% 92%;
+    --teal: 175 65% 55%;
+  }
+
+  /* Gruvbox Dark - retro warm brown & orange */
+  .theme-gruvbox {
+    --background: 43 13% 16%;
+    --foreground: 60 9% 92%;
+
+    --card: 43 13% 12%;
+    --card-foreground: 60 9% 92%;
+
+    --popover: 43 10% 20%;
+    --popover-foreground: 60 9% 92%;
+
+    --primary: 24 100% 55%;
+    --primary-foreground: 43 13% 16%;
+
+    --secondary: 43 13% 26%;
+    --secondary-foreground: 60 9% 92%;
+
+    --muted: 43 10% 35%;
+    --muted-foreground: 60 9% 70%;
+
+    --accent: 78 92% 50%;
+    --accent-foreground: 43 13% 16%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 60 9% 92%;
+
+    --border: 43 10% 32%;
+    --input: 43 13% 12%;
+    --ring: 24 100% 55%;
+
+    --sidebar-background: 43 13% 10%;
+    --sidebar-foreground: 60 9% 75%;
+    --sidebar-primary: 24 100% 55%;
+    --sidebar-primary-foreground: 43 13% 16%;
+    --sidebar-accent: 43 13% 22%;
+    --sidebar-accent-foreground: 60 9% 92%;
+    --sidebar-border: 43 10% 26%;
+    --sidebar-ring: 24 100% 55%;
+
+    --success: 115 54% 49%;
+    --warning: 24 100% 55%;
+    --info: 194 58% 50%;
+    --teal: 166 58% 47%;
+  }
+
+  /* Rose Pine - muted evergreen & rose */
+  .theme-rose-pine {
+    --background: 240 20% 10%;
+    --foreground: 25 18% 82%;
+
+    --card: 240 18% 8%;
+    --card-foreground: 25 18% 82%;
+
+    --popover: 240 18% 12%;
+    --popover-foreground: 25 18% 82%;
+
+    --primary: 15 76% 72%;
+    --primary-foreground: 240 20% 10%;
+
+    --secondary: 240 14% 22%;
+    --secondary-foreground: 25 18% 82%;
+
+    --muted: 240 10% 32%;
+    --muted-foreground: 25 15% 60%;
+
+    --accent: 41 86% 77%;
+    --accent-foreground: 240 20% 10%;
+
+    --destructive: 350 65% 55%;
+    --destructive-foreground: 25 18% 82%;
+
+    --border: 240 12% 28%;
+    --input: 240 18% 8%;
+    --ring: 15 76% 72%;
+
+    --sidebar-background: 240 20% 6%;
+    --sidebar-foreground: 25 18% 75%;
+    --sidebar-primary: 15 76% 72%;
+    --sidebar-primary-foreground: 240 20% 10%;
+    --sidebar-accent: 240 14% 18%;
+    --sidebar-accent-foreground: 25 18% 82%;
+    --sidebar-border: 240 12% 24%;
+    --sidebar-ring: 15 76% 72%;
+
+    --success: 150 50% 48%;
+    --warning: 41 86% 77%;
+    --info: 220 70% 70%;
+    --teal: 167 42% 52%;
+  }
+
+  /* Synthwave '84 - retro neon pink & cyan */
+  .theme-synthwave {
+    --background: 270 35% 15%;
+    --foreground: 330 100% 94%;
+
+    --card: 270 35% 12%;
+    --card-foreground: 330 100% 94%;
+
+    --popover: 270 30% 18%;
+    --popover-foreground: 330 100% 94%;
+
+    --primary: 330 100% 62%;
+    --primary-foreground: 270 35% 15%;
+
+    --secondary: 270 25% 28%;
+    --secondary-foreground: 330 100% 94%;
+
+    --muted: 270 20% 40%;
+    --muted-foreground: 330 50% 75%;
+
+    --accent: 187 100% 75%;
+    --accent-foreground: 270 35% 15%;
+
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 330 100% 94%;
+
+    --border: 270 25% 35%;
+    --input: 270 35% 12%;
+    --ring: 330 100% 62%;
+
+    --sidebar-background: 270 35% 10%;
+    --sidebar-foreground: 330 50% 82%;
+    --sidebar-primary: 330 100% 62%;
+    --sidebar-primary-foreground: 270 35% 15%;
+    --sidebar-accent: 270 25% 22%;
+    --sidebar-accent-foreground: 330 100% 94%;
+    --sidebar-border: 270 25% 30%;
+    --sidebar-ring: 330 100% 62%;
+
+    --success: 145 80% 55%;
+    --warning: 45 100% 60%;
+    --info: 187 100% 75%;
+    --teal: 187 100% 75%;
+  }
+
+  /* Ayu Mirage - teal-dark with orange accents */
+  .theme-ayu-mirage {
+    --background: 220 30% 15%;
+    --foreground: 40 20% 90%;
+
+    --card: 220 28% 12%;
+    --card-foreground: 40 20% 90%;
+
+    --popover: 220 25% 18%;
+    --popover-foreground: 40 20% 90%;
+
+    --primary: 28 100% 63%;
+    --primary-foreground: 220 30% 15%;
+
+    --secondary: 220 22% 26%;
+    --secondary-foreground: 40 20% 90%;
+
+    --muted: 220 18% 38%;
+    --muted-foreground: 40 15% 65%;
+
+    --accent: 194 95% 75%;
+    --accent-foreground: 220 30% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 20% 90%;
+
+    --border: 220 20% 30%;
+    --input: 220 30% 12%;
+    --ring: 28 100% 63%;
+
+    --sidebar-background: 220 30% 10%;
+    --sidebar-foreground: 40 15% 75%;
+    --sidebar-primary: 28 100% 63%;
+    --sidebar-primary-foreground: 220 30% 15%;
+    --sidebar-accent: 220 22% 20%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 220 20% 25%;
+    --sidebar-ring: 28 100% 63%;
+
+    --success: 95 45% 50%;
+    --warning: 28 100% 63%;
+    --info: 194 95% 75%;
+    --teal: 194 60% 55%;
+  }
+
+  /* Material Palenight - purple & cyan */
+  .theme-material-palenight {
+    --background: 233 30% 20%;
+    --foreground: 226 70% 90%;
+
+    --card: 233 28% 16%;
+    --card-foreground: 226 70% 90%;
+
+    --popover: 233 26% 24%;
+    --popover-foreground: 226 70% 90%;
+
+    --primary: 199 98% 85%;
+    --primary-foreground: 233 30% 20%;
+
+    --secondary: 233 22% 30%;
+    --secondary-foreground: 226 70% 90%;
+
+    --muted: 233 18% 42%;
+    --muted-foreground: 226 30% 72%;
+
+    --accent: 280 70% 78%;
+    --accent-foreground: 233 30% 20%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 226 70% 90%;
+
+    --border: 233 22% 35%;
+    --input: 233 30% 16%;
+    --ring: 199 98% 85%;
+
+    --sidebar-background: 233 30% 14%;
+    --sidebar-foreground: 226 30% 78%;
+    --sidebar-primary: 199 98% 85%;
+    --sidebar-primary-foreground: 233 30% 20%;
+    --sidebar-accent: 233 22% 26%;
+    --sidebar-accent-foreground: 226 70% 90%;
+    --sidebar-border: 233 22% 30%;
+    --sidebar-ring: 199 98% 85%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 199 98% 85%;
+    --teal: 187 52% 58%;
+  }
+
+  /* Kanagawa - Japanese-inspired warm lotus */
+  .theme-kanagawa {
+    --background: 240 25% 12%;
+    --foreground: 45 30% 88%;
+
+    --card: 240 22% 10%;
+    --card-foreground: 45 30% 88%;
+
+    --popover: 240 20% 16%;
+    --popover-foreground: 45 30% 88%;
+
+    --primary: 340 70% 68%;
+    --primary-foreground: 240 25% 12%;
+
+    --secondary: 240 18% 26%;
+    --secondary-foreground: 45 30% 88%;
+
+    --muted: 240 15% 38%;
+    --muted-foreground: 45 20% 68%;
+
+    --accent: 175 55% 62%;
+    --accent-foreground: 240 25% 12%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 45 30% 88%;
+
+    --border: 240 18% 32%;
+    --input: 240 25% 10%;
+    --ring: 340 70% 68%;
+
+    --sidebar-background: 240 25% 8%;
+    --sidebar-foreground: 45 20% 78%;
+    --sidebar-primary: 340 70% 68%;
+    --sidebar-primary-foreground: 240 25% 12%;
+    --sidebar-accent: 240 18% 20%;
+    --sidebar-accent-foreground: 45 30% 88%;
+    --sidebar-border: 240 18% 28%;
+    --sidebar-ring: 340 70% 68%;
+
+    --success: 95 45% 50%;
+    --warning: 35 90% 58%;
+    --info: 199 80% 70%;
+    --teal: 175 55% 62%;
+  }
+
+  /* Oceanic Next - deep ocean blue-green */
+  .theme-oceanic-next {
+    --background: 199 50% 14%;
+    --foreground: 187 30% 88%;
+
+    --card: 199 48% 11%;
+    --card-foreground: 187 30% 88%;
+
+    --popover: 199 45% 17%;
+    --popover-foreground: 187 30% 88%;
+
+    --primary: 187 55% 58%;
+    --primary-foreground: 199 50% 14%;
+
+    --secondary: 199 40% 26%;
+    --secondary-foreground: 187 30% 88%;
+
+    --muted: 199 30% 42%;
+    --muted-foreground: 187 20% 65%;
+
+    --accent: 354 70% 63%;
+    --accent-foreground: 199 50% 14%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 187 30% 88%;
+
+    --border: 199 35% 35%;
+    --input: 199 50% 11%;
+    --ring: 187 55% 58%;
+
+    --sidebar-background: 199 50% 8%;
+    --sidebar-foreground: 187 20% 78%;
+    --sidebar-primary: 187 55% 58%;
+    --sidebar-primary-foreground: 199 50% 14%;
+    --sidebar-accent: 199 40% 20%;
+    --sidebar-accent-foreground: 187 30% 88%;
+    --sidebar-border: 199 35% 28%;
+    --sidebar-ring: 187 55% 58%;
+
+    --success: 95 45% 48%;
+    --warning: 38 92% 50%;
+    --info: 187 55% 58%;
+    --teal: 187 55% 58%;
+  }
+
+  /* Horizon - warm pink & coral */
+  .theme-horizon {
+    --background: 240 30% 11%;
+    --foreground: 20 20% 90%;
+
+    --card: 240 28% 9%;
+    --card-foreground: 20 20% 90%;
+
+    --popover: 240 25% 14%;
+    --popover-foreground: 20 20% 90%;
+
+    --primary: 350 75% 65%;
+    --primary-foreground: 240 30% 11%;
+
+    --secondary: 240 22% 24%;
+    --secondary-foreground: 20 20% 90%;
+
+    --muted: 240 18% 38%;
+    --muted-foreground: 20 15% 68%;
+
+    --accent: 24 100% 58%;
+    --accent-foreground: 240 30% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 20 20% 90%;
+
+    --border: 240 20% 30%;
+    --input: 240 30% 9%;
+    --ring: 350 75% 65%;
+
+    --sidebar-background: 240 30% 7%;
+    --sidebar-foreground: 20 15% 78%;
+    --sidebar-primary: 350 75% 65%;
+    --sidebar-primary-foreground: 240 30% 11%;
+    --sidebar-accent: 240 22% 18%;
+    --sidebar-accent-foreground: 20 20% 90%;
+    --sidebar-border: 240 20% 26%;
+    --sidebar-ring: 350 75% 65%;
+
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 199 90% 65%;
+    --teal: 166 70% 48%;
+  }
+
+  /* Everforest - soft green forest */
+  .theme-everforest {
+    --background: 120 9% 20%;
+    --foreground: 80 9% 88%;
+
+    --card: 120 8% 16%;
+    --card-foreground: 80 9% 88%;
+
+    --popover: 120 7% 24%;
+    --popover-foreground: 80 9% 88%;
+
+    --primary: 139 39% 57%;
+    --primary-foreground: 120 9% 20%;
+
+    --secondary: 120 8% 28%;
+    --secondary-foreground: 80 9% 88%;
+
+    --muted: 120 6% 42%;
+    --muted-foreground: 80 7% 65%;
+
+    --accent: 96 48% 62%;
+    --accent-foreground: 120 9% 20%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 80 9% 88%;
+
+    --border: 120 7% 35%;
+    --input: 120 9% 16%;
+    --ring: 139 39% 57%;
+
+    --sidebar-background: 120 9% 12%;
+    --sidebar-foreground: 80 7% 78%;
+    --sidebar-primary: 139 39% 57%;
+    --sidebar-primary-foreground: 120 9% 20%;
+    --sidebar-accent: 120 8% 22%;
+    --sidebar-accent-foreground: 80 9% 88%;
+    --sidebar-border: 120 7% 30%;
+    --sidebar-ring: 139 39% 57%;
+
+    --success: 139 39% 57%;
+    --warning: 38 92% 50%;
+    --info: 199 80% 65%;
+    --teal: 166 58% 48%;
+  }
 }
 
 /* Dashboard clock: theme-aware glow (dark themes only) */
@@ -820,6 +1330,66 @@ html.density-compact [data-slot="row"] {
   .theme-high-contrast .zoho-accent-bg {
     background-color: rgba(255, 213, 0, 0.2) !important;
   }
+
+  .theme-tokyo-night .zoho-layout,
+  .theme-tokyo-night .zoho-layout main { background-color: #1a1b26 !important; }
+  .theme-tokyo-night .zoho-card { background-color: #16161e !important; border-color: rgba(122, 162, 247, 0.25) !important; }
+  .theme-tokyo-night .zoho-accent { color: #7aa2f7 !important; }
+  .theme-tokyo-night .zoho-accent-bg { background-color: rgba(122, 162, 247, 0.15) !important; }
+
+  .theme-gruvbox .zoho-layout,
+  .theme-gruvbox .zoho-layout main { background-color: #282828 !important; }
+  .theme-gruvbox .zoho-card { background-color: #1d2021 !important; border-color: rgba(254, 128, 25, 0.25) !important; }
+  .theme-gruvbox .zoho-accent { color: #fe8019 !important; }
+  .theme-gruvbox .zoho-accent-bg { background-color: rgba(254, 128, 25, 0.15) !important; }
+
+  .theme-rose-pine .zoho-layout,
+  .theme-rose-pine .zoho-layout main { background-color: #191724 !important; }
+  .theme-rose-pine .zoho-card { background-color: #1f1d2e !important; border-color: rgba(235, 188, 186, 0.25) !important; }
+  .theme-rose-pine .zoho-accent { color: #ebbcba !important; }
+  .theme-rose-pine .zoho-accent-bg { background-color: rgba(235, 188, 186, 0.15) !important; }
+
+  .theme-synthwave .zoho-layout,
+  .theme-synthwave .zoho-layout main { background-color: #2b213a !important; }
+  .theme-synthwave .zoho-card { background-color: #241b2f !important; border-color: rgba(249, 42, 173, 0.3) !important; }
+  .theme-synthwave .zoho-accent { color: #f92aad !important; }
+  .theme-synthwave .zoho-accent-bg { background-color: rgba(249, 42, 173, 0.2) !important; }
+
+  .theme-ayu-mirage .zoho-layout,
+  .theme-ayu-mirage .zoho-layout main { background-color: #1f2430 !important; }
+  .theme-ayu-mirage .zoho-card { background-color: #232a36 !important; border-color: rgba(255, 153, 64, 0.25) !important; }
+  .theme-ayu-mirage .zoho-accent { color: #ff9940 !important; }
+  .theme-ayu-mirage .zoho-accent-bg { background-color: rgba(255, 153, 64, 0.15) !important; }
+
+  .theme-material-palenight .zoho-layout,
+  .theme-material-palenight .zoho-layout main { background-color: #292d3e !important; }
+  .theme-material-palenight .zoho-card { background-color: #34324a !important; border-color: rgba(137, 221, 255, 0.25) !important; }
+  .theme-material-palenight .zoho-accent { color: #89ddff !important; }
+  .theme-material-palenight .zoho-accent-bg { background-color: rgba(137, 221, 255, 0.15) !important; }
+
+  .theme-kanagawa .zoho-layout,
+  .theme-kanagawa .zoho-layout main { background-color: #1f1f28 !important; }
+  .theme-kanagawa .zoho-card { background-color: #252535 !important; border-color: rgba(210, 126, 153, 0.25) !important; }
+  .theme-kanagawa .zoho-accent { color: #d27e99 !important; }
+  .theme-kanagawa .zoho-accent-bg { background-color: rgba(210, 126, 153, 0.15) !important; }
+
+  .theme-oceanic-next .zoho-layout,
+  .theme-oceanic-next .zoho-layout main { background-color: #1b2b34 !important; }
+  .theme-oceanic-next .zoho-card { background-color: #243b4a !important; border-color: rgba(95, 179, 179, 0.25) !important; }
+  .theme-oceanic-next .zoho-accent { color: #5fb3b3 !important; }
+  .theme-oceanic-next .zoho-accent-bg { background-color: rgba(95, 179, 179, 0.15) !important; }
+
+  .theme-horizon .zoho-layout,
+  .theme-horizon .zoho-layout main { background-color: #1c1e26 !important; }
+  .theme-horizon .zoho-card { background-color: #232530 !important; border-color: rgba(233, 83, 120, 0.25) !important; }
+  .theme-horizon .zoho-accent { color: #e95378 !important; }
+  .theme-horizon .zoho-accent-bg { background-color: rgba(233, 83, 120, 0.15) !important; }
+
+  .theme-everforest .zoho-layout,
+  .theme-everforest .zoho-layout main { background-color: #2f383e !important; }
+  .theme-everforest .zoho-card { background-color: #374247 !important; border-color: rgba(127, 187, 179, 0.25) !important; }
+  .theme-everforest .zoho-accent { color: #7fbbb3 !important; }
+  .theme-everforest .zoho-accent-bg { background-color: rgba(127, 187, 179, 0.15) !important; }
 
   /* Zoho dialog: theme-aware labels and inputs */
   .zoho-dialog label,

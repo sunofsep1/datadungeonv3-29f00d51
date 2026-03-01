@@ -13,6 +13,16 @@ const THEME_CLASSES = [
   "theme-nord",
   "theme-catppuccin",
   "theme-high-contrast",
+  "theme-tokyo-night",
+  "theme-gruvbox",
+  "theme-rose-pine",
+  "theme-synthwave",
+  "theme-ayu-mirage",
+  "theme-material-palenight",
+  "theme-kanagawa",
+  "theme-oceanic-next",
+  "theme-horizon",
+  "theme-everforest",
 ] as const;
 
 export type Theme =
@@ -26,7 +36,17 @@ export type Theme =
   | "solarizedDark"
   | "nord"
   | "catppuccin"
-  | "highContrast";
+  | "highContrast"
+  | "tokyoNight"
+  | "gruvbox"
+  | "rosePine"
+  | "synthwave"
+  | "ayuMirage"
+  | "materialPalenight"
+  | "kanagawa"
+  | "oceanicNext"
+  | "horizon"
+  | "everforest";
 
 const VALID_THEMES: Theme[] = [
   "dark",
@@ -40,6 +60,16 @@ const VALID_THEMES: Theme[] = [
   "nord",
   "catppuccin",
   "highContrast",
+  "tokyoNight",
+  "gruvbox",
+  "rosePine",
+  "synthwave",
+  "ayuMirage",
+  "materialPalenight",
+  "kanagawa",
+  "oceanicNext",
+  "horizon",
+  "everforest",
 ];
 
 interface ThemeContextType {
@@ -73,6 +103,16 @@ function themeToClass(theme: Theme): string {
     nord: "theme-nord",
     catppuccin: "theme-catppuccin",
     highContrast: "theme-high-contrast",
+    tokyoNight: "theme-tokyo-night",
+    gruvbox: "theme-gruvbox",
+    rosePine: "theme-rose-pine",
+    synthwave: "theme-synthwave",
+    ayuMirage: "theme-ayu-mirage",
+    materialPalenight: "theme-material-palenight",
+    kanagawa: "theme-kanagawa",
+    oceanicNext: "theme-oceanic-next",
+    horizon: "theme-horizon",
+    everforest: "theme-everforest",
   };
   return map[theme] ?? DEFAULT_THEME;
 }
