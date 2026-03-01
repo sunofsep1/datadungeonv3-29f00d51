@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
 interface AvatarCircleProps {
-  name: string;
+  /** Display name; can be undefined for HubSpot-style contacts (first_name + last_name). */
+  name?: string | null;
   /** Override initials (e.g. from first/last name). If not provided, derived from name. */
   initials?: string;
   color?: string;
@@ -26,10 +27,11 @@ const colors = [
   "bg-indigo-600",
 ];
 
-function getColorForName(name: string): string {
+function getColorForName(name: string | undefined | null): string {
+  const s = name ?? "";
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < s.length; i++) {
+    hash = s.charCodeAt(i) + ((hash << 5) - hash);
   }
   return colors[Math.abs(hash) % colors.length];
 }
@@ -44,8 +46,9 @@ function getInitials(name: string): string {
 }
 
 export function AvatarCircle({ name, initials: initialsProp, color, size = "md", className }: AvatarCircleProps) {
-  const bgColor = color || getColorForName(name);
-  const initials = initialsProp ?? getInitials(name);
+  const displayName = name ?? "";
+  const bgColor = color || getColorForName(displayName);
+  const initials = initialsProp ?? (displayName.trim() ? getInitials(displayName) : "?");
 
   return (
     <div

@@ -1,6 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 import { DashboardWelcomeHeader } from "@/components/dashboard/DashboardWelcomeHeader";
+import { SortableWidget } from "@/components/dashboard/SortableWidget";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -27,6 +38,39 @@ import { NewsWidget } from "@/components/dashboard/NewsWidget";
 import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const STORAGE_KEY = "dashboard-widget-order";
+
+const DEFAULT_WIDGET_ORDER = [
+  "visionBoard",
+  "affirmations",
+  "stats",
+  "topStories",
+  "news",
+  "calendar",
+  "kpi",
+  "pipeline",
+  "activityFeed",
+  "todo",
+  "recentContacts",
+  "upcomingAppointments",
+  "quickActions",
+];
+
+function loadWidgetOrder(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as string[];
+      // Merge with default to include any new widgets
+      const defaultSet = new Set(DEFAULT_WIDGET_ORDER);
+      const storedSet = new Set(parsed);
+      const merged = [...parsed.filter((id) => defaultSet.has(id)), ...DEFAULT_WIDGET_ORDER.filter((id) => !storedSet.has(id))];
+      return merged;
+    }
+  } catch (_) {}
+  return [...DEFAULT_WIDGET_ORDER];
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,6 +91,29 @@ export default function Dashboard() {
       }, { replace: true });
     }
   }, [searchParams, setSearchParams, toast]);
+
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(loadWidgetOrder);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setWidgetOrder((prev) => {
+        const oldIndex = prev.indexOf(String(active.id));
+        const newIndex = prev.indexOf(String(over.id));
+        if (oldIndex === -1 || newIndex === -1) return prev;
+        const next = arrayMove(prev, oldIndex, newIndex);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch (_) {}
+        return next;
+      });
+    }
+  }, []);
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
@@ -188,85 +255,80 @@ export default function Dashboard() {
     }
   };
 
-  return (
-    <div className="animate-fade-in space-y-6">
-      <DashboardWelcomeHeader />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <VisionBoard />
-        <AffirmationsWidget />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {contactsLoading ? (
-          [...Array(4)].map((_, i) => (
-            <Card key={i} className="zoho-card p-4 md:p-6">
-              <div className="flex items-center gap-3 md:gap-4">
-                <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <Skeleton className="h-3 w-16 mb-2" />
-                  <Skeleton className="h-7 w-12" />
-                </div>
-              </div>
-            </Card>
-          ))
-        ) : (
-          stats.map((stat, index) => (
-            <Card
-              key={index}
-              className="zoho-card p-4 md:p-6 cursor-pointer hover:bg-white/10 transition-colors duration-200 focus-within:ring-2 focus-within:ring-[#00BCD4] focus-within:ring-inset"
-              onClick={() => navigate(stat.path)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && navigate(stat.path)}
-            >
-              <div className="flex items-center justify-between gap-3 md:gap-4">
-                <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                  <div className="p-2 rounded-lg zoho-accent-bg shrink-0">
-                    <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+  const renderWidget = (id: string) => {
+    switch (id) {
+      case "visionBoard":
+        return <VisionBoard />;
+      case "affirmations":
+        return <AffirmationsWidget />;
+      case "stats":
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {contactsLoading ? (
+              [...Array(4)].map((_, i) => (
+                <Card key={i} className="zoho-card p-4 md:p-6">
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <Skeleton className="h-3 w-16 mb-2" />
+                      <Skeleton className="h-7 w-12" />
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs md:text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-xl md:text-2xl font-bold text-foreground">{stat.value}</p>
+                </Card>
+              ))
+            ) : (
+              stats.map((stat, index) => (
+                <Card
+                  key={index}
+                  className="zoho-card p-4 md:p-6 cursor-pointer hover:bg-white/10 transition-colors duration-200 focus-within:ring-2 focus-within:ring-[#00BCD4] focus-within:ring-inset"
+                  onClick={() => navigate(stat.path)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(stat.path)}
+                >
+                  <div className="flex items-center justify-between gap-3 md:gap-4">
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                      <div className="p-2 rounded-lg zoho-accent-bg shrink-0">
+                        <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs md:text-sm text-muted-foreground">{stat.label}</p>
+                        <p className="text-xl md:text-2xl font-bold text-foreground">{stat.value}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch mb-6">
-        <TopStoriesWidget />
-        <NewsWidget />
-      </div>
-
-      <div className="mb-6">
-        <DashboardCalendarWidget
-          onAddAppointmentRequest={(date) => {
-            setNewAppointment((prev) => ({
-              ...prev,
-              date: format(date, "yyyy-MM-dd"),
-              time: format(date, "HH:mm"),
-            }));
-            setAppointmentDialogOpen(true);
-          }}
-        />
-      </div>
-
-      {/* Row: KPI + Pipeline — balanced 2-col */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <KPISnapshot />
-        <PipelineSummary />
-      </div>
-
-      {/* Row: Activity + sidebar cards — balanced 2-col */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RecentActivityFeed />
-
-        <div className="space-y-4">
-          <Card className="zoho-card p-4 md:p-6">
+                </Card>
+              ))
+            )}
+          </div>
+        );
+      case "topStories":
+        return <TopStoriesWidget />;
+      case "news":
+        return <NewsWidget />;
+      case "calendar":
+        return (
+          <DashboardCalendarWidget
+            onAddAppointmentRequest={(date) => {
+              setNewAppointment((prev) => ({
+                ...prev,
+                date: format(date, "yyyy-MM-dd"),
+                time: format(date, "HH:mm"),
+              }));
+              setAppointmentDialogOpen(true);
+            }}
+          />
+        );
+      case "kpi":
+        return <KPISnapshot />;
+      case "pipeline":
+        return <PipelineSummary />;
+      case "activityFeed":
+        return <RecentActivityFeed />;
+      case "todo":
+        return (
+          <Card className="zoho-card p-4 md:p-6 h-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <CheckSquare className="w-5 h-5 zoho-accent" />
@@ -292,8 +354,10 @@ export default function Dashboard() {
               </div>
             )}
           </Card>
-
-          <Card className="zoho-card p-4 md:p-6">
+        );
+      case "recentContacts":
+        return (
+          <Card className="zoho-card p-4 md:p-6 h-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-foreground">Recent Contacts</h3>
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/contacts")}>
@@ -331,8 +395,10 @@ export default function Dashboard() {
               </ul>
             )}
           </Card>
-
-          <Card className="zoho-card p-4 md:p-6">
+        );
+      case "upcomingAppointments":
+        return (
+          <Card className="zoho-card p-4 md:p-6 h-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-foreground">Upcoming Appointments</h3>
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/appointments")}>
@@ -373,8 +439,10 @@ export default function Dashboard() {
               </ul>
             )}
           </Card>
-
-          <Card className="zoho-card p-4 md:p-6">
+        );
+      case "quickActions":
+        return (
+          <Card className="zoho-card p-4 md:p-6 h-full">
             <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3 justify-items-stretch">
               <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
@@ -395,8 +463,32 @@ export default function Dashboard() {
               </button>
             </div>
           </Card>
-        </div>
-      </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const colSpanMap: Record<string, 1 | 2> = {
+    stats: 2,
+    calendar: 2,
+  };
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      <DashboardWelcomeHeader />
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {widgetOrder.map((id) => (
+              <SortableWidget key={id} id={id} colSpan={colSpanMap[id] ?? 1}>
+                {renderWidget(id)}
+              </SortableWidget>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Dialogs */}
       <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>

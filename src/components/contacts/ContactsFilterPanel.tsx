@@ -99,6 +99,12 @@ export function ContactsFilterPanel({
               <SelectItem value="warm">Warm</SelectItem>
               <SelectItem value="cold">Cold</SelectItem>
               <SelectItem value="lead">Lead</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="contacted">Contacted</SelectItem>
+              <SelectItem value="qualified">Qualified</SelectItem>
+              <SelectItem value="nurture">Nurture</SelectItem>
+              <SelectItem value="unqualified">Unqualified</SelectItem>
+              <SelectItem value="customer">Customer</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterSource} onValueChange={onFilterSourceChange}>

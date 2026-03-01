@@ -97,26 +97,27 @@ export function useProperties() {
     queryKey: ["properties"],
     queryFn: async () => {
       try {
-        const { data, error } = await (supabase as any)
-          .from("properties")
-          .select(PROPERTIES_SELECT)
-          .order("created_at", { ascending: false });
-        if (!error) return (data ?? []) as PropertyWithLinks[];
-        // Fallback: full select can 400 if contact_property_links or relations don't exist
+        // Try simple select first (works with HubSpot schema)
         const { data: simple, error: simpleError } = await (supabase as any)
           .from("properties")
           .select("*")
           .order("created_at", { ascending: false });
-        if (!simpleError) {
+        if (!simpleError && simple != null) {
           return ((simple ?? []) as Property[]).map((p) => ({
             ...p,
             contact_property_links: [],
           })) as PropertyWithLinks[];
         }
-        if (isPropertiesTableOrRelationError((simpleError?.message ?? "").toLowerCase())) {
+        const { data, error } = await (supabase as any)
+          .from("properties")
+          .select(PROPERTIES_SELECT)
+          .order("created_at", { ascending: false });
+        if (!error) return (data ?? []) as PropertyWithLinks[];
+        const err = simpleError ?? error;
+        if (err && isPropertiesTableOrRelationError((err?.message ?? "").toLowerCase())) {
           throw new Error(PROPERTIES_MISSING_MESSAGE);
         }
-        throw simpleError;
+        throw err;
       } catch (e) {
         const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
         if (
@@ -140,50 +141,55 @@ export function useProperty(id: string | undefined) {
     queryFn: async () => {
       if (!id) throw new Error("No property ID");
       let property: PropertyWithLinks;
-      const { data, error } = await (supabase as any)
+      // Try simple select first (HubSpot schema)
+      const { data: simpleData, error: simpleErr } = await (supabase as any)
         .from("properties")
-        .select(PROPERTIES_SELECT)
+        .select("*")
         .eq("id", id)
         .maybeSingle();
-      if (!error && data) {
-        property = data as PropertyWithLinks;
+      if (!simpleErr && simpleData) {
+        property = { ...simpleData, contact_property_links: [] } as PropertyWithLinks;
       } else {
-        if (error && !isPropertiesTableOrRelationError(error?.message ?? "")) throw error;
-        const { data: simple, error: simpleError } = await (supabase as any)
+        const { data, error } = await (supabase as any)
           .from("properties")
-          .select("*")
+          .select(PROPERTIES_SELECT)
           .eq("id", id)
           .maybeSingle();
-        if (simpleError || !simple) {
-          if (isPropertiesTableOrRelationError((simpleError?.message ?? "").toLowerCase())) {
-            throw new Error(PROPERTIES_MISSING_MESSAGE);
+        if (!error && data) {
+          property = data as PropertyWithLinks;
+        } else {
+          if (simpleErr && !isPropertiesTableOrRelationError((simpleErr?.message ?? "").toLowerCase())) {
+            throw simpleErr;
           }
-          throw simpleError ?? new Error("Property not found");
+          throw new Error("Property not found");
         }
-        property = { ...simple, contact_property_links: [] } as PropertyWithLinks;
       }
-      const { data: links, error: linksErr } = await (supabase as any)
-        .from("contact_property_links")
-        .select("id, contact_id, property_id, role, notes")
-        .eq("property_id", id);
-      if (!linksErr && Array.isArray(links) && links.length > 0) {
-        const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
-        const { data: contactRows } = await (supabase as any)
-          .from("contacts")
-          .select("id, name, email, phone")
-          .in("id", contactIds);
-        const contactMap = new Map(
-          (contactRows ?? []).map((c: { id: string }) => [c.id, c])
-        );
-        property.contact_property_links = links.map((l: { id: string; contact_id: string; property_id: string; role: string; notes: string | null }) => ({
-          id: l.id,
-          contact_id: l.contact_id,
-          property_id: l.property_id,
-          role: l.role,
-          notes: l.notes ?? "",
-          contacts: contactMap.get(l.contact_id) ?? null,
-        })) as PropertyWithLinks["contact_property_links"];
-      } else {
+      try {
+        const { data: links, error: linksErr } = await (supabase as any)
+          .from("contact_property_links")
+          .select("id, contact_id, property_id, role, notes")
+          .eq("property_id", id);
+        if (!linksErr && Array.isArray(links) && links.length > 0) {
+          const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
+          const { data: contactRows } = await (supabase as any)
+            .from("contacts")
+            .select("id, name, email, phone")
+            .in("id", contactIds);
+          const contactMap = new Map(
+            (contactRows ?? []).map((c: { id: string }) => [c.id, c])
+          );
+          property.contact_property_links = links.map((l: { id: string; contact_id: string; property_id: string; role: string; notes: string | null }) => ({
+            id: l.id,
+            contact_id: l.contact_id,
+            property_id: l.property_id,
+            role: l.role,
+            notes: l.notes ?? "",
+            contacts: contactMap.get(l.contact_id) ?? null,
+          })) as PropertyWithLinks["contact_property_links"];
+        } else {
+          property.contact_property_links = [];
+        }
+      } catch {
         property.contact_property_links = [];
       }
       return property;

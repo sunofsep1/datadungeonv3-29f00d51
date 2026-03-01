@@ -99,7 +99,21 @@ export function useContacts() {
     queryKey: ["contacts"],
     retry: 1,
     queryFn: async () => {
-      // Try full select with relations (requires contact_channels, contact_tags, contact_property_links, contact_addresses)
+      // Try simple select first (works with HubSpot schema - no contact_channels, contact_tags, etc.)
+      const { data: simple, error: simpleError } = await supabase
+        .from("contacts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!simpleError && simple != null) {
+        return ((simple ?? []) as Contact[]).map((c) => ({
+          ...c,
+          contact_channels: [],
+          contact_tags: [],
+          contact_property_links: [],
+          contact_addresses: [],
+        })) as ContactWithMeta[];
+      }
+      // Fallback: try full select with relations (DataDungeon schema)
       const { data, error } = await supabase
         .from("contacts")
         .select(CONTACTS_SELECT)
@@ -107,7 +121,6 @@ export function useContacts() {
       if (!error) {
         const list = (data as unknown as (ContactWithMeta & { contact_addresses?: ContactAddressRow[] })[]) ?? [];
         return list.map((c) => {
-          // Map DB channel_value to ContactChannel.value
           if (c.contact_channels) {
             c.contact_channels = (c.contact_channels as any[]).map((ch: any) => ({
               ...ch,
@@ -117,19 +130,7 @@ export function useContacts() {
           return mapContactAddressToDisplay(c);
         }) as ContactWithMeta[];
       }
-      // Fallback: full select can 400 if relations/tables don't exist (e.g. different Supabase schema)
-      const { data: simple, error: simpleError } = await supabase
-        .from("contacts")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (simpleError) throw simpleError;
-      return ((simple ?? []) as Contact[]).map((c) => ({
-        ...c,
-        contact_channels: [],
-        contact_tags: [],
-        contact_property_links: [],
-        contact_addresses: [],
-      })) as ContactWithMeta[];
+      throw simpleError ?? error;
     },
   });
 }

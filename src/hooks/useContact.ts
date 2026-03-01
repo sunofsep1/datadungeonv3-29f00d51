@@ -28,36 +28,43 @@ export function useContact(id: string | undefined) {
     queryFn: async () => {
       if (!id) throw new Error("No contact ID provided");
       let contact: ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
-      const { data, error } = await (supabase as any)
+      // Try simple select first (HubSpot schema)
+      const { data: simpleData, error: simpleErr } = await supabase
         .from("contacts")
-        .select(CONTACT_SELECT)
+        .select("*")
         .eq("id", id)
         .maybeSingle();
-      if (!error && data) {
-        contact = data as ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
-      } else {
-        if (error && !isRelationError(error?.message ?? "")) throw error;
-        const { data: simple, error: simpleError } = await supabase
+      if (simpleErr || !simpleData) {
+        const { data, error } = await (supabase as any)
           .from("contacts")
-          .select("*")
+          .select(CONTACT_SELECT)
           .eq("id", id)
           .maybeSingle();
-        if (simpleError) throw simpleError;
-        if (!simple) throw new Error("Contact not found");
+        if (!error && data) {
+          contact = data as ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
+        } else {
+          if (simpleErr) throw simpleErr;
+          throw new Error("Contact not found");
+        }
+      } else {
         contact = {
-          ...(simple as Contact),
+          ...(simpleData as Contact),
           contact_channels: [],
           contact_tags: [],
           contact_property_links: [],
           contact_addresses: [],
         } as ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
       }
-      const { data: links, error: linksErr } = await (supabase as any)
-        .from("contact_property_links")
-        .select(CONTACT_PROPERTY_LINKS_SELECT)
-        .eq("contact_id", id);
-      if (!linksErr && Array.isArray(links)) {
-        contact.contact_property_links = links;
+      try {
+        const { data: links, error: linksErr } = await (supabase as any)
+          .from("contact_property_links")
+          .select(CONTACT_PROPERTY_LINKS_SELECT)
+          .eq("contact_id", id);
+        if (!linksErr && Array.isArray(links)) {
+          contact.contact_property_links = links;
+        }
+      } catch {
+        contact.contact_property_links = [];
       }
       return mapContactAddressToDisplay(contact) as ContactWithMeta;
     },

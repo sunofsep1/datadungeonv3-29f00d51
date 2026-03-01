@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { ContactDetailPanel } from "@/components/contacts/ContactDetailPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -129,6 +130,27 @@ const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; b
   { value: "gray", label: "Gray", bg: "bg-slate-500", border: "border-slate-500" },
 ];
 
+/** Display/filter status: prefer HubSpot lead_status, fallback to legacy status */
+function getContactStatus(c: ContactWithMeta | { status?: string | null; lead_status?: string | null }): string {
+  return (c as { lead_status?: string | null }).lead_status ?? c.status ?? "lead";
+}
+
+/** Display name: prefer name, else first_name + last_name (HubSpot-style). */
+function getContactDisplayName(c: ContactWithMeta): string {
+  if (c.name?.trim()) return c.name;
+  const parts = [c.first_name, c.last_name].filter(Boolean).map(String);
+  return parts.join(" ").trim() || "—";
+}
+
+/** Map any status/lead_status to kanban column (hot, warm, cold, lead) */
+function getKanbanStatus(c: ContactWithMeta): "hot" | "warm" | "cold" | "lead" {
+  const s = getContactStatus(c);
+  if (s === "hot" || s === "qualified" || s === "customer") return "hot";
+  if (s === "warm" || s === "contacted" || s === "nurture") return "warm";
+  if (s === "cold" || s === "new") return "cold";
+  return "lead";
+}
+
 const createEmptyContact = () => ({
   name: "",
   phone: "",
@@ -211,9 +233,9 @@ export default function Contacts() {
       });
     }
     
-    // Status filter
+    // Status filter (support both lead_status HubSpot-style and legacy status)
     if (filterStatus && filterStatus !== "all") {
-      list = list.filter((c) => (c.status ?? "lead") === filterStatus);
+      list = list.filter((c) => (getContactStatus(c) === filterStatus));
     }
     
     // Tag filter
@@ -253,7 +275,7 @@ export default function Contacts() {
             return daysDiff <= 30;
           case "overdue":
             // Consider overdue if not touched in 30+ days and status is hot/warm
-            return daysDiff > 30 && (c.status === "hot" || c.status === "warm");
+            return daysDiff > 30 && (getKanbanStatus(c) === "hot" || getKanbanStatus(c) === "warm");
           default:
             return true;
         }
@@ -274,13 +296,13 @@ export default function Contacts() {
       if (sortBy === "name-asc") return getLastNameForSort(a).localeCompare(getLastNameForSort(b)) || (a.name || "").localeCompare(b.name || "");
       if (sortBy === "name-desc") return getLastNameForSort(b).localeCompare(getLastNameForSort(a)) || (a.name || "").localeCompare(b.name || "");
       if (sortBy === "status-asc") {
-        const sa = a.status ?? "lead";
-        const sb = b.status ?? "lead";
+        const sa = getContactStatus(a);
+        const sb = getContactStatus(b);
         return sa.localeCompare(sb) || (a.name || "").localeCompare(b.name || "");
       }
       if (sortBy === "status-desc") {
-        const sa = a.status ?? "lead";
-        const sb = b.status ?? "lead";
+        const sa = getContactStatus(a);
+        const sb = getContactStatus(b);
         return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
       }
       if (sortBy === "date-added-asc") {
@@ -303,8 +325,8 @@ export default function Contacts() {
         const nb = (b.contact_property_links ?? []).length;
         return nb - na || (a.name || "").localeCompare(b.name || "");
       }
-      const sa = a.status ?? "lead";
-      const sb = b.status ?? "lead";
+      const sa = getContactStatus(a);
+      const sb = getContactStatus(b);
       return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
     });
     return sorted;
@@ -389,7 +411,7 @@ export default function Contacts() {
         c.name,
         fallbackPhone,
         fallbackEmail,
-        c.status ?? "lead",
+        getContactStatus(c),
         c.source ?? "",
         tagNames,
         linkedProperty,
@@ -413,16 +435,16 @@ export default function Contacts() {
 
   const stats = {
     total: contacts?.length ?? 0,
-    hot: contacts?.filter((c) => c.status === "hot").length ?? 0,
-    warm: contacts?.filter((c) => c.status === "warm").length ?? 0,
-    cold: contacts?.filter((c) => c.status === "cold").length ?? 0,
+    hot: contacts?.filter((c) => getKanbanStatus(c) === "hot").length ?? 0,
+    warm: contacts?.filter((c) => getKanbanStatus(c) === "warm").length ?? 0,
+    cold: contacts?.filter((c) => getKanbanStatus(c) === "cold").length ?? 0,
   };
 
   const handleOpenDialog = (contact?: ContactWithMeta) => {
     if (contact) {
       setEditingContact(contact);
       setFormData({
-        name: contact.name,
+        name: contact.name ?? getContactDisplayName(contact),
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         source: contact.source ?? "",
@@ -643,6 +665,15 @@ export default function Contacts() {
         return "warm";
       case "cold":
         return "cold";
+      case "qualified":
+      case "customer":
+        return "hot";
+      case "contacted":
+      case "nurture":
+        return "warm";
+      case "new":
+      case "unqualified":
+        return "cold";
       default:
         return "entered";
     }
@@ -719,7 +750,7 @@ export default function Contacts() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete {contact.name}? This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>Are you sure you want to delete {getContactDisplayName(contact)}? This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -758,7 +789,7 @@ export default function Contacts() {
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
           <div className="flex items-center gap-2.5 min-w-0">
-            <AvatarCircle name={contact.name} initials={initials} size="sm" />
+            <AvatarCircle name={contact.name ?? (([contact.first_name, contact.last_name].filter(Boolean).join(" ").trim() || undefined))} initials={initials} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {(contact as { category?: string | null }).category && CONTACT_CATEGORIES.some((c) => c.value === (contact as { category?: string | null }).category) && (
@@ -767,7 +798,7 @@ export default function Contacts() {
                     title={CONTACT_CATEGORIES.find((c) => c.value === (contact as { category?: string | null }).category)?.label}
                   />
                 )}
-                <span className="font-medium text-foreground text-sm truncate block">{contact.name}</span>
+                <span className="font-medium text-foreground text-sm truncate block">{getContactDisplayName(contact)}</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-muted-foreground text-xs">
                 {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{formatPhoneDisplay(primaryPhone)}</span>}
@@ -787,7 +818,7 @@ export default function Contacts() {
           </div>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle hidden md:table-cell">
-          <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs w-fit">{contact.status ?? "lead"}</StatusBadge>
+          <StatusBadge variant={getStatusVariant(getContactStatus(contact))} className="text-xs w-fit">{getContactStatus(contact)}</StatusBadge>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell max-w-[120px]" title={primaryPhone ?? ""}>
           <span className="truncate block">{primaryPhone ? formatPhoneDisplay(primaryPhone) : "—"}</span>
@@ -800,6 +831,9 @@ export default function Contacts() {
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell min-w-0" title={linkedProperty || ""}>
           <span className="truncate block">{linkedProperty || "—"}</span>
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden lg:table-cell whitespace-nowrap" title={contact.updated_at ? new Date(contact.updated_at).toLocaleString() : ""}>
+          {contact.updated_at ? format(new Date(contact.updated_at), "d MMM yyyy") : "—"}
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle w-[1%] whitespace-nowrap">
           {listActionButtons(contact)}
@@ -826,11 +860,11 @@ export default function Contacts() {
     return (
       <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <AvatarCircle name={contact.name} initials={initials} size={isCompact ? "sm" : "md"} />
+          <AvatarCircle name={contact.name ?? (([contact.first_name, contact.last_name].filter(Boolean).join(" ").trim() || undefined))} initials={initials} size={isCompact ? "sm" : "md"} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{contact.name}</span>
-              <StatusBadge variant={getStatusVariant(contact.status)} className="text-xs">{contact.status ?? "lead"}</StatusBadge>
+              <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{getContactDisplayName(contact)}</span>
+              <StatusBadge variant={getStatusVariant(getContactStatus(contact))} className="text-xs">{getContactStatus(contact)}</StatusBadge>
               {tagNames.length > 0 && (
                 <span className="flex flex-wrap gap-1">
                   {tagNames.map((t) => (
@@ -1597,7 +1631,7 @@ export default function Contacts() {
           {contactView === "kanban" ? (
             <div className="flex gap-4 overflow-x-auto pb-2 min-h-[420px]">
               {(["hot", "warm", "cold", "lead"] as const).map((status) => {
-                const columnContacts = paginatedContacts.filter((c) => (c.status ?? "lead") === status);
+                const columnContacts = paginatedContacts.filter((c) => getKanbanStatus(c) === status);
                 return (
                   <div key={status} className="flex-shrink-0 w-[280px] rounded-lg border border-border bg-card/80 p-4">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
@@ -1652,6 +1686,7 @@ export default function Contacts() {
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Email</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Source</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Property</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden lg:table-cell w-[120px]">Last Activity</th>
                       <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Actions" />
                     </tr>
                   </thead>
