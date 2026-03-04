@@ -198,6 +198,8 @@ export function useProperty(id: string | undefined) {
   });
 }
 
+const DEFAULT_PROPERTY_TYPE = "residential";
+
 export function useCreateProperty() {
   const qc = useQueryClient();
   return useMutation({
@@ -206,9 +208,16 @@ export function useCreateProperty() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const { data, error } = await (supabase as any)
+
+      const payload = {
+        ...p,
+        user_id: user.id,
+        property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
+        state: p.state ?? "",
+      };
+      const { data, error } = await supabase
         .from("properties")
-        .insert({ ...p, user_id: user.id })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;

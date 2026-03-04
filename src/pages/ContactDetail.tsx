@@ -29,12 +29,13 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
 import { useContacts, useUpdateContact, getPrimaryEmail, getPrimaryPhone, getAllEmails, getAllPhones, getTagNames, formatContactAddress } from "@/hooks/useContacts";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
-import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
+import { useProperties, formatPropertyAddress, useCreateProperty } from "@/hooks/useProperties";
 import {
   useCreateContactPropertyLink,
   useDeleteContactPropertyLink,
@@ -89,6 +90,7 @@ export default function ContactDetail() {
   const deleteInteraction = useDeleteInteraction();
   const createLink = useCreateContactPropertyLink();
   const deleteLink = useDeleteContactPropertyLink();
+  const createProperty = useCreateProperty();
 
   const [isEditing, setIsEditing] = useState(false);
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
@@ -271,6 +273,33 @@ export default function ContactDetail() {
     }
   };
 
+  const handleCreateFromAddress = async () => {
+    if (!id || !contact) return;
+    const hasAddress = !!(contact.address_line1?.trim() || contact.city?.trim());
+    if (!hasAddress) {
+      setLinkPropertyOpen(true);
+      return;
+    }
+    try {
+      const property = await createProperty.mutateAsync({
+        address_line1: contact.address_line1 || null,
+        address_line2: contact.address_line2 || null,
+        city: contact.city || null,
+        state: contact.state || null,
+        postcode: contact.postcode || null,
+        country: contact.country || "Australia",
+      });
+      await createLink.mutateAsync({ contact_id: id, property_id: property.id, role: "owner" });
+      toast({ title: "Success", description: "Property created and linked as owner." });
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create property",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -415,7 +444,7 @@ export default function ContactDetail() {
               <AvatarCircle
                 name={contact.name}
                 size="lg"
-                initials={getInitials(contact.first_name, contact.last_name, contact.name)}
+                initials={getInitials(undefined, undefined, contact.name)}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -484,15 +513,33 @@ export default function ContactDetail() {
           <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
             <div className="flex items-center justify-between mb-4 print:hidden">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Linked properties</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => setLinkPropertyOpen(true)}
-                disabled={availableProperties.length === 0}
-              >
-                <Plus className="w-4 h-4" /> Link property
-              </Button>
+              {(contact?.address_line1?.trim() || contact?.city?.trim()) ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <Plus className="w-4 h-4" /> Link property <ChevronDown className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleCreateFromAddress} disabled={createProperty.isPending || createLink.isPending}>
+                      Create property from address
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLinkPropertyOpen(true)} disabled={availableProperties.length === 0}>
+                      Link existing property
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setLinkPropertyOpen(true)}
+                  disabled={availableProperties.length === 0}
+                >
+                  <Plus className="w-4 h-4" /> Link property
+                </Button>
+              )}
             </div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide hidden print:block mb-4">Linked properties</h3>
             {linkedProperties.length > 0 ? (
@@ -560,17 +607,29 @@ export default function ContactDetail() {
               <div className="text-center py-6 border border-dashed border-border rounded-lg print:border-gray-300">
                 <MapPin className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" />
                 <p className="text-sm text-muted-foreground mb-2">No properties linked</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 print:hidden"
-                  onClick={() => setLinkPropertyOpen(true)}
-                  disabled={availableProperties.length === 0}
-                >
-                  <Plus className="w-4 h-4" /> Click here to add
-                </Button>
-                {availableProperties.length === 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">Create properties first, or link from the property page.</p>
+                {(contact?.address_line1?.trim() || contact?.city?.trim()) ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 print:hidden"
+                    onClick={handleCreateFromAddress}
+                    disabled={createProperty.isPending || createLink.isPending}
+                  >
+                    <Plus className="w-4 h-4" /> Create property from address
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 print:hidden"
+                    onClick={() => setLinkPropertyOpen(true)}
+                    disabled={availableProperties.length === 0}
+                  >
+                    <Plus className="w-4 h-4" /> Link existing property
+                  </Button>
+                )}
+                {!contact?.address_line1?.trim() && !contact?.city?.trim() && availableProperties.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">Add an address above, or create properties first and link from the Properties page.</p>
                 )}
               </div>
             )}

@@ -113,7 +113,7 @@ export function ContactKeyInfoPanel({ contact, lastActivity, onViewFull, onAddNo
           <AvatarCircle
             name={contact.name}
             size="lg"
-            initials={getInitials(contact.first_name, contact.last_name, contact.name)}
+            initials={getInitials(undefined, undefined, contact.name)}
             className="ring-2 ring-border ring-offset-2 ring-offset-background"
           />
           <h2 className="text-lg font-semibold text-foreground mt-3 line-clamp-2 tracking-tight">

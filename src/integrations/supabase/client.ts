@@ -18,7 +18,7 @@ if (import.meta.env.DEV && !SUPABASE_URL.includes(EXPECTED_PROJECT_REF)) {
   console.warn(
     `[Supabase] VITE_SUPABASE_URL points to a different project than expected. ` +
       `Expected: https://${EXPECTED_PROJECT_REF}.supabase.co. ` +
-      `Update .env and restart the dev server to fix 400 errors and missing columns (e.g. first_name).`
+      `Update .env and restart the dev server to fix 400 errors and missing columns.`
   );
 }
 

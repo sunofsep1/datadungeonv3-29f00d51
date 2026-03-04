@@ -130,19 +130,17 @@ const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; b
   { value: "gray", label: "Gray", bg: "bg-slate-500", border: "border-slate-500" },
 ];
 
-/** Display/filter status: prefer HubSpot lead_status, fallback to legacy status */
-function getContactStatus(c: ContactWithMeta | { status?: string | null; lead_status?: string | null }): string {
-  return (c as { lead_status?: string | null }).lead_status ?? c.status ?? "lead";
+/** Display/filter status (DataDungeon schema) */
+function getContactStatus(c: ContactWithMeta | { status?: string | null }): string {
+  return c.status ?? "lead";
 }
 
-/** Display name: prefer name, else first_name + last_name (HubSpot-style). */
+/** Display name (DataDungeon schema) */
 function getContactDisplayName(c: ContactWithMeta): string {
-  if (c.name?.trim()) return c.name;
-  const parts = [c.first_name, c.last_name].filter(Boolean).map(String);
-  return parts.join(" ").trim() || "—";
+  return c.name?.trim() || "—";
 }
 
-/** Map any status/lead_status to kanban column (hot, warm, cold, lead) */
+/** Map status to kanban column (hot, warm, cold, lead) */
 function getKanbanStatus(c: ContactWithMeta): "hot" | "warm" | "cold" | "lead" {
   const s = getContactStatus(c);
   if (s === "hot" || s === "qualified" || s === "customer") return "hot";
@@ -224,7 +222,7 @@ export default function Contacts() {
         const phone = getPrimaryPhone(c);
         const tagNames = getTagNames(c);
         return (
-          c.name.toLowerCase().includes(q) ||
+          (c.name ?? "").toLowerCase().includes(q) ||
           (email?.toLowerCase().includes(q)) ||
           (phone?.toLowerCase().includes(q)) ||
           (c.source?.toLowerCase().includes(q)) ||
@@ -233,7 +231,7 @@ export default function Contacts() {
       });
     }
     
-    // Status filter (support both lead_status HubSpot-style and legacy status)
+    // Status filter
     if (filterStatus && filterStatus !== "all") {
       list = list.filter((c) => (getContactStatus(c) === filterStatus));
     }
@@ -282,11 +280,8 @@ export default function Contacts() {
       });
     }
     
-    // Sorting
-    // Derive last name for sorting: use stored last_name if populated, or parse from full name (last word = surname)
+    // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
-      const ln = c.last_name;
-      if (ln?.trim()) return ln.trim();
       const name = (c.name || "").trim();
       if (!name) return "";
       const parts = name.split(/\s+/);
@@ -408,7 +403,7 @@ export default function Contacts() {
       const tagNames = getTagNames(c).join("; ");
       const linkedProperty = getLinkedPropertyAddress(c);
       return [
-        c.name,
+        getContactDisplayName(c),
         fallbackPhone,
         fallbackEmail,
         getContactStatus(c),
@@ -476,13 +471,6 @@ export default function Contacts() {
     setIsDialogOpen(true);
   };
 
-  const nameToFirstLast = (name: string) => {
-    const t = name.trim();
-    const i = t.indexOf(" ");
-    if (i <= 0) return { first_name: t || null, last_name: null };
-    return { first_name: t.slice(0, i), last_name: t.slice(i + 1).trim() || null };
-  };
-
   const handleSaveContact = async () => {
     if (!formData.name.trim()) {
       toast({
@@ -492,16 +480,13 @@ export default function Contacts() {
       });
       return;
     }
-    const { first_name, last_name } = nameToFirstLast(formData.name);
     try {
       let contactId: string;
       if (editingContact) {
-        const oldStatus = editingContact.status;
+        const oldStatus = getContactStatus(editingContact);
         const updated = await updateContact.mutateAsync({
           id: editingContact.id,
           name: formData.name,
-          first_name,
-          last_name,
           phone: formData.phone || null,
           email: formData.email || null,
           source: formData.source || null,
@@ -522,7 +507,6 @@ export default function Contacts() {
           country: formData.country || "Australia",
         });
         contactId = updated.id;
-        
         // Log status change event if status changed
         if (oldStatus !== formData.status) {
           try {
@@ -537,8 +521,6 @@ export default function Contacts() {
       } else {
         const created = await createContact.mutateAsync({
           name: formData.name,
-          first_name,
-          last_name,
           phone: formData.phone || null,
           email: formData.email || null,
           source: formData.source || null,
@@ -768,7 +750,7 @@ export default function Contacts() {
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
     const linkedProperty = getLinkedPropertyAddress(contact);
-    const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
+    const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
     return (
       <>
         <td className="w-10 py-2 px-2 md:px-3 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -789,7 +771,7 @@ export default function Contacts() {
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
           <div className="flex items-center gap-2.5 min-w-0">
-            <AvatarCircle name={contact.name ?? (([contact.first_name, contact.last_name].filter(Boolean).join(" ").trim() || undefined))} initials={initials} size="sm" />
+            <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {(contact as { category?: string | null }).category && CONTACT_CATEGORIES.some((c) => c.value === (contact as { category?: string | null }).category) && (
@@ -848,7 +830,7 @@ export default function Contacts() {
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
     const linkedProperty = getLinkedPropertyAddress(contact);
-    const initials = getInitials(contact?.first_name, contact?.last_name, contact?.name ?? "");
+    const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
     const isCompact = _layout === "list" || _layout === "grid";
 
     const actionButtons = listActionButtons(contact);
@@ -860,7 +842,7 @@ export default function Contacts() {
     return (
       <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <AvatarCircle name={contact.name ?? (([contact.first_name, contact.last_name].filter(Boolean).join(" ").trim() || undefined))} initials={initials} size={isCompact ? "sm" : "md"} />
+          <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size={isCompact ? "sm" : "md"} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{getContactDisplayName(contact)}</span>
@@ -1597,6 +1579,45 @@ export default function Contacts() {
               <Download className="w-4 h-4 mr-1" />
               Export
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The selected contact{selectedContactIds.size !== 1 ? "s will" : " will"} be permanently removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      try {
+                        for (const id of selectedContactIds) {
+                          await deleteContact.mutateAsync(id);
+                        }
+                        toast({ title: "Deleted", description: `${selectedContactIds.size} contact(s) removed` });
+                        setSelectedContactIds(new Set());
+                      } catch (e: unknown) {
+                        toast({
+                          title: "Error",
+                          description: (e as Error).message || "Failed to delete contacts",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button
               variant="ghost"
               size="sm"

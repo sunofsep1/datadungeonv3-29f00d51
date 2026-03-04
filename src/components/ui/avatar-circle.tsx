@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 interface AvatarCircleProps {
-  /** Display name; can be undefined for HubSpot-style contacts (first_name + last_name). */
+  /** Display name for avatar. */
   name?: string | null;
   /** Override initials (e.g. from first/last name). If not provided, derived from name. */
   initials?: string;

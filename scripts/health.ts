@@ -37,6 +37,14 @@ async function checkTable(table: string): Promise<{ ok: boolean; count: number |
   return { ok: true, count: count ?? 0 };
 }
 
+/** Inspect table columns (schema cache) — helps debug "Could not find 'X' column" errors */
+async function inspectTableColumns(table: string): Promise<string[]> {
+  const { data, error } = await supabase.from(table).select("*").limit(1);
+  if (error) return [];
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? Object.keys(row) : [];
+}
+
 async function main() {
   try {
     console.log("Supabase: connecting...\n");
@@ -54,10 +62,9 @@ async function main() {
         console.log(`  ${table}: ${r.ok ? `ok (count: ${r.count})` : `error — ${r.error ?? "unknown"}`}`);
       }
       console.log("\nRun migrations: npm run supabase:link && npm run db:push");
-      process.exit(1);
     }
 
-    console.log("Schema health: all core tables present and queryable\n");
+    console.log("\nSchema health: core tables status above");
     for (const table of CORE_TABLES) {
       const r = results[table];
       console.log(`  ${table}: ${r.count ?? 0} rows`);
@@ -69,7 +76,42 @@ async function main() {
       results.contacts.count ?? 0,
       "— RLS filters by user; log in via app to see your contacts."
     );
-    console.log("To verify local vs production: log in, open /contacts, compare counts.");
+
+    const contactsColumns = await inspectTableColumns("contacts");
+    if (contactsColumns.length > 0) {
+      console.log("\n--- contacts table columns ---");
+      console.log(contactsColumns.join(", "));
+      const hasName = contactsColumns.includes("name");
+      const hasStatus = contactsColumns.includes("status");
+      const hasUserId = contactsColumns.includes("user_id");
+      if (!hasName || !hasStatus || !hasUserId) {
+        console.warn("  ⚠ DataDungeon expects name, status, user_id — run migrations if missing.");
+      }
+    }
+
+    const propertiesColumns = await inspectTableColumns("properties");
+    if (propertiesColumns.length > 0) {
+      console.log("\n--- properties table columns ---");
+      console.log(propertiesColumns.join(", "));
+      const hasAddress = propertiesColumns.includes("address_line1");
+      const hasCity = propertiesColumns.includes("city");
+      const hasUserId = propertiesColumns.includes("user_id");
+      if (!hasAddress || !hasCity || !hasUserId) {
+        console.warn("  ⚠ DataDungeon expects address_line1, city, user_id — run migrations if missing.");
+      }
+    } else if (results.properties.ok) {
+      console.log("\n--- properties: table exists but empty (no rows to infer columns) ---");
+    }
+
+    const linksColumns = await inspectTableColumns("contact_property_links");
+    if (linksColumns.length > 0) {
+      console.log("\n--- contact_property_links columns ---");
+      console.log(linksColumns.join(", "));
+    }
+
+    console.log("\nTo verify: log in, open /contacts, try CSV import with devtools Network tab open.");
+
+    if (!allOk) process.exit(1);
   } catch (e) {
     console.error("Health check failed:", e);
     process.exit(1);

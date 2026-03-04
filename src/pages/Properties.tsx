@@ -191,7 +191,7 @@ export default function Properties() {
           state: formData.state || null,
           postcode: formData.postcode || null,
           country: formData.country || null,
-          property_type: formData.property_type || null,
+          property_type: formData.property_type || "house", // schema requires NOT NULL
           bedrooms: formData.bedrooms,
           bathrooms: formData.bathrooms,
           price: formData.price,

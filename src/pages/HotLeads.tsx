@@ -111,11 +111,7 @@ export default function HotLeads() {
               const primaryEmail = getPrimaryEmail(contact);
               const primaryPhone = getPrimaryPhone(contact);
               const tagNames = getTagNames(contact);
-              const initials = getInitials(
-                contact.first_name,
-                contact.last_name,
-                contact.name
-              );
+              const initials = getInitials(undefined, undefined, contact.name);
               return (
                 <div
                   key={contact.id}

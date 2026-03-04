@@ -7,7 +7,7 @@ export type Contact = Tables<"contacts">;
 export type ContactInsert = TablesInsert<"contacts">;
 export type ContactUpdate = TablesUpdate<"contacts">;
 
-/** Address fields: stored in contact_addresses (or legacy on contact if migration added them) */
+/** Address fields: stored in contact_addresses or on contact (DataDungeon schema) */
 export type ContactAddressFields = {
   address_line1?: string | null;
   address_line2?: string | null;
@@ -15,15 +15,28 @@ export type ContactAddressFields = {
   state?: string | null;
   postcode?: string | null;
   country?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
 };
 
 const ADDRESS_KEYS = ["address_line1", "address_line2", "city", "state", "postcode", "country"] as const;
 
-function pickContactInsert(payload: Record<string, unknown>): Record<string, unknown> {
-  const { address_line1, address_line2, city, state, postcode, country, ...rest } = payload;
-  return rest;
+/** Build DataDungeon contact insert payload: name, status, address_line1, city, user_id */
+function toContactInsertPayload(payload: Record<string, unknown>, userId: string): Record<string, unknown> {
+  const { story, ...rest } = payload;
+  const out = { ...rest, user_id: userId } as Record<string, unknown>;
+  if (story != null && String(story).trim() && !out.notes) {
+    out.notes = (out.notes ? String(out.notes) + "\n\n" : "") + String(story).trim();
+  }
+  return out;
+}
+
+/** Build DataDungeon contact update payload: pass through name, status, address_line1, city */
+function toContactUpdatePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const { story, ...rest } = payload;
+  const out = { ...rest } as Record<string, unknown>;
+  if (story != null && String(story).trim() && !out.notes) {
+    out.notes = (out.notes ? String(out.notes) + "\n\n" : "") + String(story).trim();
+  }
+  return out;
 }
 
 function pickAddressFields(payload: Record<string, unknown>): Record<string, unknown> | null {
@@ -145,8 +158,8 @@ export function useCreateContact() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const contactPayload = pickContactInsert({ ...contact, user_id: user.id });
-      const { data, error } = await (supabase as any)
+      const contactPayload = toContactInsertPayload({ ...contact }, user.id);
+      const { data, error } = await supabase
         .from("contacts")
         .insert(contactPayload)
         .select()
@@ -155,9 +168,13 @@ export function useCreateContact() {
 
       const addressFields = pickAddressFields(contact as Record<string, unknown>);
       if (addressFields && data?.id) {
-        await (supabase as any)
-          .from("contact_addresses")
-          .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
+        try {
+          await (supabase as any)
+            .from("contact_addresses")
+            .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
+        } catch {
+          // contact_addresses may not exist in HubSpot-style schema (address lives on contacts row)
+        }
       }
 
       return data as Contact & ContactAddressFields;
@@ -180,7 +197,7 @@ export function useUpdateContact() {
         .eq("id", id)
         .single();
 
-      const contactPayload = pickContactInsert(updates as Record<string, unknown>);
+      const contactPayload = toContactUpdatePayload(updates as Record<string, unknown>);
       const { data, error } = await supabase
         .from("contacts")
         .update(contactPayload)
@@ -191,22 +208,26 @@ export function useUpdateContact() {
 
       const addressFields = pickAddressFields(updates as Record<string, unknown>);
       if (addressFields) {
-        const { data: existing } = await (supabase as any)
-          .from("contact_addresses")
-          .select("id")
-          .eq("contact_id", id)
-          .order("is_primary", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (existing?.id) {
-          await (supabase as any)
+        try {
+          const { data: existing } = await (supabase as any)
             .from("contact_addresses")
-            .update(addressFields)
-            .eq("id", existing.id);
-        } else {
-          await (supabase as any)
-            .from("contact_addresses")
-            .insert({ contact_id: id, ...addressFields, address_type: "home", is_primary: true });
+            .select("id")
+            .eq("contact_id", id)
+            .order("is_primary", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (existing?.id) {
+            await (supabase as any)
+              .from("contact_addresses")
+              .update(addressFields)
+              .eq("id", existing.id);
+          } else {
+            await (supabase as any)
+              .from("contact_addresses")
+              .insert({ contact_id: id, ...addressFields, address_type: "home", is_primary: true });
+          }
+        } catch {
+          // contact_addresses may not exist in HubSpot-style schema
         }
       }
 

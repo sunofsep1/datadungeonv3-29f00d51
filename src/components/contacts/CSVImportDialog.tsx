@@ -112,7 +112,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<number, string>>({});
-  const [createPropertiesFromAddress, setCreatePropertiesFromAddress] = useState(false);
+  const [createPropertiesFromAddress, setCreatePropertiesFromAddress] = useState(true);
   const [progress, setProgress] = useState(0);
   const [created, setCreated] = useState(0);
   const [updated, setUpdated] = useState(0);
@@ -184,24 +184,33 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       const auto: Record<number, string> = {};
       rows[0].forEach((h, i) => {
         const lower = h.toLowerCase().replace(/[^a-z]/g, "");
-        // Enhanced matching for Australian addresses
-        let opt = MAP_OPTIONS.find(
-          (o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4))
-        );
-        
-        // Better matching for Australian-specific terms
-        if (!opt) {
-          if (lower.includes("suburb") || lower.includes("town") || lower.includes("locality")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "city");
-          } else if (lower.includes("postcode") || lower.includes("postcode") || lower.includes("postal") || lower.includes("zip")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "postcode");
-          } else if (lower.includes("street") || lower.includes("st") || lower.includes("road") || lower.includes("rd") || lower.includes("addr")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
-          } else if (lower.includes("state") || lower.includes("st") && !lower.includes("street")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "state");
-          }
+        let opt: (typeof MAP_OPTIONS)[0] | undefined;
+
+        // Explicit matching for address parts (check before generic) - HubSpot / Australian CSV columns
+        if (lower.includes("addressline1") || lower.includes("addressline") && lower.includes("1") ||
+            lower.includes("streetaddress") || lower.includes("streetaddr") ||
+            (lower.includes("addr") && (lower.includes("line1") || lower.includes("1") && !lower.includes("2")))) {
+          opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
+        } else if (lower.includes("suburb") || lower.includes("town") || lower.includes("locality") || lower === "city") {
+          opt = MAP_OPTIONS.find((o) => o.value === "city");
+        } else if (lower.includes("postcode") || lower.includes("postal") || lower.includes("zip")) {
+          opt = MAP_OPTIONS.find((o) => o.value === "postcode");
+        } else if (lower.includes("street") || (lower.includes("road") && !lower.includes("postal")) ||
+            ((lower === "rd" || lower === "st") && lower.length <= 3)) {
+          opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
+        } else if ((lower.includes("state") || lower.includes("region") || lower.includes("province")) && !lower.includes("address")) {
+          opt = MAP_OPTIONS.find((o) => o.value === "state");
+        } else if (lower.includes("addr") && !lower.includes("line2")) {
+          // Combined "Address" column - use address (single) for full address
+          opt = MAP_OPTIONS.find((o) => o.value === "address");
         }
-        
+
+        if (!opt) {
+          opt = MAP_OPTIONS.find(
+            (o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4))
+          );
+        }
+
         if (opt) auto[i] = opt.value;
       });
       setMapping(auto);
@@ -293,27 +302,76 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
 
       let contactId: string;
       try {
+        // Resolve address fields for this row (used for contact_addresses and property creation)
+        const resolveAddress = (): { addressLine1: string; suburb: string; state: string; postcode: string } => {
+          let addressLine1 = (r.address_line1 || "").trim();
+          let suburb = (r.city || "").trim();
+          let state = (r.state || "").trim();
+          let postcode = (r.postcode || "").trim();
+
+          if (r.address) {
+            const addrParts = r.address.split(",").map((p: string) => p.trim()).filter(Boolean);
+            const first = addrParts[0] || "";
+            if (!addressLine1) addressLine1 = first;
+
+            if (addrParts.length > 1) {
+              const rest = addrParts.slice(1).join(", ");
+              const statePostcodeMatch = rest.match(/\b([A-Z]{2,3})\s*(\d{4})\b/i);
+              if (statePostcodeMatch) {
+                if (!state) state = statePostcodeMatch[1].toUpperCase();
+                if (!postcode) postcode = statePostcodeMatch[2];
+                if (!suburb) suburb = rest.substring(0, statePostcodeMatch.index).trim().replace(/^,\s*|,\s*$/g, "");
+              } else {
+                const postcodeOnly = rest.match(/\b(\d{4})\b/);
+                if (postcodeOnly && !postcode) {
+                  postcode = postcodeOnly[1];
+                  if (!suburb) suburb = rest.replace(postcodeOnly[0], "").replace(/^,\s*|,\s*$/g, "").trim();
+                } else if (!suburb) {
+                  suburb = rest;
+                }
+              }
+            } else if (first && (!suburb || !state || !postcode)) {
+              // Single-part combined e.g. "123 Main St Sydney NSW 2000" or "Sydney NSW 2000"
+              const sp = first.match(/\b([A-Z]{2,3})\s*(\d{4})\b/i);
+              if (sp) {
+                if (!state) state = sp[1].toUpperCase();
+                if (!postcode) postcode = sp[2];
+                if (!addressLine1) addressLine1 = first.replace(sp[0], "").trim().replace(/^,\s*|,\s*$/g, "");
+              }
+            }
+          }
+          return { addressLine1, suburb, state, postcode };
+        };
+        const addr = resolveAddress();
+
+        const contactPayload = {
+          name: r.name,
+          email: r.email || null,
+          phone: r.phone || r.mobile || null,
+          source: r.source || null,
+          status: (r.status as "hot" | "warm" | "cold" | "lead") || "lead",
+          notes: r.notes || null,
+          story: r.story || null,
+          ...(addr.addressLine1 || addr.suburb || addr.state || addr.postcode
+            ? {
+                address_line1: addr.addressLine1 || null,
+                city: addr.suburb || null,
+                state: addr.state || null,
+                postcode: addr.postcode || null,
+                country: "Australia",
+              }
+            : {}),
+        };
+
         if (match) {
           await updateContact.mutateAsync({
             id: match.id,
-            name: r.name,
-            source: r.source || null,
-            status: (r.status as "hot" | "warm" | "cold" | "lead") || "lead",
-            notes: r.notes || null,
-            story: r.story || null,
+            ...contactPayload,
           });
           contactId = match.id;
           up++;
         } else {
-          const created = await createContact.mutateAsync({
-            name: r.name,
-            email: r.email || null,
-            phone: r.phone || r.mobile || null,
-            source: r.source || null,
-            status: (r.status as "hot" | "warm" | "cold" | "lead") || "lead",
-            notes: r.notes || null,
-            story: r.story || null,
-          });
+          const created = await createContact.mutateAsync(contactPayload);
           contactId = (created as { id: string }).id;
           cr++;
         }
@@ -348,39 +406,11 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
         }
 
         // Create property from address if enabled and address data exists
-        if (createPropertiesFromAddress && (r.address || r.address_line1)) {
-          // Parse combined address if needed (e.g., "123 Main St, Sydney NSW 2000")
-          let addressLine1 = r.address_line1 || "";
-          let suburb = r.city || "";
-          let state = r.state || "";
-          let postcode = r.postcode || "";
-          
-          // If only combined address provided, try to parse it
-          if (!addressLine1 && r.address) {
-            const addrParts = r.address.split(",").map((p: string) => p.trim());
-            addressLine1 = addrParts[0] || "";
-            
-            // Try to extract suburb, state, postcode from remaining parts
-            if (addrParts.length > 1) {
-              const lastPart = addrParts[addrParts.length - 1];
-              // Check if last part contains state and postcode (e.g., "NSW 2000")
-              const statePostcodeMatch = lastPart.match(/^([A-Z]{2,3})\s+(\d{4})$/);
-              if (statePostcodeMatch) {
-                state = statePostcodeMatch[1];
-                postcode = statePostcodeMatch[2];
-                suburb = addrParts.slice(1, -1).join(", ") || "";
-              } else {
-                // Check if it's just postcode
-                const postcodeMatch = lastPart.match(/^(\d{4})$/);
-                if (postcodeMatch) {
-                  postcode = postcodeMatch[1];
-                  suburb = addrParts.slice(1, -1).join(", ") || "";
-                } else {
-                  suburb = addrParts.slice(1).join(", ");
-                }
-              }
-            }
-          }
+        if (createPropertiesFromAddress && (addr.addressLine1 || addr.suburb || addr.state || addr.postcode)) {
+          const addressLine1 = addr.addressLine1;
+          const suburb = addr.suburb;
+          let state = addr.state;
+          let postcode = addr.postcode;
           
           // Normalize Australian state (handle full names and abbreviations)
           if (state) {
@@ -401,11 +431,12 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
             postcode = postcode.replace(/\D/g, "").slice(0, 4);
           }
           
-          // Only create property if we have at least address_line1
-          if (addressLine1.trim()) {
+          // Create property when we have at least street or suburb (use suburb as line1 if no street)
+          const propLine1 = addressLine1.trim() || suburb.trim() || null;
+          if (propLine1) {
             try {
               const addrKey = normalizeAddressKey({
-                address_line1: addressLine1.trim(),
+                address_line1: propLine1,
                 city: suburb.trim(),
                 state: state || undefined,
                 postcode: postcode || undefined,
@@ -413,7 +444,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
               let propertyId = batchAddressToProperty.get(addrKey);
               if (!propertyId) {
                 const prop = await createProperty.mutateAsync({
-                  address_line1: addressLine1.trim(),
+                  address_line1: propLine1,
                   address_line2: null,
                   city: suburb.trim() || null,
                   state: state || null,
@@ -439,9 +470,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
             } catch (e) {
               errs.push(`Row ${rowNum}: Could not create property: ${(e as Error).message}`);
             }
-          } else {
-            errs.push(`Row ${rowNum}: Address line 1 required for property creation`);
           }
+          // If address columns are mapped but we couldn't extract street/suburb, skip property creation (contact still imported)
         }
       } catch (e) {
         errs.push(`Row ${rowNum}: ${(e as Error).message}`);
