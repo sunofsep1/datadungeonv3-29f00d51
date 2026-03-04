@@ -161,7 +161,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     setCsvData([]);
     setHeaders([]);
     setMapping({});
-    setCreatePropertiesFromAddress(false);
+    setCreatePropertiesFromAddress(true);
     setProgress(0);
     setCreated(0);
     setUpdated(0);

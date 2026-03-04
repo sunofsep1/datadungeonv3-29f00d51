@@ -118,13 +118,83 @@ export function useContacts() {
         .select("*")
         .order("created_at", { ascending: false });
       if (!simpleError && simple != null) {
-        return ((simple ?? []) as Contact[]).map((c) => ({
-          ...c,
-          contact_channels: [],
-          contact_tags: [],
-          contact_property_links: [],
-          contact_addresses: [],
-        })) as ContactWithMeta[];
+        const contacts = (simple ?? []) as Contact[];
+        const contactIds = contacts.map((c) => c.id);
+        if (contactIds.length === 0) {
+          return contacts.map((c) => ({
+            ...c,
+            contact_channels: [],
+            contact_tags: [],
+            contact_property_links: [],
+            contact_addresses: [],
+          })) as ContactWithMeta[];
+        }
+        try {
+          const { data: links, error: linksErr } = await (supabase as any)
+            .from("contact_property_links")
+            .select("id, contact_id, property_id, role, notes")
+            .in("contact_id", contactIds);
+          if (linksErr || !Array.isArray(links) || links.length === 0) {
+            return contacts.map((c) => ({
+              ...c,
+              contact_channels: [],
+              contact_tags: [],
+              contact_property_links: [],
+              contact_addresses: [],
+            })) as ContactWithMeta[];
+          }
+          const propertyIds = [...new Set(links.map((l: { property_id: string }) => l.property_id))];
+          const { data: propertyRows } = await (supabase as any)
+            .from("properties")
+            .select("id, address_line1, address_line2, city, state, postcode, country, property_type")
+            .in("id", propertyIds);
+          const propertyMap = new Map(
+            (propertyRows ?? []).map((p: { id: string }) => [p.id, p])
+          );
+          const linksByContactId = new Map<string, typeof links>();
+          for (const l of links) {
+            const list = linksByContactId.get(l.contact_id) ?? [];
+            list.push(l);
+            linksByContactId.set(l.contact_id, list);
+          }
+          return contacts.map((c) => {
+            const contactLinks = linksByContactId.get(c.id) ?? [];
+            const mergedLinks: ContactPropertyLinkRow[] = contactLinks.map(
+              (l: { id: string; contact_id: string; property_id: string; role: string; notes: string | null }) => {
+                const prop = propertyMap.get(l.property_id);
+                return {
+                  id: l.id,
+                  property_id: l.property_id,
+                  role: l.role ?? undefined,
+                  notes: l.notes ?? null,
+                  properties: prop
+                    ? {
+                        address_line1: prop.address_line1 ?? null,
+                        city: prop.city ?? null,
+                        state: prop.state ?? null,
+                        postcode: prop.postcode ?? null,
+                      }
+                    : null,
+                } as ContactPropertyLinkRow;
+              }
+            );
+            return {
+              ...c,
+              contact_channels: [],
+              contact_tags: [],
+              contact_property_links: mergedLinks,
+              contact_addresses: [],
+            } as ContactWithMeta;
+          }) as ContactWithMeta[];
+        } catch {
+          return contacts.map((c) => ({
+            ...c,
+            contact_channels: [],
+            contact_tags: [],
+            contact_property_links: [],
+            contact_addresses: [],
+          })) as ContactWithMeta[];
+        }
       }
       // Fallback: try full select with relations (DataDungeon schema)
       const { data, error } = await supabase

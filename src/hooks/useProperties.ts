@@ -103,10 +103,50 @@ export function useProperties() {
           .select("*")
           .order("created_at", { ascending: false });
         if (!simpleError && simple != null) {
-          return ((simple ?? []) as Property[]).map((p) => ({
-            ...p,
-            contact_property_links: [],
-          })) as PropertyWithLinks[];
+          const props = (simple ?? []) as Property[];
+          const ids = props.map((p) => p.id);
+          if (ids.length === 0) {
+            return props.map((p) => ({ ...p, contact_property_links: [] })) as PropertyWithLinks[];
+          }
+          try {
+            const { data: links, error: linksErr } = await (supabase as any)
+              .from("contact_property_links")
+              .select("id, contact_id, property_id, role, notes")
+              .in("property_id", ids);
+            if (linksErr || !Array.isArray(links) || links.length === 0) {
+              return props.map((p) => ({ ...p, contact_property_links: [] })) as PropertyWithLinks[];
+            }
+            const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
+            const { data: contactRows } = await (supabase as any)
+              .from("contacts")
+              .select("id, name, email, phone")
+              .in("id", contactIds);
+            const contactMap = new Map(
+              (contactRows ?? []).map((c: { id: string }) => [c.id, c])
+            );
+            const linksByPropertyId = new Map<string, typeof links>();
+            for (const l of links) {
+              const list = linksByPropertyId.get(l.property_id) ?? [];
+              list.push(l);
+              linksByPropertyId.set(l.property_id, list);
+            }
+            return props.map((p) => {
+              const propLinks = linksByPropertyId.get(p.id) ?? [];
+              const mergedLinks = propLinks.map(
+                (l: { id: string; contact_id: string; property_id: string; role: string; notes: string | null }) => ({
+                  id: l.id,
+                  contact_id: l.contact_id,
+                  property_id: l.property_id,
+                  role: l.role,
+                  notes: l.notes ?? "",
+                  contacts: contactMap.get(l.contact_id) ?? null,
+                })
+              );
+              return { ...p, contact_property_links: mergedLinks } as PropertyWithLinks;
+            }) as PropertyWithLinks[];
+          } catch {
+            return props.map((p) => ({ ...p, contact_property_links: [] })) as PropertyWithLinks[];
+          }
         }
         const { data, error } = await (supabase as any)
           .from("properties")
@@ -198,7 +238,7 @@ export function useProperty(id: string | undefined) {
   });
 }
 
-const DEFAULT_PROPERTY_TYPE = "residential";
+const DEFAULT_PROPERTY_TYPE = "house";
 
 export function useCreateProperty() {
   const qc = useQueryClient();
