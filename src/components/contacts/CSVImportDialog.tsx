@@ -487,6 +487,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     setErrors(errs);
     qc.invalidateQueries({ queryKey: ["contacts"] });
     qc.invalidateQueries({ queryKey: ["properties"] });
+    qc.invalidateQueries({ queryKey: ["contact"] });
+    qc.invalidateQueries({ queryKey: ["property"] });
     qc.invalidateQueries({ queryKey: ["tags"] });
     setStep("complete");
   };
