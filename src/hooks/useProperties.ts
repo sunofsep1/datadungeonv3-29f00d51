@@ -119,10 +119,13 @@ export function useProperties() {
             const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
             const { data: contactRows } = await (supabase as any)
               .from("contacts")
-              .select("id, name, email, phone")
+              .select("id, name, first_name, last_name, email, phone")
               .in("id", contactIds);
             const contactMap = new Map(
-              (contactRows ?? []).map((c: { id: string }) => [c.id, c])
+              (contactRows ?? []).map((c: { id: string; name?: string | null; first_name?: string | null; last_name?: string | null }) => [
+                c.id,
+                { ...c, name: c.name?.trim() || [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || null },
+              ])
             );
             const linksByPropertyId = new Map<string, typeof links>();
             for (const l of links) {
@@ -213,10 +216,13 @@ export function useProperty(id: string | undefined) {
           const contactIds = [...new Set(links.map((l: { contact_id: string }) => l.contact_id))];
           const { data: contactRows } = await (supabase as any)
             .from("contacts")
-            .select("id, name, email, phone")
+            .select("id, name, first_name, last_name, email, phone")
             .in("id", contactIds);
           const contactMap = new Map(
-            (contactRows ?? []).map((c: { id: string }) => [c.id, c])
+            (contactRows ?? []).map((c: { id: string; name?: string | null; first_name?: string | null; last_name?: string | null }) => [
+              c.id,
+              { ...c, name: c.name?.trim() || [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || null },
+            ])
           );
           property.contact_property_links = links.map((l: { id: string; contact_id: string; property_id: string; role: string; notes: string | null }) => ({
             id: l.id,

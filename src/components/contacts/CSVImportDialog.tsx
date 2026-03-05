@@ -117,6 +117,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const [created, setCreated] = useState(0);
   const [updated, setUpdated] = useState(0);
   const [skipped, setSkipped] = useState(0);
+  const [propertiesCreated, setPropertiesCreated] = useState(0);
+  const [linksCreated, setLinksCreated] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
 
   const emailToContact = useMemo(() => {
@@ -166,6 +168,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     setCreated(0);
     setUpdated(0);
     setSkipped(0);
+    setPropertiesCreated(0);
+    setLinksCreated(0);
     setErrors([]);
   };
 
@@ -255,7 +259,9 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     const errs: string[] = [];
     let cr = 0,
       up = 0,
-      sk = 0;
+      sk = 0,
+      propsCreated = 0,
+      linksCreated = 0;
     const total = mappedRows.length;
     const tagMap = new Map(tagNameToId);
 
@@ -453,6 +459,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
                 });
                 propertyId = (prop as { id: string }).id;
                 batchAddressToProperty.set(addrKey, propertyId);
+                propsCreated++;
               }
               try {
                 await createLink.mutateAsync({ 
@@ -460,6 +467,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
                   property_id: propertyId, 
                   role: "owner" 
                 });
+                linksCreated++;
               } catch (linkErr) {
                 // Ignore duplicate link (contact already linked to this property)
                 const msg = (linkErr as Error).message.toLowerCase();
@@ -482,6 +490,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       setCreated(cr);
       setUpdated(up);
       setSkipped(sk);
+      setPropertiesCreated(propsCreated);
+      setLinksCreated(linksCreated);
     }
 
     setErrors(errs);
@@ -636,7 +646,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
         {step === "importing" && (
           <div className="space-y-4 mt-4 text-center py-6">
             <Progress value={progress} className="h-2 max-w-xs mx-auto" />
-            <p className="text-sm font-medium">Importing… {created} created, {updated} updated, {skipped} skipped</p>
+            <p className="text-sm font-medium">Importing… {created} contacts created, {updated} updated, {skipped} skipped</p>
+            <p className="text-xs text-muted-foreground">{propertiesCreated} properties, {linksCreated} owner links</p>
           </div>
         )}
 
@@ -648,8 +659,18 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
               </div>
               <p className="font-medium">Import complete</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Created {created}, updated {updated}, skipped {skipped}.
+                {created} contacts created, {updated} updated, {skipped} skipped.
               </p>
+              {createPropertiesFromAddress && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {propertiesCreated} properties created, {linksCreated} owner links.
+                </p>
+              )}
+              {createPropertiesFromAddress && propertiesCreated === 0 && linksCreated === 0 && (created > 0 || updated > 0) && (
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                  No properties linked. Map address columns (Address, Suburb/City, State, Postcode) and ensure the checkbox is checked.
+                </p>
+              )}
             </div>
             {errors.length > 0 && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 max-h-32 overflow-y-auto">

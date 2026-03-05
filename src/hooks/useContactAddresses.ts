@@ -42,10 +42,15 @@ export function useContactAddresses(contactId: string | undefined) {
         .select("*")
         .eq("contact_id", contactId)
         .order("is_primary", { ascending: false });
-      if (error) throw error;
+      // 403 = RLS blocks access; table may not exist in HubSpot-style schema
+      if (error) {
+        if (error.code === "PGRST301" || error.status === 403) return [];
+        throw error;
+      }
       return (data ?? []) as ContactAddress[];
     },
     enabled: !!contactId,
+    retry: false,
   });
 }
 

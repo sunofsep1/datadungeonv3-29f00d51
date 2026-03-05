@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ function parseStoragePathFromSignedUrl(url: string | null | undefined, bucket: s
 }
 
 export function VisionBoard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cards, setCards] = useState<VisionCard[]>([]);
@@ -413,8 +415,8 @@ export function VisionBoard() {
                 <button
                   type="button"
                   className="absolute inset-0 z-[1]"
-                  onClick={() => handleEdit(card)}
-                  aria-label={`Edit ${card.title}`}
+                  onClick={() => navigate(`/vision/${card.id}`)}
+                  aria-label={`Open ${card.title}`}
                 />
               </div>
             ))}

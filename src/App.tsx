@@ -31,6 +31,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const HotLeads = lazy(() => import("./pages/HotLeads"));
 const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
 const Research = lazy(() => import("./pages/Research"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
@@ -63,6 +64,7 @@ const App = () => (
                 <Route path="/listings" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/properties/:id" element={<ProtectedRoute><MainLayout><PropertyDetail /></MainLayout></ProtectedRoute>} />
+                <Route path="/vision/:id" element={<ProtectedRoute><MainLayout><VisionCardDetail /></MainLayout></ProtectedRoute>} />
                 <Route path="/pipeline" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
                 <Route path="/performance" element={<ProtectedRoute><MainLayout><ErrorBoundary><Performance /></ErrorBoundary></MainLayout></ProtectedRoute>} />

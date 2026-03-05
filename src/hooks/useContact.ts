@@ -6,9 +6,6 @@ import { mapContactAddressToDisplay } from "./useContacts";
 const CONTACT_SELECT =
   "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(*)), contact_addresses(*)";
 
-const CONTACT_PROPERTY_LINKS_SELECT =
-  "id, property_id, role, notes, properties(id, address_line1, address_line2, city, state, postcode, country, property_type)";
-
 function isRelationError(msg: string): boolean {
   const m = msg.toLowerCase();
   return (
@@ -56,12 +53,36 @@ export function useContact(id: string | undefined) {
         } as ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
       }
       try {
+        // Try simple select first - nested properties() can fail with 400 if schema uses different column names (e.g. HubSpot: address/suburb)
         const { data: links, error: linksErr } = await (supabase as any)
           .from("contact_property_links")
-          .select(CONTACT_PROPERTY_LINKS_SELECT)
+          .select("id, contact_id, property_id, role, notes")
           .eq("contact_id", id);
-        if (!linksErr && Array.isArray(links)) {
-          contact.contact_property_links = links;
+        if (!linksErr && Array.isArray(links) && links.length > 0) {
+          const propertyIds = [...new Set(links.map((l: { property_id: string }) => l.property_id))];
+          const { data: props } = await (supabase as any)
+            .from("properties")
+            .select("id, address_line1, address_line2, city, state, postcode, country, property_type, address, suburb")
+            .in("id", propertyIds);
+          const propMap = new Map((props ?? []).map((p: { id: string }) => [p.id, p]));
+          contact.contact_property_links = links.map((l: { id: string; property_id: string; role: string; notes: string | null }) => {
+            const p = propMap.get(l.property_id);
+            return {
+              ...l,
+              properties: p
+                ? {
+                    id: p.id,
+                    address_line1: p.address_line1 ?? p.address ?? null,
+                    address_line2: p.address_line2 ?? null,
+                    city: p.city ?? p.suburb ?? null,
+                    state: p.state ?? null,
+                    postcode: p.postcode ?? null,
+                    country: p.country ?? null,
+                    property_type: p.property_type ?? null,
+                  }
+                : null,
+            };
+          });
         }
       } catch {
         contact.contact_property_links = [];

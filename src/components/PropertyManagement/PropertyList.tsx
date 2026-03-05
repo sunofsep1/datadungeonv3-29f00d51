@@ -1,4 +1,4 @@
-import { Building2, MapPin, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { Building2, MapPin, Pencil, Trash2, ChevronRight, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,9 @@ interface PropertyListProps {
   totalPages?: number;
   onPageChange?: (page: number) => void;
   itemsPerPage?: number;
+  selectedPropertyIds?: Set<string>;
+  onToggleSelect?: (property: PropertyWithLinks) => void;
+  onToggleSelectAll?: (pageProperties: PropertyWithLinks[]) => void;
   onSelectProperty?: (property: PropertyWithLinks) => void;
   onEditProperty?: (property: PropertyWithLinks, e: React.MouseEvent) => void;
   onDeleteProperty?: (property: PropertyWithLinks, e: React.MouseEvent) => void;
@@ -48,6 +51,9 @@ export function PropertyList({
   totalPages: totalPagesProp,
   onPageChange,
   itemsPerPage = DEFAULT_ITEMS_PER_PAGE,
+  selectedPropertyIds,
+  onToggleSelect,
+  onToggleSelectAll,
   onSelectProperty,
   onEditProperty,
   onDeleteProperty,
@@ -117,6 +123,26 @@ export function PropertyList({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {onToggleSelectAll && (
+                    <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Select">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleSelectAll(paginated);
+                        }}
+                        aria-label={paginated.every((p) => selectedPropertyIds?.has(p.id)) ? "Deselect all on page" : "Select all on page"}
+                      >
+                        {paginated.length > 0 && paginated.every((p) => selectedPropertyIds?.has(p.id)) ? (
+                          <CheckSquare className="w-4 h-4" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </th>
+                  )}
                   <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Address</th>
                   <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden sm:table-cell w-[100px]">Type</th>
                   <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[80px]">Beds</th>
@@ -136,6 +162,29 @@ export function PropertyList({
                     )}
                     onClick={() => onSelectProperty ? onSelectProperty(p) : undefined}
                   >
+                    {onToggleSelect && (
+                      <td
+                        className="py-2 px-3 md:py-2 md:px-4 w-[1%]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelect(p);
+                          }}
+                          aria-label={selectedPropertyIds?.has(p.id) ? "Deselect" : "Select"}
+                        >
+                          {selectedPropertyIds?.has(p.id) ? (
+                            <CheckSquare className="w-4 h-4" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </td>
+                    )}
                     <td className="py-2 px-3 md:py-2 md:px-4">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-teal/20 flex items-center justify-center flex-shrink-0">
@@ -220,6 +269,8 @@ export function PropertyList({
             <PropertyCard
               key={p.id}
               property={p}
+              selected={selectedPropertyIds?.has(p.id)}
+              onToggleSelect={onToggleSelect ? () => onToggleSelect(p) : undefined}
               onSelect={onSelectProperty ? () => onSelectProperty(p) : undefined}
               onEdit={onEditProperty ? (e) => onEditProperty(p, e) : undefined}
               onDelete={onDeleteProperty ? (e) => onDeleteProperty(p, e) : undefined}

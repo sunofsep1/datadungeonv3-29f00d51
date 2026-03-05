@@ -37,21 +37,20 @@ export function useListings() {
   return useQuery({
     queryKey: ["listings"],
     queryFn: async () => {
+      // Try simple select first - contacts() relation can 400 if FK not configured
+      const { data: simple, error: simpleError } = await supabase
+        .from("listings")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!simpleError && simple != null) {
+        return (simple ?? []) as Listing[];
+      }
       const { data, error } = await supabase
         .from("listings")
         .select("*, contacts(id, name)")
         .order("created_at", { ascending: false });
-      
-      if (error) {
-        // Fallback to simple select if relations don't exist
-        const { data: simple, error: simpleError } = await supabase
-          .from("listings")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (simpleError) throw simpleError;
-        return (simple ?? []) as Listing[];
-      }
-      return (data ?? []) as ListingWithContact[];
+      if (!error) return (data ?? []) as ListingWithContact[];
+      throw simpleError ?? error;
     },
   });
 }

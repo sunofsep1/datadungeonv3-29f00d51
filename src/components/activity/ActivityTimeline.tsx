@@ -135,7 +135,7 @@ export function ActivityTimeline({
               <MessageSquare className="w-4 h-4" /> Add note
             </Button>
             <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
                 <DialogHeader>
                   <DialogTitle>Add note</DialogTitle>
                 </DialogHeader>

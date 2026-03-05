@@ -112,9 +112,14 @@ export function EditAddressModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (e: unknown) {
+      const err = e as { message?: string; status?: number };
+      const isForbidden = err?.status === 403 || (typeof err?.message === "string" && /forbidden|403|policy|row level security/i.test(err.message));
+      const description = isForbidden
+        ? "Address storage is not available for this account (permissions or schema). You can still set the main address when editing the contact."
+        : (err instanceof Error ? err.message : "Failed to save address");
       toast({
         title: "Error",
-        description: e instanceof Error ? e.message : "Failed to save address",
+        description,
         variant: "destructive",
       });
     }
@@ -122,7 +127,7 @@ export function EditAddressModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-popover border-white/10">
+      <DialogContent className="sm:max-w-[480px] bg-popover border-white/10" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit address" : "Add address"}</DialogTitle>
         </DialogHeader>

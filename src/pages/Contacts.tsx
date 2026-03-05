@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { ContactDetailPanel } from "@/components/contacts/ContactDetailPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
@@ -197,7 +196,6 @@ export default function Contacts() {
   const [formData, setFormData] = useState(createEmptyContact());
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState("");
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(null);
   const [filterLastTouched, setFilterLastTouched] = useState<string>("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
@@ -840,7 +838,7 @@ export default function Contacts() {
         ? "group flex flex-wrap items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card text-sm"
         : "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
     return (
-      <div key={contact.id} className={cardClass} onClick={() => setSelectedContactId(contact.id)}>
+      <div key={contact.id} className={cardClass} onClick={() => navigate(`/contacts/${contact.id}`)}>
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size={isCompact ? "sm" : "md"} />
           <div className="flex-1 min-w-0">
@@ -1716,7 +1714,7 @@ export default function Contacts() {
                       <tr
                         key={contact.id}
                         className="group border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
-                        onClick={() => setSelectedContactId(contact.id)}
+                        onClick={() => navigate(`/contacts/${contact.id}`)}
                       >
                         {renderContactListRow(contact)}
                       </tr>
@@ -1777,15 +1775,6 @@ export default function Contacts() {
       </div>
 
       <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
-      
-      {/* Contact Detail Slide-over Panel */}
-      <ContactDetailPanel
-        contactId={selectedContactId}
-        open={selectedContactId !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedContactId(null);
-        }}
-      />
     </div>
   );
 }

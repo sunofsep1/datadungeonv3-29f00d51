@@ -12,8 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Search, Plus, LayoutGrid, List } from "lucide-react";
+import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { PropertyViewMode } from "@/components/PropertyManagement/PropertyList";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
@@ -25,6 +26,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty, formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
 import { PropertyList } from "@/components/PropertyManagement/PropertyList";
@@ -66,6 +68,8 @@ export default function Properties() {
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
+  const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
   const [viewMode, setViewMode] = useState<PropertyViewMode>("list");
   const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -109,6 +113,52 @@ export default function Properties() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleExportCSV = (selectedOnly?: boolean) => {
+    const list =
+      selectedOnly && selectedPropertyIds.size > 0
+        ? sorted.filter((p) => selectedPropertyIds.has(p.id))
+        : sorted;
+    if (list.length === 0) {
+      toast({
+        title: "No data",
+        description: "No properties to export (maybe filters hide all)",
+        variant: "destructive",
+      });
+      return;
+    }
+    const headers = ["Address", "Type", "Bedrooms", "Bathrooms", "Price", "Owners", "Created At"];
+    const rows = list.map((p) => {
+      const addr = formatPropertyAddress(p);
+      const owners = (p.contact_property_links ?? [])
+        .filter((l) => l.role === "owner" || !l.role)
+        .map((l) => (l.contacts as { name?: string } | null)?.name ?? "")
+        .filter(Boolean)
+        .join("; ");
+      return [
+        addr,
+        p.property_type ?? "",
+        p.bedrooms ?? "",
+        p.bathrooms ?? "",
+        (p.price_listed ?? p.price ?? 0) || "",
+        owners,
+        p.created_at ? new Date(p.created_at).toLocaleDateString() : "",
+      ];
+    });
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `properties-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: `${rows.length} properties exported to CSV` });
   };
 
   const handleOpenDialog = (property?: PropertyWithLinks) => {
@@ -568,6 +618,23 @@ export default function Properties() {
               <SelectItem value="newest">Newest first</SelectItem>
             </SelectContent>
           </Select>
+          <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-11 text-foreground border-border hover:bg-muted">
+                Actions
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 p-1 bg-popover border-border text-foreground">
+              <button
+                type="button"
+                className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
+                onClick={() => { handleExportCSV(); setActionsPopoverOpen(false); }}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </button>
+            </PopoverContent>
+          </Popover>
           <Select
             value={String(itemsPerPage)}
             onValueChange={(v) => {
@@ -586,6 +653,68 @@ export default function Properties() {
           </Select>
         </div>
       </div>
+      {selectedPropertyIds.size > 0 && (
+        <div className="mb-4 p-3 zoho-card rounded-lg flex items-center justify-between">
+          <span className="text-sm text-foreground">
+            {selectedPropertyIds.size} propert{selectedPropertyIds.size !== 1 ? "ies" : "y"} selected
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedPropertyIds(new Set())}
+            >
+              Clear selection
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExportCSV(true)}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export selected
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  Delete selected
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {selectedPropertyIds.size} propert{selectedPropertyIds.size !== 1 ? "ies" : "y"}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The selected propert{selectedPropertyIds.size !== 1 ? "ies will" : "y will"} be permanently removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      try {
+                        for (const id of selectedPropertyIds) {
+                          await deleteProperty.mutateAsync(id);
+                        }
+                        toast({ title: "Deleted", description: `${selectedPropertyIds.size} propert${selectedPropertyIds.size !== 1 ? "ies" : "y"} removed` });
+                        setSelectedPropertyIds(new Set());
+                      } catch (e: unknown) {
+                        toast({
+                          title: "Error",
+                          description: e instanceof Error ? e.message : "Failed to delete",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+      )}
       <PropertyList
         properties={sorted}
         viewMode={viewMode}
@@ -597,6 +726,25 @@ export default function Properties() {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
         itemsPerPage={itemsPerPage}
+        selectedPropertyIds={selectedPropertyIds}
+        onToggleSelect={(p) => {
+          setSelectedPropertyIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(p.id)) next.delete(p.id);
+            else next.add(p.id);
+            return next;
+          });
+        }}
+        onToggleSelectAll={(pageProperties) => {
+          const pageIds = new Set(pageProperties.map((x) => x.id));
+          const allSelected = pageIds.size > 0 && [...pageIds].every((id) => selectedPropertyIds.has(id));
+          setSelectedPropertyIds((prev) => {
+            const next = new Set(prev);
+            if (allSelected) pageIds.forEach((id) => next.delete(id));
+            else pageIds.forEach((id) => next.add(id));
+            return next;
+          });
+        }}
         onSelectProperty={(p) => navigate(`/properties/${p.id}`)}
         onEditProperty={(p, e) => {
           e.stopPropagation();

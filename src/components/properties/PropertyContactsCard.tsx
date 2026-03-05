@@ -10,7 +10,14 @@ import type { PropertyWithLinks } from "@/hooks/useProperties";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-type ContactLookup = { id: string; name?: string | null; email?: string | null; phone?: string | null };
+type ContactLookup = {
+  id: string;
+  name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
 
 interface PropertyContactsCardProps {
   property: PropertyWithLinks;
@@ -22,9 +29,13 @@ interface PropertyContactsCardProps {
 
 function contactDisplayName(c: ContactLookup | null | undefined): string {
   if (!c) return "Contact";
-  if (c.name) return c.name;
-  if (c.email) return c.email;
-  if (c.phone) return c.phone;
+  if (c.name?.trim()) return c.name.trim();
+  const first = c.first_name?.trim() ?? "";
+  const last = c.last_name?.trim() ?? "";
+  const full = [first, last].filter(Boolean).join(" ").trim();
+  if (full) return full;
+  if (c.email?.trim()) return c.email.trim();
+  if (c.phone?.trim()) return c.phone.trim();
   return "Contact";
 }
 

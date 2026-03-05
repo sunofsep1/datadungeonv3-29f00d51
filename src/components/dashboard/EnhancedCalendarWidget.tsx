@@ -738,7 +738,7 @@ export function EnhancedCalendarWidget() {
 
       {/* Add Appointment Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-popover border-border">
+        <DialogContent className="sm:max-w-[500px] bg-popover border-border" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Add Appointment</DialogTitle>
           </DialogHeader>

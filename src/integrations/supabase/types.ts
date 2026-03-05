@@ -1734,7 +1734,9 @@ export type Database = {
           id: string
           image_path: string | null
           image_url: string | null
+          notes: string | null
           sort_order: number
+          status: string | null
           target_date: string | null
           title: string
           updated_at: string
@@ -1746,7 +1748,9 @@ export type Database = {
           id?: string
           image_path?: string | null
           image_url?: string | null
+          notes?: string | null
           sort_order?: number
+          status?: string | null
           target_date?: string | null
           title: string
           updated_at?: string
@@ -1758,7 +1762,9 @@ export type Database = {
           id?: string
           image_path?: string | null
           image_url?: string | null
+          notes?: string | null
           sort_order?: number
+          status?: string | null
           target_date?: string | null
           title?: string
           updated_at?: string
