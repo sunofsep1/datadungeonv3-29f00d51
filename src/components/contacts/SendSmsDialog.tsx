@@ -71,7 +71,7 @@ export function SendSmsDialog({
     } catch (e) {
       toast({
         title: "Error",
-        description: e instanceof Error ? e.message : "Failed to send SMS. Ensure TWILIO_* secrets are set and the number is E.164 (e.g. +61412345678).",
+        description: e instanceof Error ? e.message : "Failed to send SMS. Ensure Mobile Message or Twilio secrets are set on the send-sms Edge Function and the number is valid (e.g. +61412345678 or 0412345678).",
         variant: "destructive",
       });
     } finally {

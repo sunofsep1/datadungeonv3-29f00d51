@@ -155,7 +155,7 @@ export default function Settings() {
               <MessageSquare className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">SMS</p>
-                <p className="text-xs text-muted-foreground">Send SMS from Contact detail. Configure Twilio in Edge Function secrets (send-sms). See docs/SMS_SETUP.md.</p>
+                <p className="text-xs text-muted-foreground">Send SMS from Contact detail. Use Mobile Message (Australia) or Twilio: set Edge Function secrets for send-sms. See docs/MOBILE_MESSAGE_SETUP.md or docs/SMS_SETUP.md.</p>
               </div>
             </div>
           </div>
