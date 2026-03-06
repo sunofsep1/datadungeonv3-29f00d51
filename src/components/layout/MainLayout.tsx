@@ -22,7 +22,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       />
       {/* Spacer so main content starts after sidebar (desktop) */}
       <div
-        className={cn("hidden md:block shrink-0 transition-[width] duration-250")}
+        className={cn("hidden md:block shrink-0 transition-[width] duration-250 print:hidden")}
         style={{ width: sidebarWidth }}
       />
       <div className="flex flex-1 flex-col min-w-0">

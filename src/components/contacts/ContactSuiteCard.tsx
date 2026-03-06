@@ -133,7 +133,7 @@ export function ContactSuiteCard({
         onChange={handleFileChange}
         aria-label="Choose file to upload"
       />
-      <Card className="zoho-card p-8 border-border print:border print:border-gray-300">
+      <Card className="zoho-card p-8 border-border print:border print:border-gray-300 print-section">
         <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-8">
           Correspondence, marketing &amp; files
         </h3>

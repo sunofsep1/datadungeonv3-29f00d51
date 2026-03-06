@@ -608,6 +608,7 @@ export type Database = {
           contact_type: string | null
           country: string | null
           created_at: string | null
+          current_situation_notes: string | null
           do_not_contact: boolean | null
           email: string | null
           email_opt_out: boolean | null
@@ -622,16 +623,21 @@ export type Database = {
           next_follow_up_at: string | null
           notes: string | null
           owner_id: string | null
+          pain_points: string | null
           phone: string | null
+          pipeline_stage: string | null
+          pleasure_points: string | null
           postcode: string | null
           preferred_contact_method: string | null
           preferred_suburbs: string[] | null
           property_requirements: Json | null
           rating: string | null
+          selling_intentions: string | null
           sms_opt_out: boolean | null
           source: string | null
           state: string | null
           status: string | null
+          story: string | null
           suburb: string | null
           tags: string[] | null
           updated_at: string | null
@@ -648,6 +654,7 @@ export type Database = {
           contact_type?: string | null
           country?: string | null
           created_at?: string | null
+          current_situation_notes?: string | null
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
@@ -662,16 +669,21 @@ export type Database = {
           next_follow_up_at?: string | null
           notes?: string | null
           owner_id?: string | null
+          pain_points?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          pleasure_points?: string | null
           postcode?: string | null
           preferred_contact_method?: string | null
           preferred_suburbs?: string[] | null
           property_requirements?: Json | null
           rating?: string | null
+          selling_intentions?: string | null
           sms_opt_out?: boolean | null
           source?: string | null
           state?: string | null
           status?: string | null
+          story?: string | null
           suburb?: string | null
           tags?: string[] | null
           updated_at?: string | null
@@ -688,6 +700,7 @@ export type Database = {
           contact_type?: string | null
           country?: string | null
           created_at?: string | null
+          current_situation_notes?: string | null
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
@@ -702,16 +715,21 @@ export type Database = {
           next_follow_up_at?: string | null
           notes?: string | null
           owner_id?: string | null
+          pain_points?: string | null
           phone?: string | null
+          pipeline_stage?: string | null
+          pleasure_points?: string | null
           postcode?: string | null
           preferred_contact_method?: string | null
           preferred_suburbs?: string[] | null
           property_requirements?: Json | null
           rating?: string | null
+          selling_intentions?: string | null
           sms_opt_out?: boolean | null
           source?: string | null
           state?: string | null
           status?: string | null
+          story?: string | null
           suburb?: string | null
           tags?: string[] | null
           updated_at?: string | null
@@ -1318,6 +1336,8 @@ export type Database = {
           owner_contact_id: string | null
           owner_id: string | null
           postcode: string | null
+          price: number | null
+          price_listed: number | null
           property_description: string | null
           property_type: string | null
           sale_price: number | null
@@ -1356,6 +1376,8 @@ export type Database = {
           owner_contact_id?: string | null
           owner_id?: string | null
           postcode?: string | null
+          price?: number | null
+          price_listed?: number | null
           property_description?: string | null
           property_type?: string | null
           sale_price?: number | null
@@ -1394,6 +1416,8 @@ export type Database = {
           owner_contact_id?: string | null
           owner_id?: string | null
           postcode?: string | null
+          price?: number | null
+          price_listed?: number | null
           property_description?: string | null
           property_type?: string | null
           sale_price?: number | null

@@ -1514,27 +1514,44 @@ html.density-compact [data-slot="row"] {
 
 /* Print Styles */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
-    font-size: 12pt;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
+  body {
+    background: white !important;
+    color: #000 !important;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  /* Hide app chrome */
   [data-sidebar],
   .print\:hidden,
   nav,
   button,
-  [role="dialog"] {
+  header,
+  [role="dialog"],
+  [role="button"],
+  .zoho-layout > div:first-of-type,
+  [class*="HeaderBar"],
+  [class*="GlobalSearch"] {
     display: none !important;
+    visibility: hidden !important;
   }
 
   main {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 0.5in !important;
+    padding: 0 !important;
+    padding-top: 0 !important;
     margin: 0 !important;
+    border: none !important;
+  }
+
+  .zoho-layout {
+    border: none !important;
   }
 
   .contact-row,
@@ -1550,20 +1567,182 @@ html.density-compact [data-slot="row"] {
   .stat-card {
     background: #f5f5f5 !important;
     border: 1px solid #ccc !important;
-    color: black !important;
+    color: #000 !important;
   }
 
   .stat-card * {
-    color: black !important;
+    color: #000 !important;
   }
 
   @page {
-    margin: 0.5in;
     size: A4;
+    margin: 18mm;
   }
 
-  h1, h2, h3 {
-    color: black !important;
+  h1, h2, h3, h4, p, span, label, div, td, th, li {
+    color: #000 !important;
+  }
+
+  /* Contact Document Print Layout */
+  .print-contact-document {
+    padding: 0 !important;
+    max-width: 100% !important;
+    font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+    color: #000 !important;
+  }
+
+  .print-contact-document * {
+    color: #000 !important;
+  }
+
+  .print-doc-header {
+    border-bottom: 2px solid #000;
+    padding-bottom: 14px;
+    margin-bottom: 24px;
+  }
+
+  .print-doc-brand {
+    font-size: 10pt;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #000 !important;
+    margin-bottom: 6px;
+  }
+
+  .print-doc-title {
+    font-size: 22pt;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #000 !important;
+    line-height: 1.2;
+  }
+
+  .print-doc-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10pt;
+    color: #000 !important;
+  }
+
+  .print-doc-footer {
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 1px solid #ccc;
+    font-size: 9pt;
+    color: #000 !important;
+  }
+
+  .print-contact-grid {
+    display: block !important;
+    gap: 0 !important;
+  }
+
+  .print-contact-grid > div {
+    margin-bottom: 24px;
+  }
+
+  .print-contact-grid .lg\:col-span-2 {
+    max-width: 100%;
+  }
+
+  .print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 24px !important;
+    padding: 20px 24px !important;
+    border: 1px solid #ccc !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  .print-section *,
+  .print-section .text-muted-foreground,
+  .print-section [class*="muted"],
+  .print-section .text-foreground {
+    color: #000 !important;
+  }
+
+  .print-section h3 {
+    font-size: 11pt;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #000 !important;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .print-activity-card {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .print-activity-card * {
+    color: #000 !important;
+  }
+
+  .print-contact-document .zoho-card {
+    background: white !important;
+    border-color: #ccc !important;
+  }
+
+  /* Light backgrounds only - no dark blocks */
+  .print-contact-document [class*="bg-muted"],
+  .print-contact-document [class*="bg-primary"],
+  .print-contact-document [class*="bg-secondary"] {
+    background: #f5f5f5 !important;
+    border-color: #ccc !important;
+    color: #000 !important;
+  }
+
+  .print-contact-document [class*="rounded-full"],
+  .print-contact-document [class*="rounded-lg"] {
+    background: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .print-contact-document svg {
+    fill: #000 !important;
+    stroke: #000 !important;
+    color: #000 !important;
+  }
+
+  .print-contact-document [class*="text-primary"] {
+    color: #000 !important;
+  }
+
+  .print-contact-document .StatusBadge,
+  .print-contact-document [data-status],
+  .print-contact-document .badge,
+  .print-contact-document [class*="Badge"] {
+    border: 1px solid #666 !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  .print-contact-document a {
+    color: #000 !important;
+    text-decoration: none;
+  }
+
+  /* Activity timeline - ensure no black blocks, all text visible */
+  .print-contact-document [class*="bg-secondary"] {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+  }
+
+  .print\:break-before-page {
+    break-before: page;
+    page-break-before: always;
+    margin-top: 24px;
+  }
+
+  /* ContactSuiteCard - correspondence, marketing, documents */
+  .print-contact-document [class*="ContactSuiteCard"] *,
+  .print-section [class*="uppercase"] {
+    color: #000 !important;
   }
 }
 

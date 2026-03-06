@@ -90,7 +90,8 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         "fixed top-0 right-0 z-30 flex h-[60px] items-center justify-between border-b px-4 transition-[left] duration-250",
         "bg-card border-border text-foreground",
         "left-0",
-        sidebarCollapsed ? "md:left-[80px]" : "md:left-[248px]"
+        sidebarCollapsed ? "md:left-[80px]" : "md:left-[248px]",
+        "print:hidden"
       )}
       style={{ height: "60px" }}
     >

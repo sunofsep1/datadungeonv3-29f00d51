@@ -347,7 +347,7 @@ export default function ContactDetail() {
   }
 
   return (
-    <div className="animate-fade-in print:bg-white print:text-black">
+    <div className="animate-fade-in print:bg-white print:text-black print-contact-document">
       <PageBreadcrumbs
         items={[
           { label: "Dashboard", href: "/dashboard" },
@@ -430,16 +430,20 @@ export default function ContactDetail() {
         />
       )}
 
-      {/* Print Header */}
-      <div className="hidden print:block mb-6">
-        <h1 className="text-3xl font-bold">{contact.name}</h1>
-        <p className="text-gray-600">Contact Card - Printed {format(new Date(), "PPP")}</p>
+      {/* Print-only document header */}
+      <div className="hidden print:block print-doc-header">
+        <div className="print-doc-brand">Data Dungeon</div>
+        <h1 className="print-doc-title">{contact.name}</h1>
+        <div className="print-doc-meta">
+          <span>Contact Summary</span>
+          <span>Printed {format(new Date(), "d MMMM yyyy")}</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-contact-grid">
         <div className="lg:col-span-2 space-y-6">
           {/* Overview */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-start gap-4">
               <AvatarCircle
                 name={contact.name}
@@ -497,7 +501,7 @@ export default function ContactDetail() {
           </Card>
 
           {/* Contact information (address) */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Contact information</h3>
             {(contact.address_line1 || contact.city) ? (
               <div className="flex items-start gap-2">
@@ -510,7 +514,7 @@ export default function ContactDetail() {
           </Card>
 
           {/* Linked properties */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-center justify-between mb-4 print:hidden">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Linked properties</h3>
               {(contact?.address_line1?.trim() || contact?.city?.trim()) ? (
@@ -636,7 +640,7 @@ export default function ContactDetail() {
           </Card>
 
           {/* Story & Intent */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Story & intent</h3>
             <div className="space-y-5">
               <div>
@@ -664,7 +668,7 @@ export default function ContactDetail() {
           </Card>
 
           {/* Pain & Pleasure */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -683,7 +687,7 @@ export default function ContactDetail() {
           </Card>
 
           {contact.notes && (
-            <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+            <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
               <p className="text-foreground whitespace-pre-wrap text-sm">{contact.notes}</p>
             </Card>
@@ -691,7 +695,7 @@ export default function ContactDetail() {
         </div>
 
         {/* Activity Timeline */}
-        <Card className="zoho-card p-6 border-border print:border print:border-gray-300">
+        <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section print-activity-card">
           <div className="flex items-center justify-between mb-4 print:hidden">
             <h3 className="font-semibold text-foreground">Activity Timeline</h3>
             <Button size="sm" onClick={() => setAddInteractionOpen(true)} className="gap-1">
@@ -728,14 +732,16 @@ export default function ContactDetail() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-sm capitalize">{interaction.type}</p>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 print:hidden"
-                      onClick={() => handleDeleteInteraction(interaction.id)}
-                    >
-                      <Trash2 className="w-3 h-3 text-destructive" />
-                    </Button>
+                    <span className="print:hidden">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                        onClick={() => handleDeleteInteraction(interaction.id)}
+                      >
+                        <Trash2 className="w-3 h-3 text-destructive" />
+                      </Button>
+                    </span>
                   </div>
                   {interaction.subject && (
                     <p className="text-sm text-foreground">{interaction.subject}</p>
@@ -746,10 +752,11 @@ export default function ContactDetail() {
                   <div className="flex items-center gap-2 mt-1">
                     <Clock className="w-3 h-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(interaction.timestamp), { addSuffix: true })}
+                      <span className="print:hidden">{formatDistanceToNow(new Date(interaction.timestamp), { addSuffix: true })}</span>
+                      <span className="hidden print:inline">{format(new Date(interaction.timestamp), "d MMM yyyy, h:mm a")}</span>
                     </span>
                     {interaction.channel && (
-                      <span className="text-xs bg-secondary px-1.5 py-0.5 rounded capitalize">
+                      <span className="text-xs bg-secondary px-1.5 py-0.5 rounded capitalize print:bg-gray-100 print:border print:border-gray-400 print:text-black">
                         {interaction.channel}
                       </span>
                     )}
@@ -767,7 +774,7 @@ export default function ContactDetail() {
         </Card>
 
         {id && (
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 print:break-before-page">
             <ContactSuiteCard
               contactId={id}
               interactions={interactions}
@@ -775,6 +782,12 @@ export default function ContactDetail() {
             />
           </div>
         )}
+      </div>
+
+      {/* Print footer */}
+      <div className="hidden print:block print-doc-footer">
+        <span>Data Dungeon CRM · {contact.name}</span>
+        <span>Confidential</span>
       </div>
 
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
