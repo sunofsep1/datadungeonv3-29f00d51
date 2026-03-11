@@ -28,6 +28,8 @@ export interface Property {
   building_size?: number | null;
   property_condition?: string | null;
   year_built?: number | null;
+  car_spaces?: number | null;
+  property_report?: Record<string, unknown> | null;
   images?: unknown;
   documents?: unknown;
 }
@@ -53,6 +55,8 @@ export interface PropertyInsert {
   building_size?: number | null;
   property_condition?: string | null;
   year_built?: number | null;
+  car_spaces?: number | null;
+  property_report?: Record<string, unknown> | null;
   images?: unknown;
   documents?: unknown;
 }

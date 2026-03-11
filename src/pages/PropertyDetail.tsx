@@ -1,4 +1,24 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+
+/** Show only main-points text; hide disclaimer and long boilerplate */
+function reportDisplayValue(s: unknown, maxLen = 120): string | null {
+  if (s == null || typeof s !== "string") return null;
+  let t = s.trim();
+  const stop = [
+    "The materials are provided",
+    "State of Queensland",
+    "propertydatacodeofconduct",
+    "no warranty",
+    "Prepared on ",
+    "Property Data Solutions",
+  ];
+  for (const phrase of stop) {
+    const i = t.indexOf(phrase);
+    if (i !== -1) t = t.slice(0, i).trim();
+  }
+  if (t.length > maxLen) t = t.slice(0, maxLen).trim();
+  return t.length ? t : null;
+}
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,7 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useProperty, useUpdateProperty, useProperties, formatPropertyAddress } from "@/hooks/useProperties";
@@ -31,6 +51,7 @@ import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyGallery } from "@/components/PropertyManagement/PropertyGallery";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
+import { parsePropertyReportPdf, normalizePropertyType, PROPERTY_TYPE_VALUES, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
 
 const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
 
@@ -63,8 +84,21 @@ export default function PropertyDetail() {
     property_type: "",
     bedrooms: "" as string | number,
     bathrooms: "" as string | number,
+    car_spaces: "" as string | number,
     price: "" as string | number,
     lot_size: "" as string | number,
+    building_size: "" as string | number,
+    notes: "",
+  });
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [detailsForm, setDetailsForm] = useState({
+    property_type: "",
+    bedrooms: "" as string | number,
+    bathrooms: "" as string | number,
+    car_spaces: "" as string | number,
+    area_land: "" as string | number,
+    area_building: "" as string | number,
+    price: "" as string | number,
     notes: "",
   });
   type PricefinderEnriched = {
@@ -79,7 +113,9 @@ export default function PropertyDetail() {
     lot_plan?: string | null;
   };
   const [enrichedData, setEnrichedData] = useState<PricefinderEnriched | null>(null);
+  const [parsedReportData, setParsedReportData] = useState<ParsedPropertyReport | null>(null);
   const [enrichLoading, setEnrichLoading] = useState(false);
+  const [uploadReportLoading, setUploadReportLoading] = useState(false);
   const [enrichUnconfigured, setEnrichUnconfigured] = useState(false);
 
   const links = Array.isArray(property?.contact_property_links) ? property.contact_property_links : [];
@@ -169,6 +205,10 @@ export default function PropertyDetail() {
 
   const hasImages = Array.isArray(property.images) && (property.images as string[]).length > 0;
 
+  const report = (property?.property_report ?? {}) as Record<string, unknown>;
+  const landSize = property?.lot_size ?? (property as { land_area_sqm?: number | null })?.land_area_sqm ?? report?.area_land;
+  const carSpacesVal = property?.car_spaces ?? report?.car_spaces;
+
   const handleOpenEdit = () => {
     if (!property) return;
     setEditForm({
@@ -178,14 +218,86 @@ export default function PropertyDetail() {
       state: property.state ?? "",
       postcode: property.postcode ?? "",
       country: property.country ?? "Australia",
-      property_type: property.property_type ?? "",
+      property_type: property.property_type ? normalizePropertyType(property.property_type) : "",
       bedrooms: property.bedrooms ?? "",
       bathrooms: property.bathrooms ?? "",
+      car_spaces: carSpacesVal ?? "",
       price: property.price ?? "",
-      lot_size: property.lot_size ?? "",
+      lot_size: landSize ?? "",
+      building_size: property.building_size ?? report.area_building ?? "",
       notes: property.notes ?? "",
     });
     setEditPropertyOpen(true);
+  };
+
+  const startEditingDetails = () => {
+    if (!property) return;
+    const rawType = property.property_type ?? (report.property_type_full as string) ?? "";
+    setDetailsForm({
+      property_type: rawType ? normalizePropertyType(rawType) : "",
+      bedrooms: property.bedrooms ?? report.bedrooms ?? "",
+      bathrooms: property.bathrooms ?? report.bathrooms ?? "",
+      car_spaces: carSpacesVal ?? "",
+      area_land: landSize ?? "",
+      area_building: property.building_size ?? report.area_building ?? "",
+      price: property.price ?? "",
+      notes: property.notes ?? "",
+    });
+    setEditingDetails(true);
+  };
+
+  const cancelEditingDetails = () => {
+    setEditingDetails(false);
+  };
+
+  const saveDetails = async () => {
+    if (!id) return;
+    const core: Record<string, unknown> = {
+      property_type: detailsForm.property_type.trim() ? normalizePropertyType(detailsForm.property_type) : null,
+      bedrooms: detailsForm.bedrooms === "" ? null : Number(detailsForm.bedrooms),
+      bathrooms: detailsForm.bathrooms === "" ? null : Number(detailsForm.bathrooms),
+      price: detailsForm.price === "" ? null : Number(detailsForm.price),
+      notes: detailsForm.notes.trim() || null,
+    };
+    const areaLand = detailsForm.area_land === "" ? null : Number(detailsForm.area_land);
+    const areaBuilding = detailsForm.area_building === "" ? null : Number(detailsForm.area_building);
+    const carSpaces = detailsForm.car_spaces === "" ? null : Number(detailsForm.car_spaces);
+    const existingReport = (property?.property_report && typeof property.property_report === "object"
+      ? { ...(property.property_report as Record<string, unknown>) }
+      : {}) as Record<string, unknown>;
+    const mergedReport = {
+      ...existingReport,
+      area_land: areaLand,
+      area_building: areaBuilding,
+      car_spaces: carSpaces,
+      bedrooms: core.bedrooms,
+      bathrooms: core.bathrooms,
+    };
+    const getErrMsg = (err: unknown) =>
+      err != null && typeof err === "object" && "message" in err
+        ? String((err as { message: unknown }).message)
+        : err instanceof Error ? err.message : String(err);
+
+    const payloadWithReport = { ...core, property_report: mergedReport };
+    try {
+      await updateProperty.mutateAsync({ id, ...payloadWithReport });
+      toast({ title: "Saved", description: "Property details updated." });
+      setEditingDetails(false);
+    } catch (e: unknown) {
+      const msg = getErrMsg(e);
+      const isColumnError = /column.*does not exist|property_report|schema cache|could not find/i.test(msg);
+      if (isColumnError) {
+        try {
+          await updateProperty.mutateAsync({ id, ...core });
+          toast({ title: "Saved", description: "Core details saved (land/cars need property_report column in DB)." });
+          setEditingDetails(false);
+        } catch (retryErr: unknown) {
+          toast({ title: "Error", description: getErrMsg(retryErr) || "Failed to save", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
+    }
   };
 
   const handleEnrichFromPricefinder = async () => {
@@ -244,8 +356,9 @@ export default function PropertyDetail() {
       const updates: Record<string, unknown> = {};
       if (enrichedData.bedrooms != null) updates.bedrooms = enrichedData.bedrooms;
       if (enrichedData.bathrooms != null) updates.bathrooms = enrichedData.bathrooms;
-      if (enrichedData.property_type) updates.property_type = enrichedData.property_type;
+      if (enrichedData.property_type) updates.property_type = normalizePropertyType(enrichedData.property_type);
       if (enrichedData.land_area_sqm != null) updates.lot_size = enrichedData.land_area_sqm;
+      if (enrichedData.carspaces != null) updates.car_spaces = enrichedData.carspaces;
       if (enrichedData.last_sale_price != null && !property?.price) updates.price = enrichedData.last_sale_price;
       await updateProperty.mutateAsync({ id, ...updates });
       toast({ title: "Success", description: "Property updated with Pricefinder data" });
@@ -255,28 +368,142 @@ export default function PropertyDetail() {
     }
   };
 
+  const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.includes("pdf")) {
+      toast({ title: "Error", description: "Please select a PDF file", variant: "destructive" });
+      return;
+    }
+    setUploadReportLoading(true);
+    setParsedReportData(null);
+    try {
+      const parsed = await parsePropertyReportPdf(file);
+      setParsedReportData(parsed);
+      toast({ title: "Success", description: "Property report parsed. Review and apply to property." });
+    } catch (err) {
+      toast({
+        title: "Parse error",
+        description: err instanceof Error ? err.message : "Could not parse PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadReportLoading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleApplyReportData = async () => {
+    if (!id || !parsedReportData) return;
+    const updates: Record<string, unknown> = {};
+    // Only send columns that exist in the minimal properties schema (so apply always succeeds)
+    if (parsedReportData.address_line1) updates.address_line1 = parsedReportData.address_line1;
+    if (parsedReportData.city) updates.city = parsedReportData.city;
+    if (parsedReportData.state) updates.state = parsedReportData.state;
+    if (parsedReportData.postcode) updates.postcode = parsedReportData.postcode;
+    if (parsedReportData.property_type) updates.property_type = normalizePropertyType(parsedReportData.property_type);
+    if (parsedReportData.bedrooms != null) updates.bedrooms = parsedReportData.bedrooms;
+    if (parsedReportData.bathrooms != null) updates.bathrooms = parsedReportData.bathrooms;
+    if (parsedReportData.price != null) updates.price = parsedReportData.price;
+    if (parsedReportData.notes) updates.notes = parsedReportData.notes;
+    // Everything else (lot_size, car_spaces, estimated_value, etc.) goes in property_report only
+    const reportPayload = {
+      property_type_full: parsedReportData.property_type_full,
+      rpd: parsedReportData.lot_plan,
+      valuation_amounts: parsedReportData.valuation_amounts,
+      land_use: parsedReportData.land_use,
+      zoning: parsedReportData.zoning,
+      council: parsedReportData.council,
+      features: parsedReportData.features?.slice(0, 20) ?? null,
+      area_land: parsedReportData.lot_size,
+      area_building: parsedReportData.building_size,
+      area_per_m2: parsedReportData.area_per_m2,
+      water_sewerage: parsedReportData.water_sewerage,
+      property_id: parsedReportData.property_id,
+      ubd_ref: parsedReportData.ubd_ref,
+      bedrooms: parsedReportData.bedrooms,
+      bathrooms: parsedReportData.bathrooms,
+      car_spaces: parsedReportData.car_spaces,
+    };
+    const hasReportData = Object.values(reportPayload).some((v) => v != null && (Array.isArray(v) ? v.length > 0 : true));
+    if (hasReportData) updates.property_report = reportPayload;
+
+    try {
+      await updateProperty.mutateAsync({ id, ...updates });
+      toast({ title: "Success", description: "Property updated from report" });
+      setParsedReportData(null);
+    } catch (e: unknown) {
+      const msg =
+        e != null && typeof e === "object" && "message" in e
+          ? String((e as { message: unknown }).message)
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      const isColumnError = /column.*does not exist|property_report|car_spaces|building_size/i.test(msg);
+      if (isColumnError) {
+        try {
+          const coreOnly = { ...updates };
+          delete coreOnly.property_report;
+          delete coreOnly.car_spaces;
+          delete coreOnly.building_size;
+          await updateProperty.mutateAsync({ id, ...coreOnly });
+          toast({ title: "Saved basics", description: "Property updated (report fields need migration: run 20260311000000_properties_report_data.sql in Supabase)." });
+          setParsedReportData(null);
+        } catch (retryErr: unknown) {
+          const retryMsg =
+            retryErr != null && typeof retryErr === "object" && "message" in retryErr
+              ? String((retryErr as { message: unknown }).message)
+              : retryErr instanceof Error
+                ? retryErr.message
+                : String(retryErr);
+          toast({ title: "Error", description: retryMsg + " Run migration: supabase/migrations/20260311000000_properties_report_data.sql", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
+    }
+  };
+
   const handleSaveProperty = async () => {
     if (!id) return;
+    const updates: Record<string, unknown> = {
+      address_line1: editForm.address_line1.trim() || null,
+      address_line2: editForm.address_line2.trim() || null,
+      city: editForm.city.trim() || null,
+      state: editForm.state || null,
+      postcode: editForm.postcode.trim() || null,
+      country: editForm.country || "Australia",
+      property_type: editForm.property_type.trim() ? normalizePropertyType(editForm.property_type) : null,
+      bedrooms: editForm.bedrooms === "" ? null : Number(editForm.bedrooms),
+      bathrooms: editForm.bathrooms === "" ? null : Number(editForm.bathrooms),
+      price: editForm.price === "" ? null : Number(editForm.price),
+      notes: editForm.notes.trim() || null,
+    };
+    const areaLand = editForm.lot_size === "" ? null : Number(editForm.lot_size);
+    const areaBuilding = editForm.building_size === "" ? null : Number(editForm.building_size);
+    const carSpaces = editForm.car_spaces === "" ? null : Number(editForm.car_spaces);
+    const existingReport = (property?.property_report && typeof property.property_report === "object"
+      ? { ...(property.property_report as Record<string, unknown>) }
+      : {}) as Record<string, unknown>;
+    const mergedReport = { ...existingReport, area_land: areaLand, area_building: areaBuilding, car_spaces: carSpaces };
+    updates.property_report = mergedReport;
     try {
-      await updateProperty.mutateAsync({
-        id,
-        address_line1: editForm.address_line1.trim() || null,
-        address_line2: editForm.address_line2.trim() || null,
-        city: editForm.city.trim() || null,
-        state: editForm.state || null,
-        postcode: editForm.postcode.trim() || null,
-        country: editForm.country || "Australia",
-        property_type: editForm.property_type.trim() || null,
-        bedrooms: editForm.bedrooms === "" ? null : Number(editForm.bedrooms),
-        bathrooms: editForm.bathrooms === "" ? null : Number(editForm.bathrooms),
-        price: editForm.price === "" ? null : Number(editForm.price),
-        lot_size: editForm.lot_size === "" ? null : Number(editForm.lot_size),
-        notes: editForm.notes.trim() || null,
-      });
+      await updateProperty.mutateAsync({ id, ...updates });
       toast({ title: "Success", description: "Property updated." });
       setEditPropertyOpen(false);
     } catch (e: unknown) {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to update", variant: "destructive" });
+      const msg = e != null && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : e instanceof Error ? e.message : String(e);
+      if (/column.*does not exist|property_report|schema cache/i.test(msg)) {
+        delete updates.property_report;
+        try {
+          await updateProperty.mutateAsync({ id, ...updates });
+          toast({ title: "Success", description: "Property updated (extra fields in report need migration)." });
+          setEditPropertyOpen(false);
+        } catch (retryErr: unknown) {
+          toast({ title: "Error", description: retryErr instanceof Error ? retryErr.message : "Failed to update", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
     }
   };
 
@@ -332,107 +559,287 @@ export default function PropertyDetail() {
       )}
 
       <Card className="zoho-card p-6 mb-6 border-white/10">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-            <MapPin className="w-6 h-6 text-primary" />
+        {/* Address */}
+        <div className="flex items-start gap-3 mb-6">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Address</h2>
-            <p className="text-foreground">{addr || "—"}</p>
-            {(property.city || property.state || property.postcode) && (
-              <p className="text-sm text-white/60 mt-1">
-                {[property.city, property.state, property.postcode].filter(Boolean).join(", ")}
-                {property.country && `, ${property.country}`}
-              </p>
+            <h2 className="text-sm font-medium text-white/60 uppercase tracking-wide mb-1">Address</h2>
+            <p className="text-foreground text-lg">{addr || "—"}</p>
+          </div>
+        </div>
+
+        {/* Property details – editable section: type, beds, baths, cars, land, building, price, notes */}
+        <div className="py-4 border-t border-white/10">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h3 className="text-xs font-medium text-white/60 uppercase tracking-wide">Property details</h3>
+            {!editingDetails ? (
+              <Button variant="ghost" size="sm" onClick={startEditingDetails} className="gap-1.5 text-primary hover:text-primary">
+                <Edit className="w-3.5 h-3.5" /> Edit
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={cancelEditingDetails}>Cancel</Button>
+                <Button size="sm" onClick={saveDetails} disabled={updateProperty.isPending}>
+                  {updateProperty.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
             )}
           </div>
+          {editingDetails ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <Label className="text-white/60 text-xs">Type</Label>
+                <Select
+                  value={detailsForm.property_type || "house"}
+                  onValueChange={(v) => setDetailsForm((f) => ({ ...f, property_type: v }))}
+                >
+                  <SelectTrigger className="mt-1 bg-white/5 border-white/10">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROPERTY_TYPE_VALUES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v.charAt(0).toUpperCase() + v.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Bedrooms</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={detailsForm.bedrooms === "" ? "" : detailsForm.bedrooms}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, bedrooms: e.target.value === "" ? "" : Number(e.target.value) }))}
+                  placeholder="—"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Bathrooms</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={detailsForm.bathrooms === "" ? "" : detailsForm.bathrooms}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, bathrooms: e.target.value === "" ? "" : Number(e.target.value) }))}
+                  placeholder="—"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Car spaces</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={detailsForm.car_spaces === "" ? "" : detailsForm.car_spaces}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, car_spaces: e.target.value === "" ? "" : Number(e.target.value) }))}
+                  placeholder="—"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Land size (m²)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={detailsForm.area_land === "" ? "" : detailsForm.area_land}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, area_land: e.target.value === "" ? "" : Number(e.target.value) }))}
+                  placeholder="—"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Building size (m²)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={detailsForm.area_building === "" ? "" : detailsForm.area_building}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, area_building: e.target.value === "" ? "" : Number(e.target.value) }))}
+                  placeholder="—"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Price ($)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={detailsForm.price === "" ? "" : detailsForm.price}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, price: e.target.value === "" ? "" : Number(e.target.value) }))}
+                  placeholder="—"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="col-span-2 sm:col-span-4">
+                <Label className="text-white/60 text-xs">Notes</Label>
+                <Textarea
+                  value={detailsForm.notes}
+                  onChange={(e) => setDetailsForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Notes…"
+                  rows={3}
+                  className="mt-1 bg-white/5 border-white/10 resize-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Type</p>
+                <p className="font-medium capitalize">{property.property_type || report.property_type_full || "—"}</p>
+              </div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Bedrooms</p>
+                <p className="font-medium">{property.bedrooms ?? report.bedrooms ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Bathrooms</p>
+                <p className="font-medium">{property.bathrooms ?? report.bathrooms ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Car spaces</p>
+                <p className="font-medium">{carSpacesVal ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Land size</p>
+                <p className="font-medium">
+                  {landSize != null ? `${Number(landSize).toLocaleString()} m²` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Building size</p>
+                <p className="font-medium">
+                  {(property.building_size ?? report.area_building) != null ? `${Number(property.building_size ?? report.area_building).toLocaleString()} m²` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wide">Price</p>
+                <p className="font-medium">
+                  {property.price != null && property.price > 0 ? `$${Number(property.price).toLocaleString()}` : "—"}
+                </p>
+              </div>
+              {(property.estimated_value != null && property.estimated_value > 0) || (property.price_listed != null && property.price_listed > 0) ? (
+                <div>
+                  <p className="text-white/60 text-xs uppercase tracking-wide">Other</p>
+                  <p className="font-medium">
+                    {[
+                      property.estimated_value != null && property.estimated_value > 0 ? `Est. $${Number(property.estimated_value).toLocaleString()}` : null,
+                      property.price_listed != null && property.price_listed > 0 ? `Listed $${Number(property.price_listed).toLocaleString()}` : null,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+              ) : null}
+              {property.notes ? (
+                <div className="col-span-2 sm:col-span-4">
+                  <p className="text-white/60 text-xs uppercase tracking-wide">Notes</p>
+                  <p className="font-medium text-foreground whitespace-pre-wrap">{property.notes}</p>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-          {property.property_type && (
-            <div>
-              <span className="text-white/60">Type</span>
-              <p className="font-medium capitalize">{property.property_type}</p>
-            </div>
-          )}
-          {property.bedrooms != null && (
-            <div>
-              <span className="text-white/60">Bedrooms</span>
-              <p className="font-medium">{property.bedrooms}</p>
-            </div>
-          )}
-          {property.bathrooms != null && (
-            <div>
-              <span className="text-white/60">Bathrooms</span>
-              <p className="font-medium">{property.bathrooms}</p>
-            </div>
-          )}
-          {(property.price != null && property.price > 0) && (
-            <div>
-              <span className="text-white/60">Price</span>
-              <p className="font-medium">${Number(property.price).toLocaleString()}</p>
-            </div>
-          )}
-          {(property.price_listed != null && property.price_listed > 0) && (
-            <div>
-              <span className="text-white/60">Listed price</span>
-              <p className="font-medium">${Number(property.price_listed).toLocaleString()}</p>
-            </div>
-          )}
-          {(property.estimated_value != null && property.estimated_value > 0) && (
-            <div>
-              <span className="text-white/60">Estimated value</span>
-              <p className="font-medium">${Number(property.estimated_value).toLocaleString()}</p>
-            </div>
-          )}
-          {property.rental_yield != null && (
-            <div>
-              <span className="text-white/60">Rental yield</span>
-              <p className="font-medium">{Number(property.rental_yield).toFixed(2)}%</p>
-            </div>
-          )}
-          {property.cap_rate != null && (
-            <div>
-              <span className="text-white/60">Cap rate</span>
-              <p className="font-medium">{Number(property.cap_rate).toFixed(2)}%</p>
-            </div>
-          )}
-          {property.lot_size != null && (
-            <div>
-              <span className="text-white/60">Lot size</span>
-              <p className="font-medium">{Number(property.lot_size).toLocaleString()} m²</p>
-            </div>
-          )}
-          {property.building_size != null && (
-            <div>
-              <span className="text-white/60">Building size</span>
-              <p className="font-medium">{Number(property.building_size).toLocaleString()} m²</p>
-            </div>
-          )}
-          {property.year_built != null && (
-            <div>
-              <span className="text-white/60">Year built</span>
-              <p className="font-medium">{property.year_built}</p>
-            </div>
-          )}
-          {property.property_condition && (
-            <div>
-              <span className="text-white/60">Condition</span>
-              <p className="font-medium capitalize">{property.property_condition}</p>
-            </div>
-          )}
-          {property.status && (
-            <div>
-              <span className="text-white/60">Status</span>
-              <p className="font-medium capitalize">{property.status}</p>
-            </div>
-          )}
-        </div>
-        {property.notes && (
-          <div className="mt-4 pt-4 border-t border-white/10">
-            <span className="text-white/60 text-sm">Notes</span>
-            <p className="text-foreground whitespace-pre-wrap mt-1">{property.notes}</p>
+
+        {/* Property details (from report) – RPD, valuations, zoning, features, etc. */}
+        {property.property_report && typeof property.property_report === "object" && (
+          <div className="py-4 border-b border-white/10">
+            <h3 className="text-xs font-medium text-white/60 uppercase tracking-wide mb-3">Property details (from report)</h3>
+            <dl className="space-y-2 text-sm">
+              {reportDisplayValue((property.property_report as Record<string, unknown>).property_type_full) && (
+                <>
+                  <dt className="text-white/60">Property Type</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).property_type_full)!}</dd>
+                </>
+              )}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).rpd) && (
+                <>
+                  <dt className="text-white/60">RPD</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).rpd)!}</dd>
+                </>
+              )}
+              {Array.isArray((property.property_report as Record<string, unknown>).valuation_amounts) &&
+                ((property.property_report as Record<string, unknown>).valuation_amounts as Array<{ amount: number; date?: string }>).length > 0 &&
+                ((property.property_report as Record<string, unknown>).valuation_amounts as Array<{ amount: number; date?: string }>).map((v, i) => (
+                  <React.Fragment key={i}>
+                    <dt className="text-white/60">Valuation Amount</dt>
+                    <dd className="font-medium">${v.amount.toLocaleString()}{v.date ? ` - Site Value on ${v.date}` : ""}</dd>
+                  </React.Fragment>
+                ))}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).land_use) && (
+                <>
+                  <dt className="text-white/60">Land Use</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).land_use)!}</dd>
+                </>
+              )}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).zoning) && (
+                <>
+                  <dt className="text-white/60">Zoning</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).zoning)!}</dd>
+                </>
+              )}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).council) && (
+                <>
+                  <dt className="text-white/60">Council</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).council)!}</dd>
+                </>
+              )}
+              {Array.isArray((property.property_report as Record<string, unknown>).features) &&
+                ((property.property_report as Record<string, unknown>).features as string[]).length > 0 && (() => {
+                  const feats = ((property.property_report as Record<string, unknown>).features as string[])
+                    .map((f) => reportDisplayValue(f, 40))
+                    .filter(Boolean) as string[];
+                  if (feats.length === 0) return null;
+                  return (
+                    <>
+                      <dt className="text-white/60">Features</dt>
+                      <dd className="font-medium">{feats.join(", ")}</dd>
+                    </>
+                  );
+                })()}
+              {(function () {
+                const land = (property.property_report as Record<string, unknown>)?.area_land ?? property.lot_size;
+                const building = (property.property_report as Record<string, unknown>)?.area_building ?? property.building_size;
+                if (land == null && building == null) return null;
+                return (
+                  <>
+                    <dt className="text-white/60">Area</dt>
+                    <dd className="font-medium">
+                      {land != null ? `${Number(land).toLocaleString()} m²` : ""}
+                      {land != null && building != null ? " " : ""}
+                      {building != null ? `(${Number(building).toLocaleString()} m²)` : ""}
+                    </dd>
+                  </>
+                );
+              })()}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).area_per_m2, 30) && (
+                <>
+                  <dt className="text-white/60">Area $/m2</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).area_per_m2, 30)!}</dd>
+                </>
+              )}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).water_sewerage) && (
+                <>
+                  <dt className="text-white/60">Water/Sewerage</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).water_sewerage)!}</dd>
+                </>
+              )}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).property_id, 80) && (
+                <>
+                  <dt className="text-white/60">Property ID</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).property_id, 80)!}</dd>
+                </>
+              )}
+              {reportDisplayValue((property.property_report as Record<string, unknown>).ubd_ref, 20) && (
+                <>
+                  <dt className="text-white/60">UBD Ref</dt>
+                  <dd className="font-medium">{reportDisplayValue((property.property_report as Record<string, unknown>).ubd_ref, 20)!}</dd>
+                </>
+              )}
+            </dl>
           </div>
         )}
+
         {/* Metadata Table */}
         <div className="mt-4 pt-4 border-t border-white/10">
           <h4 className="text-xs font-semibold text-white/60 uppercase mb-3">
@@ -475,15 +882,125 @@ export default function PropertyDetail() {
         </div>
       </Card>
 
-      {/* Property data from Pricefinder */}
+      {/* Property data: Upload Report (primary) or Enrich from API (fallback) */}
       <Card className="zoho-card p-6 mb-6 border-white/10">
-        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Property data from Pricefinder</h3>
-        {enrichUnconfigured ? (
-          <p className="text-sm text-muted-foreground">
-            Pricefinder integration available with API key. See docs/PRICEFINDER_INTEGRATION.md.
-          </p>
+        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Property data</h3>
+        {parsedReportData ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Parsed from uploaded Pricefinder report. Review and apply below.</p>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <h4 className="text-xs font-medium text-white/60 uppercase tracking-wide mb-3">Property details</h4>
+              <dl className="space-y-2 text-sm">
+                {parsedReportData.address_line1 && (
+                  <>
+                    <dt className="text-white/60">Address</dt>
+                    <dd className="font-medium">{[parsedReportData.address_line1, parsedReportData.city, parsedReportData.state, parsedReportData.postcode].filter(Boolean).join(", ")}</dd>
+                  </>
+                )}
+                {parsedReportData.property_type_full && (
+                  <>
+                    <dt className="text-white/60">Property Type</dt>
+                    <dd className="font-medium">{parsedReportData.property_type_full}</dd>
+                  </>
+                )}
+                {parsedReportData.lot_plan && (
+                  <>
+                    <dt className="text-white/60">RPD</dt>
+                    <dd className="font-medium">{parsedReportData.lot_plan}</dd>
+                  </>
+                )}
+                {parsedReportData.valuation_amounts?.length
+                  ? parsedReportData.valuation_amounts.map((v, i) => (
+                      <React.Fragment key={i}>
+                        <dt className="text-white/60">Valuation Amount</dt>
+                        <dd className="font-medium">${v.amount.toLocaleString()}{v.date ? ` - Site Value on ${v.date}` : ""}</dd>
+                      </React.Fragment>
+                    ))
+                  : null}
+                {parsedReportData.land_use && (
+                  <>
+                    <dt className="text-white/60">Land Use</dt>
+                    <dd className="font-medium">{parsedReportData.land_use}</dd>
+                  </>
+                )}
+                {parsedReportData.zoning && (
+                  <>
+                    <dt className="text-white/60">Zoning</dt>
+                    <dd className="font-medium">{parsedReportData.zoning}</dd>
+                  </>
+                )}
+                {parsedReportData.council && (
+                  <>
+                    <dt className="text-white/60">Council</dt>
+                    <dd className="font-medium">{parsedReportData.council}</dd>
+                  </>
+                )}
+                {(parsedReportData.bedrooms != null || parsedReportData.bathrooms != null || parsedReportData.car_spaces != null) && (
+                  <>
+                    <dt className="text-white/60">Bedrooms / Bathrooms / Car spaces</dt>
+                    <dd className="font-medium">{parsedReportData.bedrooms ?? "—"} / {parsedReportData.bathrooms ?? "—"} / {parsedReportData.car_spaces ?? "—"}</dd>
+                  </>
+                )}
+                {parsedReportData.features?.length ? (
+                  <>
+                    <dt className="text-white/60">Features</dt>
+                    <dd className="font-medium">{parsedReportData.features.join(", ")}</dd>
+                  </>
+                ) : null}
+                {(parsedReportData.lot_size != null || parsedReportData.building_size != null) && (
+                  <>
+                    <dt className="text-white/60">Area</dt>
+                    <dd className="font-medium">
+                      {parsedReportData.lot_size != null ? `${parsedReportData.lot_size.toLocaleString()} m²` : ""}
+                      {parsedReportData.lot_size != null && parsedReportData.building_size != null ? " " : ""}
+                      {parsedReportData.building_size != null ? `(${parsedReportData.building_size.toLocaleString()} m²)` : ""}
+                    </dd>
+                  </>
+                )}
+                {parsedReportData.area_per_m2 && (
+                  <>
+                    <dt className="text-white/60">Area $/m2</dt>
+                    <dd className="font-medium">{parsedReportData.area_per_m2}</dd>
+                  </>
+                )}
+                {parsedReportData.water_sewerage && (
+                  <>
+                    <dt className="text-white/60">Water/Sewerage</dt>
+                    <dd className="font-medium">{parsedReportData.water_sewerage}</dd>
+                  </>
+                )}
+                {parsedReportData.property_id && (
+                  <>
+                    <dt className="text-white/60">Property ID</dt>
+                    <dd className="font-medium">{parsedReportData.property_id}</dd>
+                  </>
+                )}
+                {parsedReportData.ubd_ref && (
+                  <>
+                    <dt className="text-white/60">UBD Ref</dt>
+                    <dd className="font-medium">{parsedReportData.ubd_ref}</dd>
+                  </>
+                )}
+                {parsedReportData.price != null && (
+                  <>
+                    <dt className="text-white/60">Price</dt>
+                    <dd className="font-medium">${parsedReportData.price.toLocaleString()}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="default" size="sm" onClick={handleApplyReportData} disabled={updateProperty.isPending}>
+                {updateProperty.isPending ? "Applying..." : "Apply to property"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setParsedReportData(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
         ) : enrichedData ? (
           <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Data from Pricefinder API. Review and apply below.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
               {enrichedData.bedrooms != null && (
                 <div>
@@ -515,12 +1032,6 @@ export default function PropertyDetail() {
                   <p className="font-medium">${Number(enrichedData.last_sale_price).toLocaleString()}</p>
                 </div>
               )}
-              {enrichedData.last_sale_date && (
-                <div>
-                  <span className="text-white/60">Last sale date</span>
-                  <p className="font-medium">{enrichedData.last_sale_date}</p>
-                </div>
-              )}
               {enrichedData.carspaces != null && (
                 <div>
                   <span className="text-white/60">Car spaces</span>
@@ -544,13 +1055,38 @@ export default function PropertyDetail() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleEnrichFromPricefinder} disabled={enrichLoading}>
-              {enrichLoading ? "Loading..." : "Enrich from Pricefinder"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Load beds, baths, lot size, last sale and more from Pricefinder.
-            </p>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id="property-report-upload-detail"
+                type="file"
+                accept=".pdf,application/pdf"
+                className="sr-only"
+                onChange={handleUploadReport}
+                aria-label="Upload Pricefinder property report PDF"
+              />
+              <label
+                htmlFor="property-report-upload-detail"
+                className={`inline-flex items-center justify-center gap-1.5 rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground cursor-pointer hover:bg-primary/90 ${uploadReportLoading ? "pointer-events-none opacity-50" : ""}`}
+              >
+                <Upload className="w-4 h-4" />
+                {uploadReportLoading ? "Parsing..." : "Upload Property Report"}
+              </label>
+              <span className="text-xs text-muted-foreground">Upload a Pricefinder PDF report (no API key needed)</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/10">
+              <Button variant="outline" size="sm" onClick={handleEnrichFromPricefinder} disabled={enrichLoading}>
+                {enrichLoading ? "Loading..." : "Enrich from Pricefinder API"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Live lookup by address (requires API key)
+              </span>
+            </div>
+            {enrichUnconfigured && (
+              <p className="text-xs text-muted-foreground">
+                Pricefinder API not configured. See docs/PRICEFINDER_INTEGRATION.md. Use Upload Property Report instead.
+              </p>
+            )}
           </div>
         )}
       </Card>
@@ -665,10 +1201,24 @@ export default function PropertyDetail() {
                 <Input className="bg-input" value={editForm.country} onChange={(e) => setEditForm((f) => ({ ...f, country: e.target.value }))} />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="grid gap-2">
                 <Label>Type</Label>
-                <Input className="bg-input" value={editForm.property_type} onChange={(e) => setEditForm((f) => ({ ...f, property_type: e.target.value }))} placeholder="House, Unit..." />
+                <Select
+                  value={editForm.property_type ? normalizePropertyType(editForm.property_type) : "house"}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, property_type: v }))}
+                >
+                  <SelectTrigger className="bg-input">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROPERTY_TYPE_VALUES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v.charAt(0).toUpperCase() + v.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label>Bedrooms</Label>
@@ -678,15 +1228,23 @@ export default function PropertyDetail() {
                 <Label>Bathrooms</Label>
                 <Input type="number" min={0} className="bg-input" value={editForm.bathrooms} onChange={(e) => setEditForm((f) => ({ ...f, bathrooms: e.target.value }))} />
               </div>
+              <div className="grid gap-2">
+                <Label>Car spaces</Label>
+                <Input type="number" min={0} className="bg-input" value={editForm.car_spaces} onChange={(e) => setEditForm((f) => ({ ...f, car_spaces: e.target.value }))} placeholder="0" />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label>Price</Label>
                 <Input type="number" min={0} className="bg-input" value={editForm.price} onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))} placeholder="0" />
               </div>
               <div className="grid gap-2">
-                <Label>Lot size (m²)</Label>
+                <Label>Land size (m²)</Label>
                 <Input type="number" min={0} className="bg-input" value={editForm.lot_size} onChange={(e) => setEditForm((f) => ({ ...f, lot_size: e.target.value }))} placeholder="0" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Building size (m²)</Label>
+                <Input type="number" min={0} className="bg-input" value={editForm.building_size} onChange={(e) => setEditForm((f) => ({ ...f, building_size: e.target.value }))} placeholder="0" />
               </div>
             </div>
             <div className="grid gap-2">

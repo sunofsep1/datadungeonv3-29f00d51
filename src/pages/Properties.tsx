@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square } from "lucide-react";
+import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square, Upload } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { PropertyViewMode } from "@/components/PropertyManagement/PropertyList";
@@ -33,6 +33,7 @@ import { PropertyList } from "@/components/PropertyManagement/PropertyList";
 import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
+import { parsePropertyReportPdf, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
 
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
 
@@ -47,7 +48,12 @@ const createEmptyProperty = () => ({
   bedrooms: null as number | null,
   bathrooms: null as number | null,
   price: null as number | null,
+  lot_size: null as number | null,
+  car_spaces: null as number | null,
+  building_size: null as number | null,
+  estimated_value: null as number | null,
   notes: "",
+  property_report: null as Record<string, unknown> | null,
 });
 
 export default function Properties() {
@@ -73,6 +79,7 @@ export default function Properties() {
   const [viewMode, setViewMode] = useState<PropertyViewMode>("list");
   const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [uploadReportLoading, setUploadReportLoading] = useState(false);
 
   const filtered = useMemo(() => {
     return (properties ?? []).filter((p) => {
@@ -175,7 +182,12 @@ export default function Properties() {
         bedrooms: property.bedrooms,
         bathrooms: property.bathrooms,
         price: property.price,
+        lot_size: property.lot_size ?? null,
+        car_spaces: property.car_spaces ?? null,
+        building_size: property.building_size ?? null,
+        estimated_value: property.estimated_value ?? null,
         notes: property.notes || "",
+        property_report: property.property_report ?? null,
       });
       const ownerIds = (property.contact_property_links ?? [])
         .filter((l) => l.role === "owner" || !l.role)
@@ -187,6 +199,59 @@ export default function Properties() {
       setSelectedOwnerIds([]);
     }
     setIsDialogOpen(true);
+  };
+
+  const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.includes("pdf")) {
+      toast({ title: "Error", description: "Please select a PDF file", variant: "destructive" });
+      return;
+    }
+    setUploadReportLoading(true);
+    try {
+      const parsed: ParsedPropertyReport = await parsePropertyReportPdf(file);
+      setFormData((prev) => ({
+        ...prev,
+        address_line1: parsed.address_line1 || prev.address_line1,
+        city: parsed.city || prev.city,
+        state: parsed.state || prev.state,
+        postcode: parsed.postcode || prev.postcode,
+        property_type: (parsed.property_type as PropertyType) || prev.property_type,
+        bedrooms: parsed.bedrooms ?? prev.bedrooms,
+        bathrooms: parsed.bathrooms ?? prev.bathrooms,
+        price: parsed.price ?? prev.price,
+        lot_size: parsed.lot_size ?? prev.lot_size,
+        car_spaces: parsed.car_spaces ?? prev.car_spaces,
+        building_size: parsed.building_size ?? prev.building_size,
+        estimated_value: parsed.estimated_value ?? prev.estimated_value,
+        notes: parsed.features?.length ? parsed.features.join(", ") : prev.notes,
+        property_report: {
+          property_type_full: parsed.property_type_full,
+          rpd: parsed.lot_plan,
+          valuation_amounts: parsed.valuation_amounts,
+          land_use: parsed.land_use,
+          zoning: parsed.zoning,
+          council: parsed.council,
+          features: parsed.features?.slice(0, 20) ?? null,
+          area_land: parsed.lot_size,
+          area_building: parsed.building_size,
+          area_per_m2: parsed.area_per_m2,
+          water_sewerage: parsed.water_sewerage,
+          property_id: parsed.property_id,
+          ubd_ref: parsed.ubd_ref,
+        } as Record<string, unknown>,
+      }));
+      toast({ title: "Success", description: "Property report parsed. Review and save." });
+    } catch (err) {
+      toast({
+        title: "Parse error",
+        description: err instanceof Error ? err.message : "Could not parse PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadReportLoading(false);
+      e.target.value = "";
+    }
   };
 
   const handleSaveProperty = async () => {
@@ -229,7 +294,12 @@ export default function Properties() {
           bedrooms: formData.bedrooms,
           bathrooms: formData.bathrooms,
           price: formData.price,
+          lot_size: formData.lot_size ?? null,
+          car_spaces: formData.car_spaces ?? null,
+          building_size: formData.building_size ?? null,
+          estimated_value: formData.estimated_value ?? null,
           notes: formData.notes || null,
+          property_report: formData.property_report ?? null,
         });
         propertyId = updated.id;
         toast({ title: "Success", description: "Property updated!" });
@@ -245,7 +315,12 @@ export default function Properties() {
           bedrooms: formData.bedrooms,
           bathrooms: formData.bathrooms,
           price: formData.price,
+          lot_size: formData.lot_size ?? null,
+          car_spaces: formData.car_spaces ?? null,
+          building_size: formData.building_size ?? null,
+          estimated_value: formData.estimated_value ?? null,
           notes: formData.notes || null,
+          property_report: formData.property_report ?? null,
         });
         propertyId = created.id;
         toast({ title: "Success", description: "Property added!" });
@@ -350,6 +425,24 @@ export default function Properties() {
                   {editingProperty ? "Edit Property" : "Add New Property"}
                 </DialogTitle>
               </DialogHeader>
+              <div className="mt-2 mb-2">
+                <input
+                  id="property-report-upload"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="sr-only"
+                  onChange={handleUploadReport}
+                  aria-label="Upload Pricefinder property report PDF"
+                />
+                <label
+                  htmlFor="property-report-upload"
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground ${uploadReportLoading ? "pointer-events-none opacity-50" : ""}`}
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploadReportLoading ? "Parsing PDF..." : "Upload Property Report"}
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">Upload a Pricefinder PDF to auto-fill fields</p>
+              </div>
               <ScrollArea className="flex-1 pr-4">
                 <Tabs defaultValue="address" className="mt-4">
                   <TabsList className="grid w-full grid-cols-4">
@@ -473,7 +566,7 @@ export default function Properties() {
                       <Input
                         type="number"
                         className="bg-input"
-                        value={formData.bedrooms || ""}
+                        value={formData.bedrooms ?? ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
@@ -488,11 +581,43 @@ export default function Properties() {
                         type="number"
                         step="0.5"
                         className="bg-input"
-                        value={formData.bathrooms || ""}
+                        value={formData.bathrooms ?? ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             bathrooms: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Lot size (m²)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.lot_size ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            lot_size: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Car spaces</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.car_spaces ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            car_spaces: e.target.value ? Number(e.target.value) : null,
                           })
                         }
                       />
