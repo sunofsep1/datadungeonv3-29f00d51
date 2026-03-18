@@ -19,15 +19,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, TrendingUp, Megaphone, Calendar, Home, ChevronRight, CheckSquare } from "lucide-react";
+import { Users, TrendingUp, Megaphone, Calendar, Home, ChevronRight, CheckSquare, PhoneCall, Phone, Mail, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useContacts, useCreateContact } from "@/hooks/useContacts";
+import { useContacts, useCreateContact, getPrimaryPhone, getPrimaryEmail } from "@/hooks/useContacts";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useFollowUpByTemperature, type ContactDueForFollowUp } from "@/hooks/useFollowUpReminders";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { AvatarCircle } from "@/components/ui/avatar-circle";
+import { getInitials } from "@/lib/utils";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useLeads, useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, isPast, isToday } from "date-fns";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
@@ -155,6 +160,15 @@ export default function Dashboard() {
         .slice(0, 5),
     [appointments]
   );
+
+  const { hot, warm, cold } = useFollowUpByTemperature(contacts);
+  const hotDue = useMemo(() => hot.filter((c) => c.due), [hot]);
+  const warmDue = useMemo(() => warm.filter((c) => c.due), [warm]);
+  const coldDue = useMemo(() => cold.filter((c) => c.due), [cold]);
+  const followUpsToShow = hotDue.length + warmDue.length + coldDue.length > 0;
+  const hotToShow = hotDue.slice(0, 3);
+  const warmToShow = warmDue.slice(0, 3);
+  const coldToShow = coldDue.slice(0, 2);
 
   const overdueCount = useMemo(
     () =>
@@ -396,50 +410,92 @@ export default function Dashboard() {
             )}
           </Card>
         );
-      case "upcomingAppointments":
+      case "upcomingAppointments": {
+        const followUpStatusVariant = (s: string | null) => {
+          switch (s) { case "hot": return "hot"; case "warm": return "warm"; case "cold": return "cold"; default: return "entered"; }
+        };
+        const FollowUpCard = ({ c }: { c: ContactDueForFollowUp }) => {
+          const dueLabel = c.due
+            ? (c.daysUntilDue != null && c.daysUntilDue > 0 ? `${c.daysUntilDue}d overdue` : "Due today")
+            : format(c.nextFollowUpAt, "d MMM");
+          return (
+            <button
+              type="button"
+              className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-muted/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
+              onClick={() => navigate(`/contacts/${c.id}`)}
+            >
+              <AvatarCircle name={c.name} initials={getInitials(undefined, undefined, c.name)} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-medium text-foreground text-sm truncate">{c.name ?? "—"}</span>
+                  <StatusBadge variant={followUpStatusVariant(c.status)} className="text-xs">{c.temperature}</StatusBadge>
+                  <span className={`text-xs ${c.due ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                    <Clock className="w-3 h-3 inline mr-0.5" />
+                    {dueLabel}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                  {getPrimaryPhone(c) && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3 shrink-0" />
+                      {formatPhoneDisplay(getPrimaryPhone(c)!)}
+                    </span>
+                  )}
+                  {getPrimaryEmail(c) && (
+                    <span className="flex items-center gap-1 truncate">
+                      <Mail className="w-3 h-3 shrink-0" />
+                      {getPrimaryEmail(c)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+            </button>
+          );
+        };
+        const FollowUpSection = ({ title, list }: { title: string; list: ContactDueForFollowUp[] }) =>
+          list.length === 0 ? null : (
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider text-muted-foreground">
+                {title} ({list.length})
+              </h4>
+              {list.map((c) => (
+                <FollowUpCard key={c.id} c={c} />
+              ))}
+            </div>
+          );
         return (
           <Card className="zoho-card p-4 md:p-6 h-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Upcoming Appointments</h3>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/appointments")}>
+              <h3 className="text-lg font-semibold text-foreground">Follow-ups</h3>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/follow-ups")}>
                 View all <ChevronRight className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
-            {appointmentsLoading ? (
+            {contactsLoading ? (
               <div className="space-y-2">
                 {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
                 ))}
               </div>
-            ) : upcomingAppointments.length === 0 ? (
+            ) : !followUpsToShow ? (
               <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-border">
-                <Calendar className="w-10 h-10 shrink-0 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground text-center">No upcoming appointments.</p>
-                <Button size="sm" variant="outline" className="gap-2 border-border" onClick={() => setAppointmentDialogOpen(true)}>
-                  <Calendar className="w-4 h-4" /> Schedule
+                <PhoneCall className="w-10 h-10 shrink-0 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground text-center">No follow-ups due. Set contact status (hot/warm/cold) and log calls to see reminders here.</p>
+                <Button size="sm" variant="outline" className="gap-2 border-border" onClick={() => navigate("/contacts")}>
+                  <Users className="w-4 h-4" /> Contacts
                 </Button>
               </div>
             ) : (
-              <ul className="space-y-2">
-                {upcomingAppointments.map((apt) => (
-                  <li key={apt.id}>
-                    <button
-                      type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
-                      onClick={() => navigate("/appointments")}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm text-foreground truncate">{apt.title}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(apt.date), "EEEE, d MMM · HH:mm")}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-4">
+                <FollowUpSection title="Hot (call weekly)" list={hotToShow} />
+                <FollowUpSection title="Warm (call every 2 weeks)" list={warmToShow} />
+                <FollowUpSection title="Cold (call every 3 months)" list={coldToShow} />
+              </div>
             )}
           </Card>
         );
+      }
       case "quickActions":
         return (
           <Card className="zoho-card p-4 md:p-6 h-full">

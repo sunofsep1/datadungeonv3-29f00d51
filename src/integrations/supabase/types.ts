@@ -608,6 +608,7 @@ export type Database = {
           contact_type: string | null
           country: string | null
           created_at: string | null
+          coming_to_market: string | null
           current_situation_notes: string | null
           do_not_contact: boolean | null
           email: string | null
@@ -654,6 +655,7 @@ export type Database = {
           contact_type?: string | null
           country?: string | null
           created_at?: string | null
+          coming_to_market?: string | null
           current_situation_notes?: string | null
           do_not_contact?: boolean | null
           email?: string | null
@@ -700,6 +702,7 @@ export type Database = {
           contact_type?: string | null
           country?: string | null
           created_at?: string | null
+          coming_to_market?: string | null
           current_situation_notes?: string | null
           do_not_contact?: boolean | null
           email?: string | null

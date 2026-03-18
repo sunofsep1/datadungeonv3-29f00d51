@@ -267,13 +267,30 @@ export function useUpdateContact() {
         .eq("id", id)
         .single();
 
-      const contactPayload = toContactUpdatePayload(updates as Record<string, unknown>);
-      const { data, error } = await supabase
+      const contactPayload = toContactUpdatePayload(updates as Record<string, unknown>) as Record<string, unknown>;
+      // When marking contact as hot/warm/cold, set next_follow_up_at to now so they appear in Follow-ups immediately
+      const followUpStatuses = ["hot", "warm", "cold"];
+      if (updates.status && followUpStatuses.includes(String(updates.status).toLowerCase())) {
+        contactPayload.next_follow_up_at = new Date().toISOString();
+      }
+      let { data, error } = await supabase
         .from("contacts")
         .update(contactPayload)
         .eq("id", id)
         .select()
         .single();
+      // If DB doesn't have coming_to_market yet (migration not run), retry without it so lead status etc. still save
+      if (error && (error.code === "42703" || String(error.message).includes("coming_to_market"))) {
+        const { coming_to_market: _cm, ...payloadWithoutCm } = contactPayload as Record<string, unknown>;
+        const res = await supabase
+          .from("contacts")
+          .update(payloadWithoutCm)
+          .eq("id", id)
+          .select()
+          .single();
+        data = res.data;
+        error = res.error;
+      }
       if (error) throw error;
 
       const addressFields = pickAddressFields(updates as Record<string, unknown>);

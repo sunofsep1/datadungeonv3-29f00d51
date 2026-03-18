@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 
 /** Show only main-points text; hide disclaimer and long boilerplate */
 function reportDisplayValue(s: unknown, maxLen = 120): string | null {
@@ -38,22 +38,115 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight, Upload, ImageIcon, GripVertical, Trash2 } from "lucide-react";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useProperty, useUpdateProperty, useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import { useContacts } from "@/hooks/useContacts";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
 import { PropertySuiteCard } from "@/components/properties/PropertySuiteCard";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { supabase } from "@/integrations/supabase/client";
-import { PropertyGallery } from "@/components/PropertyManagement/PropertyGallery";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { parsePropertyReportPdf, normalizePropertyType, PROPERTY_TYPE_VALUES, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
 
 const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
+
+function SortableImageCard({
+  url,
+  index,
+  isFirst,
+  size,
+  uploadImageLoading,
+  updatePending,
+  onAddAnother,
+  onDelete,
+}: {
+  url: string;
+  index: number;
+  isFirst: boolean;
+  size: "hero" | "thumb";
+  uploadImageLoading: boolean;
+  updatePending: boolean;
+  onAddAnother: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: url });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const isHero = size === "hero";
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-xl overflow-hidden border border-white/10 bg-muted/30 relative group shrink-0 ${
+        isHero ? "aspect-[16/10] sm:aspect-[2/1] max-h-[420px]" : "w-[140px] h-[100px] sm:w-[160px] sm:h-[110px]"
+      } ${isDragging ? "z-50 opacity-90 ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+    >
+      <img
+        src={url}
+        alt=""
+        className="w-full h-full object-cover pointer-events-none"
+        loading={index === 0 ? "eager" : "lazy"}
+      />
+      <div className="absolute inset-0 flex items-end justify-between p-1.5 sm:p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
+        <button
+          type="button"
+          className="p-1 rounded-md bg-white/90 hover:bg-white text-black cursor-grab active:cursor-grabbing touch-none"
+          aria-label="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className={isHero ? "w-4 h-4" : "w-3.5 h-3.5"} />
+        </button>
+        <div className="flex gap-1">
+          {isFirst && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-1 opacity-90 shadow-lg h-7 text-xs sm:h-8"
+              disabled={uploadImageLoading || updatePending}
+              onClick={onAddAnother}
+            >
+              <Upload className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              {uploadImageLoading ? "…" : "Add"}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            className={`opacity-90 shadow-lg ${isHero ? "h-8 w-8" : "h-7 w-7"}`}
+            disabled={updatePending}
+            onClick={onDelete}
+            aria-label="Remove image"
+          >
+            <Trash2 className={isHero ? "w-4 h-4" : "w-3.5 h-3.5"} />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -116,7 +209,10 @@ export default function PropertyDetail() {
   const [parsedReportData, setParsedReportData] = useState<ParsedPropertyReport | null>(null);
   const [enrichLoading, setEnrichLoading] = useState(false);
   const [uploadReportLoading, setUploadReportLoading] = useState(false);
+  const [uploadImageLoading, setUploadImageLoading] = useState(false);
   const [enrichUnconfigured, setEnrichUnconfigured] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const links = Array.isArray(property?.contact_property_links) ? property.contact_property_links : [];
   const linkedContactIds = useMemo(
@@ -392,6 +488,39 @@ export default function PropertyDetail() {
     }
   };
 
+  const handleUploadPropertyImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id || !user) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Error", description: "Please choose a JPEG, PNG, WebP or GIF image", variant: "destructive" });
+      return;
+    }
+    setUploadImageLoading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("property-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("property-images").getPublicUrl(path);
+      const currentImages = Array.isArray(property?.images) ? (property.images as string[]) : [];
+      const newImages = [...currentImages, urlData.publicUrl];
+      await updateProperty.mutateAsync({ id, images: newImages });
+      toast({ title: "Success", description: "Hero image added. It will show on the property card and here." });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not upload image";
+      const hint = /bucket not found|Bucket not found/i.test(String(msg))
+        ? " Create the storage bucket first: see docs/PROPERTY_IMAGES_BUCKET.md"
+        : "";
+      toast({ title: "Upload failed", description: msg + hint, variant: "destructive" });
+    } finally {
+      setUploadImageLoading(false);
+      e.target.value = "";
+    }
+  };
+
   const handleApplyReportData = async () => {
     if (!id || !parsedReportData) return;
     const updates: Record<string, unknown> = {};
@@ -507,6 +636,26 @@ export default function PropertyDetail() {
     }
   };
 
+  const imageUrls = Array.isArray(property?.images) ? (property.images as string[]) : [];
+  const imageCount = imageUrls.length;
+
+  const handleImageDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !id) return;
+    const oldIndex = imageUrls.indexOf(active.id as string);
+    const newIndex = imageUrls.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(imageUrls, oldIndex, newIndex);
+    updateProperty.mutate({ id, images: reordered });
+  };
+
+  const handleDeleteImage = (index: number) => {
+    if (!id) return;
+    const next = imageUrls.filter((_, i) => i !== index);
+    updateProperty.mutate({ id, images: next });
+    toast({ title: "Image removed", description: "The image has been removed from this property." });
+  };
+
   return (
     <div className="animate-fade-in">
       <PageBreadcrumbs
@@ -517,6 +666,86 @@ export default function PropertyDetail() {
         ]}
         className="mb-4"
       />
+
+      {/* Property images – one hero, or grid of all (side by side, same size) */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        aria-label="Upload property image"
+        onChange={handleUploadPropertyImage}
+      />
+      <div className="mb-6">
+        {imageCount === 0 ? (
+          <div className="rounded-xl overflow-hidden border border-white/10 bg-muted/30 aspect-[16/10] sm:aspect-[2/1] max-h-[420px] flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <ImageIcon className="w-14 h-14 opacity-50" />
+            <p className="text-sm font-medium">No hero image yet</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={uploadImageLoading}
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <Upload className="w-4 h-4" />
+              {uploadImageLoading ? "Uploading…" : "Upload hero image"}
+            </Button>
+            <p className="text-xs text-muted-foreground/80">Shows on this page and on property cards</p>
+          </div>
+        ) : (
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleImageDragEnd}>
+            <SortableContext items={imageUrls} strategy={rectSortingStrategy}>
+              <div className="space-y-3">
+                {/* Hero: first image, same size as before */}
+                <SortableImageCard
+                  key={imageUrls[0]}
+                  url={imageUrls[0]}
+                  index={0}
+                  isFirst={true}
+                  size="hero"
+                  uploadImageLoading={uploadImageLoading}
+                  updatePending={updateProperty.isPending}
+                  onAddAnother={() => imageInputRef.current?.click()}
+                  onDelete={() => handleDeleteImage(0)}
+                />
+                {/* More photos: smaller previews in a row (or just Add when only hero) */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {imageUrls.length > 1 && (
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mr-1 w-full sm:w-auto">More photos</span>
+                  )}
+                  {imageUrls.slice(1).map((url, i) => (
+                    <SortableImageCard
+                      key={url}
+                      url={url}
+                      index={i + 1}
+                      isFirst={false}
+                      size="thumb"
+                      uploadImageLoading={uploadImageLoading}
+                      updatePending={updateProperty.isPending}
+                      onAddAnother={() => imageInputRef.current?.click()}
+                      onDelete={() => handleDeleteImage(i + 1)}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-[140px] h-[100px] sm:w-[160px] sm:h-[110px] rounded-xl border-dashed shrink-0 gap-2"
+                    disabled={uploadImageLoading || updateProperty.isPending}
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    <Upload className="w-5 h-5" />
+                    Add photo
+                  </Button>
+                </div>
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+
       <div className="flex items-center gap-4 mb-6">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={() => navigate("/properties")} title="Back to list">
@@ -544,8 +773,6 @@ export default function PropertyDetail() {
           <Edit className="w-4 h-4" /> Edit property
         </Button>
       </div>
-
-      {hasImages && <PropertyGallery images={property.images} className="mb-6" />}
 
       <PropertyContactsCard property={property} onLinkClick={handleOpenAddOwner} className="mb-6" contactsList={contacts} />
 

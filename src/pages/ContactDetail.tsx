@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -55,6 +55,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow } from "date-fns";
+import {
+  getCadenceDays,
+  getNextFollowUpDate,
+  isDueForFollowUp,
+  daysUntilDue,
+  COMING_TO_MARKET_LABELS,
+  type ComingToMarket,
+} from "@/lib/followUpCadence";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
@@ -108,6 +116,8 @@ export default function ContactDetail() {
     subject: "",
     body: "",
   });
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const printFrameRef = useRef<HTMLIFrameElement>(null);
 
   const contactAppointments = appointments.filter(
     (apt) => apt.contact_id === id
@@ -139,6 +149,7 @@ export default function ContactDetail() {
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
         status: contact.status || "lead",
+        coming_to_market: (contact as { coming_to_market?: string | null }).coming_to_market ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
         story: contact.story ?? "",
@@ -167,6 +178,7 @@ export default function ContactDetail() {
         email: editFormData.email || null,
         phone: editFormData.phone || null,
         status: editFormData.status,
+        coming_to_market: editFormData.coming_to_market?.trim() || null,
         source: editFormData.source || null,
         notes: editFormData.notes || null,
         story: editFormData.story || null,
@@ -301,7 +313,17 @@ export default function ContactDetail() {
   };
 
   const handlePrint = () => {
-    window.print();
+    setPrintPreviewOpen(true);
+  };
+  const handlePrintFromPreview = () => {
+    try {
+      const frame = printFrameRef.current;
+      if (frame?.contentWindow) {
+        frame.contentWindow.print();
+      }
+    } catch {
+      window.print();
+    }
   };
 
   const getStatusVariant = (status: string | null) => {
@@ -430,6 +452,33 @@ export default function ContactDetail() {
         />
       )}
 
+      {/* Print preview dialog */}
+      <Dialog open={printPreviewOpen} onOpenChange={setPrintPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col bg-card border-border">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Print preview — {contact.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 flex flex-col gap-4">
+            <div className="flex-1 min-h-[60vh] border border-border rounded-lg overflow-hidden bg-muted/30">
+              <iframe
+                ref={printFrameRef}
+                title="Print preview"
+                src={id ? `/contacts/${id}/print` : undefined}
+                className="w-full h-full min-h-[60vh] border-0 bg-white"
+              />
+            </div>
+            <div className="flex justify-end gap-2 flex-shrink-0">
+              <Button variant="outline" onClick={() => setPrintPreviewOpen(false)}>
+                Close
+              </Button>
+              <Button onClick={handlePrintFromPreview} className="gap-2">
+                <Printer className="w-4 h-4" /> Print
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Print-only document header */}
       <div className="hidden print:block print-doc-header">
         <div className="print-doc-brand">Data Dungeon</div>
@@ -456,7 +505,28 @@ export default function ContactDetail() {
                   <StatusBadge variant={getStatusVariant(contact.status)}>
                     {contact.status || "lead"}
                   </StatusBadge>
+                  {(() => {
+                    const c = contact as { next_follow_up_at?: string | null; last_activity_at?: string | null };
+                    const lastTouch = c.last_activity_at ?? contact.updated_at ?? contact.created_at ?? null;
+                    const cadenceDays = getCadenceDays(contact.status, (contact as { coming_to_market?: string | null }).coming_to_market);
+                    const nextAt = c.next_follow_up_at ? new Date(c.next_follow_up_at) : getNextFollowUpDate(lastTouch, cadenceDays);
+                    const due = isDueForFollowUp(nextAt);
+                    const days = daysUntilDue(nextAt);
+                    return (
+                      <span className="inline-flex items-center gap-1.5 text-xs">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className={due ? "text-destructive font-medium" : "text-muted-foreground"}>
+                          {due ? (days != null && days > 0 ? `Due ${days} day${days === 1 ? "" : "s"} ago` : "Due for follow-up") : `Next: ${format(nextAt, "d MMM yyyy")}`}
+                        </span>
+                      </span>
+                    );
+                  })()}
                 </div>
+                {(contact as { coming_to_market?: string | null }).coming_to_market && (
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Coming to market: {COMING_TO_MARKET_LABELS[(contact as { coming_to_market: ComingToMarket }).coming_to_market as ComingToMarket] ?? (contact as { coming_to_market: string }).coming_to_market}
+                  </p>
+                )}
                 <div className="flex flex-col gap-3 text-sm">
                   {getAllPhones(contact).flatMap((p) =>
                     p.value.split(/[;,]/).map((part, i) => {
@@ -816,6 +886,21 @@ export default function ContactDetail() {
                   <SelectItem value="warm">Warm</SelectItem>
                   <SelectItem value="cold">Cold</SelectItem>
                   <SelectItem value="lead">Lead</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Coming to market</Label>
+              <Select
+                value={editFormData.coming_to_market || "none"}
+                onValueChange={(v) => setEditFormData({ ...editFormData, coming_to_market: v === "none" ? "" : v })}
+              >
+                <SelectTrigger className="bg-input"><SelectValue placeholder="When are they selling?" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not set</SelectItem>
+                  {(Object.keys(COMING_TO_MARKET_LABELS) as ComingToMarket[]).map((k) => (
+                    <SelectItem key={k} value={k}>{COMING_TO_MARKET_LABELS[k]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

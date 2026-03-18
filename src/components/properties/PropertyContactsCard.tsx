@@ -66,24 +66,26 @@ export function PropertyContactsCard({ property, onLinkClick, className, contact
   };
 
   return (
-    <Card className={cn("zoho-card p-6 border-white/10", className)}>
+    <Card className={cn("zoho-card p-6 border-teal/25 bg-teal/5", className)}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <User className="w-4 h-4" />
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal/20 text-teal">
+            <User className="w-4 h-4" />
+          </span>
           Owners & linked contacts
         </h3>
-        <Button size="sm" onClick={onLinkClick} className="gap-1">
+        <Button size="sm" onClick={onLinkClick} className="gap-1 bg-teal text-teal-foreground hover:opacity-90 border-0">
           <Plus className="w-4 h-4" /> Link contact
         </Button>
       </div>
       {coOwnersLabel && (
-        <p className="text-white/60 text-sm mb-2">{coOwnersLabel}</p>
+        <p className="text-muted-foreground text-sm mb-2">{coOwnersLabel}</p>
       )}
       {links.length > 0 && (
-        <p className="text-white/50 text-xs mb-3">Click a contact to open their profile. You can add multiple owners or other roles.</p>
+        <p className="text-muted-foreground/90 text-xs mb-3">Click a contact to open their profile. You can add multiple owners or other roles.</p>
       )}
       {links.length === 0 ? (
-        <p className="text-white/60 text-sm">No owners or linked contacts yet. Use &quot;Link contact&quot; to add someone (e.g. owner, buyer, agent).</p>
+        <p className="text-muted-foreground text-sm">No owners or linked contacts yet. Use &quot;Link contact&quot; to add someone (e.g. owner, buyer, agent).</p>
       ) : (
         <ul className="space-y-3">
           {links.map((l, i) => {
@@ -98,42 +100,42 @@ export function PropertyContactsCard({ property, onLinkClick, className, contact
               tabIndex={0}
               onClick={() => navigate(`/contacts/${l.contact_id}`)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/contacts/${l.contact_id}`); } }}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border-l-4 border-l-teal border border-border bg-muted/30 hover:bg-teal/10 hover:border-teal/30 transition-colors cursor-pointer group"
             >
               <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-foreground group-hover:text-[#00BCD4] transition-colors">
+                  <span className="font-semibold text-foreground group-hover:text-teal transition-colors">
                     {displayName}
                   </span>
-                  <Badge variant="secondary" className="text-xs capitalize">
+                  <Badge variant="secondary" className="text-xs capitalize bg-teal/15 text-teal border-teal/30">
                     {l.role || "owner"}
                   </Badge>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-[#00BCD4] shrink-0 ml-auto sm:ml-0" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-teal shrink-0 ml-auto sm:ml-0" />
                 </div>
-                <div className="flex flex-col gap-0.5 text-sm text-white/70">
+                <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
                   {email && (
                     <a
                       href={`mailto:${email}`}
-                      className="flex items-center gap-2 hover:text-[#00BCD4] transition-colors w-fit"
+                      className="flex items-center gap-2 text-foreground/90 hover:text-teal transition-colors w-fit"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Mail className="w-3.5 h-3.5 shrink-0 text-white/50" />
+                      <Mail className="w-3.5 h-3.5 shrink-0 text-teal/90" />
                       {email}
                     </a>
                   )}
                   {phone && (
                     <a
                       href={`tel:${phone}`}
-                      className="flex items-center gap-2 hover:text-[#00BCD4] transition-colors w-fit"
+                      className="flex items-center gap-2 text-foreground/90 hover:text-teal transition-colors w-fit"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Phone className="w-3.5 h-3.5 shrink-0 text-white/50" />
+                      <Phone className="w-3.5 h-3.5 shrink-0 text-teal/90" />
                       {phone}
                     </a>
                   )}
                 </div>
                 {l.notes && (
-                  <p className="text-sm text-white/50 mt-1 pt-2 border-t border-white/10">{l.notes}</p>
+                  <p className="text-sm text-muted-foreground mt-1 pt-2 border-t border-border">{l.notes}</p>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>

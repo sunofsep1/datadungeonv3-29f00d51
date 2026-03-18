@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
+import { getCadenceDays, getNextFollowUpDate } from "@/lib/followUpCadence";
 
 export interface Interaction {
   id: string;
@@ -52,23 +53,45 @@ export function useInteractions(contactId?: string) {
 
 export function useCreateInteraction() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (interaction: InteractionInsert) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      
+
+      const now = new Date().toISOString();
+      const payload = { ...interaction, user_id: user.id, timestamp: interaction.timestamp ?? now };
+
       const { data, error } = await (supabase
         .from("interactions" as any) as any)
-        .insert({ ...interaction, user_id: user.id })
+        .insert(payload)
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      // Update contact last_activity_at and next_follow_up_at for reminder cadence
+      const { data: contactRow } = await supabase
+        .from("contacts")
+        .select("status, coming_to_market")
+        .eq("id", interaction.contact_id)
+        .single();
+
+      if (contactRow) {
+        const cadenceDays = getCadenceDays(contactRow.status, contactRow.coming_to_market);
+        const nextAt = getNextFollowUpDate(now, cadenceDays).toISOString();
+        await supabase
+          .from("contacts")
+          .update({ last_activity_at: now, next_follow_up_at: nextAt })
+          .eq("id", interaction.contact_id);
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["interactions", variables.contact_id] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contact", variables.contact_id] });
     },
   });
 }

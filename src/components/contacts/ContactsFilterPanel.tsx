@@ -144,6 +144,7 @@ export function ContactsFilterPanel({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="due">Due for follow-up</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="7days">Last 7 days</SelectItem>
               <SelectItem value="30days">Last 30 days</SelectItem>

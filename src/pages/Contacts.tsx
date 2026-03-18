@@ -65,6 +65,8 @@ import {
   getTagNames,
   getLinkedPropertyAddress,
 } from "@/hooks/useContacts";
+import { useContactsDueNow } from "@/hooks/useFollowUpReminders";
+import { COMING_TO_MARKET_LABELS, type ComingToMarket } from "@/lib/followUpCadence";
 import { useLogContactStatusChange } from "@/hooks/useEvents";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag, useRemoveContactTag } from "@/hooks/useContactTags";
@@ -156,6 +158,7 @@ const createEmptyContact = () => ({
   notes: "",
   status: "lead" as ContactStatus,
   category: "",
+  coming_to_market: "",
   story: "",
   selling_intentions: "",
   pain_points: "",
@@ -208,10 +211,18 @@ export default function Contacts() {
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
+  const contactsDueNow = useContactsDueNow(contacts);
+  const dueForFollowUpIds = useMemo(() => new Set(contactsDueNow.map((c) => c.id)), [contactsDueNow]);
+
   const filteredAndSortedContacts = useMemo(() => {
     let list = (contacts ?? []) as ContactWithMeta[];
     const now = new Date();
-    
+
+    // Due for follow-up filter (reminder cadence: hot=weekly, warm=2w, cold=3m)
+    if (filterLastTouched === "due") {
+      list = list.filter((c) => dueForFollowUpIds.has(c.id));
+    }
+
     // Debounced search
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
@@ -255,13 +266,13 @@ export default function Contacts() {
       });
     }
     
-    // Last touched filter
-    if (filterLastTouched !== "all") {
+    // Last touched filter (skip when already filtered by "due for follow-up")
+    if (filterLastTouched !== "all" && filterLastTouched !== "due") {
       list = list.filter((c) => {
         if (!c.updated_at) return false;
         const updated = new Date(c.updated_at);
         const daysDiff = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         switch (filterLastTouched) {
           case "today":
             return daysDiff === 0;
@@ -270,7 +281,6 @@ export default function Contacts() {
           case "30days":
             return daysDiff <= 30;
           case "overdue":
-            // Consider overdue if not touched in 30+ days and status is hot/warm
             return daysDiff > 30 && (getKanbanStatus(c) === "hot" || getKanbanStatus(c) === "warm");
           default:
             return true;
@@ -444,6 +454,7 @@ export default function Contacts() {
         notes: contact.notes ?? "",
         status: (contact.status as ContactStatus) ?? "lead",
         category: (contact as { category?: string | null }).category ?? "",
+        coming_to_market: (contact as { coming_to_market?: string | null }).coming_to_market ?? "",
         story: contact.story ?? "",
         selling_intentions: contact.selling_intentions ?? "",
         pain_points: contact.pain_points ?? "",
@@ -490,6 +501,7 @@ export default function Contacts() {
           source: formData.source || null,
           notes: formData.notes || null,
           status: formData.status,
+          coming_to_market: formData.coming_to_market?.trim() || null,
           pipeline_stage: formData.pipeline_stage || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
@@ -524,6 +536,7 @@ export default function Contacts() {
           source: formData.source || null,
           notes: formData.notes || null,
           status: formData.status,
+          coming_to_market: formData.coming_to_market?.trim() || null,
           pipeline_stage: formData.pipeline_stage || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
@@ -967,6 +980,23 @@ export default function Contacts() {
                                   {cat.label}
                                 </span>
                               </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Coming to market</Label>
+                        <Select
+                          value={formData.coming_to_market || "none"}
+                          onValueChange={(v) => setFormData({ ...formData, coming_to_market: v === "none" ? "" : v })}
+                        >
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="When are they selling?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Not set</SelectItem>
+                            {(Object.keys(COMING_TO_MARKET_LABELS) as ComingToMarket[]).map((k) => (
+                              <SelectItem key={k} value={k}>{COMING_TO_MARKET_LABELS[k]}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

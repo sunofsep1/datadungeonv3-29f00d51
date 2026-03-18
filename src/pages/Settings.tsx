@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Github, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2 } from "lucide-react";
+import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Github, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Theme, Density } from "@/contexts/ThemeContext";
@@ -156,6 +156,26 @@ export default function Settings() {
               <div>
                 <p className="text-sm font-medium text-foreground">SMS</p>
                 <p className="text-xs text-muted-foreground">Send SMS from Contact detail. Use Mobile Message (Australia) or Twilio: set Edge Function secrets for send-sms. See docs/MOBILE_MESSAGE_SETUP.md or docs/SMS_SETUP.md.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 pt-2 border-t border-border">
+              <MessageSquare className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm font-medium text-foreground">Apple Messages for Business</p>
+                <p className="text-xs text-muted-foreground">
+                  Let customers message your business in the Messages app (iPhone, iPad, Mac). You need an Apple-approved Messaging Service Provider (MSP), who provides the chat platform and can integrate with your CRM.
+                </p>
+                <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1 mt-2">
+                  <li>Register at Apple Business Register and accept Messages for Business terms.</li>
+                  <li>Choose an approved MSP from the list Apple shows during registration.</li>
+                  <li>Your MSP will connect the Messages channel to their platform and, if supported, to Data Dungeon (CRM) for conversation history and agent tools.</li>
+                </ol>
+                <p className="text-xs text-muted-foreground">See docs/APPLE_MESSAGES_FOR_BUSINESS.md in the repo for full steps and CRM integration notes.</p>
+                <Button variant="outline" size="sm" className="mt-2 gap-1.5" asChild>
+                  <a href="https://register.apple.com/messages" target="_blank" rel="noopener noreferrer">
+                    Open Apple Business Register <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </Button>
               </div>
             </div>
           </div>

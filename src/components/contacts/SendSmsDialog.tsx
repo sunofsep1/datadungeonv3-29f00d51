@@ -50,6 +50,7 @@ export function SendSmsDialog({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({ title: "Error", description: "Please sign in to send SMS", variant: "destructive" });
+        setSending(false);
         return;
       }
       const res = await fetch(url, {
@@ -60,18 +61,44 @@ export function SendSmsDialog({
         },
         body: JSON.stringify({ to: to.trim().replace(/\s/g, ""), body: body.trim() }),
       });
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data: { error?: string; message?: string; error_message?: string } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { error: text?.slice(0, 200) || res.statusText };
+      }
+      const serverError =
+        data?.error ??
+        data?.message ??
+        data?.error_message ??
+        (text?.trim() ? (text.length > 120 ? `${text.slice(0, 120)}…` : text) : null);
+
       if (!res.ok) {
-        throw new Error(data?.error || res.statusText || "Failed to send");
+        const msg =
+          serverError ||
+          (res.status === 401
+            ? "Session expired or invalid. Sign out and sign back in, then try again."
+            : res.statusText) ||
+          `Server returned ${res.status}. Check Supabase Dashboard → Edge Functions → send-sms → Logs.`;
+        throw new Error(msg);
       }
       toast({ title: "Success", description: "SMS sent!" });
       setBody("");
       onOpenChange(false);
       onSent?.();
     } catch (e) {
+      const isNetworkError =
+        e instanceof TypeError && (e.message === "Failed to fetch" || e.message === "Load failed");
+      const description =
+        e instanceof Error
+          ? e.message
+          : "SMS failed. Set Edge Function secrets (Mobile Message or Twilio) in Supabase Dashboard → send-sms → Secrets.";
       toast({
         title: "Error",
-        description: e instanceof Error ? e.message : "Failed to send SMS. Ensure Mobile Message or Twilio secrets are set on the send-sms Edge Function and the number is valid (e.g. +61412345678 or 0412345678).",
+        description: isNetworkError
+          ? "Could not reach the server. Check VITE_SUPABASE_URL in .env and that the send-sms function is deployed."
+          : description,
         variant: "destructive",
       });
     } finally {

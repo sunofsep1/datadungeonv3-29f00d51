@@ -1512,6 +1512,270 @@ html.density-compact [data-slot="row"] {
   background: hsl(var(--muted-foreground));
 }
 
+/* Contact print document – app colour scheme (primary purple, teal) */
+.contact-print-page {
+  min-height: 100vh;
+  background: #fff;
+  padding: 0;
+}
+.contact-print-page .print-page-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 12px 16px;
+  background: #f5f3ff;
+  border-bottom: 1px solid #e9e5ff;
+}
+
+.contact-print-document {
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 18mm;
+  color: #1f2937;
+  font-size: 11pt;
+  line-height: 1.5;
+}
+.contact-print-document .print-doc-header {
+  border-bottom: 3px solid #7c3aed;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.contact-print-document .print-doc-brand {
+  font-size: 10pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin-bottom: 4px;
+}
+.contact-print-document .print-doc-title {
+  font-size: 20pt;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  color: #1f2937;
+  line-height: 1.2;
+}
+.contact-print-document .print-doc-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9pt;
+  color: #6b7280;
+}
+.contact-print-document .print-doc-body {
+  margin-bottom: 24px;
+}
+.contact-print-document .print-section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border: 1px solid #e9e5ff;
+  background: #fff;
+  border-radius: 6px;
+  border-left: 4px solid #7c3aed;
+}
+.contact-print-document .print-section-title {
+  font-size: 10pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ede9fe;
+}
+.contact-print-document .print-overview {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.contact-print-document .print-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ede9fe 0%, #e9e5ff 100%);
+  color: #7c3aed;
+  font-size: 14pt;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid #c4b5fd;
+}
+.contact-print-document .print-overview-content {
+  flex: 1;
+  min-width: 0;
+}
+.contact-print-document .print-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.contact-print-document .print-name {
+  font-size: 14pt;
+  font-weight: 600;
+  color: #1f2937;
+}
+.contact-print-document .print-badge {
+  font-size: 9pt;
+  padding: 2px 8px;
+  border: 1px solid #7c3aed;
+  border-radius: 4px;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.contact-print-document .print-chunk {
+  margin-bottom: 6px;
+  font-size: 10pt;
+}
+.contact-print-document .print-label-inline {
+  color: #6b7280;
+  margin-right: 6px;
+}
+.contact-print-document .print-value-inline {
+  color: #1f2937;
+}
+.contact-print-document .print-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.contact-print-document .print-tag {
+  font-size: 9pt;
+  padding: 2px 8px;
+  border: 1px solid #a5b4fc;
+  border-radius: 4px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+.contact-print-document .print-address,
+.contact-print-document .print-notes {
+  margin: 0;
+  color: #1f2937;
+  white-space: pre-wrap;
+}
+.contact-print-document .print-muted {
+  margin: 0;
+  color: #6b7280;
+  font-style: italic;
+}
+.contact-print-document .print-row {
+  margin-bottom: 8px;
+}
+.contact-print-document .print-row .print-label {
+  display: block;
+  font-size: 9pt;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+.contact-print-document .print-row .print-value {
+  color: #1f2937;
+  white-space: pre-wrap;
+}
+.contact-print-document .print-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.contact-print-document .print-value-block {
+  margin: 0;
+  padding: 10px;
+  background: #f5f3ff;
+  border: 1px solid #e9e5ff;
+  border-radius: 4px;
+  font-size: 10pt;
+  white-space: pre-wrap;
+  color: #1f2937;
+}
+.contact-print-document .print-property-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.contact-print-document .print-property-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #ede9fe;
+}
+.contact-print-document .print-property-item:last-child {
+  border-bottom: none;
+}
+.contact-print-document .print-property-address {
+  font-weight: 500;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 4px;
+}
+.contact-print-document .print-property-meta {
+  font-size: 9pt;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.contact-print-document .print-property-price {
+  font-weight: 600;
+  color: #0d9488;
+}
+.contact-print-document .print-role {
+  text-transform: capitalize;
+  color: #0d9488;
+}
+.contact-print-document .print-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.contact-print-document .print-activity-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #ede9fe;
+}
+.contact-print-document .print-activity-item:last-child {
+  border-bottom: none;
+}
+.contact-print-document .print-activity-type {
+  font-size: 9pt;
+  text-transform: capitalize;
+  color: #7c3aed;
+  display: block;
+  margin-bottom: 2px;
+}
+.contact-print-document .print-activity-title {
+  font-weight: 500;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 2px;
+}
+.contact-print-document .print-activity-body {
+  font-size: 10pt;
+  color: #4b5563;
+  display: block;
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+}
+.contact-print-document .print-activity-meta {
+  font-size: 9pt;
+  color: #6b7280;
+}
+.contact-print-document .print-doc-footer {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 2px solid #7c3aed;
+  font-size: 9pt;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+}
+.contact-print-document .print-doc-footer span:first-child {
+  color: #7c3aed;
+  font-weight: 500;
+}
+
 /* Print Styles */
 @media print {
   * {
@@ -1526,7 +1790,8 @@ html.density-compact [data-slot="row"] {
     line-height: 1.5;
   }
 
-  /* Hide app chrome */
+  /* Hide app chrome and print-only-hide (e.g. Close button on print page) */
+  .print-only-hide,
   [data-sidebar],
   .print\:hidden,
   nav,
@@ -1743,6 +2008,84 @@ html.density-compact [data-slot="row"] {
   .print-contact-document [class*="ContactSuiteCard"] *,
   .print-section [class*="uppercase"] {
     color: #000 !important;
+  }
+
+  /* Dedicated contact print document – keep app colours when printing */
+  .contact-print-page {
+    padding: 0 !important;
+    background: white !important;
+  }
+  .contact-print-document .print-doc-header {
+    border-bottom-color: #7c3aed !important;
+  }
+  .contact-print-document .print-doc-brand {
+    color: #7c3aed !important;
+  }
+  .contact-print-document .print-doc-title,
+  .contact-print-document .print-name,
+  .contact-print-document .print-value-inline,
+  .contact-print-document .print-address,
+  .contact-print-document .print-notes,
+  .contact-print-document .print-row .print-value,
+  .contact-print-document .print-property-address,
+  .contact-print-document .print-activity-title {
+    color: #1f2937 !important;
+  }
+  .contact-print-document .print-doc-meta,
+  .contact-print-document .print-label-inline,
+  .contact-print-document .print-muted,
+  .contact-print-document .print-row .print-label,
+  .contact-print-document .print-property-meta,
+  .contact-print-document .print-activity-meta {
+    color: #6b7280 !important;
+  }
+  .contact-print-document .print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border-color: #e9e5ff !important;
+    border-left-color: #7c3aed !important;
+    background: white !important;
+  }
+  .contact-print-document .print-section-title {
+    color: #7c3aed !important;
+    border-bottom-color: #ede9fe !important;
+  }
+  .contact-print-document .print-avatar {
+    background: #ede9fe !important;
+    color: #7c3aed !important;
+    border-color: #c4b5fd !important;
+  }
+  .contact-print-document .print-badge {
+    background: #ede9fe !important;
+    color: #6d28d9 !important;
+    border-color: #7c3aed !important;
+  }
+  .contact-print-document .print-tag {
+    background: #eef2ff !important;
+    color: #4f46e5 !important;
+    border-color: #a5b4fc !important;
+  }
+  .contact-print-document .print-value-block {
+    background: #f5f3ff !important;
+    border-color: #e9e5ff !important;
+    color: #1f2937 !important;
+  }
+  .contact-print-document .print-property-price,
+  .contact-print-document .print-role {
+    color: #0d9488 !important;
+  }
+  .contact-print-document .print-activity-type {
+    color: #7c3aed !important;
+  }
+  .contact-print-document .print-activity-body {
+    color: #4b5563 !important;
+  }
+  .contact-print-document .print-doc-footer {
+    border-top-color: #7c3aed !important;
+    color: #6b7280 !important;
+  }
+  .contact-print-document .print-doc-footer span:first-child {
+    color: #7c3aed !important;
   }
 }
 

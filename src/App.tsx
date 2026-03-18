@@ -29,6 +29,7 @@ const Performance = lazy(() => import("./pages/Performance"));
 const Scripts = lazy(() => import("./pages/Scripts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const HotLeads = lazy(() => import("./pages/HotLeads"));
+const FollowUps = lazy(() => import("./pages/FollowUps"));
 const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
@@ -36,6 +37,7 @@ const Research = lazy(() => import("./pages/Research"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
+const ContactPrintPage = lazy(() => import("./pages/ContactPrintPage"));
 
 const queryClient = new QueryClient();
 
@@ -57,7 +59,9 @@ const App = () => (
                 <Route path="/recent" element={<ProtectedRoute><MainLayout><Recent /></MainLayout></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/follow-ups" element={<ProtectedRoute><MainLayout><FollowUps /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ContactDetail /></MainLayout></ProtectedRoute>} />
+                <Route path="/contacts/:id/print" element={<ProtectedRoute><ContactPrintPage /></ProtectedRoute>} />
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />
