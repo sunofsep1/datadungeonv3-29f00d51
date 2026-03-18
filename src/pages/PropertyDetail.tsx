@@ -56,7 +56,6 @@ import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { supabase } from "@/integrations/supabase/client";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { parsePropertyReportPdf, normalizePropertyType, PROPERTY_TYPE_VALUES, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
-import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 
 const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
 

@@ -35,7 +35,6 @@ import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { parsePropertyReportPdf, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
-import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
 
