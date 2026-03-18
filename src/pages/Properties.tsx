@@ -35,6 +35,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { parsePropertyReportPdf, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
 
@@ -459,9 +460,7 @@ export default function Properties() {
                       placeholder="Start typing an address..."
                       className="bg-input"
                       value={formData.address_line1}
-                      onChange={(v) =>
-                        setFormData({ ...formData, address_line1: v })
-                      }
+                      onChange={(v) => setFormData({ ...formData, address_line1: v })}
                       onPlaceSelected={(parts: AddressParts) =>
                         setFormData((prev) => ({
                           ...prev,

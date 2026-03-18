@@ -46,9 +46,7 @@ function loadGoogleMapsScript(): Promise<void> {
   });
 }
 
-function extractAddressParts(
-  place: google.maps.places.PlaceResult,
-): AddressParts {
+function extractAddressParts(place: google.maps.places.PlaceResult): AddressParts {
   const parts: AddressParts = {
     address_line1: "",
     address_line2: "",
@@ -92,18 +90,14 @@ export function AddressAutocomplete({
   className,
 }: AddressAutocompleteProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(
-    null,
-  );
+  const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
 
   React.useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY || !inputRef.current) return;
-
     let cancelled = false;
 
     loadGoogleMapsScript().then(() => {
       if (cancelled || !inputRef.current) return;
-
       const ac = new google.maps.places.Autocomplete(inputRef.current, {
         componentRestrictions: { country: "au" },
         fields: ["address_components", "formatted_address"],
@@ -116,7 +110,6 @@ export function AddressAutocomplete({
         const parts = extractAddressParts(place);
         onPlaceSelected(parts);
       });
-
       autocompleteRef.current = ac;
     });
 
@@ -127,7 +120,6 @@ export function AddressAutocomplete({
         autocompleteRef.current = null;
       }
     };
-    // onPlaceSelected is intentionally omitted — caller should memoize or accept stale closure
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
