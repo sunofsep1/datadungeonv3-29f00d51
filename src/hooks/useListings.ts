@@ -37,13 +37,13 @@ export function useListings() {
   return useQuery({
     queryKey: ["listings"],
     queryFn: async () => {
-      // Try simple select first - contacts() relation can 400 if FK not configured
+      // Try simple select first (HubSpot schema - listings table may not have contacts relation)
       const { data: simple, error: simpleError } = await supabase
         .from("listings")
         .select("*")
         .order("created_at", { ascending: false });
       if (!simpleError && simple != null) {
-        return (simple ?? []) as Listing[];
+        return ((simple ?? []) as Listing[]).map((l) => ({ ...l, contacts: null })) as ListingWithContact[];
       }
       const { data, error } = await supabase
         .from("listings")

@@ -39,6 +39,49 @@ function toContactUpdatePayload(payload: Record<string, unknown>): Record<string
   return out;
 }
 
+/** Split full name into first_name and last_name for HubSpot-style schema (no name column) */
+function splitName(full: string): { first_name: string; last_name: string } {
+  const s = String(full ?? "").trim();
+  const i = s.indexOf(" ");
+  if (i <= 0) return { first_name: s || "", last_name: "" };
+  return { first_name: s.slice(0, i).trim(), last_name: s.slice(i + 1).trim() };
+}
+
+/** Minimal contact insert - only columns likely to exist in HubSpot contacts */
+function pickHubSpotContactInsert(payload: Record<string, unknown>): Record<string, unknown> {
+  const { name, user_id, ...rest } = payload;
+  const out: Record<string, unknown> = {};
+  if (name != null && String(name).trim()) {
+    const { first_name, last_name } = splitName(String(name));
+    out.first_name = first_name || "";
+    out.last_name = last_name || "";
+  }
+  const ownerId = payload.owner_id ?? user_id;
+  if (ownerId) out.owner_id = ownerId;
+  const statusVal = rest.status ?? rest.lead_status;
+  if (statusVal != null && String(statusVal).trim()) {
+    const s = String(statusVal).toLowerCase();
+    const m: Record<string, string> = {
+      lead: "new",
+      hot: "qualified",
+      warm: "contacted",
+      cold: "nurture",
+      new: "new",
+      contacted: "contacted",
+      qualified: "qualified",
+      nurture: "nurture",
+      unqualified: "unqualified",
+      customer: "customer",
+    };
+    out.lead_status = m[s] ?? "new";
+  }
+  if (rest.email != null && String(rest.email).trim()) out.email = String(rest.email).trim();
+  if (rest.phone != null && String(rest.phone).trim()) out.phone = String(rest.phone).trim();
+  if (rest.source != null && String(rest.source).trim()) out.source = String(rest.source).trim();
+  if (rest.notes != null && String(rest.notes).trim()) out.notes = String(rest.notes).trim();
+  return out;
+}
+
 function pickAddressFields(payload: Record<string, unknown>): Record<string, unknown> | null {
   const addr = {
     address_line1: payload.address_line1 ?? null,
@@ -228,13 +271,23 @@ export function useCreateContact() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const contactPayload = toContactInsertPayload({ ...contact }, user.id);
-      const { data, error } = await supabase
-        .from("contacts")
-        .insert(contactPayload)
-        .select()
-        .single();
-      if (error) throw error;
+      const tryInsert = (payload: Record<string, unknown>) =>
+        (supabase as any).from("contacts").insert(payload).select().single();
+
+      const isColumnError = (e: { code?: string; message?: string } | null) =>
+        e && (e.code === "PGRST204" || (e.message && String(e.message).toLowerCase().includes("column")));
+
+      // Prefer DataDungeon schema (user_id + name). Fall back to HubSpot schema (owner_id + first/last).
+      let payload: Record<string, unknown> = toContactInsertPayload({ ...contact }, user.id);
+      let { data, error } = await tryInsert(payload);
+
+      if (isColumnError(error)) {
+        payload = pickHubSpotContactInsert({ ...contact, owner_id: user.id });
+        let r = await tryInsert(payload);
+        data = r.data;
+        error = r.error;
+      }
+      if (error) throw new Error(String(error.message) || "Failed to create contact");
 
       const addressFields = pickAddressFields(contact as Record<string, unknown>);
       if (addressFields && data?.id) {
@@ -243,7 +296,7 @@ export function useCreateContact() {
             .from("contact_addresses")
             .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
         } catch {
-          // contact_addresses may not exist in HubSpot-style schema (address lives on contacts row)
+          // RLS or missing table; skip
         }
       }
 

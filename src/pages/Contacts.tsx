@@ -644,6 +644,24 @@ export default function Contacts() {
     }
   };
 
+  const handleBulkDeleteContacts = async () => {
+    const ids = [...selectedContactIds];
+    if (ids.length === 0) return;
+    try {
+      for (const id of ids) {
+        await deleteContact.mutateAsync(id);
+      }
+      toast({ title: "Deleted", description: `${ids.length} contact(s) removed` });
+      setSelectedContactIds(new Set());
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: (e as Error).message || "Failed to delete contacts",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleTagFilter = (tagId: string) => {
     setFilterTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
@@ -1609,7 +1627,7 @@ export default function Contacts() {
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/50 hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4 mr-1" />
                   Delete
                 </Button>
@@ -1624,22 +1642,8 @@ export default function Contacts() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
+                    onClick={handleBulkDeleteContacts}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={async () => {
-                      try {
-                        for (const id of selectedContactIds) {
-                          await deleteContact.mutateAsync(id);
-                        }
-                        toast({ title: "Deleted", description: `${selectedContactIds.size} contact(s) removed` });
-                        setSelectedContactIds(new Set());
-                      } catch (e: unknown) {
-                        toast({
-                          title: "Error",
-                          description: (e as Error).message || "Failed to delete contacts",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
                   >
                     Delete
                   </AlertDialogAction>

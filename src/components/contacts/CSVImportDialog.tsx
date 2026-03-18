@@ -33,7 +33,7 @@ const MAP_OPTIONS = [
   { value: "email", label: "Email" },
   { value: "phone", label: "Phone" },
   { value: "mobile", label: "Mobile" },
-  { value: "address", label: "Address (single)" },
+  { value: "address", label: "Address / Linked property address" },
   { value: "address_line1", label: "Address line 1" },
   { value: "city", label: "Suburb/City" },
   { value: "state", label: "State" },
@@ -189,32 +189,43 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       rows[0].forEach((h, i) => {
         const lower = h.toLowerCase().replace(/[^a-z]/g, "");
         let opt: (typeof MAP_OPTIONS)[0] | undefined;
-
-        // Explicit matching for address parts (check before generic) - HubSpot / Australian CSV columns
-        if (lower.includes("addressline1") || lower.includes("addressline") && lower.includes("1") ||
-            lower.includes("streetaddress") || lower.includes("streetaddr") ||
-            (lower.includes("addr") && (lower.includes("line1") || lower.includes("1") && !lower.includes("2")))) {
-          opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
-        } else if (lower.includes("suburb") || lower.includes("town") || lower.includes("locality") || lower === "city") {
-          opt = MAP_OPTIONS.find((o) => o.value === "city");
-        } else if (lower.includes("postcode") || lower.includes("postal") || lower.includes("zip")) {
-          opt = MAP_OPTIONS.find((o) => o.value === "postcode");
-        } else if (lower.includes("street") || (lower.includes("road") && !lower.includes("postal")) ||
-            ((lower === "rd" || lower === "st") && lower.length <= 3)) {
-          opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
-        } else if ((lower.includes("state") || lower.includes("region") || lower.includes("province")) && !lower.includes("address")) {
-          opt = MAP_OPTIONS.find((o) => o.value === "state");
-        } else if (lower.includes("addr") && !lower.includes("line2")) {
-          // Combined "Address" column - use address (single) for full address
+        // HubSpot-style: "Linked property address" / "Property address"
+        if ((lower.includes("linked") && lower.includes("address")) || (lower.includes("property") && lower.includes("address"))) {
           opt = MAP_OPTIONS.find((o) => o.value === "address");
         }
-
+        // Explicit matching for common address parts (check before generic)
         if (!opt) {
-          opt = MAP_OPTIONS.find(
-            (o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4))
-          );
+          if (
+            lower.includes("addressline1") ||
+            (lower.includes("addressline") && lower.includes("1")) ||
+            lower.includes("streetaddress") ||
+            lower.includes("streetaddr") ||
+            (lower.includes("addr") && (lower.includes("line1") || (lower.includes("1") && !lower.includes("2"))))
+          ) {
+            opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
+          } else if (lower.includes("suburb") || lower.includes("town") || lower.includes("locality") || lower === "city") {
+            opt = MAP_OPTIONS.find((o) => o.value === "city");
+          } else if (lower.includes("postcode") || lower.includes("postal") || lower.includes("zip")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "postcode");
+          } else if (
+            lower.includes("street") ||
+            (lower.includes("road") && !lower.includes("postal")) ||
+            ((lower === "rd" || lower === "st") && lower.length <= 3)
+          ) {
+            opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
+          } else if ((lower.includes("state") || lower.includes("region") || lower.includes("province")) && !lower.includes("address")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "state");
+          } else if (lower.includes("addr") && !lower.includes("line2")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "address");
+          } else if (lower === "phones" || lower.includes("phone")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "phone");
+          } else if (lower === "emails" || lower.includes("email")) {
+            opt = MAP_OPTIONS.find((o) => o.value === "email");
+          }
         }
-
+        if (!opt) {
+          opt = MAP_OPTIONS.find((o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4)));
+        }
         if (opt) auto[i] = opt.value;
       });
       setMapping(auto);

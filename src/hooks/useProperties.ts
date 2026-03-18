@@ -258,18 +258,39 @@ export function useCreateProperty() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+      const tryInsert = (payload: Record<string, unknown>) =>
+        (supabase as any).from("properties").insert(payload).select().single();
+      const isColumnError = (e: { code?: string; message?: string } | null) =>
+        e && (e.code === "PGRST204" || (e.message && String(e.message).toLowerCase().includes("column")));
 
-      const payload = {
+      let payload: Record<string, unknown> = {
         ...p,
         user_id: user.id,
         property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
         state: p.state ?? "",
       };
-      const { data, error } = await supabase
-        .from("properties")
-        .insert(payload)
-        .select()
-        .single();
+
+      let { data, error } = await tryInsert(payload);
+
+      if (isColumnError(error)) {
+        payload = {
+          address: p.address_line1 ?? "",
+          city: p.city ?? null,
+          state: p.state ?? null,
+          zip: p.postcode ?? null,
+          postcode: p.postcode ?? null,
+          country: p.country ?? "Australia",
+          owner_id: user.id,
+          property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
+        };
+        let r = await tryInsert(payload);
+        if (isColumnError(r.error)) {
+          delete payload.postcode;
+          r = await tryInsert(payload);
+        }
+        data = r.data;
+        error = r.error;
+      }
       if (error) throw error;
       return data as Property;
     },
