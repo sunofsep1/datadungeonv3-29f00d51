@@ -6,6 +6,36 @@ import { useRealtimeSubscription } from "./useRealtimeSubscription";
 export type Activity = Tables<"activities">;
 export type ActivityInsert = TablesInsert<"activities">;
 
+const ACTIVITIES_DATE_COLUMNS = ["activity_date", "date", "created_at"] as const;
+
+function isColumnMissingError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const msg = String(error.message ?? "").toLowerCase();
+  return code === "PGRST204" || code === "42703" || msg.includes("could not find the") || msg.includes("schema cache");
+}
+
+async function selectActivitiesOrdered(
+  where?: (q: ReturnType<typeof supabase.from>) => any,
+  ascending = false,
+): Promise<Activity[]> {
+  let lastError: any = null;
+  for (const col of ACTIVITIES_DATE_COLUMNS) {
+    const base = supabase.from("activities").select("*");
+    const q = where ? where(base) : base;
+    const res = await q.order(col as any, { ascending });
+    if (!res.error) return (res.data ?? []) as Activity[];
+    lastError = res.error;
+    if (!isColumnMissingError(res.error)) break;
+  }
+  if (lastError) {
+    const msg = String(lastError.message ?? "").toLowerCase();
+    if (isColumnMissingError(lastError) || msg.includes("relation") || msg.includes("does not exist")) return [];
+    throw lastError;
+  }
+  return [];
+}
+
 export function useActivities() {
   // Subscribe to realtime changes for all activity-related queries
   useRealtimeSubscription("activities", [
@@ -18,23 +48,7 @@ export function useActivities() {
   return useQuery({
     queryKey: ["activities"],
     queryFn: async () => {
-      const dateCol = "date";
-      let { data, error } = await supabase
-        .from("activities")
-        .select("*")
-        .order(dateCol, { ascending: false });
-      if (error && String(error?.code) === "400") {
-        const altCol = dateCol === "date" ? "activity_date" : "date";
-        const retry = await supabase.from("activities").select("*").order(altCol, { ascending: false });
-        if (!retry.error) return (retry.data ?? []) as Activity[];
-        error = retry.error;
-      }
-      if (!error) return (data ?? []) as Activity[];
-      const msg = (error?.message ?? "").toLowerCase();
-      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
-        return [] as Activity[];
-      }
-      throw error;
+      return await selectActivitiesOrdered(undefined, false);
     },
   });
 }
@@ -46,25 +60,19 @@ export function useCurrentMonthActivities() {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      const dateCol = "date";
-      let { data, error } = await supabase
-        .from("activities")
-        .select("*")
-        .gte(dateCol, startOfMonth)
-        .lte(dateCol, endOfMonth)
-        .order(dateCol, { ascending: false });
-      if (error && String(error?.code) === "400") {
-        const altCol = dateCol === "date" ? "activity_date" : "date";
-        const retry = await supabase.from("activities").select("*").gte(altCol, startOfMonth).lte(altCol, endOfMonth).order(altCol, { ascending: false });
-        if (!retry.error) return (retry.data ?? []) as Activity[];
-        error = retry.error;
-      }
-      if (!error) return (data ?? []) as Activity[];
-      const msg = (error?.message ?? "").toLowerCase();
-      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
+      return await selectActivitiesOrdered(
+        (q: any) => q.gte("activity_date", startOfMonth).lte("activity_date", endOfMonth),
+        false,
+      ).catch(async (e) => {
+        // If activity_date doesn't exist, try the other columns with the same range.
+        if (!isColumnMissingError(e)) throw e;
+        for (const col of ["date", "created_at"] as const) {
+          const res = await supabase.from("activities").select("*").gte(col as any, startOfMonth).lte(col as any, endOfMonth).order(col as any, { ascending: false });
+          if (!res.error) return (res.data ?? []) as Activity[];
+          if (!isColumnMissingError(res.error)) break;
+        }
         return [] as Activity[];
-      }
-      throw error;
+      });
     },
   });
 }
@@ -77,24 +85,13 @@ export function useWeeklyActivities() {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
       const startDate = startOfWeek.toISOString().split('T')[0];
-      const dateCol = "date";
-      let { data, error } = await supabase
-        .from("activities")
-        .select("*")
-        .gte(dateCol, startDate)
-        .order(dateCol, { ascending: true });
-      if (error && String(error?.code) === "400") {
-        const altCol = dateCol === "date" ? "activity_date" : "date";
-        const retry = await supabase.from("activities").select("*").gte(altCol, startDate).order(altCol, { ascending: true });
-        if (!retry.error) return (retry.data ?? []) as Activity[];
-        error = retry.error;
+      // Prefer activity_date, fallback to other cols
+      for (const col of ACTIVITIES_DATE_COLUMNS) {
+        const res = await supabase.from("activities").select("*").gte(col as any, startDate).order(col as any, { ascending: true });
+        if (!res.error) return (res.data ?? []) as Activity[];
+        if (!isColumnMissingError(res.error)) break;
       }
-      if (!error) return (data ?? []) as Activity[];
-      const msg = (error?.message ?? "").toLowerCase();
-      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
-        return [] as Activity[];
-      }
-      throw error;
+      return [] as Activity[];
     },
   });
 }
@@ -133,23 +130,12 @@ export function useTodayActivity() {
     queryKey: ["activities", "today"],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
-      const dateCol = "date";
-      let { data, error } = await supabase
-        .from("activities")
-        .select("*")
-        .eq(dateCol, today)
-        .maybeSingle();
-      if (error && String(error?.code) === "400") {
-        const retry = await supabase.from("activities").select("*").eq("activity_date", today).maybeSingle();
-        if (!retry.error) return retry.data as Activity | null;
-        error = retry.error;
+      for (const col of ACTIVITIES_DATE_COLUMNS) {
+        const res = await supabase.from("activities").select("*").eq(col as any, today).maybeSingle();
+        if (!res.error) return res.data as Activity | null;
+        if (!isColumnMissingError(res.error)) break;
       }
-      if (!error) return data as Activity | null;
-      const msg = (error?.message ?? "").toLowerCase();
-      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("activities") || msg.includes("does not exist") || String(error?.code) === "400") {
-        return null;
-      }
-      throw error;
+      return null;
     },
   });
 }
