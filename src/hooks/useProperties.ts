@@ -274,10 +274,13 @@ export function useCreateProperty() {
 
       if (isColumnError(error)) {
         payload = {
-          address: p.address_line1 ?? "",
+          // Newer schema uses street_address + suburb, but keep address/address_line1 if present too
+          address: p.address_line1 ?? (p as any).address ?? "",
+          address_line1: p.address_line1 ?? null,
+          street_address: p.address_line1 ?? (p as any).street_address ?? null,
           city: p.city ?? null,
+          suburb: (p as any).suburb ?? p.city ?? null,
           state: p.state ?? null,
-          zip: p.postcode ?? null,
           postcode: p.postcode ?? null,
           country: p.country ?? "Australia",
           owner_id: user.id,
@@ -285,8 +288,22 @@ export function useCreateProperty() {
         };
         let r = await tryInsert(payload);
         if (isColumnError(r.error)) {
-          delete payload.postcode;
-          r = await tryInsert(payload);
+          // Some schemas may not have address_line1/city, try minimal column set
+          const minimal: Record<string, unknown> = {
+            street_address: p.address_line1 ?? (p as any).street_address ?? "",
+            suburb: (p as any).suburb ?? p.city ?? null,
+            state: p.state ?? null,
+            postcode: p.postcode ?? null,
+            country: p.country ?? "Australia",
+            owner_id: user.id,
+            property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
+          };
+          r = await tryInsert(minimal);
+          if (isColumnError(r.error)) {
+            // As a last resort, drop optional fields
+            const minimal2 = { street_address: minimal.street_address, owner_id: user.id, property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE };
+            r = await tryInsert(minimal2);
+          }
         }
         data = r.data;
         error = r.error;
