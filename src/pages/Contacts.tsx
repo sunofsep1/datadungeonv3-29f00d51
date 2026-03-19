@@ -74,7 +74,6 @@ import { useCreateProperty } from "@/hooks/useProperties";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
-import { AddressAutocompleteAU } from "@/components/properties/AddressAutocompleteAU";
 import { getInitials, cn } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
@@ -1080,21 +1079,11 @@ export default function Contacts() {
                       <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Address Line 1</Label>
-                        <AddressAutocompleteAU
-                          placeholder="Start typing an address..."
+                        <Input
+                          placeholder="Street address"
                           className="bg-input"
                           value={formData.address_line1}
-                          onChange={(v) => setFormData({ ...formData, address_line1: v })}
-                          onSelectAddress={(parts) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              address_line1: parts.address_line1 ?? prev.address_line1,
-                              city: parts.city ?? prev.city,
-                              state: parts.state ?? prev.state,
-                              postcode: parts.postcode ?? prev.postcode,
-                              country: parts.country ?? prev.country,
-                            }))
-                          }
+                          onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">

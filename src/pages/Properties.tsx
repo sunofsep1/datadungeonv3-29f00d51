@@ -13,7 +13,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square, Upload } from "lucide-react";
-import { AddressAutocompleteAU } from "@/components/properties/AddressAutocompleteAU";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { PropertyViewMode } from "@/components/PropertyManagement/PropertyList";
@@ -455,20 +454,12 @@ export default function Properties() {
                   <TabsContent value="address" className="space-y-4 mt-4">
                     <div className="space-y-2">
                     <Label>Address Line 1 *</Label>
-                    <AddressAutocompleteAU
-                      placeholder="Start typing an address..."
+                    <Input
+                      placeholder="Street address"
                       className="bg-input"
                       value={formData.address_line1}
-                      onChange={(v) => setFormData({ ...formData, address_line1: v })}
-                      onSelectAddress={(parts) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          address_line1: parts.address_line1 ?? prev.address_line1,
-                          city: parts.city ?? prev.city,
-                          state: parts.state ?? prev.state,
-                          postcode: parts.postcode ?? prev.postcode,
-                          country: parts.country ?? prev.country,
-                        }))
+                      onChange={(e) =>
+                        setFormData({ ...formData, address_line1: e.target.value })
                       }
                     />
                   </div>

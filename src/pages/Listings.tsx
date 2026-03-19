@@ -26,7 +26,6 @@ import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, 
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { AddressAutocompleteAU } from "@/components/properties/AddressAutocompleteAU";
 import { useListings, useCreateListing, useUpdateListing, useDeleteListing, Listing } from "@/hooks/useListings";
 import { useContacts } from "@/hooks/useContacts";
 import { format } from "date-fns";
@@ -416,17 +415,11 @@ export default function Listings() {
 
                 <div className="space-y-2">
                   <Label>Address *</Label>
-                  <AddressAutocompleteAU
-                    placeholder="Start typing an address..."
+                  <Input
+                    placeholder="Street address"
                     className="bg-input"
                     value={formData.address}
-                    onChange={(v) => setFormData({ ...formData, address: v })}
-                    onSelectAddress={(parts) => {
-                      const full = [parts.address_line1, parts.city, parts.state, parts.postcode]
-                        .filter(Boolean)
-                        .join(", ");
-                      setFormData((prev) => ({ ...prev, address: full }));
-                    }}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
