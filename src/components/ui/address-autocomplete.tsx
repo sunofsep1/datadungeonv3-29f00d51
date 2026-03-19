@@ -35,6 +35,11 @@ function loadGoogleMapsScript(): Promise<void> {
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
     script.async = true;
+    script.onerror = () => {
+      scriptLoading = false;
+      console.error("[AddressAutocomplete] Failed to load Google Maps script");
+      resolve();
+    };
     script.onload = () => {
       scriptLoaded = true;
       scriptLoading = false;
@@ -93,7 +98,11 @@ export function AddressAutocomplete({
   const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
 
   React.useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY || !inputRef.current) return;
+    if (!inputRef.current) return;
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.warn("[AddressAutocomplete] Missing VITE_GOOGLE_MAPS_API_KEY (autocomplete disabled)");
+      return;
+    }
     let cancelled = false;
 
     loadGoogleMapsScript().then(() => {
