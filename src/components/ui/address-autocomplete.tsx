@@ -13,7 +13,8 @@ export interface AddressParts {
 }
 
 interface AddressAutocompleteProps {
-  value: string;
+        defaultValue?: string;  16
+
   onChange: (value: string) => void;
   onPlaceSelected: (parts: AddressParts) => void;
   placeholder?: string;
@@ -72,7 +73,7 @@ function extractAddressParts(place: google.maps.places.PlaceResult): AddressPart
     } else if (types.includes("administrative_area_level_1")) {
       parts.state = comp.short_name;
     } else if (types.includes("postal_code")) {
-      parts.postcode = comp.long_name;
+      parts.postcode = comp.short_name;
     } else if (types.includes("country")) {
       parts.country = comp.long_name;
     }
@@ -83,7 +84,7 @@ function extractAddressParts(place: google.maps.places.PlaceResult): AddressPart
 }
 
 export function AddressAutocomplete({
-  value,
+  defaultValue,
   onChange,
   onPlaceSelected,
   placeholder = "Start typing an address...",
@@ -126,7 +127,7 @@ export function AddressAutocomplete({
   return (
     <Input
       ref={inputRef}
-      value={value}
+        defaultValue={defaultValue || ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={className}
