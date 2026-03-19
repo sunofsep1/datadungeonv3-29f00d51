@@ -54,6 +54,12 @@ export function AddressAutocompleteAU(props: {
   const { value, onChange, onSelectAddress, placeholder, className, disabled } = props;
   const apiKey = getEnvKey();
   const enabled = Boolean(apiKey);
+  const didLogRef = useRef(false);
+  useEffect(() => {
+    if (didLogRef.current) return;
+    didLogRef.current = true;
+    console.warn("[AddressAutocompleteAU] enabled=", enabled, "apiKeyPresent=", Boolean(apiKey));
+  }, [enabled, apiKey]);
 
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -98,6 +104,7 @@ export function AddressAutocompleteAU(props: {
     if (!open) return;
     const q = value.trim();
     if (q.length < 3) {
+      console.warn("[AddressAutocompleteAU] q too short:", q);
       setSuggestions([]);
       return;
     }
@@ -122,6 +129,7 @@ export function AddressAutocompleteAU(props: {
           placeId: p.place_id,
           description: p.description,
         }));
+        console.warn("[AddressAutocompleteAU] suggestions count:", list.length);
         setSuggestions(list);
       },
     );
