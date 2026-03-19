@@ -86,6 +86,7 @@ export function AddressAutocompleteAU(props: {
       })
       .catch(() => {
         // If loading fails, just behave as a normal input.
+        console.warn("[AddressAutocompleteAU] Failed to load Google Maps JS API via js-api-loader");
       });
     return () => {
       cancelled = true;
@@ -102,7 +103,10 @@ export function AddressAutocompleteAU(props: {
     }
     const svc = autoSvcRef.current;
     const token = sessionTokenRef.current;
-    if (!svc || !token) return;
+    if (!svc || !token) {
+      console.warn("[AddressAutocompleteAU] AutocompleteService not ready yet");
+      return;
+    }
 
     setBusy(true);
     svc.getPlacePredictions(
@@ -175,7 +179,7 @@ export function AddressAutocompleteAU(props: {
           disabled={disabled}
         />
       </PopoverTrigger>
-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width] z-[10000]" align="start">
         <Command shouldFilter={false}>
           <CommandInput placeholder={busy ? "Searching..." : "Type an address..."} />
           <CommandList>
