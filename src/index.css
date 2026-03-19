@@ -2093,3 +2093,9 @@ html.density-compact [data-slot="row"] {
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+
+/* Fix Google Places autocomplete z-index so suggestions are clickable in modals */
+.pac-container {
+  z-index: 10000 !important;
+}
