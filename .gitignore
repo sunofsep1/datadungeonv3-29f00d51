@@ -29,3 +29,6 @@ dist-ssr
 *.sln
 *.sw?
 supabase/.temp/
+
+# Local Netlify folder
+.netlify

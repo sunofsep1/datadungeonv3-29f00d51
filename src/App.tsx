@@ -30,6 +30,7 @@ const Scripts = lazy(() => import("./pages/Scripts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const HotLeads = lazy(() => import("./pages/HotLeads"));
 const FollowUps = lazy(() => import("./pages/FollowUps"));
+const TodoList = lazy(() => import("./pages/TodoList"));
 const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/hot-leads" element={<ProtectedRoute><MainLayout><HotLeads /></MainLayout></ProtectedRoute>} />
                 <Route path="/recent" element={<ProtectedRoute><MainLayout><Recent /></MainLayout></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
+                <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/follow-ups" element={<ProtectedRoute><MainLayout><FollowUps /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ContactDetail /></MainLayout></ProtectedRoute>} />

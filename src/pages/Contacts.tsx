@@ -595,9 +595,17 @@ export default function Contacts() {
           toast({ title: "Property created", description: "A property was created from the address and linked to this contact." });
         } catch (propErr) {
           console.error("Auto-create property from address:", propErr);
+          const msg =
+            propErr instanceof Error
+              ? propErr.message
+              : typeof (propErr as { message?: unknown } | undefined)?.message === "string"
+                ? ((propErr as { message?: string }).message ?? "")
+                : String(propErr);
           toast({
             title: "Contact saved",
-            description: "Contact saved, but property could not be created from address. You can link a property manually.",
+            description:
+              msg?.trim() ||
+              "Contact saved, but property could not be created from address. You can link a property manually.",
             variant: "destructive",
           });
         }

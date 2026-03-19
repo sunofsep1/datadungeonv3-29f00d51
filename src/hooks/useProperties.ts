@@ -254,21 +254,31 @@ export function useCreateProperty() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: PropertyInsert) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) throw new Error("Not authenticated");
+
       const tryInsert = (payload: Record<string, unknown>) =>
         (supabase as any).from("properties").insert(payload).select().single();
       const isColumnError = (e: { code?: string; message?: string } | null) =>
         e && (e.code === "PGRST204" || (e.message && String(e.message).toLowerCase().includes("column")));
 
+      // Prefer RPC when available (more robust vs schema-cache edge cases).
       let payload: Record<string, unknown> = {
         ...p,
-        user_id: user.id,
         property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
-        state: p.state ?? "",
+        // Keep as null/undefined when empty so SQL NULLIF(TRIM(...), '') works.
+        state: p.state ?? null,
       };
+
+      try {
+        const { data, error } = await supabase.rpc("create_property_with_address", {
+          payload,
+        });
+        if (error) throw error;
+        return data as Property;
+      } catch {
+        // Fall back to direct insert for older schemas / missing RPCs.
+      }
 
       let { data, error } = await tryInsert(payload);
 
@@ -283,7 +293,7 @@ export function useCreateProperty() {
           state: p.state ?? null,
           postcode: p.postcode ?? null,
           country: p.country ?? "Australia",
-          owner_id: user.id,
+          owner_id: userData.user.id,
           property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
         };
         let r = await tryInsert(payload);
@@ -295,19 +305,24 @@ export function useCreateProperty() {
             state: p.state ?? null,
             postcode: p.postcode ?? null,
             country: p.country ?? "Australia",
-            owner_id: user.id,
+            owner_id: userData.user.id,
             property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
           };
           r = await tryInsert(minimal);
           if (isColumnError(r.error)) {
             // As a last resort, drop optional fields
-            const minimal2 = { street_address: minimal.street_address, owner_id: user.id, property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE };
+            const minimal2 = {
+              street_address: minimal.street_address,
+              owner_id: userData.user.id,
+              property_type: p.property_type ?? DEFAULT_PROPERTY_TYPE,
+            };
             r = await tryInsert(minimal2);
           }
         }
         data = r.data;
         error = r.error;
       }
+
       if (error) throw error;
       return data as Property;
     },

@@ -314,7 +314,7 @@ export function VisionBoard() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {cards.map((card) => (
               <div
                 key={card.id}
@@ -322,14 +322,14 @@ export function VisionBoard() {
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, card.id)}
                 className={cn(
-                  "group relative rounded-xl border bg-gradient-to-b overflow-hidden",
+                  "group relative rounded-lg border bg-gradient-to-b overflow-hidden",
                   "shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5",
                   draggedId === card.id && "opacity-50 scale-[0.98]",
                   dropTargetId === card.id && "ring-2 ring-primary ring-offset-2 ring-offset-card",
                   card.color
                 )}
               >
-                <div className="aspect-[4/3] w-full relative overflow-hidden bg-muted/50">
+                <div className="aspect-[4/3] w-full relative overflow-hidden bg-muted/50 min-h-0">
                   {card.image_url ? (
                     <>
                       {!loadedImageIds.has(card.id) && (
@@ -357,7 +357,7 @@ export function VisionBoard() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <div className="absolute top-2 left-2 right-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <div
                       draggable
                       onDragStart={(e) => {
@@ -365,48 +365,48 @@ export function VisionBoard() {
                         handleDragStart(e, card.id);
                       }}
                       onDragEnd={handleDragEnd}
-                      className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted text-foreground cursor-grab active:cursor-grabbing touch-none"
+                      className="flex items-center justify-center h-7 w-7 rounded-md bg-muted text-foreground cursor-grab active:cursor-grabbing touch-none"
                       aria-label="Drag to reorder"
                     >
-                      <GripVertical className="h-4 w-4 pointer-events-none" />
+                      <GripVertical className="h-3.5 w-3.5 pointer-events-none" />
                     </div>
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1">
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="h-8 w-8 rounded-lg bg-white/90 hover:bg-white text-foreground shadow"
+                        className="h-7 w-7 rounded-md bg-white/90 hover:bg-white text-foreground shadow"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEdit(card);
                         }}
                         aria-label="Edit"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-3 w-3" />
                       </Button>
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="h-8 w-8 rounded-lg bg-white/90 hover:bg-destructive/20 text-destructive shadow"
+                        className="h-7 w-7 rounded-md bg-white/90 hover:bg-destructive/20 text-destructive shadow"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(card.id);
                         }}
                         aria-label="Delete"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-4 text-foreground">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Target className="h-4 w-4 text-primary shrink-0 opacity-90" />
-                      <p className="font-semibold text-sm leading-tight line-clamp-2 drop-shadow-sm">
+                  <div className="absolute bottom-0 left-0 right-0 p-3 text-foreground">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Target className="h-3.5 w-3.5 text-primary shrink-0 opacity-90" />
+                      <p className="font-semibold text-xs leading-tight line-clamp-2 drop-shadow-sm">
                         {card.title}
                       </p>
                     </div>
                     {card.target_date && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Calendar className="h-3 w-3 shrink-0" />
                         <span>{new Date(card.target_date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
                       </div>
                     )}

@@ -17,6 +17,7 @@ import {
   PanelLeft,
   Building2,
   PhoneCall,
+  ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const homeItems: NavItem[] = [
 ];
 
 const clientManagementItems: NavItem[] = [
+  { title: "To-Do", url: "/todos", icon: ListTodo },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Follow-ups", url: "/follow-ups", icon: PhoneCall },
   { title: "Properties", url: "/properties", icon: Building2 },
@@ -69,6 +71,7 @@ const mobileNavItems = [
 function isNavActive(item: { url: string }, pathname: string): boolean {
   if (pathname === item.url) return true;
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
+  if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/follow-ups" && pathname.startsWith("/follow-ups")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;

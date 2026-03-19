@@ -1799,6 +1799,36 @@ export type Database = {
         }
         Relationships: []
       }
+      todos: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          completed: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          completed?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          completed?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       workflows: {
         Row: {
           actions: Json
