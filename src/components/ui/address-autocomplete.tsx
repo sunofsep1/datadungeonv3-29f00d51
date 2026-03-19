@@ -97,17 +97,22 @@ export function AddressAutocomplete({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
 
-  React.useEffect(() => {
-    if (!inputRef.current) return;
+  const init = React.useCallback(() => {
     if (!GOOGLE_MAPS_API_KEY) {
       console.warn("[AddressAutocomplete] Missing VITE_GOOGLE_MAPS_API_KEY (autocomplete disabled)");
       return;
     }
-    let cancelled = false;
+    if (!inputRef.current) return;
+    if (autocompleteRef.current) return; // already attached
 
     loadGoogleMapsScript().then(() => {
-      if (cancelled || !inputRef.current) return;
-      const ac = new google.maps.places.Autocomplete(inputRef.current, {
+      if (!inputRef.current) return;
+      if (!window.google?.maps?.places) {
+        console.error("[AddressAutocomplete] Google Places library not ready after script load");
+        return;
+      }
+
+      const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
         componentRestrictions: { country: "au" },
         fields: ["address_components", "formatted_address"],
         types: ["address"],
@@ -135,18 +140,21 @@ export function AddressAutocomplete({
         onChange(finalParts.address_line1);
         onPlaceSelected(finalParts);
       });
+
       autocompleteRef.current = ac;
     });
+  }, [onChange, onPlaceSelected]);
 
+  React.useEffect(() => {
+    // Try attaching immediately; if the dialog mounts hidden, focus will re-attach.
+    init();
     return () => {
-      cancelled = true;
       if (autocompleteRef.current) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
         autocompleteRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [init]);
 
   return (
     <Input
@@ -156,6 +164,7 @@ export function AddressAutocomplete({
       placeholder={placeholder}
       className={className}
       autoComplete="off"
+      onFocus={init}
     />
   );
 }
