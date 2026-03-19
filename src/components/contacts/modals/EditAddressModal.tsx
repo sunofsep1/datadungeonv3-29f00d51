@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { AddressAutocompleteAU } from "@/components/properties/AddressAutocompleteAU";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -136,19 +136,18 @@ export function EditAddressModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label>Address line 1</Label>
-              <AddressAutocomplete
+              <AddressAutocompleteAU
                 className="bg-input"
                 value={form.address_line1}
                 onChange={(v) => setForm({ ...form, address_line1: v })}
-                onPlaceSelected={(parts) =>
+                onSelectAddress={(parts) =>
                   setForm((prev) => ({
                     ...prev,
-                    address_line1: parts.address_line1,
-                    address_line2: parts.address_line2 || prev.address_line2,
-                    city: parts.city,
-                    state: parts.state,
-                    postal_code: parts.postcode,
-                    country: parts.country || "Australia",
+                    address_line1: parts.address_line1 ?? prev.address_line1,
+                    city: parts.city ?? prev.city,
+                    state: parts.state ?? prev.state,
+                    postal_code: parts.postcode ?? prev.postal_code,
+                    country: parts.country ?? prev.country,
                   }))
                 }
                 placeholder="Start typing an address..."

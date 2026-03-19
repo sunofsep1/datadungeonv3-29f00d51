@@ -74,7 +74,7 @@ import { useCreateProperty } from "@/hooks/useProperties";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
-import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { AddressAutocompleteAU } from "@/components/properties/AddressAutocompleteAU";
 import { getInitials, cn } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
@@ -1080,20 +1080,19 @@ export default function Contacts() {
                       <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Address Line 1</Label>
-                        <AddressAutocomplete
+                        <AddressAutocompleteAU
                           placeholder="Start typing an address..."
                           className="bg-input"
                           value={formData.address_line1}
                           onChange={(v) => setFormData({ ...formData, address_line1: v })}
-                          onPlaceSelected={(parts) =>
+                          onSelectAddress={(parts) =>
                             setFormData((prev) => ({
                               ...prev,
-                              address_line1: parts.address_line1,
-                              address_line2: parts.address_line2 || prev.address_line2,
-                              city: parts.city,
-                              state: parts.state,
-                              postcode: parts.postcode,
-                              country: parts.country || "Australia",
+                              address_line1: parts.address_line1 ?? prev.address_line1,
+                              city: parts.city ?? prev.city,
+                              state: parts.state ?? prev.state,
+                              postcode: parts.postcode ?? prev.postcode,
+                              country: parts.country ?? prev.country,
                             }))
                           }
                         />
