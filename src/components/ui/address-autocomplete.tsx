@@ -13,8 +13,7 @@ export interface AddressParts {
 }
 
 interface AddressAutocompleteProps {
-        defaultValue?: string;  16
-
+  value: string;
   onChange: (value: string) => void;
   onPlaceSelected: (parts: AddressParts) => void;
   placeholder?: string;
@@ -84,7 +83,7 @@ function extractAddressParts(place: google.maps.places.PlaceResult): AddressPart
 }
 
 export function AddressAutocomplete({
-  defaultValue,
+  value,
   onChange,
   onPlaceSelected,
   placeholder = "Start typing an address...",
@@ -143,8 +142,8 @@ export function AddressAutocomplete({
   return (
     <Input
       ref={inputRef}
-        defaultValue={defaultValue || ""}
       onChange={(e) => onChange(e.target.value)}
+      value={value}
       placeholder={placeholder}
       className={className}
       autoComplete="off"
