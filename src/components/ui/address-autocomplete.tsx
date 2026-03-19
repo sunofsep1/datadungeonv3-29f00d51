@@ -54,7 +54,7 @@ function extractAddressParts(place: google.maps.places.PlaceResult): AddressPart
     city: "",
     state: "",
     postcode: "",
-    country: "",
+    country: "Australia",
   };
 
   let streetNumber = "";
@@ -108,8 +108,24 @@ export function AddressAutocomplete({
       ac.addListener("place_changed", () => {
         const place = ac.getPlace();
         if (!place.address_components) return;
+
         const parts = extractAddressParts(place);
-        onPlaceSelected(parts);
+
+        // Fallback: sometimes the parsed "street number + route" ends up empty
+        // (e.g. user selects an area-level result). In that case, use the
+        // formatted address so the selection clearly "sticks" in the input.
+        const formatted = place.formatted_address ?? "";
+        const address_line1 = parts.address_line1?.trim() ? parts.address_line1 : formatted;
+
+        const finalParts: AddressParts = {
+          ...parts,
+          address_line1: address_line1 || "",
+          country: parts.country?.trim() ? parts.country : "Australia",
+        };
+
+        // Keep the controlled input in sync immediately.
+        onChange(finalParts.address_line1);
+        onPlaceSelected(finalParts);
       });
       autocompleteRef.current = ac;
     });
