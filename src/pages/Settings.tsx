@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Github, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -17,6 +17,11 @@ import { toast } from "sonner";
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
   { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
   { value: "light", label: "Light", icon: Sun, desc: "Light theme for better visibility." },
+  { value: "latte", label: "Latte", icon: Coffee, desc: "Warm light beige with soft brown accents." },
+  { value: "dawn", label: "Dawn", icon: SunriseIcon, desc: "Rosy morning light with gentle contrast." },
+  { value: "mint", label: "Mint", icon: Leaf, desc: "Fresh mint light theme with green accents." },
+  { value: "sky", label: "Sky", icon: Droplets, desc: "Airy blue light theme with cool tones." },
+  { value: "sand", label: "Sand", icon: Sunset, desc: "Soft sand light theme with golden accents." },
   { value: "tomorrowNightBlue", label: "Tomorrow Night Blue", icon: Droplets, desc: "Blue-tinted dark theme (VS Code)." },
   { value: "dracula", label: "Dracula", icon: Ghost, desc: "Purple & pink accents." },
   { value: "monokai", label: "Monokai", icon: Palette, desc: "Teal & orange (Sublime Text)." },
@@ -37,6 +42,11 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; des
   { value: "horizon", label: "Horizon", icon: Flame, desc: "Warm pink & coral accents." },
   { value: "everforest", label: "Everforest", icon: Leaf, desc: "Soft green forest theme." },
 ];
+
+const LIGHT_THEME_VALUES: Theme[] = ["light", "latte", "dawn", "mint", "sky", "sand"];
+const DARK_THEME_VALUES: Theme[] = THEME_OPTIONS
+  .map((opt) => opt.value)
+  .filter((value) => !LIGHT_THEME_VALUES.includes(value));
 
 const DENSITY_OPTIONS: { value: Density; label: string }[] = [
   { value: "comfortable", label: "Comfortable" },
@@ -96,14 +106,29 @@ export default function Settings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {THEME_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      <span className="flex items-center gap-2">
-                        <opt.icon className="w-4 h-4" />
-                        {opt.label}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel>Light Themes</SelectLabel>
+                    {THEME_OPTIONS.filter((opt) => LIGHT_THEME_VALUES.includes(opt.value)).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <span className="flex items-center gap-2">
+                          <opt.icon className="w-4 h-4" />
+                          {opt.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel>Dark Themes</SelectLabel>
+                    {THEME_OPTIONS.filter((opt) => DARK_THEME_VALUES.includes(opt.value)).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <span className="flex items-center gap-2">
+                          <opt.icon className="w-4 h-4" />
+                          {opt.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -252,5 +277,17 @@ export default function Settings() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function SunriseIcon(props: React.ComponentProps<"svg">) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 18h16" />
+      <path d="M7 18a5 5 0 0 1 10 0" />
+      <path d="M12 4v3" />
+      <path d="m5 11 2 2" />
+      <path d="m19 11-2 2" />
+    </svg>
   );
 }

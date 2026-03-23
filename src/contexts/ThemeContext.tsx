@@ -5,6 +5,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 export const THEME_HTML_CLASSES = [
   "dark",
   "light",
+  "theme-latte",
+  "theme-dawn",
+  "theme-mint",
+  "theme-sky",
+  "theme-sand",
   "theme-tomorrow-night-blue",
   "theme-dracula",
   "theme-monokai",
@@ -29,6 +34,11 @@ export const THEME_HTML_CLASSES = [
 export type Theme =
   | "dark"
   | "light"
+  | "latte"
+  | "dawn"
+  | "mint"
+  | "sky"
+  | "sand"
   | "tomorrowNightBlue"
   | "dracula"
   | "monokai"
@@ -52,6 +62,11 @@ export type Theme =
 const VALID_THEMES: Theme[] = [
   "dark",
   "light",
+  "latte",
+  "dawn",
+  "mint",
+  "sky",
+  "sand",
   "tomorrowNightBlue",
   "dracula",
   "monokai",
@@ -95,6 +110,11 @@ function themeToClass(theme: Theme): string {
   const map: Record<Theme, string> = {
     dark: "dark",
     light: "light",
+    latte: "theme-latte",
+    dawn: "theme-dawn",
+    mint: "theme-mint",
+    sky: "theme-sky",
+    sand: "theme-sand",
     tomorrowNightBlue: "theme-tomorrow-night-blue",
     dracula: "theme-dracula",
     monokai: "theme-monokai",

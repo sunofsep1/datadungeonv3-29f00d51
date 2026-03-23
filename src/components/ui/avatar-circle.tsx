@@ -16,24 +16,24 @@ const sizeClasses = {
   lg: "w-12 h-12 text-base",
 };
 
-const colors = [
-  "bg-emerald-600",
-  "bg-blue-600",
-  "bg-purple-600",
-  "bg-pink-600",
-  "bg-orange-600",
-  "bg-red-600",
-  "bg-cyan-600",
-  "bg-indigo-600",
+const paletteTokens = [
+  "--avatar-1",
+  "--avatar-2",
+  "--avatar-3",
+  "--avatar-4",
+  "--avatar-5",
+  "--avatar-6",
+  "--avatar-7",
+  "--avatar-8",
 ];
 
-function getColorForName(name: string | undefined | null): string {
+function getPaletteTokenForName(name: string | undefined | null): string {
   const s = name ?? "";
   let hash = 0;
   for (let i = 0; i < s.length; i++) {
     hash = s.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return colors[Math.abs(hash) % colors.length];
+  return paletteTokens[Math.abs(hash) % paletteTokens.length];
 }
 
 function getInitials(name: string): string {
@@ -47,15 +47,21 @@ function getInitials(name: string): string {
 
 export function AvatarCircle({ name, initials: initialsProp, color, size = "md", className }: AvatarCircleProps) {
   const displayName = name ?? "";
-  const bgColor = color || getColorForName(displayName);
+  const token = getPaletteTokenForName(displayName);
+  const style = color
+    ? { backgroundColor: color }
+    : {
+        backgroundColor: `hsl(var(${token}))`,
+        color: "hsl(var(--avatar-foreground))",
+      };
   const initials = initialsProp ?? (displayName.trim() ? getInitials(displayName) : "?");
 
   return (
     <div
+      style={style}
       className={cn(
-        "rounded-full flex items-center justify-center font-semibold text-white",
+        "rounded-full flex items-center justify-center font-semibold",
         sizeClasses[size],
-        bgColor,
         className
       )}
     >

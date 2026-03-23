@@ -21,6 +21,36 @@ html.light #root {
   background-color: #ffffff !important;
 }
 
+html.theme-latte,
+html.theme-latte body,
+html.theme-latte #root {
+  background-color: #f8f2e8 !important;
+}
+
+html.theme-dawn,
+html.theme-dawn body,
+html.theme-dawn #root {
+  background-color: #fff4f1 !important;
+}
+
+html.theme-mint,
+html.theme-mint body,
+html.theme-mint #root {
+  background-color: #f0fbf7 !important;
+}
+
+html.theme-sky,
+html.theme-sky body,
+html.theme-sky #root {
+  background-color: #eff7ff !important;
+}
+
+html.theme-sand,
+html.theme-sand body,
+html.theme-sand #root {
+  background-color: #fcf6e9 !important;
+}
+
 /* Theme root background overrides */
 html.theme-tomorrow-night-blue,
 html.theme-tomorrow-night-blue body,
@@ -206,6 +236,17 @@ html.theme-everforest #root {
     --gradient-listings: linear-gradient(135deg, hsl(168 76% 22%) 0%, hsl(168 76% 32%) 100%);
     --gradient-closings: linear-gradient(135deg, hsl(199 89% 25%) 0%, hsl(199 89% 35%) 100%);
     --gradient-volume: linear-gradient(135deg, hsl(142 76% 22%) 0%, hsl(142 76% 32%) 100%);
+
+    /* Contact avatar palette */
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 197 92% 43%;
+    --avatar-2: 168 72% 35%;
+    --avatar-3: 263 70% 54%;
+    --avatar-4: 342 78% 48%;
+    --avatar-5: 25 95% 53%;
+    --avatar-6: 217 91% 60%;
+    --avatar-7: 142 71% 38%;
+    --avatar-8: 280 65% 56%;
   }
 
   /* Light mode theme */
@@ -272,6 +313,232 @@ html.theme-everforest #root {
     --gradient-listings: linear-gradient(135deg, hsl(168 76% 90%) 0%, hsl(168 76% 85%) 100%);
     --gradient-closings: linear-gradient(135deg, hsl(199 89% 92%) 0%, hsl(199 89% 88%) 100%);
     --gradient-volume: linear-gradient(135deg, hsl(142 76% 90%) 0%, hsl(142 76% 85%) 100%);
+
+    /* Contact avatar palette */
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 197 88% 46%;
+    --avatar-2: 168 70% 36%;
+    --avatar-3: 263 62% 56%;
+    --avatar-4: 340 72% 52%;
+    --avatar-5: 30 92% 54%;
+    --avatar-6: 217 85% 58%;
+    --avatar-7: 145 63% 40%;
+    --avatar-8: 285 58% 58%;
+  }
+
+  .theme-latte {
+    --background: 38 48% 94%;
+    --foreground: 24 22% 18%;
+    --card: 40 42% 97%;
+    --card-foreground: 24 22% 18%;
+    --popover: 40 42% 98%;
+    --popover-foreground: 24 22% 18%;
+    --primary: 24 65% 40%;
+    --primary-foreground: 40 42% 98%;
+    --secondary: 36 30% 90%;
+    --secondary-foreground: 24 22% 18%;
+    --muted: 36 22% 87%;
+    --muted-foreground: 24 14% 40%;
+    --accent: 168 34% 44%;
+    --accent-foreground: 40 42% 98%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 40 42% 98%;
+    --border: 34 24% 82%;
+    --input: 34 24% 88%;
+    --ring: 24 65% 40%;
+    --sidebar-background: 42 44% 90%;
+    --sidebar-foreground: 24 15% 34%;
+    --sidebar-primary: 24 65% 40%;
+    --sidebar-primary-foreground: 40 42% 98%;
+    --sidebar-accent: 36 30% 87%;
+    --sidebar-accent-foreground: 24 22% 18%;
+    --sidebar-border: 34 24% 80%;
+    --sidebar-ring: 24 65% 40%;
+    --success: 145 52% 40%;
+    --warning: 38 88% 48%;
+    --info: 201 77% 45%;
+    --teal: 168 34% 44%;
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 201 77% 45%;
+    --avatar-2: 168 48% 38%;
+    --avatar-3: 262 57% 51%;
+    --avatar-4: 345 63% 48%;
+    --avatar-5: 31 83% 48%;
+    --avatar-6: 220 72% 52%;
+    --avatar-7: 144 45% 36%;
+    --avatar-8: 285 48% 50%;
+  }
+
+  .theme-dawn {
+    --background: 16 100% 97%;
+    --foreground: 341 34% 22%;
+    --card: 0 0% 100%;
+    --card-foreground: 341 34% 22%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 341 34% 22%;
+    --primary: 341 62% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 14 85% 93%;
+    --secondary-foreground: 341 34% 22%;
+    --muted: 14 52% 90%;
+    --muted-foreground: 341 20% 44%;
+    --accent: 22 92% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 14 42% 85%;
+    --input: 14 42% 90%;
+    --ring: 341 62% 48%;
+    --sidebar-background: 16 90% 93%;
+    --sidebar-foreground: 341 24% 34%;
+    --sidebar-primary: 341 62% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 14 70% 89%;
+    --sidebar-accent-foreground: 341 34% 22%;
+    --sidebar-border: 14 42% 82%;
+    --sidebar-ring: 341 62% 48%;
+    --success: 142 52% 40%;
+    --warning: 36 92% 50%;
+    --info: 204 78% 46%;
+    --teal: 178 48% 40%;
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 341 62% 48%;
+    --avatar-2: 22 92% 52%;
+    --avatar-3: 263 60% 55%;
+    --avatar-4: 198 78% 44%;
+    --avatar-5: 168 52% 38%;
+    --avatar-6: 223 68% 52%;
+    --avatar-7: 142 52% 40%;
+    --avatar-8: 285 54% 52%;
+  }
+
+  .theme-mint {
+    --background: 156 48% 96%;
+    --foreground: 168 38% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 168 38% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 168 38% 16%;
+    --primary: 164 62% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 156 34% 90%;
+    --secondary-foreground: 168 38% 16%;
+    --muted: 156 24% 87%;
+    --muted-foreground: 168 18% 38%;
+    --accent: 196 82% 42%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 156 26% 82%;
+    --input: 156 26% 88%;
+    --ring: 164 62% 36%;
+    --sidebar-background: 155 34% 90%;
+    --sidebar-foreground: 168 22% 32%;
+    --sidebar-primary: 164 62% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 156 24% 85%;
+    --sidebar-accent-foreground: 168 38% 16%;
+    --sidebar-border: 156 24% 80%;
+    --sidebar-ring: 164 62% 36%;
+    --success: 145 54% 38%;
+    --warning: 38 90% 48%;
+    --info: 196 82% 42%;
+    --teal: 164 62% 36%;
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 164 62% 36%;
+    --avatar-2: 196 82% 42%;
+    --avatar-3: 142 52% 40%;
+    --avatar-4: 263 56% 54%;
+    --avatar-5: 29 88% 50%;
+    --avatar-6: 341 66% 48%;
+    --avatar-7: 220 70% 50%;
+    --avatar-8: 177 56% 38%;
+  }
+
+  .theme-sky {
+    --background: 207 100% 97%;
+    --foreground: 213 48% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 48% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 48% 20%;
+    --primary: 213 80% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 206 72% 92%;
+    --secondary-foreground: 213 48% 20%;
+    --muted: 206 48% 88%;
+    --muted-foreground: 213 22% 42%;
+    --accent: 192 82% 42%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 206 36% 82%;
+    --input: 206 36% 88%;
+    --ring: 213 80% 48%;
+    --sidebar-background: 207 62% 92%;
+    --sidebar-foreground: 213 24% 34%;
+    --sidebar-primary: 213 80% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 206 42% 86%;
+    --sidebar-accent-foreground: 213 48% 20%;
+    --sidebar-border: 206 34% 80%;
+    --sidebar-ring: 213 80% 48%;
+    --success: 145 54% 38%;
+    --warning: 38 90% 48%;
+    --info: 192 82% 42%;
+    --teal: 179 56% 38%;
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 213 80% 48%;
+    --avatar-2: 192 82% 42%;
+    --avatar-3: 262 58% 54%;
+    --avatar-4: 341 66% 50%;
+    --avatar-5: 30 88% 50%;
+    --avatar-6: 164 58% 36%;
+    --avatar-7: 145 54% 38%;
+    --avatar-8: 225 70% 54%;
+  }
+
+  .theme-sand {
+    --background: 45 65% 94%;
+    --foreground: 30 30% 18%;
+    --card: 48 65% 98%;
+    --card-foreground: 30 30% 18%;
+    --popover: 48 65% 98%;
+    --popover-foreground: 30 30% 18%;
+    --primary: 33 72% 42%;
+    --primary-foreground: 48 65% 98%;
+    --secondary: 42 44% 88%;
+    --secondary-foreground: 30 30% 18%;
+    --muted: 40 28% 84%;
+    --muted-foreground: 30 16% 40%;
+    --accent: 194 72% 41%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 30% 78%;
+    --input: 40 30% 85%;
+    --ring: 33 72% 42%;
+    --sidebar-background: 42 48% 88%;
+    --sidebar-foreground: 30 18% 34%;
+    --sidebar-primary: 33 72% 42%;
+    --sidebar-primary-foreground: 48 65% 98%;
+    --sidebar-accent: 40 28% 82%;
+    --sidebar-accent-foreground: 30 30% 18%;
+    --sidebar-border: 40 30% 75%;
+    --sidebar-ring: 33 72% 42%;
+    --success: 145 50% 38%;
+    --warning: 37 90% 48%;
+    --info: 194 72% 41%;
+    --teal: 172 52% 38%;
+    --avatar-foreground: 0 0% 100%;
+    --avatar-1: 33 72% 42%;
+    --avatar-2: 194 72% 41%;
+    --avatar-3: 262 56% 52%;
+    --avatar-4: 341 62% 48%;
+    --avatar-5: 24 88% 49%;
+    --avatar-6: 215 68% 50%;
+    --avatar-7: 145 50% 38%;
+    --avatar-8: 286 50% 50%;
   }
 
   .dark {
