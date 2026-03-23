@@ -3,7 +3,9 @@
  * be opened in an iframe for print preview or in a new window for printing.
  * No sidebar or app chrome.
  */
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { THEME_HTML_CLASSES } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { useContact } from "@/hooks/useContact";
 import { useInteractions } from "@/hooks/useInteractions";
@@ -16,6 +18,26 @@ import { X } from "lucide-react";
 export default function ContactPrintPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  /** When opened in an iframe (print preview modal), match parent window’s theme on <html> so CSS variables match what the user sees. */
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    let parentHtml: HTMLElement;
+    try {
+      if (window.parent.location.origin !== window.location.origin) return;
+      parentHtml = window.parent.document.documentElement;
+    } catch {
+      return;
+    }
+    const html = document.documentElement;
+    html.classList.remove(...([...THEME_HTML_CLASSES] as string[]));
+    for (const c of THEME_HTML_CLASSES) {
+      if (parentHtml.classList.contains(c)) html.classList.add(c);
+    }
+    html.classList.remove("density-compact", "density-comfortable");
+    if (parentHtml.classList.contains("density-compact")) html.classList.add("density-compact");
+    else if (parentHtml.classList.contains("density-comfortable")) html.classList.add("density-comfortable");
+  }, []);
   const { data: contact, isLoading, isError } = useContact(id);
   const { data: interactions = [] } = useInteractions(id);
   const { data: allProperties = [] } = useProperties();

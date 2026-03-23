@@ -1,7 +1,8 @@
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 
-const THEME_CLASSES = [
+/** Classes applied to `document.documentElement` for theme (used by print iframe sync). */
+export const THEME_HTML_CLASSES = [
   "dark",
   "light",
   "theme-tomorrow-night-blue",
@@ -136,7 +137,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove(...THEME_CLASSES);
+    root.classList.remove(...([...THEME_HTML_CLASSES] as string[]));
     root.classList.add(themeToClass(theme));
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);

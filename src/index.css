@@ -1513,13 +1513,12 @@ html.density-compact [data-slot="row"] {
 }
 
 /*
- * Contact print — dark CRM document (same family as app UI): purple primary, cyan accent,
- * dark surfaces. Not literal white paper so preview/PDF match the product theme.
+ * Contact print — uses the same theme tokens as the app (html.dark, .light, .theme-*).
+ * Colours come from hsl(var(--primary)), --card, --foreground, etc.
  */
 .contact-print-page {
   min-height: 100vh;
-  /* Same family as app page bg */
-  background: hsl(222 47% 6%);
+  background: hsl(var(--background));
   padding: 0;
 }
 .contact-print-page .print-page-chrome {
@@ -1527,40 +1526,27 @@ html.density-compact [data-slot="row"] {
   top: 0;
   z-index: 10;
   padding: 12px 16px;
-  background: hsl(222 47% 10%);
-  border-bottom: 1px solid hsl(222 20% 18%);
+  background: hsl(var(--popover));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .contact-print-document {
-  /* Dark “paper” to match CRM (not literal white paper — that hid the theme change) */
-  --print-primary: hsl(263 72% 62%);
-  --print-primary-soft: hsl(263 32% 22%);
-  --print-primary-border: hsl(263 28% 38%);
-  --print-accent: #00bcd4;
-  --print-accent-soft: hsl(187 35% 18%);
-  --print-app-surface: hsl(222 47% 10%);
-  --print-fg: hsl(210 40% 96%);
-  --print-muted: hsl(215 16% 68%);
-  --print-border: hsl(222 18% 24%);
-  --print-paper: hsl(222 42% 12%);
-  --print-paper-tint: hsl(222 35% 16%);
-
   font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   max-width: 210mm;
   margin: 0 auto;
   padding: 0;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   font-size: 10.5pt;
   line-height: 1.55;
-  background: var(--print-paper);
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.45);
+  background: hsl(var(--card));
+  box-shadow: 0 4px 32px hsl(0 0% 0% / 0.35);
 }
 
 .contact-print-document .print-letterhead {
   display: flex;
   flex-direction: column;
-  background: var(--print-app-surface);
-  color: hsl(210 40% 98%);
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
 }
 .contact-print-document .print-letterhead-inner {
   padding: 14px 22mm 12px;
@@ -1575,39 +1561,39 @@ html.density-compact [data-slot="row"] {
   font-size: 11pt;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: hsl(210 40% 98%);
+  color: hsl(var(--popover-foreground));
 }
 .contact-print-document .print-letterhead-sub {
   font-size: 8.5pt;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: hsl(215 20% 65%);
+  color: hsl(var(--muted-foreground));
 }
-/* Primary → cyan gradient like app accents (purple + teal) */
+/* Primary → teal (CRM accent bar) */
 .contact-print-document .print-letterhead-accent {
   height: 4px;
-  background: linear-gradient(90deg, var(--print-primary) 0%, var(--print-accent) 100%);
+  background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--teal)) 100%);
 }
 
 .contact-print-document .print-doc-hero {
   padding: 20px 22mm 8px;
-  border-bottom: 1px solid var(--print-border);
-  background: linear-gradient(180deg, var(--print-paper-tint) 0%, var(--print-paper) 100%);
+  border-bottom: 1px solid hsl(var(--border));
+  background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 100%);
 }
 .contact-print-document .print-doc-title {
   font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
   font-size: 26pt;
   font-weight: 600;
   margin: 0 0 6px 0;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
 .contact-print-document .print-doc-subtitle {
   margin: 0 0 12px 0;
   font-size: 9.5pt;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   font-weight: 500;
 }
 .contact-print-document .print-doc-hero-badges {
@@ -1621,15 +1607,15 @@ html.density-compact [data-slot="row"] {
   font-weight: 600;
   padding: 3px 10px;
   border-radius: 999px;
-  border: 1px solid var(--print-primary-border);
-  background: var(--print-primary-soft);
-  color: hsl(263 55% 88%);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary));
+  color: hsl(var(--primary));
   text-transform: capitalize;
 }
 .contact-print-document .print-badge-muted {
-  border-color: var(--print-border);
-  background: hsl(222 28% 16%);
-  color: var(--print-muted);
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
 .contact-print-document .print-doc-body {
@@ -1640,11 +1626,11 @@ html.density-compact [data-slot="row"] {
   page-break-inside: avoid;
   margin-bottom: 18px;
   padding: 16px 18px;
-  border: 1px solid var(--print-border);
-  background: var(--print-paper-tint);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary));
   border-radius: 6px;
-  border-left: 3px solid var(--print-primary);
-  box-shadow: 0 1px 0 hsl(0 0% 100% / 0.04);
+  border-left: 3px solid hsl(var(--primary));
+  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.06);
 }
 .contact-print-document .print-section-title {
   font-family: "DM Sans", system-ui, sans-serif;
@@ -1652,10 +1638,10 @@ html.density-compact [data-slot="row"] {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--print-primary);
+  color: hsl(var(--primary));
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--print-primary-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 .contact-print-document .print-overview {
   display: flex;
@@ -1666,15 +1652,15 @@ html.density-compact [data-slot="row"] {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--print-primary-soft) 0%, var(--print-accent-soft) 100%);
-  color: hsl(263 55% 90%);
+  background: linear-gradient(145deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 100%);
+  color: hsl(var(--primary));
   font-size: 15pt;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2px solid hsl(263 35% 42%);
+  border: 2px solid hsl(var(--border));
 }
 .contact-print-document .print-overview-content {
   flex: 1;
@@ -1698,11 +1684,11 @@ html.density-compact [data-slot="row"] {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
 }
 .contact-print-document .print-dl-row dd {
   margin: 0;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
 }
 .contact-print-document .print-tags {
   display: flex;
@@ -1713,22 +1699,22 @@ html.density-compact [data-slot="row"] {
 .contact-print-document .print-tag {
   font-size: 8.5pt;
   padding: 2px 8px;
-  border: 1px solid hsl(263 28% 38%);
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: var(--print-primary-soft);
-  color: hsl(263 45% 86%);
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
 }
 .contact-print-document .print-address,
 .contact-print-document .print-notes {
   margin: 0;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   white-space: pre-wrap;
   max-width: 65ch;
   line-height: 1.5;
 }
 .contact-print-document .print-muted {
   margin: 0;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   font-size: 10pt;
 }
 .contact-print-document .print-prose {
@@ -1744,14 +1730,14 @@ html.density-compact [data-slot="row"] {
 .contact-print-document .print-row .print-label {
   display: block;
   font-size: 8.5pt;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 2px;
   font-weight: 600;
 }
 .contact-print-document .print-row .print-value {
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   white-space: pre-wrap;
 }
 .contact-print-document .print-two-col {
@@ -1763,7 +1749,7 @@ html.density-compact [data-slot="row"] {
   display: block;
   font-size: 8.5pt;
   font-weight: 600;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 4px;
@@ -1772,12 +1758,12 @@ html.density-compact [data-slot="row"] {
   margin: 0;
   margin-top: 6px;
   padding: 10px 12px;
-  background: var(--print-paper-tint);
-  border: 1px solid var(--print-border);
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
   font-size: 10pt;
   white-space: pre-wrap;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   line-height: 1.55;
 }
 .contact-print-document .print-property-list {
@@ -1790,14 +1776,14 @@ html.density-compact [data-slot="row"] {
 }
 .contact-print-document .print-property-card {
   padding: 12px 14px;
-  border: 1px solid var(--print-border);
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
-  background: var(--print-paper-tint);
-  border-left: 3px solid var(--print-accent);
+  background: hsl(var(--secondary));
+  border-left: 3px solid hsl(var(--teal));
 }
 .contact-print-document .print-property-address {
   font-weight: 600;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   display: block;
   margin-bottom: 6px;
   font-size: 10.5pt;
@@ -1805,7 +1791,7 @@ html.density-compact [data-slot="row"] {
 }
 .contact-print-document .print-property-meta {
   font-size: 9pt;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1813,11 +1799,11 @@ html.density-compact [data-slot="row"] {
 }
 .contact-print-document .print-property-price {
   font-weight: 700;
-  color: #4dd0e1;
+  color: hsl(var(--info));
 }
 .contact-print-document .print-role {
   text-transform: capitalize;
-  color: #26c6da;
+  color: hsl(var(--teal));
   font-weight: 600;
 }
 .contact-print-document .print-activity-list {
@@ -1827,7 +1813,7 @@ html.density-compact [data-slot="row"] {
 }
 .contact-print-document .print-activity-item {
   padding: 10px 0;
-  border-bottom: 1px solid var(--print-primary-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 .contact-print-document .print-activity-item:last-child {
   border-bottom: none;
@@ -1836,41 +1822,41 @@ html.density-compact [data-slot="row"] {
   font-size: 8.5pt;
   font-weight: 600;
   text-transform: capitalize;
-  color: var(--print-primary);
+  color: hsl(var(--primary));
   display: block;
   margin-bottom: 2px;
 }
 .contact-print-document .print-activity-title {
   font-weight: 500;
-  color: var(--print-fg);
+  color: hsl(var(--foreground));
   display: block;
   margin-bottom: 2px;
 }
 .contact-print-document .print-activity-body {
   font-size: 10pt;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   display: block;
   margin-bottom: 4px;
   white-space: pre-wrap;
 }
 .contact-print-document .print-activity-meta {
   font-size: 9pt;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
 }
 .contact-print-document .print-doc-footer {
   margin: 0;
   padding: 14px 22mm 20px;
-  border-top: 1px solid var(--print-border);
+  border-top: 1px solid hsl(var(--border));
   font-size: 8.5pt;
-  color: var(--print-muted);
+  color: hsl(var(--muted-foreground));
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  background: linear-gradient(180deg, var(--print-paper-tint) 0%, hsl(222 42% 9%) 100%);
+  background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--background)) 100%);
 }
 .contact-print-document .print-doc-footer span:first-child {
-  color: var(--print-primary);
+  color: hsl(var(--primary));
   font-weight: 600;
 }
 
@@ -1888,10 +1874,10 @@ html.density-compact [data-slot="row"] {
     line-height: 1.5;
   }
 
-  /* Standalone contact print route: keep dark CRM chrome (not forced white body) */
+  /* Standalone contact print route: match active theme (same vars as app) */
   body:has(.contact-print-document) {
-    background: hsl(222 47% 6%) !important;
-    color: hsl(210 40% 96%) !important;
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
   }
 
   /* Hide app chrome and print-only-hide (e.g. Close button on print page) */
@@ -2123,31 +2109,31 @@ html.density-compact [data-slot="row"] {
     color: #000 !important;
   }
 
-  /* Dedicated contact print — dark CRM document (must match screen; print was forcing white) */
+  /* Dedicated contact print — same theme tokens as screen (inherits from html.*) */
   .contact-print-document {
-    background: hsl(222 42% 12%) !important;
-    color: hsl(210 40% 96%) !important;
+    background: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   .contact-print-page {
     padding: 0 !important;
-    background: hsl(222 47% 6%) !important;
+    background: hsl(var(--background)) !important;
   }
   .contact-print-document .print-doc-hero {
-    background: linear-gradient(180deg, hsl(222 35% 16%) 0%, hsl(222 42% 12%) 100%) !important;
-    border-bottom-color: hsl(222 18% 24%) !important;
+    background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 100%) !important;
+    border-bottom-color: hsl(var(--border)) !important;
   }
   .contact-print-document .print-letterhead {
-    background: hsl(222 47% 10%) !important;
+    background: hsl(var(--popover)) !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   .contact-print-document .print-letterhead-accent {
-    background: linear-gradient(90deg, hsl(263 72% 62%) 0%, #00bcd4 100%) !important;
+    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--teal)) 100%) !important;
   }
   .contact-print-document .print-doc-title {
-    color: hsl(210 40% 98%) !important;
+    color: hsl(var(--foreground)) !important;
     font-family: "Source Serif 4", Georgia, serif !important;
   }
   .contact-print-document .print-doc-subtitle,
@@ -2156,7 +2142,7 @@ html.density-compact [data-slot="row"] {
   .contact-print-document .print-dl-row dt,
   .contact-print-document .print-property-meta,
   .contact-print-document .print-activity-meta {
-    color: hsl(215 16% 68%) !important;
+    color: hsl(var(--muted-foreground)) !important;
   }
   .contact-print-document .print-dl-row dd,
   .contact-print-document .print-address,
@@ -2164,66 +2150,68 @@ html.density-compact [data-slot="row"] {
   .contact-print-document .print-row .print-value,
   .contact-print-document .print-property-address,
   .contact-print-document .print-activity-title {
-    color: hsl(210 40% 96%) !important;
+    color: hsl(var(--foreground)) !important;
   }
   .contact-print-document .print-section {
     break-inside: avoid;
     page-break-inside: avoid;
-    border-color: hsl(222 18% 24%) !important;
-    border-left-color: hsl(263 72% 62%) !important;
-    background: hsl(222 35% 16%) !important;
+    border-color: hsl(var(--border)) !important;
+    border-left-color: hsl(var(--primary)) !important;
+    background: hsl(var(--secondary)) !important;
   }
   .contact-print-document .print-section-title {
-    color: hsl(263 72% 72%) !important;
-    border-bottom-color: hsl(263 28% 38%) !important;
+    color: hsl(var(--primary)) !important;
+    border-bottom-color: hsl(var(--border)) !important;
   }
   .contact-print-document .print-avatar {
-    background: linear-gradient(145deg, hsl(263 32% 22%) 0%, hsl(187 35% 18%) 100%) !important;
-    color: hsl(263 55% 90%) !important;
-    border-color: hsl(263 35% 42%) !important;
+    background: linear-gradient(145deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 100%) !important;
+    color: hsl(var(--primary)) !important;
+    border-color: hsl(var(--border)) !important;
   }
   .contact-print-document .print-badge {
-    background: hsl(263 32% 22%) !important;
-    color: hsl(263 55% 88%) !important;
-    border-color: hsl(263 28% 38%) !important;
+    background: hsl(var(--secondary)) !important;
+    color: hsl(var(--primary)) !important;
+    border-color: hsl(var(--border)) !important;
   }
   .contact-print-document .print-badge-muted {
-    background: hsl(222 28% 16%) !important;
-    color: hsl(215 16% 68%) !important;
-    border-color: hsl(222 18% 24%) !important;
+    background: hsl(var(--muted)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    border-color: hsl(var(--border)) !important;
   }
   .contact-print-document .print-tag {
-    background: hsl(263 32% 22%) !important;
-    color: hsl(263 45% 86%) !important;
-    border-color: hsl(263 28% 38%) !important;
+    background: hsl(var(--secondary)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
   }
   .contact-print-document .print-value-block {
-    background: hsl(222 35% 16%) !important;
-    border-color: hsl(222 18% 24%) !important;
-    color: hsl(210 40% 96%) !important;
+    background: hsl(var(--muted)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
   }
   .contact-print-document .print-property-card {
-    background: hsl(222 35% 16%) !important;
-    border-color: hsl(222 18% 24%) !important;
-    border-left-color: #00bcd4 !important;
+    background: hsl(var(--secondary)) !important;
+    border-color: hsl(var(--border)) !important;
+    border-left-color: hsl(var(--teal)) !important;
   }
-  .contact-print-document .print-property-price,
+  .contact-print-document .print-property-price {
+    color: hsl(var(--info)) !important;
+  }
   .contact-print-document .print-role {
-    color: #4dd0e1 !important;
+    color: hsl(var(--teal)) !important;
   }
   .contact-print-document .print-activity-type {
-    color: hsl(263 72% 72%) !important;
+    color: hsl(var(--primary)) !important;
   }
   .contact-print-document .print-activity-body {
-    color: hsl(215 16% 68%) !important;
+    color: hsl(var(--muted-foreground)) !important;
   }
   .contact-print-document .print-doc-footer {
-    border-top-color: hsl(222 18% 24%) !important;
-    background: linear-gradient(180deg, hsl(222 35% 16%) 0%, hsl(222 42% 9%) 100%) !important;
-    color: hsl(215 16% 68%) !important;
+    border-top-color: hsl(var(--border)) !important;
+    background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--background)) 100%) !important;
+    color: hsl(var(--muted-foreground)) !important;
   }
   .contact-print-document .print-doc-footer span:first-child {
-    color: hsl(263 72% 72%) !important;
+    color: hsl(var(--primary)) !important;
   }
 }
 
