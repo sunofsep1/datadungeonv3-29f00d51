@@ -1,7 +1,5 @@
 /**
- * Print-only layout for a contact. Renders a clean, professional document
- * with consistent spacing and no interactive elements. Used in print preview
- * and when printing from /contacts/:id/print.
+ * Print-only layout for a contact. Professional document styling for PDF / physical print.
  */
 import { format } from "date-fns";
 import {
@@ -15,6 +13,7 @@ import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { formatPropertyAddress } from "@/hooks/useProperties";
 import type { Interaction } from "@/hooks/useInteractions";
 import { getInitials } from "@/lib/utils";
+import { formatAddressForPrint } from "@/lib/formatPrintAddress";
 
 export type LinkedPropertyForPrint = {
   id: string;
@@ -65,7 +64,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="print-row">
       <span className="print-label">{label}</span>
-      <span className="print-value">{value}</span>
+      <span className="print-value print-prose-inline">{value}</span>
     </div>
   );
 }
@@ -83,58 +82,69 @@ export function ContactPrintLayout({
   const emails = getAllEmails(contact).flatMap((e) =>
     e.value.split(/[;,]/).map((part) => part.trim()).filter(Boolean)
   );
-  const address = contact.address_line1 || contact.city ? formatContactAddress(contact) : null;
+  const rawAddress = contact.address_line1 || contact.city ? formatContactAddress(contact) : null;
+  const addressLine = rawAddress && rawAddress !== "—" ? formatAddressForPrint(rawAddress) : null;
   const tags = getTagNames(contact);
+  const category = (contact as { category?: string | null }).category?.trim();
 
   return (
     <div className="contact-print-document">
-      <header className="print-doc-header">
-        <div className="print-doc-brand">Data Dungeon</div>
+      <div className="print-letterhead" aria-hidden>
+        <div className="print-letterhead-inner">
+          <div className="print-letterhead-text">
+            <span className="print-letterhead-brand">Data Dungeon</span>
+            <span className="print-letterhead-sub">CRM · Contact record</span>
+          </div>
+        </div>
+        <div className="print-letterhead-accent" />
+      </div>
+
+      <header className="print-doc-hero">
         <h1 className="print-doc-title">{contact.name ?? "Contact"}</h1>
-        <div className="print-doc-meta">
-          <span>Contact summary</span>
-          <span>Printed {printedAt}</span>
+        <p className="print-doc-subtitle">Prepared {printedAt}</p>
+        <div className="print-doc-hero-badges">
+          {contact.status && <span className="print-badge">{contact.status}</span>}
+          {category && <span className="print-badge print-badge-muted">{category}</span>}
         </div>
       </header>
 
       <div className="print-doc-body">
-        {/* Overview */}
         <Section title="Overview">
           <div className="print-overview">
-            <div className="print-avatar">
+            <div className="print-avatar" aria-hidden>
               {getInitials(undefined, undefined, contact.name ?? "")}
             </div>
             <div className="print-overview-content">
-              <div className="print-name-row">
-                <span className="print-name">{contact.name ?? "—"}</span>
-                {contact.status && (
-                  <span className="print-badge">{contact.status}</span>
+              <dl className="print-dl">
+                {phones.length > 0 && (
+                  <div className="print-dl-row">
+                    <dt>Phone</dt>
+                    <dd>
+                      {phones.map((num, i) => (
+                        <span key={i}>{formatPhoneDisplay(num)}
+                          {i < phones.length - 1 ? " · " : ""}
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
                 )}
-              </div>
-              {phones.length > 0 && (
-                <div className="print-chunk">
-                  <span className="print-label-inline">Phone</span>
-                  {phones.map((num, i) => (
-                    <span key={i} className="print-value-inline">
-                      {formatPhoneDisplay(num)}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {emails.length > 0 && (
-                <div className="print-chunk">
-                  <span className="print-label-inline">Email</span>
-                  {emails.map((addr, i) => (
-                    <span key={i} className="print-value-inline">{addr}</span>
-                  ))}
-                </div>
-              )}
-              {contact.source && (
-                <div className="print-chunk">
-                  <span className="print-label-inline">Source</span>
-                  <span className="print-value-inline">{contact.source}</span>
-                </div>
-              )}
+                {emails.length > 0 && (
+                  <div className="print-dl-row">
+                    <dt>Email</dt>
+                    <dd>
+                      {emails.map((addr, i) => (
+                        <span key={i}>{addr}{i < emails.length - 1 ? " · " : ""}</span>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+                {contact.source && (
+                  <div className="print-dl-row">
+                    <dt>Source</dt>
+                    <dd>{contact.source}</dd>
+                  </div>
+                )}
+              </dl>
               {tags.length > 0 && (
                 <div className="print-tags">
                   {tags.map((t) => (
@@ -146,23 +156,20 @@ export function ContactPrintLayout({
           </div>
         </Section>
 
-        {/* Contact information (address) */}
-        <Section title="Contact information">
-          {address ? (
-            <p className="print-address">{address}</p>
-          ) : (
-            <p className="print-muted">No address</p>
-          )}
-        </Section>
+        {addressLine && (
+          <Section title="Contact information">
+            <p className="print-address">{addressLine}</p>
+          </Section>
+        )}
 
-        {/* Linked properties */}
         <Section title="Linked properties">
           {linkedProperties.length > 0 ? (
             <ul className="print-property-list">
               {linkedProperties.map((link) => {
-                const addr = formatPropertyAddress(link.property as any);
+                const addrRaw = formatPropertyAddress(link.property as any);
+                const addr = formatAddressForPrint(addrRaw);
                 return (
-                  <li key={link.id} className="print-property-item">
+                  <li key={link.id} className="print-property-card">
                     <span className="print-property-address">{addr}</span>
                     <div className="print-property-meta">
                       {link.property.property_type && (
@@ -170,7 +177,7 @@ export function ContactPrintLayout({
                       )}
                       {(link.property.bedrooms != null || link.property.bathrooms != null) && (
                         <span>
-                          {[link.property.bedrooms != null && `${link.property.bedrooms} bed`, link.property.bathrooms != null && `${link.property.bathrooms} bath`].filter(Boolean).join(", ")}
+                          {[link.property.bedrooms != null && `${link.property.bedrooms} bed`, link.property.bathrooms != null && `${link.property.bathrooms} bath`].filter(Boolean).join(" · ")}
                         </span>
                       )}
                       {link.property.price != null && link.property.price > 0 && (
@@ -185,40 +192,38 @@ export function ContactPrintLayout({
               })}
             </ul>
           ) : (
-            <p className="print-muted">No properties linked</p>
+            <p className="print-muted">No properties linked.</p>
           )}
         </Section>
 
-        {/* Story & intent */}
         <Section title="Story & intent">
-          <Row label="Story" value={contact.story} />
-          <Row label="Pipeline stage" value={contact.pipeline_stage} />
-          <Row label="Selling intentions" value={contact.selling_intentions} />
-          <Row label="Current situation" value={contact.current_situation_notes} />
+          <div className="print-prose">
+            <Row label="Story" value={contact.story} />
+            <Row label="Pipeline stage" value={contact.pipeline_stage} />
+            <Row label="Selling intentions" value={contact.selling_intentions} />
+            <Row label="Current situation" value={contact.current_situation_notes} />
+          </div>
         </Section>
 
-        {/* Pain & pleasure */}
         <Section title="Pain & pleasure points">
           <div className="print-two-col">
             <div>
               <span className="print-label">Pain points</span>
-              <p className="print-value-block">{contact.pain_points || "—"}</p>
+              <p className="print-value-block">{contact.pain_points?.trim() ? contact.pain_points : "—"}</p>
             </div>
             <div>
               <span className="print-label">Pleasure points</span>
-              <p className="print-value-block">{contact.pleasure_points || "—"}</p>
+              <p className="print-value-block">{contact.pleasure_points?.trim() ? contact.pleasure_points : "—"}</p>
             </div>
           </div>
         </Section>
 
-        {/* Notes */}
         {contact.notes && (
           <Section title="Notes">
-            <p className="print-notes">{contact.notes}</p>
+            <p className="print-notes print-prose-inline">{contact.notes}</p>
           </Section>
         )}
 
-        {/* Activity timeline */}
         <Section title="Activity timeline">
           <div className="print-activity-list">
             {contactAppointments.map((apt) => (
@@ -243,7 +248,7 @@ export function ContactPrintLayout({
               </div>
             ))}
             {interactions.length === 0 && contactAppointments.length === 0 && (
-              <p className="print-muted">No activity yet</p>
+              <p className="print-muted">No activity recorded.</p>
             )}
           </div>
         </Section>
@@ -251,7 +256,7 @@ export function ContactPrintLayout({
 
       <footer className="print-doc-footer">
         <span>Data Dungeon CRM · {contact.name ?? "Contact"}</span>
-        <span>Confidential</span>
+        <span>Confidential · Generated {printedAt}</span>
       </footer>
     </div>
   );

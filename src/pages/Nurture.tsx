@@ -271,117 +271,126 @@ export default function Nurture() {
   };
 
   return (
-    <div className="animate-fade-in min-h-[60vh] max-w-4xl">
+    <div className="animate-fade-in min-h-[60vh] max-w-7xl">
       <PageHeader
         title="Nurture"
-        description="Live pipeline below shows who is enrolled and what runs next (same data as the dashboard widget). Build sequence templates here, enroll from each contact’s Nurture & tasks section, and open a contact from the list to work the next step."
+        description="Live pipeline on the left; starter templates and new sequence in the middle; your sequence list on the far right. Enroll from each contact’s Nurture & tasks section."
       />
 
-      <div className="mt-6 space-y-6">
-        <NurtureLiveEnrollments variant="page" />
-
-        <Card className="zoho-card p-6 border-border border-dashed bg-muted/20">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15">
-                <GitBranch className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-foreground">Starter sequences</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Ready-made templates: core seller, buyer, and past-client journeys, plus five seller and five buyer paths (appraisal, listing
-                  campaign, contract, long nurture, first-home search, offers, settlement, and more). Tasks are created on schedule after you enroll a
-                  contact. Skips names you already have.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="shrink-0"
-              onClick={() => void handleImportStarterSequences()}
-              disabled={createSeq.isPending || seqLoading}
-            >
-              {createSeq.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Import starter sequences
-            </Button>
-          </div>
-        </Card>
-
-        <Card className="zoho-card p-6 border-border">
-          <h2 className="font-semibold text-foreground mb-4">New sequence</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Steps run on a schedule from the enrollment date. Task and prompt steps create contact tasks; email steps send via Resend when the runner
-            executes (contact must have an email).
-          </p>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input className="bg-input" value={seqName} onChange={(e) => setSeqName(e.target.value)} placeholder="e.g. Long-term nurture" />
-            </div>
-            <div className="space-y-2">
-              <Label>Description (optional)</Label>
-              <Textarea className="bg-input min-h-[60px]" value={seqDesc} onChange={(e) => setSeqDesc(e.target.value)} />
-            </div>
-            <SequenceStepsFields steps={seqSteps} setSteps={setSeqSteps} />
-            <Button onClick={handleCreateSequence} disabled={createSeq.isPending}>
-              {createSeq.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save sequence
-            </Button>
-          </div>
-        </Card>
-
-        <div>
-          <h2 className="font-semibold text-foreground mb-3">Your sequences</h2>
-          {seqLoading ? (
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          ) : sequences.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sequences yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {sequences.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {s.steps?.length ?? 0} steps · {s.is_active ? "Active" : "Inactive"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground"
-                      title="Edit sequence"
-                      onClick={() => openEdit(s)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
-                      title="Delete sequence"
-                      onClick={() =>
-                        deleteSeq.mutate(s.id, {
-                          onSuccess: () => toast.success("Deleted"),
-                          onError: (e) => toast.error(errorMessageFromUnknown(e)),
-                        })
-                      }
-                      disabled={deleteSeq.isPending}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-5 xl:gap-6">
+        {/* Left: live pipeline */}
+        <div className="min-w-0 flex-1 lg:min-w-0">
+          <NurtureLiveEnrollments variant="page" />
         </div>
+
+        {/* Middle: starter + new sequence */}
+        <aside className="w-full min-w-0 shrink-0 space-y-6 lg:sticky lg:top-24 lg:w-[min(100%,24rem)] xl:w-[26rem]">
+          <Card className="zoho-card border-border border-dashed bg-muted/20 p-5 sm:p-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15">
+                  <GitBranch className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-foreground">Starter sequences</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Ready-made templates: core seller, buyer, and past-client journeys, plus five seller and five buyer paths (appraisal, listing
+                    campaign, contract, long nurture, first-home search, offers, settlement, and more). Tasks are created on schedule after you enroll a
+                    contact. Skips names you already have.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full sm:w-auto shrink-0 self-start"
+                onClick={() => void handleImportStarterSequences()}
+                disabled={createSeq.isPending || seqLoading}
+              >
+                {createSeq.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Import starter sequences
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="zoho-card border-border p-5 sm:p-6">
+            <h2 className="font-semibold text-foreground mb-3">New sequence</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Steps run on a schedule from the enrollment date. Task and prompt steps create contact tasks; email steps send via Resend when the runner
+              executes (contact must have an email).
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input className="bg-input" value={seqName} onChange={(e) => setSeqName(e.target.value)} placeholder="e.g. Long-term nurture" />
+              </div>
+              <div className="space-y-2">
+                <Label>Description (optional)</Label>
+                <Textarea className="bg-input min-h-[60px]" value={seqDesc} onChange={(e) => setSeqDesc(e.target.value)} />
+              </div>
+              <SequenceStepsFields steps={seqSteps} setSteps={setSeqSteps} />
+              <Button onClick={handleCreateSequence} disabled={createSeq.isPending} className="w-full sm:w-auto">
+                {createSeq.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save sequence
+              </Button>
+            </div>
+          </Card>
+        </aside>
+
+        {/* Far right: your sequences list */}
+        <aside className="w-full min-w-0 shrink-0 lg:sticky lg:top-24 lg:w-[min(100%,17.5rem)] xl:w-80">
+          <Card className="zoho-card border-border p-5 sm:p-6">
+            <h2 className="font-semibold text-foreground mb-3">Your sequences</h2>
+            {seqLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            ) : sequences.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No sequences yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {sequences.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-2 sm:px-3 sm:py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate text-sm">{s.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {s.steps?.length ?? 0} steps · {s.is_active ? "Active" : "Inactive"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        title="Edit sequence"
+                        onClick={() => openEdit(s)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        title="Delete sequence"
+                        onClick={() =>
+                          deleteSeq.mutate(s.id, {
+                            onSuccess: () => toast.success("Deleted"),
+                            onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                          })
+                        }
+                        disabled={deleteSeq.isPending}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </aside>
       </div>
 
       <Sheet
