@@ -44,6 +44,24 @@ export function useAppointments() {
   });
 }
 
+export function useAppointmentsByContact(contactId?: string | null, limit = 100) {
+  return useQuery({
+    queryKey: ["appointments", "contact", contactId ?? "", limit],
+    queryFn: async () => {
+      if (!contactId) return [] as Appointment[];
+      const { data, error } = await (supabase as any)
+        .from("appointments")
+        .select("*")
+        .eq("contact_id", contactId)
+        .order("date", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return data as Appointment[];
+    },
+    enabled: Boolean(contactId),
+  });
+}
+
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
   

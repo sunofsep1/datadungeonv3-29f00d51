@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   useNurtureSequencesList,
+  useCompletedNurtureEnrollments,
   useCreateNurtureSequence,
   useUpdateNurtureSequence,
   useDeleteNurtureSequence,
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 import { STARTER_NURTURE_SEQUENCES } from "@/lib/starterNurtureSequences";
 import { errorMessageFromUnknown } from "@/lib/utils";
 import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
+import { format } from "date-fns";
 
 type SequenceStepDraft = {
   offset_days: number;
@@ -152,6 +154,7 @@ function SequenceStepsFields({
 export default function Nurture() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: sequences = [], isLoading: seqLoading } = useNurtureSequencesList();
+  const { data: completedEnrollments = [], isLoading: completedLoading } = useCompletedNurtureEnrollments(30);
   const createSeq = useCreateNurtureSequence();
   const updateSeq = useUpdateNurtureSequence();
   const deleteSeq = useDeleteNurtureSequence();
@@ -166,6 +169,7 @@ export default function Nurture() {
   const [editDesc, setEditDesc] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editSteps, setEditSteps] = useState<SequenceStepDraft[]>([emptyStep()]);
+  const [sequenceSearch, setSequenceSearch] = useState("");
 
   const openEdit = useCallback((seq: (typeof sequences)[number]) => {
     setEditingId(seq.id);
@@ -270,11 +274,15 @@ export default function Nurture() {
     );
   };
 
+  const filteredSequences = sequences.filter((s) =>
+    s.name.toLowerCase().includes(sequenceSearch.trim().toLowerCase())
+  );
+
   return (
     <div className="animate-fade-in min-h-[60vh] max-w-7xl">
       <PageHeader
         title="Nurture"
-        description="Live pipeline on the left; starter templates and new sequence in the middle; your sequence list on the far right. Enroll from each contact’s Nurture & tasks section."
+        description="Compact pipeline and sequence control."
       />
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-5 xl:gap-6">
@@ -293,11 +301,7 @@ export default function Nurture() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="font-semibold text-foreground">Starter sequences</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Ready-made templates: core seller, buyer, and past-client journeys, plus five seller and five buyer paths (appraisal, listing
-                    campaign, contract, long nurture, first-home search, offers, settlement, and more). Tasks are created on schedule after you enroll a
-                    contact. Skips names you already have.
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">Import templates</p>
                 </div>
               </div>
               <Button
@@ -315,10 +319,6 @@ export default function Nurture() {
 
           <Card className="zoho-card border-border p-5 sm:p-6">
             <h2 className="font-semibold text-foreground mb-3">New sequence</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Steps run on a schedule from the enrollment date. Task and prompt steps create contact tasks; email steps send via Resend when the runner
-              executes (contact must have an email).
-            </p>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Name</Label>
@@ -339,15 +339,21 @@ export default function Nurture() {
 
         {/* Far right: your sequences list */}
         <aside className="w-full min-w-0 shrink-0 lg:sticky lg:top-24 lg:w-[min(100%,17.5rem)] xl:w-80">
-          <Card className="zoho-card border-border p-5 sm:p-6">
+          <Card className="zoho-card border-border p-5 sm:p-6 mb-4">
             <h2 className="font-semibold text-foreground mb-3">Your sequences</h2>
+            <Input
+              className="bg-input mb-3"
+              placeholder="Filter sequences..."
+              value={sequenceSearch}
+              onChange={(e) => setSequenceSearch(e.target.value)}
+            />
             {seqLoading ? (
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            ) : sequences.length === 0 ? (
+            ) : filteredSequences.length === 0 ? (
               <p className="text-sm text-muted-foreground">No sequences yet.</p>
             ) : (
               <ul className="space-y-2">
-                {sequences.map((s) => (
+                {filteredSequences.map((s) => (
                   <li
                     key={s.id}
                     className="flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-2 sm:px-3 sm:py-2.5"
@@ -385,6 +391,26 @@ export default function Nurture() {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card className="zoho-card border-border p-5 sm:p-6">
+            <h2 className="font-semibold text-foreground mb-3">Completed</h2>
+            {completedLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            ) : completedEnrollments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No completed enrollments.</p>
+            ) : (
+              <ul className="space-y-2 max-h-72 overflow-auto">
+                {completedEnrollments.map((row) => (
+                  <li key={row.id} className="rounded-md border border-border px-2.5 py-2">
+                    <p className="text-sm font-medium truncate">{row.contact_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{row.sequence_name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {row.completed_at ? format(new Date(row.completed_at), "d MMM yyyy, h:mm a") : ""}
+                    </p>
                   </li>
                 ))}
               </ul>

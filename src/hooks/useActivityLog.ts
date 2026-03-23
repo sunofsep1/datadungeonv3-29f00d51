@@ -25,9 +25,10 @@ export function useActivityLog(filters: {
   contactId?: string | null;
   propertyId?: string | null;
   listingId?: string | null;
+  limit?: number;
 }) {
-  const { contactId, propertyId, listingId } = filters;
-  const queryKey = ["activity_log", contactId ?? "", propertyId ?? "", listingId ?? ""];
+  const { contactId, propertyId, listingId, limit } = filters;
+  const queryKey = ["activity_log", contactId ?? "", propertyId ?? "", listingId ?? "", limit ?? "all"];
 
   // Note: realtime subscription disabled until types regenerate
   // useRealtimeSubscription("activity_log", [queryKey]);
@@ -45,6 +46,7 @@ export function useActivityLog(filters: {
       if (contactId) q = q.eq("contact_id", contactId);
       if (propertyId) q = q.eq("property_id", propertyId);
       if (listingId) q = q.eq("listing_id", listingId);
+      if (limit && limit > 0) q = q.limit(limit);
 
       const { data, error } = await q;
       if (error) throw error;
@@ -55,7 +57,7 @@ export function useActivityLog(filters: {
 }
 
 export function useActivityLogByContact(contactId: string | null | undefined) {
-  return useActivityLog({ contactId });
+  return useActivityLog({ contactId, limit: 120 });
 }
 
 export function useActivityLogByProperty(propertyId: string | null | undefined) {

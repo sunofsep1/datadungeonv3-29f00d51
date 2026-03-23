@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { isFeatureEnabled } from "@/lib/featureFlags";
 import {
   useActiveNurtureEnrollments,
   type ActiveNurtureEnrollmentItem,
@@ -64,6 +65,7 @@ export type NurtureLiveEnrollmentsProps = {
 };
 
 export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps) {
+  const compactNurtureV2 = isFeatureEnabled("compactNurtureV2");
   const navigate = useNavigate();
   const {
     data: nurtureDash,
@@ -81,8 +83,26 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
     dueSoon24h: 0,
   };
 
-  const maxRows = variant === "dashboard" ? 12 : 500;
-  const { rows: top, dueCount, total: sequenceRowTotal } = useEnrichedPipeline(items, maxRows);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "due" | "paused">("all");
+  const [rowsLimit, setRowsLimit] = useState(variant === "dashboard" ? 12 : 40);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((row) => {
+      const now = Date.now();
+      const nextAt = row.next_step_at ? new Date(row.next_step_at).getTime() : Number.MAX_SAFE_INTEGER;
+      const due = nextAt <= now;
+      if (statusFilter === "due" && !due) return false;
+      if (statusFilter === "paused" && !row.pause_followup_cadence) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        if (!row.contactName.toLowerCase().includes(q) && !row.sequenceName.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [items, search, statusFilter]);
+
+  const { rows: top, dueCount, total: sequenceRowTotal } = useEnrichedPipeline(filteredItems, rowsLimit);
 
   const showManageLink = variant === "dashboard";
   const contactsHint = (
@@ -117,16 +137,7 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
               </Badge>
             )}
           </h3>
-          {dash ? (
-            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xl leading-snug">
-              Enrollments and next step times · Open {contactsHint} to work tasks.
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-1 max-w-xl">
-              Who is enrolled, the next step, and when it runs — same data as the dashboard widget. Use {contactsHint} to
-              open a contact and work tasks or enrollment.
-            </p>
-          )}
+          {!dash ? <p className="text-xs text-muted-foreground mt-1 max-w-xl">Open {contactsHint} to work steps.</p> : null}
           {dataUpdatedAt > 0 && (
             <p className="text-[10px] text-muted-foreground/80 mt-0.5">
               Updated {format(new Date(dataUpdatedAt), "d MMM, h:mm a")}
@@ -158,6 +169,22 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
         </div>
       </div>
 
+      {!dash && compactNurtureV2 ? (
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            className="h-8 rounded-md border border-border bg-input px-2 text-sm"
+            placeholder="Search contact or sequence..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")}>All</Button>
+            <Button size="sm" variant={statusFilter === "due" ? "default" : "outline"} onClick={() => setStatusFilter("due")}>Due</Button>
+            <Button size="sm" variant={statusFilter === "paused" ? "default" : "outline"} onClick={() => setStatusFilter("paused")}>Paused</Button>
+          </div>
+        </div>
+      ) : null}
+
       {!loading && sequenceSummary.activeTotal > 0 && (
         <div className={cn("grid grid-cols-2 sm:grid-cols-4", dash ? "gap-1.5 mb-2" : "gap-2 mb-4")}>
           <div className={cn("rounded-md border border-border bg-background/60 text-center", dash ? "px-2 py-1.5" : "rounded-lg px-3 py-2")}>
@@ -181,15 +208,11 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
         </div>
       )}
 
-      {dueCount > 0 && !loading && (
-        <p className={cn("text-amber-800 dark:text-amber-300/95 flex items-start gap-1.5 rounded-md border border-amber-500/25 bg-amber-500/10", dash ? "text-[11px] mb-2 px-2 py-1.5" : "text-xs mb-3 px-2.5 py-2")}>
-          <Bell className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          <span>
-            Scheduled step time has passed for {dueCount} contact{dueCount === 1 ? "" : "s"} — open them for tasks, or
-            the hourly automation will send email steps when configured.
-          </span>
+      {dueCount > 0 && !loading ? (
+        <p className={cn("text-amber-800 dark:text-amber-300/95 rounded-md border border-amber-500/25 bg-amber-500/10", dash ? "text-[11px] mb-2 px-2 py-1.5" : "text-xs mb-3 px-2.5 py-2")}>
+          {dueCount} due now
         </p>
-      )}
+      ) : null}
 
       {loading ? (
         <div className={dash ? "space-y-1.5" : "space-y-2"}>
@@ -198,10 +221,7 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
           ))}
         </div>
       ) : top.length === 0 ? (
-        <p className={cn("text-muted-foreground", dash ? "text-xs" : "text-sm")}>
-          No contacts enrolled in a nurture sequence. Enroll from a contact&apos;s{" "}
-          <span className="text-foreground">Nurture &amp; tasks</span> section.
-        </p>
+        <p className={cn("text-muted-foreground", dash ? "text-xs" : "text-sm")}>No active enrollments.</p>
       ) : (
         <>
           <div
@@ -295,17 +315,16 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
           </div>
           {sequenceRowTotal > top.length && (
             <p className={cn("text-muted-foreground text-center", dash ? "text-[11px] mt-2" : "text-xs mt-3")}>
-              Showing {top.length} of {sequenceRowTotal} enrollments ·{" "}
-              <button
-                type="button"
-                className="text-primary underline underline-offset-2 font-medium"
-                onClick={() => navigate("/contacts")}
-              >
-                Open Contacts
-              </button>{" "}
-              to search your full database.
+              Showing {top.length} of {sequenceRowTotal} enrollments
             </p>
           )}
+          {!dash && compactNurtureV2 && top.length < sequenceRowTotal ? (
+            <div className="mt-2 text-center">
+              <Button size="sm" variant="outline" onClick={() => setRowsLimit((n) => n + 40)}>
+                Load more
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
     </Card>

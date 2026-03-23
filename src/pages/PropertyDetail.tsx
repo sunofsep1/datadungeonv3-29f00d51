@@ -43,6 +43,7 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Input } from "@/components/ui/input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { format } from "date-fns";
 import { useProperty, useUpdateProperty, useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import { useContacts } from "@/hooks/useContacts";
@@ -1402,11 +1403,21 @@ export default function PropertyDetail() {
           <div className="grid gap-4 mt-4">
             <div className="grid gap-2">
               <Label>Address line 1</Label>
-              <Input
+              <AddressAutocomplete
                 className="bg-input"
                 value={editForm.address_line1}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, address_line1: e.target.value }))
+                onChange={(value) =>
+                  setEditForm((f) => ({ ...f, address_line1: value }))
+                }
+                onPlaceSelected={(parts) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    address_line1: parts.address_line1 || f.address_line1,
+                    city: parts.city || f.city,
+                    state: parts.state || f.state,
+                    postcode: parts.postcode || f.postcode,
+                    country: parts.country || f.country || "Australia",
+                  }))
                 }
                 placeholder="Street address"
               />

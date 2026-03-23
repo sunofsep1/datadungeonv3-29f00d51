@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,11 +35,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
 import { useContacts, useUpdateContact, getPrimaryEmail, getPrimaryPhone, getAllEmails, getAllPhones, getTagNames, formatContactAddress } from "@/hooks/useContacts";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
-import { useProperties, formatPropertyAddress, useCreateProperty } from "@/hooks/useProperties";
+import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import {
   useCreateContactPropertyLink,
   useDeleteContactPropertyLink,
 } from "@/hooks/useContactPropertyLinks";
+import { useCreatePropertyFromContactAddress } from "@/hooks/useCreatePropertyFromContactAddress";
 import { getInitials } from "@/lib/utils";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
@@ -90,7 +92,7 @@ export default function ContactDetail() {
   const deleteInteraction = useDeleteInteraction();
   const createLink = useCreateContactPropertyLink();
   const deleteLink = useDeleteContactPropertyLink();
-  const createProperty = useCreateProperty();
+  const createFromAddress = useCreatePropertyFromContactAddress();
 
   const [isEditing, setIsEditing] = useState(false);
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
@@ -281,15 +283,18 @@ export default function ContactDetail() {
       return;
     }
     try {
-      const property = await createProperty.mutateAsync({
-        address_line1: contact.address_line1 || null,
-        address_line2: contact.address_line2 || null,
-        city: contact.city || null,
-        state: contact.state || null,
-        postcode: contact.postcode || null,
-        country: contact.country || "Australia",
+      await createFromAddress.createAndLink({
+        contact_id: id,
+        address: {
+          address_line1: contact.address_line1 || null,
+          address_line2: contact.address_line2 || null,
+          city: contact.city || null,
+          state: contact.state || null,
+          postcode: contact.postcode || null,
+          country: contact.country || "Australia",
+        },
+        role: "owner",
       });
-      await createLink.mutateAsync({ contact_id: id, property_id: property.id, role: "owner" });
       toast({ title: "Success", description: "Property created and linked as owner." });
     } catch (e: unknown) {
       toast({
@@ -867,11 +872,21 @@ export default function ContactDetail() {
             </div>
             <div className="col-span-2 space-y-2">
               <Label>Address Line 1</Label>
-              <Input
+              <AddressAutocomplete
                 className="bg-input"
                 placeholder="Street address"
                 value={editFormData.address_line1 || ""}
-                onChange={(e) => setEditFormData({ ...editFormData, address_line1: e.target.value })}
+                onChange={(value) => setEditFormData({ ...editFormData, address_line1: value })}
+                onPlaceSelected={(parts) =>
+                  setEditFormData((prev: any) => ({
+                    ...prev,
+                    address_line1: parts.address_line1 || prev.address_line1 || "",
+                    city: parts.city || prev.city || "",
+                    state: parts.state || prev.state || "",
+                    postcode: parts.postcode || prev.postcode || "",
+                    country: parts.country || prev.country || "Australia",
+                  }))
+                }
               />
             </div>
             <div className="col-span-2 space-y-2">

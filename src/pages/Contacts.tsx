@@ -66,8 +66,8 @@ import {
 } from "@/hooks/useContacts";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag, useRemoveContactTag } from "@/hooks/useContactTags";
-import { useCreateProperty } from "@/hooks/useProperties";
-import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { useCreatePropertyFromContactAddress } from "@/hooks/useCreatePropertyFromContactAddress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { getInitials, cn, formatContactSaveError } from "@/lib/utils";
@@ -239,8 +239,7 @@ export default function Contacts() {
   const createTag = useCreateTag();
   const addContactTag = useAddContactTag();
   const removeContactTag = useRemoveContactTag();
-  const createProperty = useCreateProperty();
-  const createPropertyLink = useCreateContactPropertyLink();
+  const createFromAddress = useCreatePropertyFromContactAddress();
 
   const initialPrefs = useMemo(() => loadContactsListPrefs(), []);
 
@@ -618,17 +617,16 @@ export default function Contacts() {
       const hasAddress = Boolean(formData.address_line1?.trim());
       if (hasAddress && contactId) {
         try {
-          const newProperty = await createProperty.mutateAsync({
-            address_line1: formData.address_line1?.trim() || null,
-            address_line2: formData.address_line2?.trim() || null,
-            city: formData.city?.trim() || null,
-            state: formData.state || null,
-            postcode: formData.postcode?.trim() || null,
-            country: formData.country || "Australia",
-          });
-          await createPropertyLink.mutateAsync({
+          await createFromAddress.createAndLink({
             contact_id: contactId,
-            property_id: newProperty.id,
+            address: {
+              address_line1: formData.address_line1?.trim() || null,
+              address_line2: formData.address_line2?.trim() || null,
+              city: formData.city?.trim() || null,
+              state: formData.state || null,
+              postcode: formData.postcode?.trim() || null,
+              country: formData.country || "Australia",
+            },
             role: "owner",
             notes: "Added from contact address",
           });
@@ -1060,11 +1058,21 @@ export default function Contacts() {
                       <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Address Line 1</Label>
-                        <Input
+                        <AddressAutocomplete
                           placeholder="Street address"
                           className="bg-input"
                           value={formData.address_line1}
-                          onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                          onChange={(value) => setFormData({ ...formData, address_line1: value })}
+                          onPlaceSelected={(parts) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              address_line1: parts.address_line1 || prev.address_line1,
+                              city: parts.city || prev.city,
+                              state: parts.state || prev.state,
+                              postcode: parts.postcode || prev.postcode,
+                              country: parts.country || prev.country || "Australia",
+                            }))
+                          }
                         />
                       </div>
                       <div className="space-y-2">

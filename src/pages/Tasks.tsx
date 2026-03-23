@@ -9,6 +9,7 @@ import { Calendar, ListTodo } from "lucide-react";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useContacts } from "@/hooks/useContacts";
 import { useOpenContactTasksForUser, useUpdateContactTask } from "@/hooks/useContactTasks";
+import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
 import { format, isPast, isToday } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -19,7 +20,20 @@ export default function Tasks() {
   const { data: contacts = [] } = useContacts();
   const { data: contactTasks = [], isLoading: ctLoading } = useOpenContactTasksForUser();
   const updateContactTask = useUpdateContactTask();
+  const completeStep = useCompleteNurtureStepAndAdvance();
   const [filter, setFilter] = useState<"all" | "today" | "upcoming">("all");
+  const sequenceTaskIds = useMemo(
+    () => contactTasks.filter((t) => t.sequence_enrollment_id).map((t) => t.id),
+    [contactTasks]
+  );
+  const { data: pendingRuns = [] } = usePendingStepRunsByTaskIds(sequenceTaskIds);
+  const pendingRunByTaskId = useMemo(() => {
+    const map = new Map<string, (typeof pendingRuns)[number]>();
+    pendingRuns.forEach((r) => {
+      if (r.task_id) map.set(r.task_id, r);
+    });
+    return map;
+  }, [pendingRuns]);
 
   const contactNameById = useMemo(() => new Map(contacts.map((c) => [c.id, c.name ?? "Contact"])), [contacts]);
 
@@ -181,6 +195,22 @@ export default function Tasks() {
                         checked={false}
                         onCheckedChange={(v) => {
                           if (v === true) {
+                            const run = pendingRunByTaskId.get(t.id);
+                            if (t.sequence_enrollment_id && run) {
+                              completeStep.mutate(
+                                {
+                                  enrollment_id: t.sequence_enrollment_id,
+                                  step_run_id: run.id,
+                                  contact_id: t.contact_id,
+                                  outcome: "completed",
+                                },
+                                {
+                                  onSuccess: () => toast.success("Step completed. Next step scheduled."),
+                                  onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+                                }
+                              );
+                              return;
+                            }
                             updateContactTask.mutate(
                               {
                                 id: t.id,
@@ -209,6 +239,30 @@ export default function Tasks() {
                           </p>
                         </button>
                       </div>
+                      {t.sequence_enrollment_id && pendingRunByTaskId.get(t.id) ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            const run = pendingRunByTaskId.get(t.id);
+                            if (!run || !t.sequence_enrollment_id) return;
+                            completeStep.mutate(
+                              {
+                                enrollment_id: t.sequence_enrollment_id,
+                                step_run_id: run.id,
+                                contact_id: t.contact_id,
+                                outcome: "completed",
+                              },
+                              {
+                                onSuccess: () => toast.success("Step completed. Next step scheduled."),
+                                onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+                              }
+                            );
+                          }}
+                        >
+                          Complete & next
+                        </Button>
+                      ) : null}
                     </div>
                   </Card>
                 );

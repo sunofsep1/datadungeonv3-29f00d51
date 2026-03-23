@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -135,11 +136,21 @@ export function EditAddressModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label>Address line 1</Label>
-              <Input
+              <AddressAutocomplete
                 className="bg-input"
                 value={form.address_line1}
                 placeholder="Start typing an address..."
-                onChange={(e) => setForm({ ...form, address_line1: e.target.value })}
+                onChange={(value) => setForm({ ...form, address_line1: value })}
+                onPlaceSelected={(parts) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    address_line1: parts.address_line1 || prev.address_line1,
+                    city: parts.city || prev.city,
+                    state: parts.state || prev.state,
+                    postal_code: parts.postcode || prev.postal_code,
+                    country: parts.country || prev.country || "Australia",
+                  }))
+                }
               />
             </div>
             <div className="space-y-2 col-span-2">

@@ -405,25 +405,26 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
 
         if (contactId && r.tags) {
           const tagNames = r.tags.split(",").map((t) => t.trim()).filter(Boolean);
-          for (const tn of tagNames) {
-            let tagId = tagMap.get(tn.toLowerCase());
-            if (!tagId) {
-              try {
-                const createdTag = await createTag.mutateAsync({ name: tn });
-                tagId = (createdTag as { id: string }).id;
-                tagMap.set(tn.toLowerCase(), tagId);
-              } catch {
-                /* skip tag */
+          await Promise.allSettled(
+            tagNames.map(async (tn) => {
+              let tagId = tagMap.get(tn.toLowerCase());
+              if (!tagId) {
+                try {
+                  const createdTag = await createTag.mutateAsync({ name: tn });
+                  tagId = (createdTag as { id: string }).id;
+                  tagMap.set(tn.toLowerCase(), tagId);
+                } catch {
+                  return;
+                }
               }
-            }
-            if (tagId) {
+              if (!tagId) return;
               try {
                 await addContactTag.mutateAsync({ contact_id: contactId, tag_id: tagId });
               } catch {
                 /* skip link */
               }
-            }
-          }
+            })
+          );
         }
 
         // Create property from address if enabled and address data exists

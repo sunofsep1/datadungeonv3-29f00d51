@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
@@ -454,12 +455,22 @@ export default function Properties() {
                   <TabsContent value="address" className="space-y-4 mt-4">
                     <div className="space-y-2">
                     <Label>Address Line 1 *</Label>
-                    <Input
+                    <AddressAutocomplete
                       placeholder="Street address"
                       className="bg-input"
                       value={formData.address_line1}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address_line1: e.target.value })
+                      onChange={(value) =>
+                        setFormData({ ...formData, address_line1: value })
+                      }
+                      onPlaceSelected={(parts) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          address_line1: parts.address_line1 || prev.address_line1,
+                          city: parts.city || prev.city,
+                          state: parts.state || prev.state,
+                          postcode: parts.postcode || prev.postcode,
+                          country: parts.country || prev.country || "Australia",
+                        }))
                       }
                     />
                   </div>

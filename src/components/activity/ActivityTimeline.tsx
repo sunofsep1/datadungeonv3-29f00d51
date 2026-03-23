@@ -19,8 +19,9 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import type { ActivityLogRow } from "@/hooks/useActivityLog";
 import { useActivityLog, useCreateActivityLog } from "@/hooks/useActivityLog";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useAppointmentsByContact } from "@/hooks/useAppointments";
 import { useMemo } from "react";
+import { isFeatureEnabled } from "@/lib/featureFlags";
 
 const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   note: MessageSquare,
@@ -44,6 +45,7 @@ interface ActivityTimelineProps {
   includeAppointments?: boolean;
   /** Max items to show; default unlimited */
   limit?: number;
+  compact?: boolean;
 }
 
 type TimelineItem =
@@ -56,6 +58,7 @@ export function ActivityTimeline({
   showAddNote = false,
   includeAppointments = false,
   limit,
+  compact = isFeatureEnabled("compactTimelineV1"),
 }: ActivityTimelineProps) {
   const filters =
     entityType === "contact"
@@ -68,14 +71,11 @@ export function ActivityTimeline({
   const [noteTitle, setNoteTitle] = useState("");
   const [noteDescription, setNoteDescription] = useState("");
 
-  const { data: activities = [], isLoading } = useActivityLog(filters);
+  const { data: activities = [], isLoading } = useActivityLog({ ...filters, limit: limit ?? 120 });
   const createLog = useCreateActivityLog();
-  const { data: appointments = [] } = useAppointments();
+  const { data: contactAppointments = [] } = useAppointmentsByContact(entityType === "contact" ? entityId : null, limit ?? 120);
 
-  const contactId = entityType === "contact" ? entityId : undefined;
-  const contactAppointments = contactId
-    ? appointments.filter((a) => a.contact_id === contactId)
-    : [];
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const handleAddNote = async () => {
     if (!entityId) return;
@@ -171,50 +171,78 @@ export function ActivityTimeline({
           </>
         )}
       </div>
-      <div className="space-y-4">
+      <div className={compact ? "space-y-2" : "space-y-4"}>
         {items.map((item) =>
           item.kind === "activity" ? (
-            <ActivityLogItem key={item.data.id} row={item.data} />
+            <ActivityLogItem
+              key={item.data.id}
+              row={item.data}
+              compact={compact}
+              expanded={expandedIds.has(item.data.id)}
+              onToggleExpand={() =>
+                setExpandedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(item.data.id)) next.delete(item.data.id);
+                  else next.add(item.data.id);
+                  return next;
+                })
+              }
+            />
           ) : (
             <div
               key={`apt-${item.data.id}`}
-              className="flex gap-3 pb-4 border-b border-border last:border-0"
+              className={compact ? "flex gap-2 py-2 border-b border-border last:border-0" : "flex gap-3 pb-4 border-b border-border last:border-0"}
             >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <div className={compact ? "w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0" : "w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0"}>
                 <Calendar className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm text-foreground">{item.data.title}</p>
-                <p className="text-xs text-muted-foreground">{format(new Date(item.data.date), "PPp")}</p>
-                {item.data.location && <p className="text-xs text-muted-foreground">{item.data.location}</p>}
+                <p className="text-xs text-muted-foreground">{format(new Date(item.data.date), compact ? "d MMM, h:mm a" : "PPp")}</p>
+                {!compact && item.data.location && <p className="text-xs text-muted-foreground">{item.data.location}</p>}
               </div>
             </div>
           )
         )}
         {items.length === 0 && (
-          <p className="text-muted-foreground text-sm text-center py-6">No activity yet. Log your first interaction.</p>
+          <p className="text-muted-foreground text-sm text-center py-4">No activity yet.</p>
         )}
       </div>
     </div>
   );
 }
 
-function ActivityLogItem({ row }: { row: ActivityLogRow }) {
+function ActivityLogItem({
+  row,
+  compact,
+  expanded,
+  onToggleExpand,
+}: {
+  row: ActivityLogRow;
+  compact: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) {
   const Icon = ACTIVITY_ICONS[row.activity_type] ?? FileText;
   return (
-    <div className="flex gap-3 pb-4 border-b border-border last:border-0">
-      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+    <div className={compact ? "flex gap-2 py-2 border-b border-border last:border-0" : "flex gap-3 pb-4 border-b border-border last:border-0"}>
+      <div className={compact ? "w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0" : "w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0"}>
         <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm text-foreground">{row.title}</p>
-        {row.description && <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>}
+        {row.description && (!compact || expanded) ? <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p> : null}
         <div className="flex items-center gap-2 mt-1">
           <Clock className="w-3 h-3 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(row.occurred_at), { addSuffix: true })}
           </span>
           <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded capitalize">{row.activity_type.replace("_", " ")}</span>
+          {compact && row.description ? (
+            <button type="button" className="text-xs text-primary" onClick={onToggleExpand}>
+              {expanded ? "Less" : "More"}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

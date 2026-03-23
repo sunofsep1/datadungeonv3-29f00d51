@@ -5,9 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Building2, Plus, Trash2 } from "lucide-react";
 import { useContact } from "@/hooks/useContact";
-import { useProperties, formatPropertyAddress, useCreateProperty } from "@/hooks/useProperties";
-import { useCreateContactPropertyLink, useDeleteContactPropertyLink } from "@/hooks/useContactPropertyLinks";
+import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
+import { useDeleteContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
+import { useCreatePropertyFromContactAddress } from "@/hooks/useCreatePropertyFromContactAddress";
 
 interface ContactPropertiesCardProps {
   contactId: string | null;
@@ -26,9 +27,8 @@ export function ContactPropertiesCard({
   const { toast } = useToast();
   const { data: contact } = useContact(contactId || undefined);
   const { data: allProperties = [] } = useProperties();
-  const createLink = useCreateContactPropertyLink();
   const deleteLink = useDeleteContactPropertyLink();
-  const createProperty = useCreateProperty();
+  const createFromAddress = useCreatePropertyFromContactAddress();
 
   const linkedProperties = useMemo(() => {
     if (!contact?.contact_property_links) return [];
@@ -71,15 +71,18 @@ export function ContactPropertiesCard({
       return;
     }
     try {
-      const property = await createProperty.mutateAsync({
-        address_line1: contact.address_line1,
-        address_line2: contact.address_line2 || null,
-        city: contact.city || null,
-        state: contact.state || null,
-        postcode: contact.postcode || null,
-        country: contact.country || "Australia",
+      await createFromAddress.createAndLink({
+        contact_id: contactId,
+        address: {
+          address_line1: contact.address_line1,
+          address_line2: contact.address_line2 || null,
+          city: contact.city || null,
+          state: contact.state || null,
+          postcode: contact.postcode || null,
+          country: contact.country || "Australia",
+        },
+        role: "owner",
       });
-      await createLink.mutateAsync({ contact_id: contactId, property_id: property.id, role: "owner" });
       toast({ title: "Success", description: "Property created and linked!" });
     } catch (e: unknown) {
       const msg =

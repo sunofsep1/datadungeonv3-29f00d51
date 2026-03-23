@@ -87,6 +87,52 @@ export function useNurtureEnrollmentsForContact(contactId?: string | null) {
   });
 }
 
+export function useCompletedNurtureEnrollments(limit = 50) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...enrollKey, "completed", user?.id, limit],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("nurture_sequence_enrollments")
+        .select("id, sequence_id, contact_id, completed_at, updated_at")
+        .eq("user_id", user.id)
+        .not("completed_at", "is", null)
+        .order("completed_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+
+      const rows = data ?? [];
+      const sequenceIds = [...new Set(rows.map((r) => r.sequence_id).filter(Boolean))];
+      const contactIds = [...new Set(rows.map((r) => r.contact_id).filter(Boolean))];
+
+      const [{ data: sequences }, { data: contacts }] = await Promise.all([
+        sequenceIds.length
+          ? supabase.from("nurture_sequences").select("id, name").in("id", sequenceIds)
+          : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+        contactIds.length
+          ? supabase.from("contacts").select("id, name, first_name, last_name").in("id", contactIds)
+          : Promise.resolve({ data: [] as Array<{ id: string; name?: string | null; first_name?: string | null; last_name?: string | null }> }),
+      ]);
+
+      const seqMap = new Map((sequences ?? []).map((s) => [s.id, s.name]));
+      const contactMap = new Map(
+        (contacts ?? []).map((c) => {
+          const fullName = c.name || [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || "Contact";
+          return [c.id, fullName];
+        }),
+      );
+
+      return rows.map((r) => ({
+        ...r,
+        sequence_name: seqMap.get(r.sequence_id) ?? "Sequence",
+        contact_name: contactMap.get(r.contact_id) ?? "Contact",
+      }));
+    },
+    enabled: Boolean(user),
+  });
+}
+
 export function usePendingStepRunsByTaskIds(taskIds?: string[]) {
   const { user } = useAuth();
   const ids = (taskIds ?? []).filter(Boolean);
