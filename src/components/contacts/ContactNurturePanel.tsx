@@ -4,7 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListTodo, Sparkles, GitBranch, Loader2, ExternalLink, Pencil } from "lucide-react";
 import { format } from "date-fns";
@@ -19,6 +21,9 @@ import {
   useNurtureEnrollmentsForContact,
   useEnrollNurtureSequence,
   useCompleteNurtureEnrollment,
+  usePendingStepRunsByTaskIds,
+  useCompleteNurtureStepAndAdvance,
+  useSetNurtureEnrollmentCadencePaused,
 } from "@/hooks/useNurtureSequences";
 import type { ContactWithMeta } from "@/hooks/useContacts";
 import { errorMessageFromUnknown } from "@/lib/utils";
@@ -50,6 +55,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
   const { data: enrollments = [] } = useNurtureEnrollmentsForContact(contactId);
   const enrollSeq = useEnrollNurtureSequence();
   const completeEnrollment = useCompleteNurtureEnrollment();
+  const setCadencePaused = useSetNurtureEnrollmentCadencePaused();
 
   const [newTitle, setNewTitle] = useState("");
   const [newDue, setNewDue] = useState("");
@@ -58,6 +64,29 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
   const [switchToSequenceId, setSwitchToSequenceId] = useState<Record<string, string>>({});
 
   const openTasks = useMemo(() => tasks.filter((t) => !t.completed_at), [tasks]);
+  const sequenceTaskIds = useMemo(
+    () => openTasks.filter((t) => t.sequence_enrollment_id).map((t) => t.id),
+    [openTasks]
+  );
+  const { data: pendingRuns = [] } = usePendingStepRunsByTaskIds(sequenceTaskIds);
+  const completeAndAdvance = useCompleteNurtureStepAndAdvance();
+  const pendingRunByTaskId = useMemo(() => {
+    const map = new Map<string, (typeof pendingRuns)[number]>();
+    pendingRuns.forEach((r) => {
+      if (r.task_id) map.set(r.task_id, r);
+    });
+    return map;
+  }, [pendingRuns]);
+
+  const [engagementDialogOpen, setEngagementDialogOpen] = useState(false);
+  const [engagementOutcome, setEngagementOutcome] = useState<"completed" | "skipped">("completed");
+  const [engagementNotes, setEngagementNotes] = useState("");
+  const [engagementTarget, setEngagementTarget] = useState<{
+    task_id: string;
+    enrollment_id: string;
+    step_run_id: string;
+    existing_notes: string | null;
+  } | null>(null);
 
   const nextTouchHints = useMemo(() => {
     const hints: string[] = [];
@@ -116,7 +145,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
       await enrollSeq.mutateAsync({
         contact_id: contactId,
         sequence_id: target,
-        pause_followup_cadence: e.pause_followup_cadence ?? true,
+        pause_followup_cadence: e.pause_followup_cadence ?? false,
       });
       setSwitchToSequenceId((prev) => {
         const next = { ...prev };
@@ -124,6 +153,40 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
         return next;
       });
       toast.success("Switched to the new sequence");
+    } catch (err) {
+      toast.error(errorMessageFromUnknown(err));
+    }
+  };
+
+  const submitEngagementAndAdvance = async () => {
+    if (!engagementTarget) return;
+    const trimmed = engagementNotes.trim();
+    const engagementBody = trimmed ? trimmed : undefined;
+
+    try {
+      if (engagementBody) {
+        const nextNotes = engagementTarget.existing_notes
+          ? `${engagementTarget.existing_notes}\n\nEngagement: ${engagementBody}`
+          : `Engagement: ${engagementBody}`;
+        await updateTask.mutateAsync({
+          id: engagementTarget.task_id,
+          contact_id: contactId,
+          notes: nextNotes,
+        });
+      }
+
+      await completeAndAdvance.mutateAsync({
+        enrollment_id: engagementTarget.enrollment_id,
+        step_run_id: engagementTarget.step_run_id,
+        contact_id: contactId,
+        outcome: engagementOutcome,
+        engagement_note: engagementBody,
+      });
+
+      toast.success(engagementOutcome === "skipped" ? "Step skipped. Sequence advanced." : "Step completed. Next step scheduled.");
+      setEngagementDialogOpen(false);
+      setEngagementTarget(null);
+      setEngagementNotes("");
     } catch (err) {
       toast.error(errorMessageFromUnknown(err));
     }
@@ -192,6 +255,52 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                 >
                   Clear
                 </Button>
+                {t.sequence_enrollment_id && pendingRunByTaskId.get(t.id) ? (
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-8"
+                      disabled={completeAndAdvance.isPending}
+                      onClick={() => {
+                        const run = pendingRunByTaskId.get(t.id);
+                        if (!run || !t.sequence_enrollment_id) return;
+                        setEngagementOutcome("completed");
+                        setEngagementTarget({
+                          task_id: t.id,
+                          enrollment_id: t.sequence_enrollment_id,
+                          step_run_id: run.id,
+                          existing_notes: t.notes ?? null,
+                        });
+                        setEngagementNotes("");
+                        setEngagementDialogOpen(true);
+                      }}
+                    >
+                      Complete & next
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={completeAndAdvance.isPending}
+                      onClick={() => {
+                        const run = pendingRunByTaskId.get(t.id);
+                        if (!run || !t.sequence_enrollment_id) return;
+                        setEngagementOutcome("skipped");
+                        setEngagementTarget({
+                          task_id: t.id,
+                          enrollment_id: t.sequence_enrollment_id,
+                          step_run_id: run.id,
+                          existing_notes: t.notes ?? null,
+                        });
+                        setEngagementNotes("");
+                        setEngagementDialogOpen(true);
+                      }}
+                    >
+                      Skip
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -209,6 +318,54 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
             Add
           </Button>
         </div>
+
+        <Dialog
+          open={engagementDialogOpen}
+          onOpenChange={(open) => {
+            setEngagementDialogOpen(open);
+            if (!open) {
+              setEngagementTarget(null);
+              setEngagementNotes("");
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[520px] bg-popover border-border">
+            <DialogHeader>
+              <DialogTitle>Complete this step</DialogTitle>
+              <DialogDescription>Optionally log what you did (notes/outcome). This will be attached to the task and contact activity.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Engagement notes</Label>
+              <Textarea
+                className="bg-input min-h-[110px]"
+                placeholder="e.g. Called, confirmed plan, discussed timeline..."
+                value={engagementNotes}
+                onChange={(e) => setEngagementNotes(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={completeAndAdvance.isPending || updateTask.isPending}
+                onClick={() => {
+                  setEngagementDialogOpen(false);
+                  setEngagementTarget(null);
+                  setEngagementNotes("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={!engagementTarget || completeAndAdvance.isPending || updateTask.isPending}
+                onClick={() => void submitEngagementAndAdvance()}
+              >
+                {engagementOutcome === "skipped" ? "Skip step" : "Complete & next"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Sequences */}
@@ -254,6 +411,23 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                         disabled={completeEnrollment.isPending}
                       >
                         End
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={e.pause_followup_cadence ? "secondary" : "ghost"}
+                        onClick={() =>
+                          setCadencePaused.mutate(
+                            { enrollment_id: e.id, pause_followup_cadence: !e.pause_followup_cadence },
+                            {
+                              onSuccess: () =>
+                                toast.success(e.pause_followup_cadence ? "Cadence resumed" : "Cadence paused"),
+                              onError: (err) => toast.error(errorMessageFromUnknown(err)),
+                            }
+                          )
+                        }
+                        disabled={setCadencePaused.isPending}
+                      >
+                        {e.pause_followup_cadence ? "Resume cadence" : "Pause cadence"}
                       </Button>
                     </div>
                   </div>

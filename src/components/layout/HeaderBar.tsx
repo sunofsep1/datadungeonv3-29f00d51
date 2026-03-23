@@ -32,6 +32,12 @@ import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { NavHeadingButtons } from "./NavHeadingButtons";
 import { useNavCounts } from "@/hooks/useNavCounts";
 import { cn } from "@/lib/utils";
+import {
+  useNotifications,
+  useUnreadNotificationsCount,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+} from "@/hooks/useNotifications";
 
 const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -66,6 +72,10 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { nurtureDueCount, recentCount, tasksCount } = useNavCounts();
+  const { data: notifications = [] } = useNotifications();
+  const { data: unreadCount = 0 } = useUnreadNotificationsCount();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
   const moduleTitle = getModuleTitle(location.pathname);
 
   const getCreateUrl = () => {
@@ -145,24 +155,53 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
+              className="relative h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
               title="Notifications"
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-72 bg-popover border-border text-popover-foreground">
             <div className="px-3 py-2 border-b border-border flex items-center justify-between">
               <span className="font-semibold text-sm">Notifications</span>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-accent">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+                disabled={unreadCount === 0 || markAllRead.isPending}
+                onClick={() => markAllRead.mutate()}
+              >
                 <CheckCheck className="h-3.5 w-3.5 mr-1" />
                 Mark all read
               </Button>
             </div>
-            <div className="py-8 px-4 text-center text-sm text-muted-foreground">
-              No notifications
-            </div>
+            {notifications.length === 0 ? (
+              <div className="py-8 px-4 text-center text-sm text-muted-foreground">No notifications</div>
+            ) : (
+              <div className="max-h-80 overflow-auto py-1">
+                {notifications.map((n) => (
+                  <DropdownMenuItem
+                    key={n.id}
+                    className="flex flex-col items-start gap-1 whitespace-normal py-2"
+                    onClick={() => {
+                      if (!n.read_at) markRead.mutate(n.id);
+                    }}
+                  >
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className={cn("text-sm", !n.read_at && "font-semibold")}>{n.title}</span>
+                      {!n.read_at ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
+                    </div>
+                    {n.body ? <span className="text-xs text-muted-foreground">{n.body}</span> : null}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <Button

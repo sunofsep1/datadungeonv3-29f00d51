@@ -46,6 +46,29 @@ export function useOpenContactTasksForUser() {
   });
 }
 
+export function useDueSequenceActions() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: [...baseKey, "due_sequence_actions", user?.id],
+    queryFn: async (): Promise<ContactTask[]> => {
+      if (!user) return [];
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("contact_tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .not("sequence_enrollment_id", "is", null)
+        .is("completed_at", null)
+        .lte("due_at", nowIso)
+        .order("due_at", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return (data ?? []) as ContactTask[];
+    },
+    enabled: Boolean(user),
+  });
+}
+
 export function useCreateContactTask() {
   const queryClient = useQueryClient();
   const { user } = useAuth();

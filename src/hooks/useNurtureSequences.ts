@@ -8,9 +8,23 @@ import { ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY } from "@/hooks/useActiveNurtureEn
 export type NurtureSequence = Database["public"]["Tables"]["nurture_sequences"]["Row"];
 export type NurtureSequenceStep = Database["public"]["Tables"]["nurture_sequence_steps"]["Row"];
 export type NurtureSequenceEnrollment = Database["public"]["Tables"]["nurture_sequence_enrollments"]["Row"];
+export type NurtureStepRunStatus = "pending" | "completed" | "skipped" | "failed";
+
+export interface NurtureStepRun {
+  id: string;
+  enrollment_id: string;
+  step_index: number;
+  step_id: string | null;
+  status: NurtureStepRunStatus;
+  task_id: string | null;
+  activated_at: string;
+  completed_at: string | null;
+  error: string | null;
+}
 
 const seqKey = ["nurture_sequences"] as const;
 const enrollKey = ["nurture_sequence_enrollments"] as const;
+const stepRunsKey = ["nurture_sequence_step_runs"] as const;
 
 function addDays(d: Date, days: number): Date {
   const x = new Date(d);
@@ -70,6 +84,61 @@ export function useNurtureEnrollmentsForContact(contactId?: string | null) {
       return (data ?? []) as NurtureSequenceEnrollment[];
     },
     enabled: Boolean(user && contactId),
+  });
+}
+
+export function usePendingStepRunsByTaskIds(taskIds?: string[]) {
+  const { user } = useAuth();
+  const ids = (taskIds ?? []).filter(Boolean);
+
+  return useQuery({
+    queryKey: [...stepRunsKey, "task_ids", ...ids],
+    queryFn: async (): Promise<NurtureStepRun[]> => {
+      if (!user || ids.length === 0) return [];
+      const { data, error } = await supabase
+        .from("nurture_sequence_step_runs" as never)
+        .select("*")
+        .eq("status", "pending")
+        .in("task_id", ids);
+      if (error) throw error;
+      return (data ?? []) as NurtureStepRun[];
+    },
+    enabled: Boolean(user && ids.length > 0),
+  });
+}
+
+export function useCompleteNurtureStepAndAdvance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      enrollment_id: string;
+      step_run_id: string;
+      contact_id: string;
+      outcome?: "completed" | "skipped";
+      engagement_note?: string | null;
+    }) => {
+      const { data, error } = await supabase.rpc("complete_nurture_step_and_advance" as never, {
+        p_enrollment_id: input.enrollment_id,
+        p_step_run_id: input.step_run_id,
+        p_outcome: input.outcome ?? "completed",
+      } as Record<string, unknown>);
+      if (error) throw error;
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: input.outcome === "skipped" ? "Nurture step skipped" : "Nurture step completed",
+        body: input.engagement_note?.trim() ? input.engagement_note.trim() : undefined,
+      });
+      return data;
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: stepRunsKey });
+      queryClient.invalidateQueries({ queryKey: enrollKey });
+      queryClient.invalidateQueries({ queryKey: ["contact_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
+      invalidateContactInteractions(queryClient, v.contact_id);
+    },
   });
 }
 
@@ -219,7 +288,7 @@ export function useEnrollNurtureSequence() {
           current_step_index: 0,
           started_at: started.toISOString(),
           next_step_at: nextAt.toISOString(),
-          pause_followup_cadence: input.pause_followup_cadence ?? true,
+          pause_followup_cadence: input.pause_followup_cadence ?? false,
         })
         .select()
         .single();
@@ -286,6 +355,39 @@ export function useCompleteNurtureEnrollment() {
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: enrollKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
+      invalidateContactInteractions(queryClient, v.contact_id);
+    },
+  });
+}
+
+export function useSetNurtureEnrollmentCadencePaused() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { enrollment_id: string; pause_followup_cadence: boolean }) => {
+      const { data: en, error: eErr } = await supabase
+        .from("nurture_sequence_enrollments")
+        .select("contact_id")
+        .eq("id", input.enrollment_id)
+        .maybeSingle();
+
+      if (eErr) throw eErr;
+      if (!en?.contact_id) throw new Error("Enrollment not found or not accessible");
+
+      const { error } = await supabase
+        .from("nurture_sequence_enrollments")
+        .update({ pause_followup_cadence: input.pause_followup_cadence })
+        .eq("id", input.enrollment_id);
+
+      if (error) throw error;
+
+      return { contact_id: en.contact_id as string };
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: enrollKey });
+      queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
       invalidateContactInteractions(queryClient, v.contact_id);
     },

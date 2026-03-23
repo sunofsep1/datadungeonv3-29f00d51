@@ -5,9 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { useTodos, useAddTodo, useUpdateTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
+import { useDueSequenceActions } from "@/hooks/useContactTasks";
+import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
 import { Plus, Trash2, Loader2, ListTodo } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { errorMessageFromUnknown } from "@/lib/utils";
 
 function TodoRow({
   todo,
@@ -67,9 +71,17 @@ function TodoRow({
 export default function TodoList() {
   const [newTitle, setNewTitle] = useState("");
   const { data: todos = [], isLoading } = useTodos();
+  const { data: dueSequenceActions = [], isLoading: dueSequenceLoading } = useDueSequenceActions();
   const addTodo = useAddTodo();
   const updateTodo = useUpdateTodo();
   const deleteTodo = useDeleteTodo();
+  const completeAndAdvance = useCompleteNurtureStepAndAdvance();
+  const { data: pendingRuns = [] } = usePendingStepRunsByTaskIds(dueSequenceActions.map((t) => t.id));
+  const pendingRunByTaskId = new Map(
+    pendingRuns
+      .filter((r) => r.task_id)
+      .map((r) => [r.task_id as string, r])
+  );
 
   const handleAdd = () => {
     const title = newTitle.trim();
@@ -122,6 +134,86 @@ export default function TodoList() {
         </div>
 
         <div className="p-3">
+          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h3 className="text-sm font-semibold text-foreground">Today&apos;s sequence actions</h3>
+            </div>
+            {dueSequenceLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading sequence actions...
+              </div>
+            ) : dueSequenceActions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No due sequence actions.</p>
+            ) : (
+              <ul className="space-y-2">
+                {dueSequenceActions.map((task) => {
+                  const run = pendingRunByTaskId.get(task.id);
+                  return (
+                    <li key={task.id} className="rounded-md border border-border bg-background px-3 py-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{task.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {task.due_at ? `Due ${format(new Date(task.due_at), "d MMM yyyy, h:mm a")}` : "Due now"}
+                          </p>
+                        </div>
+                        {run && task.sequence_enrollment_id ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={completeAndAdvance.isPending}
+                              onClick={() =>
+                                completeAndAdvance.mutate(
+                                  {
+                                    enrollment_id: task.sequence_enrollment_id!,
+                                    step_run_id: run.id,
+                                    contact_id: task.contact_id,
+                                    outcome: "completed",
+                                  },
+                                  {
+                                    onSuccess: () => toast.success("Step completed. Next step scheduled."),
+                                    onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                                  }
+                                )
+                              }
+                            >
+                              Complete & next
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={completeAndAdvance.isPending}
+                              onClick={() =>
+                                completeAndAdvance.mutate(
+                                  {
+                                    enrollment_id: task.sequence_enrollment_id!,
+                                    step_run_id: run.id,
+                                    contact_id: task.contact_id,
+                                    outcome: "skipped",
+                                  },
+                                  {
+                                    onSuccess: () => toast.success("Step skipped. Sequence advanced."),
+                                    onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                                  }
+                                )
+                              }
+                            >
+                              Skip
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Awaiting activation</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
