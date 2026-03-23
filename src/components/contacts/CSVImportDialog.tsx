@@ -384,11 +384,15 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           await updateContact.mutateAsync({
             id: match.id,
             ...contactPayload,
+            skipActivityLog: true,
           });
           contactId = match.id;
           up++;
         } else {
-          const created = await createContact.mutateAsync(contactPayload);
+          const created = await createContact.mutateAsync({
+            ...contactPayload,
+            skipActivityLog: true,
+          });
           contactId = (created as { id: string }).id;
           cr++;
         }

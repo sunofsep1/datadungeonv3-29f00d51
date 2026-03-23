@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 
 // Manual types for contact_channels (not in auto-generated types)
 export interface ContactChannel {
@@ -55,7 +56,7 @@ export function useCreateContactChannel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ch: ContactChannelInsert) => {
-      const row = {
+      const insertRow = {
         contact_id: ch.contact_id,
         channel_type: ch.channel_type,
         channel_value: ch.value,
@@ -64,17 +65,24 @@ export function useCreateContactChannel() {
       };
       const { data, error } = await (supabase as any)
         .from("contact_channels")
-        .insert(row)
+        .insert(insertRow)
         .select()
         .single();
       if (error) throw error;
       const out = data as any;
-      return { ...out, value: out?.value ?? out?.channel_value ?? ch.value } as ContactChannel;
+      const created = { ...out, value: out?.value ?? out?.channel_value ?? ch.value } as ContactChannel;
+      await logContactActivity({
+        contactId: ch.contact_id,
+        subject: "Phone/email added",
+        body: `${ch.channel_type}: ${ch.value}`,
+      });
+      return created;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contact_channels", d.contact_id] });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", d.contact_id] });
+      invalidateContactInteractions(qc, d.contact_id);
     },
   });
 }
@@ -97,12 +105,19 @@ export function useUpdateContactChannel() {
         .single();
       if (error) throw error;
       const out = data as any;
-      return { ...out, value: out?.value ?? out?.channel_value ?? "" } as ContactChannel;
+      const row = { ...out, value: out?.value ?? out?.channel_value ?? "" } as ContactChannel;
+      await logContactActivity({
+        contactId: contact_id,
+        subject: "Phone/email updated",
+        body: `${row.channel_type}: ${row.value}`,
+      });
+      return row;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contact_channels", d.contact_id] });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", d.contact_id] });
+      invalidateContactInteractions(qc, d.contact_id);
     },
   });
 }
@@ -117,17 +132,29 @@ export function useDeleteContactChannel() {
       id: string;
       contact_id: string;
     }) => {
+      const { data: prev } = await (supabase as any)
+        .from("contact_channels")
+        .select("channel_type, channel_value, value")
+        .eq("id", id)
+        .maybeSingle();
       const { error } = await (supabase as any)
         .from("contact_channels")
         .delete()
         .eq("id", id);
       if (error) throw error;
+      const pv = prev?.value ?? prev?.channel_value ?? "";
+      await logContactActivity({
+        contactId: contact_id,
+        subject: "Phone/email removed",
+        body: `${prev?.channel_type ?? "?"}: ${pv}`,
+      });
       return { id, contact_id };
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ["contact_channels", v.contact_id] });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      invalidateContactInteractions(qc, v.contact_id);
     },
   });
 }

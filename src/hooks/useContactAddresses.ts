@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatAddressLines, logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 
 export interface ContactAddress {
   id: string;
@@ -64,10 +65,18 @@ export function useAddContactAddress() {
         .select()
         .single();
       if (error) throw error;
-      return data as ContactAddress;
+      const row = data as ContactAddress;
+      await logContactActivity({
+        contactId: payload.contact_id,
+        subject: "Address added",
+        body: formatAddressLines(payload as Record<string, unknown>),
+      });
+      return row;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contact_addresses", d.contact_id] });
+      qc.invalidateQueries({ queryKey: ["contact", d.contact_id] });
+      invalidateContactInteractions(qc, d.contact_id);
     },
   });
 }
@@ -83,10 +92,17 @@ export function useUpdateContactAddress() {
         .select()
         .single();
       if (error) throw error;
+      await logContactActivity({
+        contactId: contact_id,
+        subject: "Address updated",
+        body: formatAddressLines(updates as Record<string, unknown>),
+      });
       return data as ContactAddress;
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["contact_addresses", d.contact_id] });
+      qc.invalidateQueries({ queryKey: ["contact", d.contact_id] });
+      invalidateContactInteractions(qc, d.contact_id);
     },
   });
 }
@@ -95,15 +111,27 @@ export function useDeleteContactAddress() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, contact_id }: { id: string; contact_id: string }) => {
+      const { data: prev } = await (supabase as any)
+        .from("contact_addresses")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
       const { error } = await (supabase as any)
         .from("contact_addresses")
         .delete()
         .eq("id", id);
       if (error) throw error;
+      await logContactActivity({
+        contactId: contact_id,
+        subject: "Address removed",
+        body: prev ? formatAddressLines(prev as Record<string, unknown>) : undefined,
+      });
       return { contact_id };
     },
     onSuccess: (v) => {
       qc.invalidateQueries({ queryKey: ["contact_addresses", v.contact_id] });
+      qc.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      invalidateContactInteractions(qc, v.contact_id);
     },
   });
 }

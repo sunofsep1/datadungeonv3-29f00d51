@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY } from "@/hooks/useActiveNurtureEnrollments";
@@ -223,13 +224,31 @@ export function useEnrollNurtureSequence() {
         .select()
         .single();
       if (error) throw error;
-      return data as NurtureSequenceEnrollment;
+      const row = data as NurtureSequenceEnrollment;
+      let seqName: string | undefined;
+      try {
+        const { data: seq } = await supabase
+          .from("nurture_sequences")
+          .select("name")
+          .eq("id", input.sequence_id)
+          .maybeSingle();
+        seqName = (seq as { name?: string } | null)?.name;
+      } catch {
+        /* ignore */
+      }
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: "Nurture sequence started",
+        body: seqName ? `Sequence: ${seqName}` : undefined,
+      });
+      return row;
     },
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: enrollKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
+      invalidateContactInteractions(queryClient, v.contact_id);
     },
   });
 }
@@ -239,16 +258,36 @@ export function useCompleteNurtureEnrollment() {
 
   return useMutation({
     mutationFn: async (input: { enrollment_id: string; contact_id: string }) => {
+      const { data: en } = await supabase
+        .from("nurture_sequence_enrollments")
+        .select("sequence_id")
+        .eq("id", input.enrollment_id)
+        .maybeSingle();
       const { error } = await supabase
         .from("nurture_sequence_enrollments")
         .update({ completed_at: new Date().toISOString(), next_step_at: null })
         .eq("id", input.enrollment_id);
       if (error) throw error;
+      let seqName: string | undefined;
+      if (en?.sequence_id) {
+        const { data: seq } = await supabase
+          .from("nurture_sequences")
+          .select("name")
+          .eq("id", en.sequence_id)
+          .maybeSingle();
+        seqName = (seq as { name?: string } | null)?.name;
+      }
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: "Nurture sequence completed",
+        body: seqName ? `Sequence: ${seqName}` : undefined,
+      });
     },
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: enrollKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
+      invalidateContactInteractions(queryClient, v.contact_id);
     },
   });
 }

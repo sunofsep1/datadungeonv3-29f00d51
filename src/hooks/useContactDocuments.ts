@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 
 export type ContactDocumentCategory =
   | "correspondence"
@@ -149,13 +150,20 @@ export function useCreateContactDocument() {
         .single();
 
       if (error) throw error;
-      return data as ContactDocument;
+      const row = data as ContactDocument;
+      await logContactActivity({
+        contactId: contactId,
+        subject: "Document uploaded",
+        body: `${row.name}${row.category ? ` · ${row.category}` : ""}`,
+      });
+      return row;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contact_documents", variables.contactId] });
       if (variables.propertyId) {
         queryClient.invalidateQueries({ queryKey: ["contact_documents", "property", variables.propertyId] });
       }
+      invalidateContactInteractions(queryClient, variables.contactId);
     },
   });
 }
@@ -175,9 +183,19 @@ export function useDeleteContactDocument() {
       contactId: string;
       propertyId?: string | null;
     }) => {
+      const { data: prev } = await (supabase as any)
+        .from("contact_documents")
+        .select("name, category")
+        .eq("id", id)
+        .maybeSingle();
       await supabase.storage.from(BUCKET).remove([filePath]);
       const { error } = await (supabase as any).from("contact_documents").delete().eq("id", id);
       if (error) throw error;
+      await logContactActivity({
+        contactId,
+        subject: "Document removed",
+        body: prev?.name ? `${prev.name}${prev.category ? ` · ${prev.category}` : ""}` : undefined,
+      });
       return { contactId, propertyId };
     },
     onSuccess: (_, variables) => {
@@ -185,6 +203,7 @@ export function useDeleteContactDocument() {
       if (variables.propertyId) {
         queryClient.invalidateQueries({ queryKey: ["contact_documents", "property", variables.propertyId] });
       }
+      invalidateContactInteractions(queryClient, variables.contactId);
     },
   });
 }

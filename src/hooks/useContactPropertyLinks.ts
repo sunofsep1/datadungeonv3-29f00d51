@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 
 // Manual types for contact_property_links (spec: owner, seller, buyer, tenant, investor, agent, interested, other)
 export interface ContactPropertyLink {
@@ -43,6 +44,26 @@ export function useCreateContactPropertyLink() {
         .select()
         .single();
       if (error) throw error;
+
+      let addr = "Property";
+      try {
+        const { data: prop } = await (supabase as any)
+          .from("properties")
+          .select("address_line1, city, state, postcode")
+          .eq("id", link.property_id)
+          .maybeSingle();
+        if (prop) {
+          addr = [prop.address_line1, prop.city, prop.state, prop.postcode].filter(Boolean).join(", ") || addr;
+        }
+      } catch {
+        /* ignore */
+      }
+      await logContactActivity({
+        contactId: link.contact_id,
+        subject: "Property linked",
+        body: `${addr}${link.role ? ` · ${link.role}` : ""}`,
+      });
+
       return data as ContactPropertyLink;
     },
     onSuccess: (d) => {
@@ -52,6 +73,7 @@ export function useCreateContactPropertyLink() {
       qc.invalidateQueries({ queryKey: ["contact", d.contact_id] });
       qc.refetchQueries({ queryKey: ["contact", d.contact_id] });
       qc.refetchQueries({ queryKey: ["property", d.property_id] });
+      invalidateContactInteractions(qc, d.contact_id);
     },
   });
 }
@@ -68,11 +90,34 @@ export function useDeleteContactPropertyLink() {
       property_id: string;
       contact_id: string;
     }) => {
+      let summary = "Property unlinked";
+      try {
+        const { data: row } = await (supabase as any)
+          .from("contact_property_links")
+          .select("role, properties(address_line1, city, state, postcode)")
+          .eq("id", id)
+          .maybeSingle();
+        const p = row?.properties;
+        if (p) {
+          summary = [p.address_line1, p.city, p.state, p.postcode].filter(Boolean).join(", ") || summary;
+          if (row.role) summary += ` · ${row.role}`;
+        }
+      } catch {
+        /* ignore */
+      }
+
       const { error } = await (supabase as any)
         .from("contact_property_links")
         .delete()
         .eq("id", id);
       if (error) throw error;
+
+      await logContactActivity({
+        contactId: contact_id,
+        subject: "Property unlinked",
+        body: summary,
+      });
+
       return { property_id, contact_id };
     },
     onSuccess: (v) => {
@@ -80,6 +125,7 @@ export function useDeleteContactPropertyLink() {
       qc.invalidateQueries({ queryKey: ["property", v.property_id] });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      invalidateContactInteractions(qc, v.contact_id);
     },
   });
 }

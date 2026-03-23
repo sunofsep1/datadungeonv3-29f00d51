@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 import type { Database } from "@/integrations/supabase/types";
 
 export type ContactTask = Database["public"]["Tables"]["contact_tasks"]["Row"];
@@ -71,12 +72,18 @@ export function useCreateContactTask() {
         .select()
         .single();
       if (error) throw error;
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: "Task created",
+        body: input.title,
+      });
       return data as ContactTask;
     },
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: baseKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      invalidateContactInteractions(queryClient, v.contact_id);
     },
   });
 }
@@ -101,12 +108,25 @@ export function useUpdateContactTask() {
 
       const { data, error } = await supabase.from("contact_tasks").update(updates).eq("id", input.id).select().single();
       if (error) throw error;
-      return data as ContactTask;
+      const row = data as ContactTask;
+      let subj = "Task updated";
+      let body: string | undefined = row.title;
+      if (input.completed_at !== undefined && input.completed_at) {
+        subj = "Task completed";
+        body = row.title;
+      }
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: subj,
+        body,
+      });
+      return row;
     },
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: baseKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      invalidateContactInteractions(queryClient, v.contact_id);
     },
   });
 }
@@ -116,12 +136,19 @@ export function useDeleteContactTask() {
 
   return useMutation({
     mutationFn: async (input: { id: string; contact_id: string }) => {
+      const { data: prev } = await supabase.from("contact_tasks").select("title").eq("id", input.id).maybeSingle();
       const { error } = await supabase.from("contact_tasks").delete().eq("id", input.id);
       if (error) throw error;
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: "Task deleted",
+        body: prev?.title ?? undefined,
+      });
     },
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: baseKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
+      invalidateContactInteractions(queryClient, v.contact_id);
     },
   });
 }

@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import {
+  diffContactRows,
+  formatAddressLines,
+  logContactActivity,
+  invalidateContactInteractions,
+} from "@/lib/contactActivityLog";
 import type { ContactChannel } from "./useContactChannels";
 
 export type Contact = Tables<"contacts">;
@@ -265,7 +271,10 @@ export function useCreateContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (contact: Omit<ContactInsert, "user_id"> & ContactAddressFields) => {
+    mutationFn: async (
+      contact: Omit<ContactInsert, "user_id"> & ContactAddressFields & { skipActivityLog?: boolean },
+    ) => {
+      const { skipActivityLog, ...contactData } = contact;
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -278,18 +287,18 @@ export function useCreateContact() {
         e && (e.code === "PGRST204" || (e.message && String(e.message).toLowerCase().includes("column")));
 
       // Prefer DataDungeon schema (user_id + name). Fall back to HubSpot schema (owner_id + first/last).
-      let payload: Record<string, unknown> = toContactInsertPayload({ ...contact }, user.id);
+      let payload: Record<string, unknown> = toContactInsertPayload({ ...contactData }, user.id);
       let { data, error } = await tryInsert(payload);
 
       if (isColumnError(error)) {
-        payload = pickHubSpotContactInsert({ ...contact, owner_id: user.id });
+        payload = pickHubSpotContactInsert({ ...contactData, owner_id: user.id });
         let r = await tryInsert(payload);
         data = r.data;
         error = r.error;
       }
       if (error) throw error;
 
-      const addressFields = pickAddressFields(contact as Record<string, unknown>);
+      const addressFields = pickAddressFields(contactData as Record<string, unknown>);
       if (addressFields && data?.id) {
         try {
           await (supabase as any)
@@ -300,11 +309,24 @@ export function useCreateContact() {
         }
       }
 
+      if (!skipActivityLog && data?.id) {
+        const nm =
+          (data as { name?: string | null }).name ?? (contactData as { name?: string }).name;
+        await logContactActivity({
+          contactId: data.id,
+          subject: "Contact created",
+          body: nm ? `Added: ${nm}` : "New contact added",
+        });
+      }
+
       return data as Contact & ContactAddressFields;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact_addresses"] });
+      if (data && (data as { id?: string }).id && !variables.skipActivityLog) {
+        invalidateContactInteractions(queryClient, (data as { id: string }).id);
+      }
     },
   });
 }
@@ -313,7 +335,13 @@ export function useUpdateContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: ContactUpdate & ContactAddressFields & { id: string }) => {
+    mutationFn: async ({
+      id,
+      skipActivityLog,
+      ...updates
+    }: ContactUpdate & ContactAddressFields & { id: string; skipActivityLog?: boolean }) => {
+      const { data: beforeRow } = await supabase.from("contacts").select("*").eq("id", id).maybeSingle();
+
       const { data: current } = await supabase
         .from("contacts")
         .select("status")
@@ -366,12 +394,38 @@ export function useUpdateContact() {
         }
       }
 
+      if (!skipActivityLog) {
+        const bodyParts: string[] = [];
+        const keys = Object.keys(contactPayload).filter((k) => contactPayload[k] !== undefined);
+        if (keys.length && beforeRow) {
+          const lines = diffContactRows(
+            beforeRow as Record<string, unknown>,
+            data as Record<string, unknown>,
+            keys,
+          );
+          bodyParts.push(...lines);
+        }
+        if (addressFields && Object.keys(addressFields).length) {
+          bodyParts.push(`Address: ${formatAddressLines(addressFields)}`);
+        }
+        if (bodyParts.length) {
+          await logContactActivity({
+            contactId: id,
+            subject: "Contact updated",
+            body: bodyParts.join("\n"),
+          });
+        }
+      }
+
       return { ...(data as Contact & ContactAddressFields), _oldStatus: current?.status };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", variables.id] });
       queryClient.invalidateQueries({ queryKey: ["contact_addresses", variables.id] });
+      if (!variables.skipActivityLog) {
+        invalidateContactInteractions(queryClient, variables.id);
+      }
     },
   });
 }
