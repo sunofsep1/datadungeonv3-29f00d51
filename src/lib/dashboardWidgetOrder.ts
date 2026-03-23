@@ -23,11 +23,12 @@ const LEGACY_STORAGE_KEY = "dashboard-widget-order";
  * Bump when adding new widget types so existing users get them appended once (see WIDGETS_INTRODUCED_IN_SCHEMA).
  * Removing widgets from the saved order is respected and does not re-append deleted ids.
  */
-export const CURRENT_DASHBOARD_SCHEMA = 2;
+export const CURRENT_DASHBOARD_SCHEMA = 3;
 
 /** For each schema version, widget ids to append to the end of the user's order if missing (new features). */
 export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
-  // 2: ["newWidgetId"],
+  /** Nurture live enrollments widget (was missing from saved layouts created before this id existed). */
+  3: ["activeSequences"],
 };
 
 const LEGACY_SCHEMA_KEY = `${LEGACY_STORAGE_KEY}:schema`;
