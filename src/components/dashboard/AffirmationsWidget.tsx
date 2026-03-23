@@ -180,15 +180,15 @@ export function AffirmationsWidget() {
 
   return (
     <Card className="zoho-card overflow-hidden border border-border shadow-lg">
-      <div className="px-5 py-4 border-b border-border bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20">
-              <Heart className="h-5 w-5 text-rose-400" />
+      <div className="px-3 py-2.5 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20">
+              <Heart className="h-4 w-4 text-rose-400" />
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground tracking-tight">Today&apos;s Affirmation</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold text-foreground tracking-tight">Today&apos;s Affirmation</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
                 {showAll ? "Drag grip to reorder · Edit or add below" : "Tap arrows to cycle · Manage to edit list"}
               </p>
             </div>
@@ -208,17 +208,17 @@ export function AffirmationsWidget() {
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-3">
         {isEmpty ? (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
-            <p className="text-muted-foreground text-sm mb-4">Add a daily affirmation to stay focused.</p>
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-5 text-center">
+            <p className="text-muted-foreground text-sm mb-3">Add a daily affirmation to stay focused.</p>
             <Button size="sm" className="gap-2" onClick={handleAdd}>
               <Plus className="h-4 w-4" />
               Add affirmation
             </Button>
           </div>
         ) : !showAll ? (
-          <div className="rounded-xl border border-border bg-gradient-to-b from-rose-500/10 to-transparent p-5">
+          <div className="rounded-lg border border-border bg-gradient-to-b from-rose-500/10 to-transparent p-3 sm:p-4">
             {isEditing ? (
               <div className="flex gap-2">
                 <Input
@@ -235,7 +235,7 @@ export function AffirmationsWidget() {
               </div>
             ) : (
               <div className="relative group/quote">
-                <p className="text-foreground font-medium text-lg leading-relaxed pr-8">
+                <p className="text-foreground font-medium text-base leading-relaxed pr-8">
                   &ldquo;{current}&rdquo;
                 </p>
                 <div className="absolute top-0 right-0 flex gap-1 opacity-0 group-hover/quote:opacity-100 transition-opacity">
@@ -249,11 +249,11 @@ export function AffirmationsWidget() {
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center justify-between mt-3">
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-9 w-9 border-border"
+                    className="h-8 w-8 border-border"
                     onClick={handlePrev}
                     disabled={affirmations.length <= 1}
                     aria-label="Previous affirmation"
@@ -266,7 +266,7 @@ export function AffirmationsWidget() {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-9 w-9 border-border"
+                    className="h-8 w-8 border-border"
                     onClick={handleNext}
                     disabled={affirmations.length <= 1}
                     aria-label="Next affirmation"

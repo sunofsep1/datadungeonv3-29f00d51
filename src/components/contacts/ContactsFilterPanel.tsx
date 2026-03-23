@@ -19,8 +19,6 @@ import { Search, Tag, Building2, Clock, ArrowUpDown } from "lucide-react";
 export type SortOption =
   | "name-asc"
   | "name-desc"
-  | "status-asc"
-  | "status-desc"
   | "date-added-asc"
   | "date-added-desc"
   | "property-count-asc"
@@ -29,8 +27,6 @@ export type SortOption =
 export interface ContactsFilterPanelProps {
   searchQuery: string;
   onSearchChange: (v: string) => void;
-  filterStatus: string;
-  onFilterStatusChange: (v: string) => void;
   filterTagIds: string[];
   onToggleTagFilter: (tagId: string) => void;
   tags: { id: string; name: string }[] | undefined;
@@ -50,8 +46,6 @@ export interface ContactsFilterPanelProps {
 export function ContactsFilterPanel({
   searchQuery,
   onSearchChange,
-  filterStatus,
-  onFilterStatusChange,
   filterTagIds,
   onToggleTagFilter,
   tags,
@@ -89,24 +83,6 @@ export function ContactsFilterPanel({
           Quick filters
         </Label>
         <div className="space-y-2">
-          <Select value={filterStatus} onValueChange={onFilterStatusChange}>
-            <SelectTrigger className="w-full bg-input border-border text-foreground">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="hot">Hot</SelectItem>
-              <SelectItem value="warm">Warm</SelectItem>
-              <SelectItem value="cold">Cold</SelectItem>
-              <SelectItem value="lead">Lead</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="contacted">Contacted</SelectItem>
-              <SelectItem value="qualified">Qualified</SelectItem>
-              <SelectItem value="nurture">Nurture</SelectItem>
-              <SelectItem value="unqualified">Unqualified</SelectItem>
-              <SelectItem value="customer">Customer</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={filterSource} onValueChange={onFilterSourceChange}>
             <SelectTrigger className="w-full bg-input border-border text-foreground">
               <SelectValue placeholder="Source" />
@@ -144,11 +120,10 @@ export function ContactsFilterPanel({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All time</SelectItem>
-              <SelectItem value="due">Due for follow-up</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="7days">Last 7 days</SelectItem>
               <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="overdue">Overdue follow-up</SelectItem>
+              <SelectItem value="stale">Not touched 30+ days</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -203,8 +178,6 @@ export function ContactsFilterPanel({
             <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
             <SelectItem value="property-count-desc">Properties (most)</SelectItem>
             <SelectItem value="property-count-asc">Properties (least)</SelectItem>
-            <SelectItem value="status-asc">Status A–Z</SelectItem>
-            <SelectItem value="status-desc">Status Z–A</SelectItem>
           </SelectContent>
         </Select>
       </div>

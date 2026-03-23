@@ -16,6 +16,7 @@ const prefetchers: Record<string, () => Promise<unknown>> = {
   "/settings": () => import("@/pages/Settings"),
   "/scripts": () => import("@/pages/Scripts"),
   "/hot-leads": () => import("@/pages/HotLeads"),
+  "/nurture": () => import("@/pages/Nurture"),
   "/recent": () => import("@/pages/Recent"),
 };
 

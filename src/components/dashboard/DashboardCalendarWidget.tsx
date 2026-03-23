@@ -497,13 +497,13 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
   };
 
   return (
-    <Card className="zoho-card p-4 md:p-6">
+    <Card className="zoho-card p-3">
       <TooltipProvider delayDuration={200} skipDelayDuration={0}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Calendar</h3>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-1.5">
+          <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
+          <h3 className="text-base font-semibold text-foreground">Calendar</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {user && (
@@ -669,13 +669,13 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       </Dialog>
 
       {appointmentsError && (
-        <div className="flex items-center justify-between gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
+        <div className="flex items-center justify-between gap-2 p-2.5 mb-3 rounded-lg bg-destructive/10 border border-destructive/20">
           <p className="text-sm text-destructive">Couldn&apos;t load appointments.</p>
           <Button variant="outline" size="sm" onClick={() => refetchAppointments()}>Retry</Button>
         </div>
       )}
       {gcalError && !gcalNeedsAuth && (
-        <div className="flex flex-col gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
+        <div className="flex flex-col gap-2 p-2.5 mb-3 rounded-lg bg-destructive/10 border border-destructive/20">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-destructive font-medium">Google Calendar</p>
             <Button variant="outline" size="sm" onClick={fetchGcal}>Retry</Button>
@@ -703,7 +703,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       )}
 
       {/* Navigation */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={navigatePrevious}>
             <ChevronLeft className="w-4 h-4" />
@@ -720,9 +720,9 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
 
       {/* Calendar Grid */}
       {viewMode === "month" && (
-        <div className="grid grid-cols-7 gap-1 mb-4">
+        <div className="grid grid-cols-7 gap-1 mb-3">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+            <div key={day} className="text-center text-[11px] font-medium text-muted-foreground py-1.5">
               {day}
             </div>
           ))}
@@ -734,7 +734,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 type="button"
                 onClick={() => handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[60px] p-1 border border-border rounded text-xs text-left transition-colors hover:bg-muted/50 cursor-pointer",
+                  "min-h-[52px] p-1 border border-border rounded text-xs text-left transition-colors hover:bg-muted/50 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary",
                   !isSameMonth(day, currentDate) && "opacity-40"
                 )}
@@ -775,7 +775,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       )}
 
       {viewMode === "week" && (
-        <div className="grid grid-cols-7 gap-1 mb-4">
+        <div className="grid grid-cols-7 gap-1 mb-3">
           {displayDays.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             return (
@@ -786,7 +786,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 onClick={() => handleDayOrAdd?.(day)}
                 onKeyDown={(e) => e.key === "Enter" && handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[100px] p-2 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
+                  "min-h-[88px] p-1.5 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
                   isToday(day) && "bg-primary/10 border-primary"
                 )}
               >
@@ -794,13 +794,13 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openNewAppointmentForSlot(day); }}
                   className={cn(
-                    "text-xs font-medium mb-2 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
+                    "text-xs font-medium mb-1 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
                     isToday(day) && "text-primary"
                   )}
                   title="Click to add booking"
                 >
                   <div>{format(day, "EEE")}</div>
-                  <div className="text-lg">{format(day, "d")}</div>
+                  <div className="text-base font-semibold">{format(day, "d")}</div>
                 </button>
                 <div className="flex-1 space-y-1">
                 {dayEvents.map((item) => (
@@ -861,17 +861,17 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       )}
 
       {viewMode === "day" && (
-        <div className="mb-4">
+        <div className="mb-3">
           <button
             type="button"
             onClick={() => handleDayOrAdd?.(currentDate)}
             className={cn(
-              "w-full p-4 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
+              "w-full p-3 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
               isToday(currentDate) && "bg-primary/5 border-primary"
             )}
           >
-            <div className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-primary" />
+            <div className="text-base font-semibold mb-2 flex items-center gap-2 flex-wrap">
+              <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
               {format(currentDate, "EEEE, MMMM d")}
               {isToday(currentDate) && (
                 <Badge variant="secondary" className="text-xs">Today</Badge>
@@ -880,16 +880,16 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
             <button
               type="button"
               onClick={() => openNewAppointmentForSlot(currentDate)}
-              className="w-full py-3 rounded-lg border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-muted/50 transition-colors text-sm mb-4"
+              className="w-full py-2 rounded-md border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-muted/50 transition-colors text-sm mb-2"
             >
               + Add booking for this day
             </button>
             {getEventsForDate(currentDate).length === 0 ? (
               <p className="text-sm text-muted-foreground">Click to add an appointment</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {getEventsForDate(currentDate).map((item) => (
-                  <div key={item.id} onClick={(e) => e.stopPropagation()} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
+                  <div key={item.id} onClick={(e) => e.stopPropagation()} className="flex items-start gap-2 p-2.5 bg-secondary rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-foreground">{item.title}</span>

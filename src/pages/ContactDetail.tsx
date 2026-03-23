@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -48,6 +47,7 @@ import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
+import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,14 +55,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow } from "date-fns";
-import {
-  getCadenceDays,
-  getNextFollowUpDate,
-  isDueForFollowUp,
-  daysUntilDue,
-  COMING_TO_MARKET_LABELS,
-  type ComingToMarket,
-} from "@/lib/followUpCadence";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
@@ -148,8 +140,6 @@ export default function ContactDetail() {
         name: contact.name,
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
-        status: contact.status || "lead",
-        coming_to_market: (contact as { coming_to_market?: string | null }).coming_to_market ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
         story: contact.story ?? "",
@@ -177,8 +167,6 @@ export default function ContactDetail() {
         name: editFormData.name,
         email: editFormData.email || null,
         phone: editFormData.phone || null,
-        status: editFormData.status,
-        coming_to_market: editFormData.coming_to_market?.trim() || null,
         source: editFormData.source || null,
         notes: editFormData.notes || null,
         story: editFormData.story || null,
@@ -323,15 +311,6 @@ export default function ContactDetail() {
       }
     } catch {
       window.print();
-    }
-  };
-
-  const getStatusVariant = (status: string | null) => {
-    switch (status) {
-      case "hot": return "hot";
-      case "warm": return "warm";
-      case "cold": return "cold";
-      default: return "entered";
     }
   };
 
@@ -502,31 +481,12 @@ export default function ContactDetail() {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <h2 className="text-xl font-semibold text-foreground">{contact.name}</h2>
-                  <StatusBadge variant={getStatusVariant(contact.status)}>
-                    {contact.status || "lead"}
-                  </StatusBadge>
-                  {(() => {
-                    const c = contact as { next_follow_up_at?: string | null; last_activity_at?: string | null };
-                    const lastTouch = c.last_activity_at ?? contact.updated_at ?? contact.created_at ?? null;
-                    const cadenceDays = getCadenceDays(contact.status, (contact as { coming_to_market?: string | null }).coming_to_market);
-                    const nextAt = c.next_follow_up_at ? new Date(c.next_follow_up_at) : getNextFollowUpDate(lastTouch, cadenceDays);
-                    const due = isDueForFollowUp(nextAt);
-                    const days = daysUntilDue(nextAt);
-                    return (
-                      <span className="inline-flex items-center gap-1.5 text-xs">
-                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className={due ? "text-destructive font-medium" : "text-muted-foreground"}>
-                          {due ? (days != null && days > 0 ? `Due ${days} day${days === 1 ? "" : "s"} ago` : "Due for follow-up") : `Next: ${format(nextAt, "d MMM yyyy")}`}
-                        </span>
-                      </span>
-                    );
-                  })()}
+                  {(contact as { category?: string | null }).category?.trim() && (
+                    <Badge variant="secondary" className="text-xs font-normal">
+                      {(contact as { category?: string | null }).category}
+                    </Badge>
+                  )}
                 </div>
-                {(contact as { coming_to_market?: string | null }).coming_to_market && (
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Coming to market: {COMING_TO_MARKET_LABELS[(contact as { coming_to_market: ComingToMarket }).coming_to_market as ComingToMarket] ?? (contact as { coming_to_market: string }).coming_to_market}
-                  </p>
-                )}
                 <div className="flex flex-col gap-3 text-sm">
                   {getAllPhones(contact).flatMap((p) =>
                     p.value.split(/[;,]/).map((part, i) => {
@@ -569,6 +529,8 @@ export default function ContactDetail() {
               </div>
             </div>
           </Card>
+
+          {id && <ContactNurturePanel contact={contact} contactId={id} />}
 
           {/* Contact information (address) */}
           <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
@@ -873,36 +835,6 @@ export default function ContactDetail() {
                 value={editFormData.name || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={editFormData.status}
-                onValueChange={(v) => setEditFormData({ ...editFormData, status: v })}
-              >
-                <SelectTrigger className="bg-input"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hot">Hot</SelectItem>
-                  <SelectItem value="warm">Warm</SelectItem>
-                  <SelectItem value="cold">Cold</SelectItem>
-                  <SelectItem value="lead">Lead</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Coming to market</Label>
-              <Select
-                value={editFormData.coming_to_market || "none"}
-                onValueChange={(v) => setEditFormData({ ...editFormData, coming_to_market: v === "none" ? "" : v })}
-              >
-                <SelectTrigger className="bg-input"><SelectValue placeholder="When are they selling?" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Not set</SelectItem>
-                  {(Object.keys(COMING_TO_MARKET_LABELS) as ComingToMarket[]).map((k) => (
-                    <SelectItem key={k} value={k}>{COMING_TO_MARKET_LABELS[k]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>

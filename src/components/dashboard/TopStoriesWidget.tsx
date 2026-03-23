@@ -10,33 +10,33 @@ export function TopStoriesWidget() {
   const { data: articles = [], isLoading, isError, error } = useNewsApi({ pageSize: TOP_COUNT });
 
   return (
-    <Card className="zoho-card p-4 md:p-6 h-full">
-      <div className="flex items-center gap-2 mb-4">
-        <Newspaper className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold text-foreground">Top Stories</h3>
+    <Card className="zoho-card p-3 self-start w-full">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Newspaper className="w-4 h-4 text-primary shrink-0" />
+        <h3 className="text-base font-semibold text-foreground">Top Stories</h3>
       </div>
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            <Skeleton key={i} className="h-12 w-full rounded-lg" />
           ))}
         </div>
       ) : isError || articles.length === 0 ? (
-        <div className="py-6 text-center text-sm text-muted-foreground">
+        <div className="py-4 text-center text-sm text-muted-foreground">
           <p>{isError ? "Could not load headlines." : "No headlines available."}</p>
           <p className="mt-1 text-xs text-foreground/40">
             {isError && error instanceof Error ? error.message : "Add NEWS_API_KEY to news-proxy Edge Function secrets for real estate news."}
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {articles.slice(0, TOP_COUNT).map((article, idx) => (
             <a
               key={idx}
               href={article.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-border transition-colors group"
+              className="block p-2.5 rounded-md border border-border hover:bg-muted/50 hover:border-border transition-colors group"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">

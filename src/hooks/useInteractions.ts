@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
-import { getCadenceDays, getNextFollowUpDate } from "@/lib/followUpCadence";
 
 export interface Interaction {
   id: string;
@@ -70,21 +69,7 @@ export function useCreateInteraction() {
 
       if (error) throw error;
 
-      // Update contact last_activity_at and next_follow_up_at for reminder cadence
-      const { data: contactRow } = await supabase
-        .from("contacts")
-        .select("status, coming_to_market")
-        .eq("id", interaction.contact_id)
-        .single();
-
-      if (contactRow) {
-        const cadenceDays = getCadenceDays(contactRow.status, contactRow.coming_to_market);
-        const nextAt = getNextFollowUpDate(now, cadenceDays).toISOString();
-        await supabase
-          .from("contacts")
-          .update({ last_activity_at: now, next_follow_up_at: nextAt })
-          .eq("id", interaction.contact_id);
-      }
+      await supabase.from("contacts").update({ last_activity_at: now }).eq("id", interaction.contact_id);
 
       return data;
     },

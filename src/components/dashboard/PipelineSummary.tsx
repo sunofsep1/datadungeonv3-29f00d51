@@ -34,11 +34,11 @@ export function PipelineSummary() {
 
   if (isLoading) {
     return (
-      <Card className="zoho-card p-4">
-        <Skeleton className="h-5 w-32 mb-4" />
-        <div className="space-y-3">
+      <Card className="zoho-card p-3">
+        <Skeleton className="h-4 w-28 mb-2" />
+        <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full" />
+            <Skeleton key={i} className="h-7 w-full" />
           ))}
         </div>
       </Card>
@@ -46,13 +46,13 @@ export function PipelineSummary() {
   }
 
   return (
-    <Card className="zoho-card p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground">Deal Pipeline</h3>
+    <Card className="zoho-card p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-base font-semibold text-foreground">Deal Pipeline</h3>
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2"
+          className="h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-1"
           onClick={() => navigate("/pipeline")}
         >
           View all <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -60,7 +60,7 @@ export function PipelineSummary() {
       </div>
 
       {total === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-white/10">
+        <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border border-dashed border-white/10">
           <p className="text-sm text-muted-foreground text-center">
             No deals in the pipeline yet.
           </p>
@@ -74,7 +74,7 @@ export function PipelineSummary() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {STAGES.map((stage) => {
             const count = stageCounts[stage.key];
             const pct = total > 0 ? (count / total) * 100 : 0;

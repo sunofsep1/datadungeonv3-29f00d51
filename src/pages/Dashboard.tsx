@@ -2,12 +2,14 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 import { DashboardWelcomeHeader } from "@/components/dashboard/DashboardWelcomeHeader";
@@ -19,20 +21,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, TrendingUp, Megaphone, Calendar, Home, ChevronRight, CheckSquare, PhoneCall, Phone, Mail, Clock } from "lucide-react";
+import {
+  Users,
+  TrendingUp,
+  Megaphone,
+  Calendar,
+  Home,
+  ChevronRight,
+  CheckSquare,
+  Clock,
+  MapPin,
+  ListTodo,
+  Sparkles,
+  GripVertical,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useContacts, useCreateContact, getPrimaryPhone, getPrimaryEmail } from "@/hooks/useContacts";
+import { useContacts, useCreateContact } from "@/hooks/useContacts";
 import { useAppointments } from "@/hooks/useAppointments";
-import { useFollowUpByTemperature, type ContactDueForFollowUp } from "@/hooks/useFollowUpReminders";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { AvatarCircle } from "@/components/ui/avatar-circle";
-import { getInitials } from "@/lib/utils";
+import { useOpenContactTasksForUser } from "@/hooks/useContactTasks";
+import { useActiveNurtureEnrollments } from "@/hooks/useActiveNurtureEnrollments";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
-import { useLeads, useCreateLead } from "@/hooks/useLeads";
+import { useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, isPast, isToday } from "date-fns";
-import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
@@ -42,39 +54,14 @@ import { TopStoriesWidget } from "@/components/dashboard/TopStoriesWidget";
 import { NewsWidget } from "@/components/dashboard/NewsWidget";
 import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const STORAGE_KEY = "dashboard-widget-order";
-
-const DEFAULT_WIDGET_ORDER = [
-  "visionBoard",
-  "affirmations",
-  "stats",
-  "topStories",
-  "news",
-  "calendar",
-  "kpi",
-  "pipeline",
-  "activityFeed",
-  "todo",
-  "recentContacts",
-  "upcomingAppointments",
-  "quickActions",
-];
-
-function loadWidgetOrder(): string[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as string[];
-      // Merge with default to include any new widgets
-      const defaultSet = new Set(DEFAULT_WIDGET_ORDER);
-      const storedSet = new Set(parsed);
-      const merged = [...parsed.filter((id) => defaultSet.has(id)), ...DEFAULT_WIDGET_ORDER.filter((id) => !storedSet.has(id))];
-      return merged;
-    }
-  } catch (_) {}
-  return [...DEFAULT_WIDGET_ORDER];
-}
+import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
+import {
+  loadDashboardWidgetOrder,
+  saveDashboardWidgetOrder,
+  resetDashboardWidgetsToDefault,
+  DASHBOARD_WIDGET_LABELS,
+} from "@/lib/dashboardWidgetOrder";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -97,28 +84,62 @@ export default function Dashboard() {
     }
   }, [searchParams, setSearchParams, toast]);
 
-  const [widgetOrder, setWidgetOrder] = useState<string[]>(loadWidgetOrder);
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => loadDashboardWidgetOrder(undefined));
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
+  useEffect(() => {
+    if (user?.id) {
+      setWidgetOrder(loadDashboardWidgetOrder(user.id));
+    }
+  }, [user?.id]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragId(null);
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        setWidgetOrder((prev) => {
+          const oldIndex = prev.indexOf(String(active.id));
+          const newIndex = prev.indexOf(String(over.id));
+          if (oldIndex === -1 || newIndex === -1) return prev;
+          const next = arrayMove(prev, oldIndex, newIndex);
+          saveDashboardWidgetOrder(user?.id, next);
+          return next;
+        });
+      }
+    },
+    [user?.id]
+  );
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null);
+  }, []);
+
+  const handleRemoveWidget = useCallback(
+    (id: string) => {
       setWidgetOrder((prev) => {
-        const oldIndex = prev.indexOf(String(active.id));
-        const newIndex = prev.indexOf(String(over.id));
-        if (oldIndex === -1 || newIndex === -1) return prev;
-        const next = arrayMove(prev, oldIndex, newIndex);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch (_) {}
+        const next = prev.filter((w) => w !== id);
+        saveDashboardWidgetOrder(user?.id, next);
         return next;
       });
-    }
-  }, []);
+      toast({ title: "Widget removed", description: "Your layout has been saved." });
+    },
+    [user?.id, toast]
+  );
+
+  const handleRestoreDefaultWidgets = useCallback(() => {
+    setWidgetOrder(resetDashboardWidgetsToDefault(user?.id));
+    toast({ title: "Dashboard restored", description: "All default widgets are back." });
+  }, [user?.id, toast]);
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
@@ -132,7 +153,14 @@ export default function Dashboard() {
 
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: appointments = [], isLoading: appointmentsLoading } = useAppointments();
-  const { data: leads = [] } = useLeads();
+  const { data: openContactTasks = [] } = useOpenContactTasksForUser();
+  const { data: nurtureDash } = useActiveNurtureEnrollments();
+  const sequenceSummary = nurtureDash?.summary ?? {
+    activeTotal: 0,
+    dueNow: 0,
+    dueToday: 0,
+    dueSoon24h: 0,
+  };
   const { data: posts = [] } = usePosts();
 
   const createContact = useCreateContact();
@@ -142,7 +170,7 @@ export default function Dashboard() {
 
   const stats = [
     { label: "Contacts", value: contacts.length, icon: Users, path: "/contacts" },
-    { label: "Leads", value: leads.length, icon: Megaphone, path: "/hot-leads" },
+    { label: "Nurture", value: sequenceSummary.activeTotal, icon: Sparkles, path: "/nurture" },
     { label: "Appointments", value: appointments.length, icon: Calendar, path: "/appointments" },
     { label: "Posts", value: posts.length, icon: TrendingUp, path: "/marketing" },
   ];
@@ -160,15 +188,6 @@ export default function Dashboard() {
         .slice(0, 5),
     [appointments]
   );
-
-  const { hot, warm, cold } = useFollowUpByTemperature(contacts);
-  const hotDue = useMemo(() => hot.filter((c) => c.due), [hot]);
-  const warmDue = useMemo(() => warm.filter((c) => c.due), [warm]);
-  const coldDue = useMemo(() => cold.filter((c) => c.due), [cold]);
-  const followUpsToShow = hotDue.length + warmDue.length + coldDue.length > 0;
-  const hotToShow = hotDue.slice(0, 3);
-  const warmToShow = warmDue.slice(0, 3);
-  const coldToShow = coldDue.slice(0, 2);
 
   const overdueCount = useMemo(
     () =>
@@ -277,15 +296,15 @@ export default function Dashboard() {
         return <AffirmationsWidget />;
       case "stats":
         return (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
             {contactsLoading ? (
               [...Array(4)].map((_, i) => (
-                <Card key={i} className="zoho-card p-4 md:p-6">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                <Card key={i} className="zoho-card p-2.5 sm:p-3">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-8 rounded-md shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <Skeleton className="h-3 w-16 mb-2" />
-                      <Skeleton className="h-7 w-12" />
+                      <Skeleton className="h-2.5 w-12 mb-1.5" />
+                      <Skeleton className="h-7 w-10" />
                     </div>
                   </div>
                 </Card>
@@ -294,23 +313,23 @@ export default function Dashboard() {
               stats.map((stat, index) => (
                 <Card
                   key={index}
-                  className="zoho-card p-4 md:p-6 cursor-pointer hover:bg-white/10 transition-colors duration-200 focus-within:ring-2 focus-within:ring-[#00BCD4] focus-within:ring-inset"
+                  className="zoho-card p-2.5 sm:p-3 cursor-pointer hover:bg-white/10 transition-colors duration-200 focus-within:ring-2 focus-within:ring-[#00BCD4] focus-within:ring-inset"
                   onClick={() => navigate(stat.path)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === "Enter" && navigate(stat.path)}
                 >
-                  <div className="flex items-center justify-between gap-3 md:gap-4">
-                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                      <div className="p-2 rounded-lg zoho-accent-bg shrink-0">
-                        <stat.icon className="w-4 h-4 md:w-5 md:h-5 zoho-accent" />
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="p-1.5 rounded-md zoho-accent-bg shrink-0">
+                        <stat.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 zoho-accent" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs md:text-sm text-muted-foreground">{stat.label}</p>
-                        <p className="text-xl md:text-2xl font-bold text-foreground">{stat.value}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{stat.label}</p>
+                        <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums leading-tight">{stat.value}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0 opacity-70" />
                   </div>
                 </Card>
               ))
@@ -342,28 +361,28 @@ export default function Dashboard() {
         return <RecentActivityFeed />;
       case "todo":
         return (
-          <Card className="zoho-card p-4 md:p-6 h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <CheckSquare className="w-5 h-5 zoho-accent" />
+          <Card className="zoho-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
+                <CheckSquare className="w-4 h-4 zoho-accent shrink-0" />
                 To-Do
               </h3>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/tasks")}>
-                View all <ChevronRight className="w-4 h-4 ml-0.5" />
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/tasks")}>
+                View all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Button>
             </div>
             {overdueCount > 0 ? (
-              <div className="rounded-lg bg-amber-500/15 border border-amber-500/30 p-3 mb-3">
+              <div className="rounded-md bg-amber-500/15 border border-amber-500/30 p-2.5">
                 <p className="text-sm font-medium text-amber-200">
                   {overdueCount} overdue task{overdueCount !== 1 ? "s" : ""}
                 </p>
-                <Button variant="outline" size="sm" className="mt-2 border-amber-500/50 text-amber-200 hover:bg-amber-500/20" onClick={() => navigate("/tasks")}>
+                <Button variant="outline" size="sm" className="mt-2 h-8 border-amber-500/50 text-amber-200 hover:bg-amber-500/20" onClick={() => navigate("/tasks")}>
                   Go to Tasks
                 </Button>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckSquare className="w-4 h-4 shrink-0 opacity-60" />
+                <CheckSquare className="w-3.5 h-3.5 shrink-0 opacity-60" />
                 <span>No overdue tasks</span>
               </div>
             )}
@@ -371,38 +390,38 @@ export default function Dashboard() {
         );
       case "recentContacts":
         return (
-          <Card className="zoho-card p-4 md:p-6 h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Recent Contacts</h3>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/contacts")}>
-                View all <ChevronRight className="w-4 h-4 ml-0.5" />
+          <Card className="zoho-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-semibold text-foreground">Recent Contacts</h3>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/contacts")}>
+                View all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Button>
             </div>
             {contactsLoading ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                  <Skeleton key={i} className="h-9 w-full rounded-md" />
                 ))}
               </div>
             ) : recentContacts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-border">
-                <Users className="w-10 h-10 shrink-0 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground text-center">No contacts yet. Add your first contact to get started.</p>
-                <Button size="sm" className="gap-2" onClick={() => setContactDialogOpen(true)}>
-                  <Users className="w-4 h-4" /> Add Contact
+              <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border border-dashed border-border">
+                <Users className="w-8 h-8 shrink-0 text-muted-foreground opacity-80" />
+                <p className="text-xs text-muted-foreground text-center leading-snug">No contacts yet. Add your first contact.</p>
+                <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setContactDialogOpen(true)}>
+                  <Users className="w-3.5 h-3.5" /> Add Contact
                 </Button>
               </div>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {recentContacts.map((c) => (
                   <li key={c.id}>
                     <button
                       type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
+                      className="w-full text-left flex items-center justify-between gap-2 py-1.5 px-2 rounded-md hover:bg-white/10 active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
                       onClick={() => navigate(`/contacts/${c.id}`)}
                     >
                       <span className="text-sm text-foreground truncate">{c.name}</span>
-                      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                     </button>
                   </li>
                 ))}
@@ -411,111 +430,124 @@ export default function Dashboard() {
           </Card>
         );
       case "upcomingAppointments": {
-        const followUpStatusVariant = (s: string | null) => {
-          switch (s) { case "hot": return "hot"; case "warm": return "warm"; case "cold": return "cold"; default: return "entered"; }
-        };
-        const FollowUpCard = ({ c }: { c: ContactDueForFollowUp }) => {
-          const dueLabel = c.due
-            ? (c.daysUntilDue != null && c.daysUntilDue > 0 ? `${c.daysUntilDue}d overdue` : "Due today")
-            : format(c.nextFollowUpAt, "d MMM");
-          return (
-            <button
-              type="button"
-              className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-muted/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
-              onClick={() => navigate(`/contacts/${c.id}`)}
-            >
-              <AvatarCircle name={c.name} initials={getInitials(undefined, undefined, c.name)} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="font-medium text-foreground text-sm truncate">{c.name ?? "—"}</span>
-                  <StatusBadge variant={followUpStatusVariant(c.status)} className="text-xs">{c.temperature}</StatusBadge>
-                  <span className={`text-xs ${c.due ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                    <Clock className="w-3 h-3 inline mr-0.5" />
-                    {dueLabel}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                  {getPrimaryPhone(c) && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 shrink-0" />
-                      {formatPhoneDisplay(getPrimaryPhone(c)!)}
-                    </span>
-                  )}
-                  {getPrimaryEmail(c) && (
-                    <span className="flex items-center gap-1 truncate">
-                      <Mail className="w-3 h-3 shrink-0" />
-                      {getPrimaryEmail(c)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
-            </button>
-          );
-        };
-        const FollowUpSection = ({ title, list }: { title: string; list: ContactDueForFollowUp[] }) =>
-          list.length === 0 ? null : (
-            <div className="space-y-1.5">
-              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider text-muted-foreground">
-                {title} ({list.length})
-              </h4>
-              {list.map((c) => (
-                <FollowUpCard key={c.id} c={c} />
-              ))}
-            </div>
-          );
         return (
-          <Card className="zoho-card p-4 md:p-6 h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">Follow-ups</h3>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-2" onClick={() => navigate("/follow-ups")}>
-                View all <ChevronRight className="w-4 h-4 ml-0.5" />
+          <Card className="zoho-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 zoho-accent shrink-0" />
+                Upcoming appointments
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1"
+                onClick={() => navigate("/appointments")}
+              >
+                View all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Button>
             </div>
-            {contactsLoading ? (
-              <div className="space-y-2">
+            {appointmentsLoading ? (
+              <div className="space-y-1.5">
                 {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  <Skeleton key={i} className="h-12 w-full rounded-md" />
                 ))}
               </div>
-            ) : !followUpsToShow ? (
-              <div className="flex flex-col items-center gap-3 py-6 px-4 rounded-lg border border-dashed border-border">
-                <PhoneCall className="w-10 h-10 shrink-0 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground text-center">No follow-ups due. Set contact status (hot/warm/cold) and log calls to see reminders here.</p>
-                <Button size="sm" variant="outline" className="gap-2 border-border" onClick={() => navigate("/contacts")}>
-                  <Users className="w-4 h-4" /> Contacts
+            ) : upcomingAppointments.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border border-dashed border-border">
+                <Calendar className="w-8 h-8 shrink-0 text-muted-foreground opacity-80" />
+                <p className="text-xs text-muted-foreground text-center leading-snug">No upcoming appointments. Use the calendar or quick actions.</p>
+                <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs border-border" onClick={() => navigate("/appointments")}>
+                  <Calendar className="w-3.5 h-3.5" /> Appointments
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <FollowUpSection title="Hot (call weekly)" list={hotToShow} />
-                <FollowUpSection title="Warm (call every 2 weeks)" list={warmToShow} />
-                <FollowUpSection title="Cold (call every 3 months)" list={coldToShow} />
-              </div>
+              <ul className="space-y-1.5">
+                {upcomingAppointments.map((a) => (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      className="w-full text-left flex items-start justify-between gap-2 p-2 rounded-md border border-border hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
+                      onClick={() => navigate("/appointments")}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground text-sm truncate">{a.title ?? "Appointment"}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3 shrink-0" />
+                          {format(new Date(a.date), "EEE d MMM · h:mm a")}
+                        </p>
+                        {a.location?.trim() && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 flex items-start gap-1">
+                            <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
+                            <span className="line-clamp-2">{a.location}</span>
+                          </p>
+                        )}
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
         );
       }
+      case "contactTasks": {
+        const contactName = (id: string) => contacts.find((c) => c.id === id)?.name ?? "Contact";
+        const top = openContactTasks.slice(0, 6);
+        return (
+          <Card className="zoho-card p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
+                <ListTodo className="w-4 h-4 zoho-accent shrink-0" />
+                Contact tasks
+              </h3>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/tasks")}>
+                Open <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+              </Button>
+            </div>
+            {top.length === 0 ? (
+              <p className="text-xs text-muted-foreground leading-relaxed">No open contact tasks. Add them from a contact&apos;s Nurture section.</p>
+            ) : (
+              <ul className="space-y-1">
+                {top.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      className="w-full text-left flex items-center justify-between gap-2 py-1.5 px-2 rounded-md border border-border hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate(`/contacts/${t.contact_id}`)}
+                    >
+                      <span className="text-sm text-foreground truncate">{t.title}</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{contactName(t.contact_id)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        );
+      }
+      case "activeSequences":
+        return <NurtureLiveEnrollments variant="dashboard" />;
       case "quickActions":
         return (
-          <Card className="zoho-card p-4 md:p-6 h-full">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3 justify-items-stretch">
-              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
-                <Users className="w-4 h-4 zoho-accent shrink-0" />
-                <span className="text-sm font-medium">Add Contact</span>
+          <Card className="zoho-card p-3">
+            <h3 className="text-base font-semibold text-foreground mb-2">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-2 justify-items-stretch">
+              <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
+                <Users className="w-3.5 h-3.5 zoho-accent shrink-0" />
+                <span className="text-xs font-medium leading-tight">Add Contact</span>
               </button>
-              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
-                <Megaphone className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-sm font-medium">Add Lead</span>
+              <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
+                <Megaphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-xs font-medium leading-tight">Add Lead</span>
               </button>
-              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
-                <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
-                <span className="text-sm font-medium">Schedule</span>
+              <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
+                <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="text-xs font-medium leading-tight">Schedule</span>
               </button>
-              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 hover:scale-[1.02] border border-border text-foreground transition-all duration-200 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
-                <Home className="w-4 h-4 zoho-accent shrink-0" />
-                <span className="text-sm font-medium">Create Post</span>
+              <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
+                <Home className="w-3.5 h-3.5 zoho-accent shrink-0" />
+                <span className="text-xs font-medium leading-tight">Create Post</span>
               </button>
             </div>
           </Card>
@@ -525,26 +557,72 @@ export default function Dashboard() {
     }
   };
 
-  const colSpanMap: Record<string, 1 | 2> = {
-    stats: 2,
-    calendar: 2,
-  };
-
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="animate-fade-in flex min-h-0 flex-1 flex-col gap-4 pb-6">
       <DashboardWelcomeHeader />
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            {widgetOrder.map((id) => (
-              <SortableWidget key={id} id={id} colSpan={colSpanMap[id] ?? 1}>
-                {renderWidget(id)}
-              </SortableWidget>
-            ))}
+      <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1 mb-1">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] text-foreground/85">
+          Drag to reorder, or ✕ to remove. Layout is saved in this browser for your account.
+        </span>
+      </p>
+
+      {widgetOrder.length === 0 ? (
+        <Card className="zoho-card p-8 md:p-10 border-dashed border-border max-w-lg">
+          <p className="text-foreground font-medium mb-1">No widgets on your dashboard</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            You removed every section. Restore the default set to bring back all widgets, or refresh after signing in if
+            something looks wrong.
+          </p>
+          <Button type="button" onClick={handleRestoreDefaultWidgets}>
+            Restore default widgets
+          </Button>
+        </Card>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
+                <div
+                  className={cn(
+                    /* Balanced multi-column: short tiles stack under tall ones instead of leaving row gaps */
+                    "columns-1 lg:columns-2 [column-fill:balance] gap-x-3 lg:gap-x-4",
+                    /* Stretch the column set so both columns share one bottom edge with the viewport */
+                    "min-h-[calc(100dvh-14rem)] sm:min-h-[calc(100dvh-15rem)] lg:min-h-[calc(100dvh-16rem)]"
+                  )}
+                >
+                  {widgetOrder.map((id) => (
+                    <SortableWidget key={id} id={id} onRemove={handleRemoveWidget}>
+                      {renderWidget(id)}
+                    </SortableWidget>
+                  ))}
+                </div>
+              </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }}>
+                {activeDragId ? (
+                  <div className="flex items-center gap-3 rounded-xl border-2 border-primary bg-card px-4 py-3 shadow-lg max-w-[min(100vw-2rem,400px)]">
+                    <GripVertical className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-semibold text-foreground">
+                      {DASHBOARD_WIDGET_LABELS[activeDragId] ?? activeDragId}
+                    </span>
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </div>
-        </SortableContext>
-      </DndContext>
+          <div className="mt-auto flex shrink-0 justify-end border-t border-border/50 pt-4">
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={handleRestoreDefaultWidgets}>
+              Restore default layout
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Dialogs */}
       <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>

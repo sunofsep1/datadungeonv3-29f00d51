@@ -522,6 +522,42 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_playbook_assignments: {
+        Row: {
+          id: string
+          contact_id: string
+          playbook_template_id: string
+          user_id: string
+          current_step_index: number
+          started_at: string
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          contact_id: string
+          playbook_template_id: string
+          user_id: string
+          current_step_index?: number
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          contact_id?: string
+          playbook_template_id?: string
+          user_id?: string
+          current_step_index?: number
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_property_links: {
         Row: {
           acquisition_date: string | null
@@ -570,6 +606,45 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_tasks: {
+        Row: {
+          id: string
+          contact_id: string
+          user_id: string
+          title: string
+          notes: string | null
+          due_at: string | null
+          completed_at: string | null
+          sequence_enrollment_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          contact_id: string
+          user_id: string
+          title: string
+          notes?: string | null
+          due_at?: string | null
+          completed_at?: string | null
+          sequence_enrollment_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          contact_id?: string
+          user_id?: string
+          title?: string
+          notes?: string | null
+          due_at?: string | null
+          completed_at?: string | null
+          sequence_enrollment_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_tags: {
         Row: {
           contact_id: string
@@ -595,6 +670,171 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nurture_sequence_enrollments: {
+        Row: {
+          id: string
+          contact_id: string
+          sequence_id: string
+          user_id: string
+          current_step_index: number
+          started_at: string
+          next_step_at: string | null
+          completed_at: string | null
+          pause_followup_cadence: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          contact_id: string
+          sequence_id: string
+          user_id: string
+          current_step_index?: number
+          started_at?: string
+          next_step_at?: string | null
+          completed_at?: string | null
+          pause_followup_cadence?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          contact_id?: string
+          sequence_id?: string
+          user_id?: string
+          current_step_index?: number
+          started_at?: string
+          next_step_at?: string | null
+          completed_at?: string | null
+          pause_followup_cadence?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nurture_sequences: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nurture_sequence_steps: {
+        Row: {
+          id: string
+          sequence_id: string
+          sort_order: number
+          offset_days: number
+          step_type: string
+          title: string
+          body: string | null
+          email_subject: string | null
+          email_html: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sequence_id: string
+          sort_order?: number
+          offset_days?: number
+          step_type: string
+          title: string
+          body?: string | null
+          email_subject?: string | null
+          email_html?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sequence_id?: string
+          sort_order?: number
+          offset_days?: number
+          step_type?: string
+          title?: string
+          body?: string | null
+          email_subject?: string | null
+          email_html?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      playbook_templates: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      playbook_template_steps: {
+        Row: {
+          id: string
+          playbook_template_id: string
+          sort_order: number
+          title: string
+          body: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          playbook_template_id: string
+          sort_order?: number
+          title: string
+          body?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          playbook_template_id?: string
+          sort_order?: number
+          title?: string
+          body?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
       contacts: {
         Row: {
@@ -1711,6 +1951,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_reminder_preferences: {
+        Row: {
+          user_id: string
+          digest_enabled: boolean
+          digest_frequency: string
+          last_digest_sent_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          digest_enabled?: boolean
+          digest_frequency?: string
+          last_digest_sent_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          digest_enabled?: boolean
+          digest_frequency?: string
+          last_digest_sent_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_google_tokens: {
         Row: {

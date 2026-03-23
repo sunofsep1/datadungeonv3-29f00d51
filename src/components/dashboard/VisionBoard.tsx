@@ -290,27 +290,27 @@ export function VisionBoard() {
 
   return (
     <Card className="zoho-card overflow-hidden border border-border shadow-lg">
-      <div className="px-5 py-4 border-b border-border bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20">
-              <Sparkles className="h-5 w-5 text-primary" />
+      <div className="px-3 py-2.5 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground tracking-tight">Vision Board</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Goals and milestones · Drag grip to reorder</p>
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold text-foreground tracking-tight">Vision Board</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Goals and milestones · Drag grip to reorder</p>
             </div>
           </div>
-          <Button size="sm" variant="outline" className="gap-2 border-border" onClick={openAddDialog}>
+          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs border-border shrink-0" onClick={openAddDialog}>
             <Plus className="h-4 w-4" />
             Add vision
           </Button>
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-3">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (

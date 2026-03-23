@@ -287,7 +287,7 @@ export function useCreateContact() {
         data = r.data;
         error = r.error;
       }
-      if (error) throw new Error(String(error.message) || "Failed to create contact");
+      if (error) throw error;
 
       const addressFields = pickAddressFields(contact as Record<string, unknown>);
       if (addressFields && data?.id) {
@@ -321,11 +321,6 @@ export function useUpdateContact() {
         .single();
 
       const contactPayload = toContactUpdatePayload(updates as Record<string, unknown>) as Record<string, unknown>;
-      // When marking contact as hot/warm/cold, set next_follow_up_at to now so they appear in Follow-ups immediately
-      const followUpStatuses = ["hot", "warm", "cold"];
-      if (updates.status && followUpStatuses.includes(String(updates.status).toLowerCase())) {
-        contactPayload.next_follow_up_at = new Date().toISOString();
-      }
       let { data, error } = await supabase
         .from("contacts")
         .update(contactPayload)

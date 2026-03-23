@@ -11,6 +11,8 @@ import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Github, Atom, Sunset, 
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Theme, Density } from "@/contexts/ThemeContext";
+import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/hooks/useUserReminderPreferences";
+import { toast } from "sonner";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
   { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
@@ -44,6 +46,15 @@ const DENSITY_OPTIONS: { value: Density; label: string }[] = [
 export default function Settings() {
   const { user } = useAuth();
   const { theme, setTheme, density, setDensity } = useTheme();
+  const { data: reminderPrefs, isSuccess: reminderPrefsLoaded } = useUserReminderPreferences();
+  const upsertReminder = useUpsertUserReminderPreferences();
+  const reminderPrefsSeeded = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!user || !reminderPrefsLoaded || reminderPrefs !== null || reminderPrefsSeeded.current) return;
+    reminderPrefsSeeded.current = true;
+    upsertReminder.mutate({ digest_enabled: true, digest_frequency: "daily" });
+  }, [user, reminderPrefsLoaded, reminderPrefs]);
 
   return (
     <div className="animate-fade-in">
@@ -188,12 +199,47 @@ export default function Settings() {
             <h3 className="font-semibold text-foreground">Notifications</h3>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-foreground">Email notifications</p>
-                <p className="text-xs text-muted-foreground">Receive email updates about your activity</p>
+                <p className="text-sm font-medium text-foreground">Daily CRM digest email</p>
+                <p className="text-xs text-muted-foreground">
+                  Summary of contacts due for follow-up and open contact tasks (sent by a scheduled job; requires RESEND_API_KEY on the server).
+                </p>
               </div>
-              <Switch />
+              <Switch
+                checked={reminderPrefs?.digest_enabled ?? true}
+                onCheckedChange={(v) =>
+                  upsertReminder.mutate(
+                    { digest_enabled: v },
+                    {
+                      onSuccess: () => toast.success(v ? "Digest enabled" : "Digest off"),
+                      onError: () => toast.error("Could not save"),
+                    }
+                  )
+                }
+                disabled={upsertReminder.isPending}
+              />
+            </div>
+            <div className="space-y-2 max-w-xs">
+              <p className="text-xs text-muted-foreground">Digest frequency (for future use; digest cron runs daily)</p>
+              <Select
+                value={reminderPrefs?.digest_frequency ?? "daily"}
+                onValueChange={(val) =>
+                  upsertReminder.mutate(
+                    { digest_frequency: val as "daily" | "weekly" },
+                    { onSuccess: () => toast.success("Saved"), onError: () => toast.error("Could not save") }
+                  )
+                }
+                disabled={upsertReminder.isPending}
+              >
+                <SelectTrigger className="bg-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -204,10 +250,6 @@ export default function Settings() {
             </div>
           </div>
         </Card>
-
-        <div className="flex justify-end">
-          <Button>Save Changes</Button>
-        </div>
       </div>
     </div>
   );

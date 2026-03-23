@@ -18,8 +18,8 @@ export function KPISnapshot() {
 
   if (isError) {
     return (
-      <Card className="zoho-card p-4">
-        <h3 className="font-semibold text-white mb-4">KPI Snapshot</h3>
+      <Card className="zoho-card p-3">
+        <h3 className="text-base font-semibold text-white mb-2">KPI Snapshot</h3>
         <p className="text-sm text-white/60 mb-2">Couldn&apos;t load KPI data.</p>
         <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={refetch}>Retry</Button>
       </Card>
@@ -73,15 +73,15 @@ export function KPISnapshot() {
   ];
 
   return (
-    <Card className="zoho-card p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-white">KPI Snapshot</h3>
+    <Card className="zoho-card p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-base font-semibold text-white">KPI Snapshot</h3>
         <Link to="/performance" className="text-xs text-[#00BCD4] hover:underline">
           View All →
         </Link>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {kpis.map((kpi) => {
           const progress = Math.min((kpi.current / kpi.goal) * 100, 100);
           return (

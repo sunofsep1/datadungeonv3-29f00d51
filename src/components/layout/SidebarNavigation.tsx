@@ -16,8 +16,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   Building2,
-  PhoneCall,
   ListTodo,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ const homeItems: NavItem[] = [
 const clientManagementItems: NavItem[] = [
   { title: "To-Do", url: "/todos", icon: ListTodo },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Follow-ups", url: "/follow-ups", icon: PhoneCall },
+  { title: "Nurture", url: "/nurture", icon: Sparkles },
   { title: "Properties", url: "/properties", icon: Building2 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
 ];
@@ -73,7 +73,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
-  if (item.url === "/follow-ups" && pathname.startsWith("/follow-ups")) return true;
+  if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
   return false;
 }

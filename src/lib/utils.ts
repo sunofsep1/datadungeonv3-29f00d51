@@ -25,3 +25,27 @@ export function getInitials(
   }
   return "?";
 }
+
+/** Supabase/PostgREST errors are plain objects with `message`, not always `instanceof Error`. */
+export function errorMessageFromUnknown(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e) {
+    const m = (e as { message: unknown }).message;
+    if (typeof m === "string" && m.length > 0) return m;
+  }
+  if (typeof e === "string") return e;
+  return "Something went wrong";
+}
+
+/** Postgres 23505 / unique violations — friendlier copy for contact save flows. */
+export function formatContactSaveError(e: unknown): string {
+  const msg = errorMessageFromUnknown(e);
+  const code =
+    typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : "";
+  const isDup = code === "23505" || /duplicate key|unique constraint/i.test(msg);
+  if (!isDup) return msg;
+  if (/email|contacts_email/i.test(msg)) {
+    return "That email is already on another contact. Use a different email, clear the field, or find and edit the existing contact.";
+  }
+  return "This would duplicate an existing record. Check for a matching contact and try again.";
+}

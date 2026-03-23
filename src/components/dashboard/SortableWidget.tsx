@@ -1,22 +1,20 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type SortableWidgetProps = {
   id: string;
-  colSpan?: 1 | 2;
   children: React.ReactNode;
+  /** Remove this widget from the dashboard (persisted). */
+  onRemove?: (id: string) => void;
 };
 
-export function SortableWidget({ id, colSpan = 1, children }: SortableWidgetProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+/**
+ * Dashboard tile: equal width in the grid, consistent minimum height, drag handle.
+ */
+export function SortableWidget({ id, children, onRemove }: SortableWidgetProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -27,25 +25,41 @@ export function SortableWidget({ id, colSpan = 1, children }: SortableWidgetProp
     <div
       ref={setNodeRef}
       style={style}
-      className={`
-        relative rounded-xl overflow-hidden
-        ${colSpan === 2 ? "lg:col-span-2" : ""}
-        ${isDragging ? "z-50 opacity-90 ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}
-      `}
+      className={cn(
+        "relative flex w-full flex-col rounded-lg ring-1 ring-border/60 bg-card/40 shadow-sm",
+        /* Masonry-style columns: pack tiles vertically without row dead space */
+        "break-inside-avoid mb-3 lg:mb-4",
+        isDragging && "z-50 opacity-60 ring-2 ring-primary ring-offset-2 ring-offset-background"
+      )}
     >
-      <div className="flex h-full min-h-[80px]">
-        <div className="shrink-0 self-start pt-1 -ml-0.5">
+      <div className="flex w-full min-w-0">
+        <div className="shrink-0 flex flex-col border-r border-border/50 bg-muted/30 py-1.5 px-0.5 gap-0.5">
           <button
             type="button"
-            className="touch-none cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-muted/50 opacity-50 hover:opacity-100 transition-opacity outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
-            aria-label="Drag to reorder"
+            className="touch-none cursor-grab active:cursor-grabbing p-1.5 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+            aria-label="Drag to reorder dashboard section"
+            title="Drag to reorder"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
+            <GripVertical className="w-3.5 h-3.5" />
           </button>
+          {onRemove && (
+            <button
+              type="button"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+              aria-label="Remove widget from dashboard"
+              title="Remove widget"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onRemove(id)}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-        <div className="flex-1 min-w-0 group">{children}</div>
+        <div className="flex-1 min-w-0 flex flex-col p-2.5 sm:p-3 [&>*]:min-h-0">
+          {children}
+        </div>
       </div>
     </div>
   );

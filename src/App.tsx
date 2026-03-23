@@ -29,7 +29,7 @@ const Performance = lazy(() => import("./pages/Performance"));
 const Scripts = lazy(() => import("./pages/Scripts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const HotLeads = lazy(() => import("./pages/HotLeads"));
-const FollowUps = lazy(() => import("./pages/FollowUps"));
+const Nurture = lazy(() => import("./pages/Nurture"));
 const TodoList = lazy(() => import("./pages/TodoList"));
 const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
@@ -61,7 +61,7 @@ const App = () => (
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
-                <Route path="/follow-ups" element={<ProtectedRoute><MainLayout><FollowUps /></MainLayout></ProtectedRoute>} />
+                <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ContactDetail /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/:id/print" element={<ProtectedRoute><ContactPrintPage /></ProtectedRoute>} />
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />

@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,16 +64,13 @@ import {
   getTagNames,
   getLinkedPropertyAddress,
 } from "@/hooks/useContacts";
-import { useContactsDueNow } from "@/hooks/useFollowUpReminders";
-import { COMING_TO_MARKET_LABELS, type ComingToMarket } from "@/lib/followUpCadence";
-import { useLogContactStatusChange } from "@/hooks/useEvents";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag, useRemoveContactTag } from "@/hooks/useContactTags";
 import { useCreateProperty } from "@/hooks/useProperties";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
-import { getInitials, cn } from "@/lib/utils";
+import { getInitials, cn, formatContactSaveError } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -93,19 +89,87 @@ import {
 } from "@/components/ui/pagination";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid, Columns } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 
-type ContactStatus = "hot" | "warm" | "cold" | "lead";
 type SortOption =
   | "name-asc"
   | "name-desc"
-  | "status-asc"
-  | "status-desc"
   | "date-added-asc"
   | "date-added-desc"
   | "property-count-asc"
   | "property-count-desc";
+
+const SORT_OPTIONS: SortOption[] = [
+  "name-asc",
+  "name-desc",
+  "date-added-asc",
+  "date-added-desc",
+  "property-count-asc",
+  "property-count-desc",
+];
+
+const CONTACTS_LIST_PREFS_KEY = "datadungeon_contacts_list_prefs_v1";
+
+type ContactsListPersistedPrefs = {
+  searchQuery: string;
+  filterTagIds: string[];
+  filterSource: string;
+  sortBy: SortOption;
+  filterHasProperty: boolean | null;
+  filterLastTouched: string;
+  contactView: "list" | "grid";
+  itemsPerPage: number;
+  filterPanelOpen: boolean;
+};
+
+function defaultContactsPrefs(): ContactsListPersistedPrefs {
+  return {
+    searchQuery: "",
+    filterTagIds: [],
+    filterSource: "all",
+    sortBy: "name-asc",
+    filterHasProperty: null,
+    filterLastTouched: "all",
+    contactView: "list",
+    itemsPerPage: 25,
+    filterPanelOpen: true,
+  };
+}
+
+function loadContactsListPrefs(): ContactsListPersistedPrefs {
+  const defaults = defaultContactsPrefs();
+  if (typeof window === "undefined") return defaults;
+  try {
+    const raw = localStorage.getItem(CONTACTS_LIST_PREFS_KEY);
+    if (!raw) return defaults;
+    const p = JSON.parse(raw) as Partial<ContactsListPersistedPrefs>;
+    const sortBy =
+      typeof p.sortBy === "string" && SORT_OPTIONS.includes(p.sortBy as SortOption)
+        ? (p.sortBy as SortOption)
+        : defaults.sortBy;
+    const rawView = p.contactView === "grid" || p.contactView === "list" || p.contactView === "kanban" ? p.contactView : defaults.contactView;
+    const contactView = rawView === "kanban" ? "list" : rawView;
+    const itemsPerPage =
+      typeof p.itemsPerPage === "number" && p.itemsPerPage > 0 && p.itemsPerPage <= 200
+        ? p.itemsPerPage
+        : defaults.itemsPerPage;
+    return {
+      searchQuery: typeof p.searchQuery === "string" ? p.searchQuery : defaults.searchQuery,
+      filterTagIds: Array.isArray(p.filterTagIds) ? p.filterTagIds.filter((id) => typeof id === "string") : [],
+      filterSource: typeof p.filterSource === "string" ? p.filterSource : defaults.filterSource,
+      sortBy,
+      filterHasProperty:
+        p.filterHasProperty === true || p.filterHasProperty === false ? p.filterHasProperty : null,
+      filterLastTouched: typeof p.filterLastTouched === "string" ? p.filterLastTouched : defaults.filterLastTouched,
+      contactView,
+      itemsPerPage,
+      filterPanelOpen: typeof p.filterPanelOpen === "boolean" ? p.filterPanelOpen : defaults.filterPanelOpen,
+    };
+  } catch {
+    return defaults;
+  }
+}
 
 const AUSTRALIAN_STATES = [
   { value: "NSW", label: "New South Wales" },
@@ -131,23 +195,16 @@ const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; b
   { value: "gray", label: "Gray", bg: "bg-slate-500", border: "border-slate-500" },
 ];
 
-/** Display/filter status (DataDungeon schema) */
-function getContactStatus(c: ContactWithMeta | { status?: string | null }): string {
-  return c.status ?? "lead";
-}
-
 /** Display name (DataDungeon schema) */
 function getContactDisplayName(c: ContactWithMeta): string {
   return c.name?.trim() || "—";
 }
 
-/** Map status to kanban column (hot, warm, cold, lead) */
-function getKanbanStatus(c: ContactWithMeta): "hot" | "warm" | "cold" | "lead" {
-  const s = getContactStatus(c);
-  if (s === "hot" || s === "qualified" || s === "customer") return "hot";
-  if (s === "warm" || s === "contacted" || s === "nurture") return "warm";
-  if (s === "cold" || s === "new") return "cold";
-  return "lead";
+function getCategoryLabel(c: ContactWithMeta | { category?: string | null }): string {
+  const cat = (c as { category?: string | null }).category;
+  if (!cat) return "—";
+  const found = CONTACT_CATEGORIES.find((x) => x.value === cat);
+  return found?.label ?? cat;
 }
 
 const createEmptyContact = () => ({
@@ -156,9 +213,7 @@ const createEmptyContact = () => ({
   email: "",
   source: "",
   notes: "",
-  status: "lead" as ContactStatus,
   category: "",
-  coming_to_market: "",
   story: "",
   selling_intentions: "",
   pain_points: "",
@@ -184,44 +239,67 @@ export default function Contacts() {
   const createTag = useCreateTag();
   const addContactTag = useAddContactTag();
   const removeContactTag = useRemoveContactTag();
-  const { logStatusChange } = useLogContactStatusChange();
   const createProperty = useCreateProperty();
   const createPropertyLink = useCreateContactPropertyLink();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
-  const [filterSource, setFilterSource] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("name-asc");
+  const initialPrefs = useMemo(() => loadContactsListPrefs(), []);
+
+  const [searchQuery, setSearchQuery] = useState(initialPrefs.searchQuery);
+  const [filterTagIds, setFilterTagIds] = useState<string[]>(initialPrefs.filterTagIds);
+  const [filterSource, setFilterSource] = useState<string>(initialPrefs.filterSource);
+  const [sortBy, setSortBy] = useState<SortOption>(initialPrefs.sortBy);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactWithMeta | null>(null);
   const [formData, setFormData] = useState(createEmptyContact());
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState("");
-  const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(null);
-  const [filterLastTouched, setFilterLastTouched] = useState<string>("all");
+  const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(initialPrefs.filterHasProperty);
+  const [filterLastTouched, setFilterLastTouched] = useState<string>(initialPrefs.filterLastTouched);
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [filterPanelOpen, setFilterPanelOpen] = useState(true);
+  const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(initialPrefs.filterPanelOpen);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
-  const [contactView, setContactView] = useState<"list" | "grid" | "kanban">("list");
+  const [contactView, setContactView] = useState<"list" | "grid">(
+    initialPrefs.contactView === "kanban" ? "list" : initialPrefs.contactView
+  );
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
-  const contactsDueNow = useContactsDueNow(contacts);
-  const dueForFollowUpIds = useMemo(() => new Set(contactsDueNow.map((c) => c.id)), [contactsDueNow]);
+  useEffect(() => {
+    const prefs: ContactsListPersistedPrefs = {
+      searchQuery,
+      filterTagIds,
+      filterSource,
+      sortBy,
+      filterHasProperty,
+      filterLastTouched,
+      contactView,
+      itemsPerPage,
+      filterPanelOpen,
+    };
+    try {
+      localStorage.setItem(CONTACTS_LIST_PREFS_KEY, JSON.stringify(prefs));
+    } catch {
+      // ignore quota / private mode
+    }
+  }, [
+    searchQuery,
+    filterTagIds,
+    filterSource,
+    sortBy,
+    filterHasProperty,
+    filterLastTouched,
+    contactView,
+    itemsPerPage,
+    filterPanelOpen,
+  ]);
 
   const filteredAndSortedContacts = useMemo(() => {
     let list = (contacts ?? []) as ContactWithMeta[];
     const now = new Date();
-
-    // Due for follow-up filter (reminder cadence: hot=weekly, warm=2w, cold=3m)
-    if (filterLastTouched === "due") {
-      list = list.filter((c) => dueForFollowUpIds.has(c.id));
-    }
 
     // Debounced search
     if (debouncedSearch.trim()) {
@@ -238,11 +316,6 @@ export default function Contacts() {
           tagNames.some((t) => t.toLowerCase().includes(q))
         );
       });
-    }
-    
-    // Status filter
-    if (filterStatus && filterStatus !== "all") {
-      list = list.filter((c) => (getContactStatus(c) === filterStatus));
     }
     
     // Tag filter
@@ -266,8 +339,7 @@ export default function Contacts() {
       });
     }
     
-    // Last touched filter (skip when already filtered by "due for follow-up")
-    if (filterLastTouched !== "all" && filterLastTouched !== "due") {
+    if (filterLastTouched !== "all") {
       list = list.filter((c) => {
         if (!c.updated_at) return false;
         const updated = new Date(c.updated_at);
@@ -280,8 +352,8 @@ export default function Contacts() {
             return daysDiff <= 7;
           case "30days":
             return daysDiff <= 30;
-          case "overdue":
-            return daysDiff > 30 && (getKanbanStatus(c) === "hot" || getKanbanStatus(c) === "warm");
+          case "stale":
+            return daysDiff > 30;
           default:
             return true;
         }
@@ -298,16 +370,6 @@ export default function Contacts() {
     const sorted = [...list].sort((a, b) => {
       if (sortBy === "name-asc") return getLastNameForSort(a).localeCompare(getLastNameForSort(b)) || (a.name || "").localeCompare(b.name || "");
       if (sortBy === "name-desc") return getLastNameForSort(b).localeCompare(getLastNameForSort(a)) || (a.name || "").localeCompare(b.name || "");
-      if (sortBy === "status-asc") {
-        const sa = getContactStatus(a);
-        const sb = getContactStatus(b);
-        return sa.localeCompare(sb) || (a.name || "").localeCompare(b.name || "");
-      }
-      if (sortBy === "status-desc") {
-        const sa = getContactStatus(a);
-        const sb = getContactStatus(b);
-        return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
-      }
       if (sortBy === "date-added-asc") {
         const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -328,12 +390,10 @@ export default function Contacts() {
         const nb = (b.contact_property_links ?? []).length;
         return nb - na || (a.name || "").localeCompare(b.name || "");
       }
-      const sa = getContactStatus(a);
-      const sb = getContactStatus(b);
-      return sb.localeCompare(sa) || (a.name || "").localeCompare(b.name || "");
+      return getLastNameForSort(a).localeCompare(getLastNameForSort(b)) || (a.name || "").localeCompare(b.name || "");
     });
     return sorted;
-  }, [contacts, debouncedSearch, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+  }, [contacts, debouncedSearch, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
 
   // Pagination
   const paginatedContacts = useMemo(() => {
@@ -346,11 +406,10 @@ export default function Contacts() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filterStatus, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+  }, [debouncedSearch, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
 
   const hasActiveFilters =
     debouncedSearch.trim() !== "" ||
-    filterStatus !== "all" ||
     filterTagIds.length > 0 ||
     filterSource !== "all" ||
     filterHasProperty !== null ||
@@ -358,7 +417,6 @@ export default function Contacts() {
 
   const clearAllFilters = () => {
     setSearchQuery("");
-    setFilterStatus("all");
     setFilterTagIds([]);
     setFilterSource("all");
     setFilterHasProperty(null);
@@ -391,7 +449,7 @@ export default function Contacts() {
       "Name",
       "Phones",
       "Emails",
-      "Status",
+      "Category",
       "Source",
       "Tags",
       "Linked property address",
@@ -414,7 +472,7 @@ export default function Contacts() {
         getContactDisplayName(c),
         fallbackPhone,
         fallbackEmail,
-        getContactStatus(c),
+        getCategoryLabel(c),
         c.source ?? "",
         tagNames,
         linkedProperty,
@@ -438,9 +496,6 @@ export default function Contacts() {
 
   const stats = {
     total: contacts?.length ?? 0,
-    hot: contacts?.filter((c) => getKanbanStatus(c) === "hot").length ?? 0,
-    warm: contacts?.filter((c) => getKanbanStatus(c) === "warm").length ?? 0,
-    cold: contacts?.filter((c) => getKanbanStatus(c) === "cold").length ?? 0,
   };
 
   const handleOpenDialog = (contact?: ContactWithMeta) => {
@@ -452,9 +507,7 @@ export default function Contacts() {
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
-        status: (contact.status as ContactStatus) ?? "lead",
         category: (contact as { category?: string | null }).category ?? "",
-        coming_to_market: (contact as { coming_to_market?: string | null }).coming_to_market ?? "",
         story: contact.story ?? "",
         selling_intentions: contact.selling_intentions ?? "",
         pain_points: contact.pain_points ?? "",
@@ -492,7 +545,6 @@ export default function Contacts() {
     try {
       let contactId: string;
       if (editingContact) {
-        const oldStatus = getContactStatus(editingContact);
         const updated = await updateContact.mutateAsync({
           id: editingContact.id,
           name: formData.name,
@@ -500,8 +552,7 @@ export default function Contacts() {
           email: formData.email || null,
           source: formData.source || null,
           notes: formData.notes || null,
-          status: formData.status,
-          coming_to_market: formData.coming_to_market?.trim() || null,
+          category: formData.category?.trim() || null,
           pipeline_stage: formData.pipeline_stage || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
@@ -517,16 +568,6 @@ export default function Contacts() {
           country: formData.country || "Australia",
         });
         contactId = updated.id;
-        // Log status change event if status changed
-        if (oldStatus !== formData.status) {
-          try {
-            await logStatusChange(contactId, oldStatus, formData.status);
-          } catch (err) {
-            // Don't fail the update if event logging fails
-            console.error("Failed to log status change:", err);
-          }
-        }
-        
         toast({ title: "Success", description: "Contact updated!" });
       } else {
         const created = await createContact.mutateAsync({
@@ -535,8 +576,8 @@ export default function Contacts() {
           email: formData.email || null,
           source: formData.source || null,
           notes: formData.notes || null,
-          status: formData.status,
-          coming_to_market: formData.coming_to_market?.trim() || null,
+          status: "lead",
+          category: formData.category?.trim() || null,
           pipeline_stage: formData.pipeline_stage || null,
           story: formData.story || null,
           selling_intentions: formData.selling_intentions || null,
@@ -617,7 +658,7 @@ export default function Contacts() {
     } catch (e: unknown) {
       toast({
         title: "Error",
-        description: (e as Error).message || "Failed to save contact",
+        description: formatContactSaveError(e),
         variant: "destructive",
       });
     }
@@ -676,32 +717,10 @@ export default function Contacts() {
     );
   };
 
-  const getStatusVariant = (status: string | null) => {
-    switch (status) {
-      case "hot":
-        return "hot";
-      case "warm":
-        return "warm";
-      case "cold":
-        return "cold";
-      case "qualified":
-      case "customer":
-        return "hot";
-      case "contacted":
-      case "nurture":
-        return "warm";
-      case "new":
-      case "unqualified":
-        return "cold";
-      default:
-        return "entered";
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="animate-fade-in">
-        <PageHeader title="Contacts" description="Manage your contacts and leads" />
+        <PageHeader title="Contacts" description="Manage your contacts" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-24" />
@@ -719,7 +738,7 @@ export default function Contacts() {
   if (isError) {
     return (
       <div className="animate-fade-in">
-        <PageHeader title="Contacts" description="Manage your contacts and leads" />
+        <PageHeader title="Contacts" description="Manage your contacts" />
         <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="font-medium text-foreground mb-2">Couldn&apos;t load contacts</p>
@@ -735,8 +754,6 @@ export default function Contacts() {
   const filterPanelProps = {
     searchQuery,
     onSearchChange: setSearchQuery,
-    filterStatus,
-    onFilterStatusChange: setFilterStatus,
     filterTagIds,
     onToggleTagFilter: toggleTagFilter,
     tags,
@@ -837,7 +854,7 @@ export default function Contacts() {
           </div>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle hidden md:table-cell">
-          <StatusBadge variant={getStatusVariant(getContactStatus(contact))} className="text-xs w-fit">{getContactStatus(contact)}</StatusBadge>
+          <span className="text-xs text-foreground">{getCategoryLabel(contact)}</span>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell max-w-[120px]" title={primaryPhone ?? ""}>
           <span className="truncate block">{primaryPhone ? formatPhoneDisplay(primaryPhone) : "—"}</span>
@@ -861,7 +878,7 @@ export default function Contacts() {
     );
   }
 
-  function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid" | "kanban") {
+  function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid") {
     if (!contact?.id) return null;
     const primaryEmail = getPrimaryEmail(contact);
     const primaryPhone = getPrimaryPhone(contact);
@@ -873,9 +890,7 @@ export default function Contacts() {
     const actionButtons = listActionButtons(contact);
 
     const cardClass =
-      _layout === "kanban"
-        ? "group flex flex-wrap items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card text-sm"
-        : "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
+      "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
     return (
       <div key={contact.id} className={cardClass} onClick={() => navigate(`/contacts/${contact.id}`)}>
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -883,7 +898,9 @@ export default function Contacts() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{getContactDisplayName(contact)}</span>
-              <StatusBadge variant={getStatusVariant(getContactStatus(contact))} className="text-xs">{getContactStatus(contact)}</StatusBadge>
+              {(contact as { category?: string | null }).category && (
+                <span className="text-xs text-muted-foreground">{getCategoryLabel(contact)}</span>
+              )}
               {tagNames.length > 0 && (
                 <span className="flex flex-wrap gap-1">
                   {tagNames.map((t) => (
@@ -922,7 +939,7 @@ export default function Contacts() {
     <div className="animate-fade-in">
       <PageHeader
         title="Contacts"
-        description="Manage your contacts and leads"
+        description="Manage your contacts"
       />
 
       <Dialog
@@ -968,25 +985,6 @@ export default function Contacts() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Status</Label>
-                        <Select
-                          value={formData.status}
-                          onValueChange={(value: ContactStatus) =>
-                            setFormData({ ...formData, status: value })
-                          }
-                        >
-                          <SelectTrigger className="bg-input">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="hot">Hot</SelectItem>
-                            <SelectItem value="warm">Warm</SelectItem>
-                            <SelectItem value="cold">Cold</SelectItem>
-                            <SelectItem value="lead">Lead</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
                         <Label>Category</Label>
                         <Select
                           value={formData.category || "none"}
@@ -1006,23 +1004,6 @@ export default function Contacts() {
                                   {cat.label}
                                 </span>
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Coming to market</Label>
-                        <Select
-                          value={formData.coming_to_market || "none"}
-                          onValueChange={(v) => setFormData({ ...formData, coming_to_market: v === "none" ? "" : v })}
-                        >
-                          <SelectTrigger className="bg-input">
-                            <SelectValue placeholder="When are they selling?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Not set</SelectItem>
-                            {(Object.keys(COMING_TO_MARKET_LABELS) as ComingToMarket[]).map((k) => (
-                              <SelectItem key={k} value={k}>{COMING_TO_MARKET_LABELS[k]}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -1263,7 +1244,7 @@ export default function Contacts() {
                     <div className="space-y-2">
                       <Label>Notes</Label>
                       <Textarea
-                        placeholder="Additional notes, reminders, follow-ups..."
+                        placeholder="Additional notes and context..."
                         className="bg-input min-h-[80px]"
                         value={formData.notes}
                         onChange={(e) =>
@@ -1293,51 +1274,11 @@ export default function Contacts() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <button
-          type="button"
-          onClick={() => setFilterStatus("all")}
-          className={cn(
-            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-primary/60",
-            filterStatus === "all" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
-          )}
-        >
+      <div className="max-w-md mb-8">
+        <div className="zoho-card w-full rounded-lg border p-6 text-center border-l-4 border-l-primary/60">
           <div className="text-3xl font-bold text-foreground">{stats.total}</div>
-          <div className="text-sm text-muted-foreground mt-1">Total Contacts</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilterStatus("hot")}
-          className={cn(
-            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-destructive/60",
-            filterStatus === "hot" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
-          )}
-        >
-          <div className="text-3xl font-bold text-foreground">{stats.hot}</div>
-          <div className="text-sm text-muted-foreground mt-1">Hot Leads</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilterStatus("warm")}
-          className={cn(
-            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-warning/60",
-            filterStatus === "warm" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
-          )}
-        >
-          <div className="text-3xl font-bold text-foreground">{stats.warm}</div>
-          <div className="text-sm text-muted-foreground mt-1">Warm Leads</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilterStatus("cold")}
-          className={cn(
-            "zoho-card w-full rounded-lg border p-6 text-center transition-colors hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background border-l-4 border-l-info/60",
-            filterStatus === "cold" && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
-          )}
-        >
-          <div className="text-3xl font-bold text-foreground">{stats.cold}</div>
-          <div className="text-sm text-muted-foreground mt-1">Cold Leads</div>
-        </button>
+          <div className="text-sm text-muted-foreground mt-1">Total contacts</div>
+        </div>
       </div>
 
       <div className="flex gap-8 mt-8">
@@ -1379,8 +1320,6 @@ export default function Contacts() {
                   <SelectItem value="name-desc">Last name Z→A</SelectItem>
                   <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
                   <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
-                  <SelectItem value="status-asc">Status A→Z</SelectItem>
-                  <SelectItem value="status-desc">Status Z→A</SelectItem>
                   <SelectItem value="property-count-desc">Properties (most)</SelectItem>
                   <SelectItem value="property-count-asc">Properties (least)</SelectItem>
                 </SelectContent>
@@ -1401,14 +1340,6 @@ export default function Contacts() {
                   className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <LayoutGrid className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Kanban view"
-                  onClick={() => setContactView("kanban")}
-                  className={`rounded-md px-3 py-1.5 ${contactView === "kanban" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  <Columns className="h-4 w-4" />
                 </button>
               </div>
               <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
@@ -1477,53 +1408,6 @@ export default function Contacts() {
             {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""} selected
           </span>
           <div className="flex gap-2">
-            <Select
-              onValueChange={async (status) => {
-                // Bulk status update
-                try {
-                  const contactsToUpdate = filteredAndSortedContacts.filter((c) =>
-                    selectedContactIds.has(c.id)
-                  );
-                  const promises = contactsToUpdate.map(async (contact) => {
-                    const oldStatus = contact.status;
-                    await updateContact.mutateAsync({
-                      id: contact.id,
-                      status: status as ContactStatus,
-                    });
-                    // Log status change
-                    if (oldStatus !== status) {
-                      try {
-                        await logStatusChange(contact.id, oldStatus, status);
-                      } catch (err) {
-                        console.error("Failed to log status change:", err);
-                      }
-                    }
-                  });
-                  await Promise.all(promises);
-                  toast({
-                    title: "Success",
-                    description: `Updated ${selectedContactIds.size} contacts`,
-                  });
-                  setSelectedContactIds(new Set());
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to update contacts",
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              <SelectTrigger className="w-[140px] bg-input">
-                <SelectValue placeholder="Change status..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="hot">Set to Hot</SelectItem>
-                <SelectItem value="warm">Set to Warm</SelectItem>
-                <SelectItem value="cold">Set to Cold</SelectItem>
-                <SelectItem value="lead">Set to Lead</SelectItem>
-              </SelectContent>
-            </Select>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -1586,7 +1470,7 @@ export default function Contacts() {
                         const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
                         try {
                           for (const c of toUpdate) {
-                            await updateContact.mutateAsync({ id: c.id, status: cat.value });
+                            await updateContact.mutateAsync({ id: c.id, category: cat.value });
                           }
                           toast({ title: "Category set", description: `Set ${toUpdate.length} contact(s) to ${cat.label}` });
                           setSelectedContactIds(new Set());
@@ -1606,7 +1490,7 @@ export default function Contacts() {
                       const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
                       try {
                         for (const c of toUpdate) {
-                          await updateContact.mutateAsync({ id: c.id, status: null });
+                          await updateContact.mutateAsync({ id: c.id, category: null });
                         }
                         toast({ title: "Category cleared", description: `Cleared category for ${toUpdate.length} contact(s)` });
                         setSelectedContactIds(new Set());
@@ -1687,24 +1571,7 @@ export default function Contacts() {
             {Math.min(currentPage * itemsPerPage, filteredAndSortedContacts.length)} of{" "}
             {filteredAndSortedContacts.length} contacts
           </p>
-          {contactView === "kanban" ? (
-            <div className="flex gap-4 overflow-x-auto pb-2 min-h-[420px]">
-              {(["hot", "warm", "cold", "lead"] as const).map((status) => {
-                const columnContacts = paginatedContacts.filter((c) => getKanbanStatus(c) === status);
-                return (
-                  <div key={status} className="flex-shrink-0 w-[280px] rounded-lg border border-border bg-card/80 p-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                      <StatusBadge variant={getStatusVariant(status)}>{status}</StatusBadge>
-                      <span className="text-muted-foreground">({columnContacts.length})</span>
-                    </h3>
-                    <div className="space-y-3">
-                      {columnContacts.map((contact) => renderContactCard(contact, "kanban"))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : contactView === "grid" ? (
+          {contactView === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
             </div>
@@ -1740,7 +1607,7 @@ export default function Contacts() {
                         </Button>
                       </th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Name</th>
-                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Status</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Category</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[120px]">Phone</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Email</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Source</th>
@@ -1764,7 +1631,7 @@ export default function Contacts() {
               </div>
             </div>
           )}
-          {totalPages > 1 && contactView !== "kanban" && (
+          {totalPages > 1 && (
             <Pagination className="mt-6">
               <PaginationContent>
                 <PaginationItem>

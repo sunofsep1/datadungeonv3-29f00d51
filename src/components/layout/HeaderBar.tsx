@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 
 const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/nurture": "Nurture",
   "/hot-leads": "Hot Leads",
   "/recent": "Recent",
   "/tasks": "Tasks",
@@ -50,6 +51,7 @@ const MODULE_TITLES: Record<string, string> = {
 function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/contacts")) return "Contacts";
   if (pathname.startsWith("/properties")) return "Properties";
+  if (pathname.startsWith("/nurture")) return "Nurture";
   if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
   return MODULE_TITLES[pathname] ?? "Data Dungeon";
 }
@@ -63,7 +65,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hotLeadsCount, recentCount, tasksCount } = useNavCounts();
+  const { nurtureDueCount, recentCount, tasksCount } = useNavCounts();
   const moduleTitle = getModuleTitle(location.pathname);
 
   const getCreateUrl = () => {
@@ -110,7 +112,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         </span>
         <div className="hidden md:flex items-center gap-2 ml-2 min-w-0">
           <NavHeadingButtons
-            hotLeadsCount={hotLeadsCount}
+            nurtureDueCount={nurtureDueCount}
             recentCount={recentCount}
             tasksCount={tasksCount}
           />
