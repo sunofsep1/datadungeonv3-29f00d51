@@ -562,7 +562,7 @@ export default function ContactDetail() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleCreateFromAddress} disabled={createProperty.isPending || createLink.isPending}>
+                    <DropdownMenuItem onClick={handleCreateFromAddress} disabled={createFromAddress.isPending || createLink.isPending}>
                       Create property from address
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setLinkPropertyOpen(true)} disabled={availableProperties.length === 0}>
@@ -654,7 +654,7 @@ export default function ContactDetail() {
                     size="sm"
                     className="gap-2 print:hidden"
                     onClick={handleCreateFromAddress}
-                    disabled={createProperty.isPending || createLink.isPending}
+                    disabled={createFromAddress.isPending || createLink.isPending}
                   >
                     <Plus className="w-4 h-4" /> Create property from address
                   </Button>

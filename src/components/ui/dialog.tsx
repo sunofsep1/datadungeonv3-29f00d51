@@ -5,7 +5,12 @@ import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
+const Dialog = ({
+  modal = false,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Root>) => (
+  <DialogPrimitive.Root modal={modal} {...props} />
+);
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
@@ -32,7 +37,14 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >((props, ref) => {
-  const { className, children, "aria-describedby": ariaDescribedBy, ...rest } = props;
+  const {
+    className,
+    children,
+    "aria-describedby": ariaDescribedBy,
+    onInteractOutside,
+    onPointerDownOutside,
+    ...rest
+  } = props;
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -43,6 +55,23 @@ const DialogContent = React.forwardRef<
           className,
         )}
         aria-describedby={ariaDescribedBy ?? undefined}
+        disableOutsidePointerEvents={false}
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest(".pac-container")) {
+            event.preventDefault();
+            return;
+          }
+          onInteractOutside?.(event);
+        }}
+        onPointerDownOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest(".pac-container")) {
+            event.preventDefault();
+            return;
+          }
+          onPointerDownOutside?.(event);
+        }}
         {...rest}
       >
         <DialogPrimitive.Title>
