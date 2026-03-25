@@ -299,7 +299,11 @@ export function useDeleteNurtureSequence() {
       const { error } = await supabase.from("nurture_sequences").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: seqKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: seqKey });
+      queryClient.invalidateQueries({ queryKey: enrollKey });
+      queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
+    },
   });
 }
 
@@ -362,6 +366,117 @@ export function useEnrollNurtureSequence() {
       queryClient.invalidateQueries({ queryKey: enrollKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
+      invalidateContactInteractions(queryClient, v.contact_id);
+    },
+  });
+}
+
+/**
+ * Mark the current sequence step as done and move to the next (or finish the enrollment).
+ * Uses the same next_step_at schedule as the automated runner (offsets from enrollment start).
+ */
+export function useAdvanceNurtureEnrollmentStep() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: { enrollment_id: string; contact_id: string }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: enrollment, error: e1 } = await supabase
+        .from("nurture_sequence_enrollments")
+        .select("*")
+        .eq("id", input.enrollment_id)
+        .eq("contact_id", input.contact_id)
+        .eq("user_id", user.id)
+        .is("completed_at", null)
+        .single();
+      if (e1) throw e1;
+      const en = enrollment as NurtureSequenceEnrollment;
+
+      const { data: stepRows, error: e2 } = await supabase
+        .from("nurture_sequence_steps")
+        .select("*")
+        .eq("sequence_id", en.sequence_id)
+        .order("sort_order", { ascending: true });
+      if (e2) throw e2;
+      const list = (stepRows ?? []) as NurtureSequenceStep[];
+      if (list.length === 0) throw new Error("Sequence has no steps");
+
+      const idx = en.current_step_index;
+      if (idx >= list.length) {
+        await supabase
+          .from("nurture_sequence_enrollments")
+          .update({
+            completed_at: new Date().toISOString(),
+            next_step_at: null,
+            current_step_index: list.length,
+          })
+          .eq("id", input.enrollment_id);
+        let seqName: string | undefined;
+        const { data: seq } = await supabase
+          .from("nurture_sequences")
+          .select("name")
+          .eq("id", en.sequence_id)
+          .maybeSingle();
+        seqName = (seq as { name?: string } | null)?.name;
+        await logContactActivity({
+          contactId: input.contact_id,
+          subject: "Nurture sequence completed",
+          body: seqName ? `Sequence: ${seqName}` : undefined,
+        });
+        return { finished: true as const };
+      }
+
+      const completedStep = list[idx];
+      const nextIndex = idx + 1;
+      const startedAt = new Date(en.started_at);
+
+      if (nextIndex >= list.length) {
+        const { error: upErr } = await supabase
+          .from("nurture_sequence_enrollments")
+          .update({
+            completed_at: new Date().toISOString(),
+            next_step_at: null,
+            current_step_index: nextIndex,
+          })
+          .eq("id", input.enrollment_id);
+        if (upErr) throw upErr;
+      } else {
+        const nextStep = list[nextIndex];
+        const nextAt = addDays(startedAt, nextStep.offset_days);
+        const { error: upErr } = await supabase
+          .from("nurture_sequence_enrollments")
+          .update({
+            current_step_index: nextIndex,
+            next_step_at: nextAt.toISOString(),
+          })
+          .eq("id", input.enrollment_id);
+        if (upErr) throw upErr;
+      }
+
+      let seqName: string | undefined;
+      const { data: seq } = await supabase
+        .from("nurture_sequences")
+        .select("name")
+        .eq("id", en.sequence_id)
+        .maybeSingle();
+      seqName = (seq as { name?: string } | null)?.name;
+
+      await logContactActivity({
+        contactId: input.contact_id,
+        subject: "Nurture step completed (manual)",
+        body: [seqName ? `Sequence: ${seqName}` : null, completedStep?.title ? `Step: ${completedStep.title}` : null]
+          .filter(Boolean)
+          .join(" · "),
+      });
+
+      return { finished: nextIndex >= list.length };
+    },
+    onSuccess: (_, v) => {
+      queryClient.invalidateQueries({ queryKey: enrollKey });
+      queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
       invalidateContactInteractions(queryClient, v.contact_id);
     },

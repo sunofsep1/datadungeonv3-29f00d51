@@ -258,7 +258,7 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
                             ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
                             : "border-border hover:bg-muted/50"
                       )}
-                      onClick={() => navigate(`/contacts/${row.contact_id}`)}
+                      onClick={() => navigate(`/contacts/${row.contact_id}?nurtureFocus=1`)}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5 min-w-0">

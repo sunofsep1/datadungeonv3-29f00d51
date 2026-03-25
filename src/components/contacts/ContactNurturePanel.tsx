@@ -7,8 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ListTodo, Sparkles, GitBranch, Loader2, ExternalLink, Pencil } from "lucide-react";
+import {
+  ListTodo,
+  Sparkles,
+  GitBranch,
+  Loader2,
+  ExternalLink,
+  Pencil,
+  Check,
+  Mail,
+  ChevronDown,
+} from "lucide-react";
 import { format } from "date-fns";
 import {
   useContactTasks,
@@ -24,10 +35,18 @@ import {
   usePendingStepRunsByTaskIds,
   useCompleteNurtureStepAndAdvance,
   useSetNurtureEnrollmentCadencePaused,
+  useAdvanceNurtureEnrollmentStep,
 } from "@/hooks/useNurtureSequences";
 import type { ContactWithMeta } from "@/hooks/useContacts";
-import { errorMessageFromUnknown } from "@/lib/utils";
+import { errorMessageFromUnknown, cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+function stepTypeShortLabel(t: string | null | undefined) {
+  const s = (t ?? "").toLowerCase();
+  if (s === "email") return "Email";
+  if (s === "prompt") return "Prompt";
+  return "Task";
+}
 
 interface ContactNurturePanelProps {
   contact: ContactWithMeta;
@@ -56,6 +75,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
   const enrollSeq = useEnrollNurtureSequence();
   const completeEnrollment = useCompleteNurtureEnrollment();
   const setCadencePaused = useSetNurtureEnrollmentCadencePaused();
+  const advanceNurtureStep = useAdvanceNurtureEnrollmentStep();
 
   const [newTitle, setNewTitle] = useState("");
   const [newDue, setNewDue] = useState("");
@@ -87,6 +107,11 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
     step_run_id: string;
     existing_notes: string | null;
   } | null>(null);
+  const completedTasks = useMemo(() => {
+    return [...tasks]
+      .filter((t) => t.completed_at)
+      .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime());
+  }, [tasks]);
 
   const nextTouchHints = useMemo(() => {
     const hints: string[] = [];
@@ -193,7 +218,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
   };
 
   return (
-    <Card className="zoho-card p-6 border-border print:hidden">
+    <Card id="contact-nurture-panel" className="zoho-card scroll-mt-4 p-6 border-border print:hidden">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
@@ -321,6 +346,38 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
             ))}
           </ul>
         )}
+        {completedTasks.length > 0 ? (
+          <Collapsible defaultOpen className="rounded-md border border-border/60 bg-muted/15">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors [&[data-state=open]>svg]:rotate-180">
+              <span>Completed tasks ({completedTasks.length})</span>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform" aria-hidden />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ul className="space-y-1.5 px-3 pb-3 pt-0 border-t border-border/50">
+                {completedTasks.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-start gap-2 rounded-md border border-border/50 bg-background/40 px-2.5 py-2"
+                  >
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <Check className="h-3 w-3" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground line-through decoration-muted-foreground/70">
+                        {t.title}
+                      </p>
+                      {t.completed_at && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Done {format(new Date(t.completed_at), "d MMM yyyy, h:mm a")}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
         <div className="flex flex-col sm:flex-row gap-2 pt-1">
           <Input
             placeholder="New task…"
@@ -395,6 +452,10 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
             {enrollments.map((e) => {
               const seq = sequences.find((s) => s.id === e.sequence_id);
               const switchOpts = switchOptionsFor(e.id, e.sequence_id);
+              const journeySteps = [...(seq?.steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+              const totalJourney = journeySteps.length;
+              const rawIdx = e.current_step_index;
+              const completedSteps = totalJourney > 0 ? Math.min(rawIdx, totalJourney) : 0;
               return (
                 <li key={e.id} className="rounded-md border border-border px-3 py-3 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -404,6 +465,16 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                         Next: {e.next_step_at ? format(new Date(e.next_step_at), "d MMM yyyy, h:mm a") : "—"}
                         {e.pause_followup_cadence && " · Cadence paused"}
                       </p>
+                      {totalJourney > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {completedSteps} of {totalJourney} step{totalJourney === 1 ? "" : "s"} completed
+                          {rawIdx < totalJourney && totalJourney > 0
+                            ? ` · Step ${rawIdx + 1} is up next`
+                            : rawIdx >= totalJourney
+                              ? " · sequence finishing"
+                              : ""}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-1 justify-end">
                       <Button variant="ghost" size="sm" className="h-8 gap-1" asChild>
@@ -447,6 +518,110 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                       </Button>
                     </div>
                   </div>
+                  {journeySteps.length > 0 ? (
+                    <div className="rounded-md border border-border/80 bg-muted/20 px-3 py-2.5 space-y-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Sequence journey
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Finished a step before its scheduled time? Use{" "}
+                        <span className="font-medium text-foreground">Complete &amp; next</span> on the current step to
+                        move the sequence forward. Automated emails for skipped steps are not sent.
+                      </p>
+                      <ol className="space-y-0">
+                        {journeySteps.map((step, i) => {
+                          const done = rawIdx > i || rawIdx >= totalJourney;
+                          const current = rawIdx === i && rawIdx < totalJourney;
+                          const cleanTitle = step.title?.replace(/^\[Sequence\]\s*/i, "").trim() || "Step";
+                          return (
+                            <li
+                              key={step.id}
+                              className={cn(
+                                "flex gap-2 py-2 border-b border-border/60 last:border-b-0 last:pb-0 first:pt-0",
+                                current && "rounded-md -mx-1 px-1 -my-0.5 py-2 border-b-0 bg-primary/8 ring-1 ring-primary/25"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums mt-0.5",
+                                  done && "border-muted-foreground/35 bg-muted/50 text-muted-foreground",
+                                  current && "border-primary bg-primary/15 text-primary",
+                                  !done && !current && "border-border text-muted-foreground"
+                                )}
+                                aria-hidden
+                              >
+                                {done ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : i + 1}
+                              </span>
+                              <div className="min-w-0 flex-1 pt-0.5">
+                                <div className="flex flex-wrap items-center gap-1.5 gap-y-0">
+                                  <span
+                                    className={cn(
+                                      "text-sm font-medium leading-snug",
+                                      done && "line-through text-muted-foreground decoration-muted-foreground/80",
+                                      current && "text-foreground",
+                                      !done && !current && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {cleanTitle}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px inline-flex items-center gap-0.5 shrink-0">
+                                    {step.step_type === "email" ? (
+                                      <Mail className="w-3 h-3" aria-hidden />
+                                    ) : (
+                                      <ListTodo className="w-3 h-3" aria-hidden />
+                                    )}
+                                    {stepTypeShortLabel(step.step_type)}
+                                  </span>
+                                  {current && (
+                                    <span className="text-[10px] font-medium uppercase tracking-wide text-primary shrink-0">
+                                      Up next
+                                    </span>
+                                  )}
+                                </div>
+                                {step.offset_days != null && (
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    +{step.offset_days} day{step.offset_days === 1 ? "" : "s"} from start
+                                  </p>
+                                )}
+                                {current && rawIdx < totalJourney ? (
+                                  <div className="mt-2 space-y-1">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-8 text-xs"
+                                      disabled={advanceNurtureStep.isPending}
+                                      onClick={() =>
+                                        advanceNurtureStep.mutate(
+                                          { enrollment_id: e.id, contact_id: contactId },
+                                          {
+                                            onSuccess: (data) => {
+                                              if (data.finished) toast.success("Sequence completed");
+                                              else toast.success("Step marked done — next step is now current");
+                                            },
+                                            onError: (err) => toast.error(errorMessageFromUnknown(err)),
+                                          }
+                                        )
+                                      }
+                                    >
+                                      {advanceNurtureStep.isPending ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                                          Updating…
+                                        </>
+                                      ) : (
+                                        "Complete & next"
+                                      )}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  ) : null}
                   {switchOpts.length > 0 ? (
                     <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 pt-1 border-t border-border/80">
                       <span className="text-xs text-muted-foreground self-center sm:self-end">Switch to</span>
@@ -494,13 +669,25 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
               <p className="text-sm text-destructive py-1">{errorMessageFromUnknown(seqListErr)}</p>
             ) : enrollableSequences.length === 0 ? (
               <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
-                <p>
-                  No enrollable sequences. Manage in{" "}
-                  <Link to="/nurture" className="text-primary underline underline-offset-2 font-medium">
-                    Nurture
-                  </Link>
-                  .
-                </p>
+                <p className="text-foreground font-medium mb-1">Nothing to enroll yet</p>
+                {sequences.length === 0 ? (
+                  <p>
+                    Create sequences under{" "}
+                    <Link to="/nurture" className="text-primary underline underline-offset-2 font-medium">
+                      Nurture
+                    </Link>{" "}
+                    , then use <strong className="text-foreground">Import missing starter sequences</strong> on the Nurture page. They will show up here
+                    for every contact.
+                  </p>
+                ) : (
+                  <p>
+                    You have sequences, but none are ready to enroll: each needs at least one step and must be active. Fix them under{" "}
+                    <Link to="/nurture" className="text-primary underline underline-offset-2">
+                      Nurture
+                    </Link>
+                    .
+                  </p>
+                )}
               </div>
             ) : (
               <Select value={sequencePick} onValueChange={setSequencePick}>

@@ -7,6 +7,9 @@ import {
   logContactActivity,
   invalidateContactInteractions,
 } from "@/lib/contactActivityLog";
+import { applyClassificationDefaultsForNewContact } from "@/lib/leadCategoryService";
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ContactChannel } from "./useContactChannels";
 
 export type Contact = Tables<"contacts">;
@@ -129,8 +132,9 @@ export type ContactWithMeta = Contact & ContactAddressFields & {
   contact_addresses?: ContactAddressRow[];
 };
 
+/** Omit nested `properties(...)` — can cause PostgREST 400; list path above hydrates links + properties separately. */
 const CONTACTS_SELECT =
-  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(address_line1, city, state, postcode)), contact_addresses(*)";
+  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes), contact_addresses(*)";
 
 const CONTACTS_QUERY_KEYS = [["contacts"]];
 
@@ -298,6 +302,14 @@ export function useCreateContact() {
       }
       if (error) throw error;
 
+      if (data?.id) {
+        try {
+          await applyClassificationDefaultsForNewContact(supabase as SupabaseClient<Database>, data.id);
+        } catch {
+          /* DB without classification columns or RLS */
+        }
+      }
+
       const addressFields = pickAddressFields(contactData as Record<string, unknown>);
       if (addressFields && data?.id) {
         try {
@@ -324,6 +336,7 @@ export function useCreateContact() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact_addresses"] });
+      queryClient.invalidateQueries({ queryKey: ["nurture_sequence_enrollments"] });
       if (data && (data as { id?: string }).id && !variables.skipActivityLog) {
         invalidateContactInteractions(queryClient, (data as { id: string }).id);
       }

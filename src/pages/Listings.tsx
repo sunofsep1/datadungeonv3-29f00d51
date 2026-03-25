@@ -30,6 +30,14 @@ import { useListings, useCreateListing, useUpdateListing, useDeleteListing, List
 import { useContacts } from "@/hooks/useContacts";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  LEAD_TEMPERATURES,
+  TIMEFRAME_CATEGORIES,
+  ROLE_CATEGORIES,
+  LEAD_TEMPERATURE_LABELS,
+  TIMEFRAME_LABELS,
+  ROLE_CATEGORY_LABELS,
+} from "@/lib/leadCategories";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
@@ -74,6 +82,9 @@ export default function Listings() {
   const [listView, setListView] = useState<"list" | "grid">("list");
   const [selectedListingIds, setSelectedListingIds] = useState<Set<string>>(new Set());
   const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
+  const [filterLeadTemperature, setFilterLeadTemperature] = useState("all");
+  const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
+  const [filterRoleCategory, setFilterRoleCategory] = useState("all");
   const { toast } = useToast();
 
   // Update selected contact when contact_id changes
@@ -200,10 +211,24 @@ export default function Listings() {
     return contacts.find(c => c.id === contactId);
   };
 
+  const filteredListings = useMemo(() => {
+    let list = [...(listings ?? [])];
+    if (filterLeadTemperature !== "all") {
+      list = list.filter((l) => (l.lead_temperature ?? "") === filterLeadTemperature);
+    }
+    if (filterTimeframeCategory !== "all") {
+      list = list.filter((l) => (l.timeframe_category ?? "") === filterTimeframeCategory);
+    }
+    if (filterRoleCategory !== "all") {
+      list = list.filter((l) => (l.role_category ?? "") === filterRoleCategory);
+    }
+    return list;
+  }, [listings, filterLeadTemperature, filterTimeframeCategory, filterRoleCategory]);
+
   const handleExportCSV = (selectedOnly?: boolean) => {
     const list = selectedOnly && selectedListingIds.size > 0
-      ? (listings ?? []).filter((l) => selectedListingIds.has(l.id))
-      : (listings ?? []);
+      ? filteredListings.filter((l) => selectedListingIds.has(l.id))
+      : filteredListings;
     if (list.length === 0) {
       toast({ title: "No data", description: "No listings to export", variant: "destructive" });
       return;
@@ -322,10 +347,14 @@ export default function Listings() {
   // Pagination
   const paginatedListings = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return (listings ?? []).slice(startIndex, startIndex + itemsPerPage);
-  }, [listings, currentPage, itemsPerPage]);
+    return filteredListings.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredListings, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil((listings?.length ?? 0) / itemsPerPage);
+  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterLeadTemperature, filterTimeframeCategory, filterRoleCategory]);
 
   if (isLoading) {
     return (
@@ -750,11 +779,64 @@ export default function Listings() {
         <>
           <div className="flex-1 min-w-0">
             {/* Toolbar: title, total, view toggle, Add Listing, Actions, per page — same as Contacts */}
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
+                Classification
+              </span>
+              <Select value={filterLeadTemperature} onValueChange={setFilterLeadTemperature}>
+                <SelectTrigger className="w-[140px] sm:w-[160px] bg-input border-border h-9">
+                  <SelectValue placeholder="Temperature" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All temps</SelectItem>
+                  {LEAD_TEMPERATURES.map((t) => (
+                    <SelectItem key={t} value={t}>{LEAD_TEMPERATURE_LABELS[t]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterTimeframeCategory} onValueChange={setFilterTimeframeCategory}>
+                <SelectTrigger className="w-[140px] sm:w-[180px] bg-input border-border h-9">
+                  <SelectValue placeholder="Timeframe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All timeframes</SelectItem>
+                  {TIMEFRAME_CATEGORIES.map((t) => (
+                    <SelectItem key={t} value={t}>{TIMEFRAME_LABELS[t]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterRoleCategory} onValueChange={setFilterRoleCategory}>
+                <SelectTrigger className="w-[160px] sm:min-w-[200px] bg-input border-border h-9 max-w-[min(100%,280px)]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[min(280px,50vh)]">
+                  <SelectItem value="all">All roles</SelectItem>
+                  {ROLE_CATEGORIES.map((r) => (
+                    <SelectItem key={r} value={r}>{ROLE_CATEGORY_LABELS[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(filterLeadTemperature !== "all" || filterTimeframeCategory !== "all" || filterRoleCategory !== "all") && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 text-muted-foreground"
+                  onClick={() => {
+                    setFilterLeadTemperature("all");
+                    setFilterTimeframeCategory("all");
+                    setFilterRoleCategory("all");
+                  }}
+                >
+                  Clear classification filters
+                </Button>
+              )}
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-4 min-w-0">
                 <span className="font-semibold text-foreground truncate">My Properties</span>
                 <span className="text-sm text-muted-foreground shrink-0">
-                  Total records {listings.length}
+                  Showing {filteredListings.length} of {listings.length}
                 </span>
                 <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
                   <button

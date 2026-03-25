@@ -255,6 +255,9 @@ export default function Contacts() {
   const [newTagName, setNewTagName] = useState("");
   const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(initialPrefs.filterHasProperty);
   const [filterLastTouched, setFilterLastTouched] = useState<string>(initialPrefs.filterLastTouched);
+  const [filterLeadTemperature, setFilterLeadTemperature] = useState("all");
+  const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
+  const [filterRoleCategory, setFilterRoleCategory] = useState("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
@@ -358,6 +361,16 @@ export default function Contacts() {
         }
       });
     }
+
+    if (filterLeadTemperature !== "all") {
+      list = list.filter((c) => (c.lead_temperature ?? "") === filterLeadTemperature);
+    }
+    if (filterTimeframeCategory !== "all") {
+      list = list.filter((c) => (c.timeframe_category ?? "") === filterTimeframeCategory);
+    }
+    if (filterRoleCategory !== "all") {
+      list = list.filter((c) => (c.role_category ?? "") === filterRoleCategory);
+    }
     
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
@@ -392,7 +405,18 @@ export default function Contacts() {
       return getLastNameForSort(a).localeCompare(getLastNameForSort(b)) || (a.name || "").localeCompare(b.name || "");
     });
     return sorted;
-  }, [contacts, debouncedSearch, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+  }, [
+    contacts,
+    debouncedSearch,
+    filterTagIds,
+    filterSource,
+    filterHasProperty,
+    filterLastTouched,
+    filterLeadTemperature,
+    filterTimeframeCategory,
+    filterRoleCategory,
+    sortBy,
+  ]);
 
   // Pagination
   const paginatedContacts = useMemo(() => {
@@ -405,14 +429,27 @@ export default function Contacts() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filterTagIds, filterSource, filterHasProperty, filterLastTouched, sortBy]);
+  }, [
+    debouncedSearch,
+    filterTagIds,
+    filterSource,
+    filterHasProperty,
+    filterLastTouched,
+    filterLeadTemperature,
+    filterTimeframeCategory,
+    filterRoleCategory,
+    sortBy,
+  ]);
 
   const hasActiveFilters =
     debouncedSearch.trim() !== "" ||
     filterTagIds.length > 0 ||
     filterSource !== "all" ||
     filterHasProperty !== null ||
-    filterLastTouched !== "all";
+    filterLastTouched !== "all" ||
+    filterLeadTemperature !== "all" ||
+    filterTimeframeCategory !== "all" ||
+    filterRoleCategory !== "all";
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -420,6 +457,9 @@ export default function Contacts() {
     setFilterSource("all");
     setFilterHasProperty(null);
     setFilterLastTouched("all");
+    setFilterLeadTemperature("all");
+    setFilterTimeframeCategory("all");
+    setFilterRoleCategory("all");
     setCurrentPage(1);
   };
 
@@ -764,6 +804,12 @@ export default function Contacts() {
     onFilterLastTouchedChange: setFilterLastTouched,
     sortBy,
     onSortChange: setSortBy,
+    filterLeadTemperature,
+    onFilterLeadTemperatureChange: setFilterLeadTemperature,
+    filterTimeframeCategory,
+    onFilterTimeframeCategoryChange: setFilterTimeframeCategory,
+    filterRoleCategory,
+    onFilterRoleCategoryChange: setFilterRoleCategory,
     hasActiveFilters,
     onClearFilters: clearAllFilters,
   };

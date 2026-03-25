@@ -14,7 +14,15 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Tag, Building2, Clock, ArrowUpDown } from "lucide-react";
+import { Search, Tag, Building2, Clock, ArrowUpDown, Thermometer } from "lucide-react";
+import {
+  LEAD_TEMPERATURES,
+  TIMEFRAME_CATEGORIES,
+  ROLE_CATEGORIES,
+  LEAD_TEMPERATURE_LABELS,
+  TIMEFRAME_LABELS,
+  ROLE_CATEGORY_LABELS,
+} from "@/lib/leadCategories";
 
 export type SortOption =
   | "name-asc"
@@ -39,6 +47,12 @@ export interface ContactsFilterPanelProps {
   onFilterLastTouchedChange: (v: string) => void;
   sortBy: SortOption;
   onSortChange: (v: SortOption) => void;
+  filterLeadTemperature: string;
+  onFilterLeadTemperatureChange: (v: string) => void;
+  filterTimeframeCategory: string;
+  onFilterTimeframeCategoryChange: (v: string) => void;
+  filterRoleCategory: string;
+  onFilterRoleCategoryChange: (v: string) => void;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
 }
@@ -58,6 +72,12 @@ export function ContactsFilterPanel({
   onFilterLastTouchedChange,
   sortBy,
   onSortChange,
+  filterLeadTemperature,
+  onFilterLeadTemperatureChange,
+  filterTimeframeCategory,
+  onFilterTimeframeCategoryChange,
+  filterRoleCategory,
+  onFilterRoleCategoryChange,
   hasActiveFilters,
   onClearFilters,
 }: ContactsFilterPanelProps) {
@@ -124,6 +144,55 @@ export function ContactsFilterPanel({
               <SelectItem value="7days">Last 7 days</SelectItem>
               <SelectItem value="30days">Last 30 days</SelectItem>
               <SelectItem value="stale">Not touched 30+ days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+          Lead classification
+        </Label>
+        <div className="space-y-2">
+          <Select value={filterLeadTemperature} onValueChange={onFilterLeadTemperatureChange}>
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <Thermometer className="w-4 h-4 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Temperature" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All temperatures</SelectItem>
+              {LEAD_TEMPERATURES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {LEAD_TEMPERATURE_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterTimeframeCategory} onValueChange={onFilterTimeframeCategoryChange}>
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All timeframes</SelectItem>
+              {TIMEFRAME_CATEGORIES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {TIMEFRAME_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterRoleCategory} onValueChange={onFilterRoleCategoryChange}>
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[min(280px,50vh)]">
+              <SelectItem value="all">All roles</SelectItem>
+              {ROLE_CATEGORIES.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {ROLE_CATEGORY_LABELS[r]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

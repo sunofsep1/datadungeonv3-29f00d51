@@ -27,6 +27,7 @@ import { useContact } from "@/hooks/useContact";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { useToast } from "@/hooks/use-toast";
+import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 
@@ -218,6 +219,16 @@ export default function ListingDetail() {
             )}
           </div>
         </Card>
+
+        {id && (
+          <LeadClassificationPanel
+            mode="listing"
+            entityId={id}
+            record={listing}
+            linkedContactId={contactId ?? null}
+            linkedContactDoNotContact={linkedContact?.do_not_contact ?? null}
+          />
+        )}
 
         <Card className="zoho-card p-6 border-border">
           <h3 className="text-sm font-medium text-foreground/90 mb-4 flex items-center gap-2">

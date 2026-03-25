@@ -867,6 +867,12 @@ export type Database = {
           pain_points: string | null
           phone: string | null
           pipeline_stage: string | null
+          role_category: string | null
+          timeframe_category: string
+          lead_temperature: string
+          journey_stage: string | null
+          relationship_category: string | null
+          classification_meta: Json
           pleasure_points: string | null
           postcode: string | null
           preferred_contact_method: string | null
@@ -914,6 +920,12 @@ export type Database = {
           pain_points?: string | null
           phone?: string | null
           pipeline_stage?: string | null
+          role_category?: string | null
+          timeframe_category?: string
+          lead_temperature?: string
+          journey_stage?: string | null
+          relationship_category?: string | null
+          classification_meta?: Json
           pleasure_points?: string | null
           postcode?: string | null
           preferred_contact_method?: string | null
@@ -961,6 +973,12 @@ export type Database = {
           pain_points?: string | null
           phone?: string | null
           pipeline_stage?: string | null
+          role_category?: string | null
+          timeframe_category?: string
+          lead_temperature?: string
+          journey_stage?: string | null
+          relationship_category?: string | null
+          classification_meta?: Json
           pleasure_points?: string | null
           postcode?: string | null
           preferred_contact_method?: string | null
@@ -1314,6 +1332,12 @@ export type Database = {
           pipeline_stage: string | null
           price: number | null
           property_type: string | null
+          role_category: string | null
+          timeframe_category: string
+          lead_temperature: string
+          journey_stage: string | null
+          relationship_category: string | null
+          classification_meta: Json
           status: string | null
           updated_at: string
           user_id: string
@@ -1329,6 +1353,12 @@ export type Database = {
           pipeline_stage?: string | null
           price?: number | null
           property_type?: string | null
+          role_category?: string | null
+          timeframe_category?: string
+          lead_temperature?: string
+          journey_stage?: string | null
+          relationship_category?: string | null
+          classification_meta?: Json
           status?: string | null
           updated_at?: string
           user_id: string
@@ -1344,6 +1374,12 @@ export type Database = {
           pipeline_stage?: string | null
           price?: number | null
           property_type?: string | null
+          role_category?: string | null
+          timeframe_category?: string
+          lead_temperature?: string
+          journey_stage?: string | null
+          relationship_category?: string | null
+          classification_meta?: Json
           status?: string | null
           updated_at?: string
           user_id?: string

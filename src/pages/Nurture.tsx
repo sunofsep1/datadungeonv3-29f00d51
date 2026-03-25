@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   useNurtureSequencesList,
   useCompletedNurtureEnrollments,
@@ -18,7 +28,11 @@ import {
 } from "@/hooks/useNurtureSequences";
 import { Plus, Trash2, Loader2, GitBranch, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { STARTER_NURTURE_SEQUENCES } from "@/lib/starterNurtureSequences";
+import {
+  STARTER_NURTURE_SEQUENCES,
+  isStarterNurtureSequenceName,
+  starterNurtureSequenceSortIndex,
+} from "@/lib/starterNurtureSequences";
 import { errorMessageFromUnknown } from "@/lib/utils";
 import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
 import { format } from "date-fns";
@@ -40,6 +54,17 @@ const emptyStep = (): SequenceStepDraft => ({
   email_subject: "",
   email_html: "",
 });
+
+/** Stable fallback — `data ?? []` would allocate a new array every render and break memo/effects. */
+const EMPTY_NURTURE_SEQUENCES: never[] = [];
+
+function selectionSetsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const id of a) {
+    if (!b.has(id)) return false;
+  }
+  return true;
+}
 
 function stepsToDraft(steps: NurtureSequenceStep[]): SequenceStepDraft[] {
   if (steps.length === 0) return [emptyStep()];
@@ -153,8 +178,9 @@ function SequenceStepsFields({
 
 export default function Nurture() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: sequences = [], isLoading: seqLoading } = useNurtureSequencesList();
+  const { data: sequencesData, isLoading: seqLoading } = useNurtureSequencesList();
   const { data: completedEnrollments = [], isLoading: completedLoading } = useCompletedNurtureEnrollments(30);
+  const sequences = sequencesData ?? EMPTY_NURTURE_SEQUENCES;
   const createSeq = useCreateNurtureSequence();
   const updateSeq = useUpdateNurtureSequence();
   const deleteSeq = useDeleteNurtureSequence();
@@ -169,7 +195,31 @@ export default function Nurture() {
   const [editDesc, setEditDesc] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editSteps, setEditSteps] = useState<SequenceStepDraft[]>([emptyStep()]);
-  const [sequenceSearch, setSequenceSearch] = useState("");
+
+  const [selectedCustomIds, setSelectedCustomIds] = useState<Set<string>>(() => new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const { starterSequences, customSequences } = useMemo(() => {
+    const starters: typeof sequences = [];
+    const custom: typeof sequences = [];
+    for (const s of sequences) {
+      if (isStarterNurtureSequenceName(s.name)) starters.push(s);
+      else custom.push(s);
+    }
+    starters.sort((a, b) => starterNurtureSequenceSortIndex(a.name) - starterNurtureSequenceSortIndex(b.name));
+    return { starterSequences: starters, customSequences: custom };
+  }, [sequences]);
+
+  useEffect(() => {
+    const allowed = new Set(customSequences.map((s) => s.id));
+    setSelectedCustomIds((prev) => {
+      const next = new Set([...prev].filter((id) => allowed.has(id)));
+      return selectionSetsEqual(prev, next) ? prev : next;
+    });
+  }, [customSequences]);
+
+  const allCustomSelected = customSequences.length > 0 && selectedCustomIds.size === customSequences.length;
 
   const openEdit = useCallback((seq: (typeof sequences)[number]) => {
     setEditingId(seq.id);
@@ -191,10 +241,11 @@ export default function Nurture() {
   }, [editParam, seqLoading, sequences, openEdit, setSearchParams]);
 
   const handleImportStarterSequences = async () => {
-    const existingNames = new Set(sequences.map((s) => s.name.trim()));
+    const norm = (n: string) => n.trim().toLowerCase().replace(/\s+/g, " ");
+    const existingNames = new Set(sequences.map((s) => norm(s.name)));
     let added = 0;
     for (const starter of STARTER_NURTURE_SEQUENCES) {
-      if (existingNames.has(starter.name)) continue;
+      if (existingNames.has(norm(starter.name))) continue;
       try {
         await createSeq.mutateAsync({
           name: starter.name,
@@ -209,7 +260,7 @@ export default function Nurture() {
           })),
         });
         added++;
-        existingNames.add(starter.name);
+        existingNames.add(norm(starter.name));
       } catch (e) {
         toast.error(errorMessageFromUnknown(e));
         return;
@@ -274,25 +325,46 @@ export default function Nurture() {
     );
   };
 
-  const filteredSequences = sequences.filter((s) =>
-    s.name.toLowerCase().includes(sequenceSearch.trim().toLowerCase())
-  );
+  const toggleCustomSelected = (id: string, checked: boolean) => {
+    setSelectedCustomIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleBulkDeleteCustom = async () => {
+    const ids = [...selectedCustomIds];
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      for (const id of ids) {
+        await deleteSeq.mutateAsync(id);
+      }
+      toast.success(`Deleted ${ids.length} sequence${ids.length === 1 ? "" : "s"}`);
+      setSelectedCustomIds(new Set());
+      setBulkDeleteOpen(false);
+    } catch (e) {
+      toast.error(errorMessageFromUnknown(e));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   return (
-    <div className="animate-fade-in min-h-[60vh] max-w-7xl">
+    <div className="animate-fade-in min-h-[60vh] max-w-[1600px]">
       <PageHeader
         title="Nurture"
-        description="Compact pipeline and sequence control."
+        description="Live pipeline shows who is due next. Starter packs are the built-in catalog (classification auto-enroll uses these names). Your sequences are everything else — tidy old ones with multi-select delete. Enroll from each contact’s Nurture section."
       />
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-5 xl:gap-6">
-        {/* Left: live pipeline */}
         <div className="min-w-0 flex-1 lg:min-w-0">
           <NurtureLiveEnrollments variant="page" />
         </div>
 
-        {/* Middle: starter + new sequence */}
-        <aside className="w-full min-w-0 shrink-0 space-y-6 lg:sticky lg:top-24 lg:w-[min(100%,24rem)] xl:w-[26rem]">
+        <aside className="w-full min-w-0 shrink-0 space-y-6 lg:sticky lg:top-24 lg:w-[min(100%,26rem)] xl:w-[28rem]">
           <Card className="zoho-card border-border border-dashed bg-muted/20 p-5 sm:p-6">
             <div className="flex flex-col gap-4">
               <div className="flex gap-3">
@@ -301,7 +373,10 @@ export default function Nurture() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="font-semibold text-foreground">Starter sequences</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Import templates</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {STARTER_NURTURE_SEQUENCES.length} built-in seller/buyer templates. Import adds any you don’t already have (same name, ignoring extra
+                    spaces). These names power classification auto-enroll.
+                  </p>
                 </div>
               </div>
               <Button
@@ -312,13 +387,157 @@ export default function Nurture() {
                 disabled={createSeq.isPending || seqLoading}
               >
                 {createSeq.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Import starter sequences
+                Import missing starter sequences
               </Button>
+              {seqLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              ) : starterSequences.length === 0 ? (
+                <p className="text-sm text-muted-foreground">None in your workspace yet — import to add the catalog.</p>
+              ) : (
+                <ul className="space-y-2 max-h-[min(40vh,320px)] overflow-y-auto pr-1">
+                  {starterSequences.map((s) => (
+                    <li
+                      key={s.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-2 sm:px-3 sm:py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate text-sm">{s.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {s.steps?.length ?? 0} steps · {s.is_active ? "Active" : "Inactive"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground"
+                          title="Edit sequence"
+                          onClick={() => openEdit(s)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          title="Delete sequence"
+                          onClick={() =>
+                            deleteSeq.mutate(s.id, {
+                              onSuccess: () => toast.success("Deleted"),
+                              onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                            })
+                          }
+                          disabled={deleteSeq.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </Card>
 
           <Card className="zoho-card border-border p-5 sm:p-6">
-            <h2 className="font-semibold text-foreground mb-3">New sequence</h2>
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+              <div className="min-w-0">
+                <h2 className="font-semibold text-foreground">Your sequences</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Custom packs and anything that isn’t a starter catalog name. Remove old experiments with the checkboxes below.
+                </p>
+              </div>
+              {customSequences.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 shrink-0 text-xs"
+                  onClick={() => {
+                    if (allCustomSelected) setSelectedCustomIds(new Set());
+                    else setSelectedCustomIds(new Set(customSequences.map((s) => s.id)));
+                  }}
+                >
+                  {allCustomSelected ? "Clear selection" : "Select all"}
+                </Button>
+              ) : null}
+            </div>
+            {seqLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            ) : customSequences.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No custom sequence yet — add one below or rename a starter to “move” it here.</p>
+            ) : (
+              <>
+                <ul className="space-y-2 max-h-[min(45vh,380px)] overflow-y-auto pr-1">
+                  {customSequences.map((s) => (
+                    <li
+                      key={s.id}
+                      className="flex items-center gap-2 rounded-lg border border-border px-2 py-2 sm:px-2.5 sm:py-2.5"
+                    >
+                      <Checkbox
+                        checked={selectedCustomIds.has(s.id)}
+                        onCheckedChange={(c) => toggleCustomSelected(s.id, c === true)}
+                        className="shrink-0"
+                        aria-label={`Select ${s.name}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground truncate text-sm">{s.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {s.steps?.length ?? 0} steps · {s.is_active ? "Active" : "Inactive"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground"
+                          title="Edit sequence"
+                          onClick={() => openEdit(s)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          title="Delete sequence"
+                          onClick={() =>
+                            deleteSeq.mutate(s.id, {
+                              onSuccess: () => toast.success("Deleted"),
+                              onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                            })
+                          }
+                          disabled={deleteSeq.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {selectedCustomIds.size > 0 ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="mt-3 w-full sm:w-auto"
+                    onClick={() => setBulkDeleteOpen(true)}
+                  >
+                    Delete selected ({selectedCustomIds.size})
+                  </Button>
+                ) : null}
+              </>
+            )}
+          </Card>
+
+          <Card className="zoho-card border-border p-5 sm:p-6">
+            <h2 className="font-semibold text-foreground mb-1">New sequence</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Adds to <span className="text-foreground/90">Your sequences</span> unless you use a starter catalog name. Steps run from the enrollment
+              date; tasks and prompts create contact tasks; emails send when the runner runs (contact needs email).
+            </p>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Name</Label>
@@ -335,69 +554,10 @@ export default function Nurture() {
               </Button>
             </div>
           </Card>
-        </aside>
 
-        {/* Far right: your sequences list */}
-        <aside className="w-full min-w-0 shrink-0 lg:sticky lg:top-24 lg:w-[min(100%,17.5rem)] xl:w-80">
-          <Card className="zoho-card border-border p-5 sm:p-6 mb-4">
-            <h2 className="font-semibold text-foreground mb-3">Your sequences</h2>
-            <Input
-              className="bg-input mb-3"
-              placeholder="Filter sequences..."
-              value={sequenceSearch}
-              onChange={(e) => setSequenceSearch(e.target.value)}
-            />
-            {seqLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            ) : filteredSequences.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No sequences yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {filteredSequences.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-2 sm:px-3 sm:py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-foreground truncate text-sm">{s.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {s.steps?.length ?? 0} steps · {s.is_active ? "Active" : "Inactive"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground"
-                        title="Edit sequence"
-                        onClick={() => openEdit(s)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        title="Delete sequence"
-                        onClick={() =>
-                          deleteSeq.mutate(s.id, {
-                            onSuccess: () => toast.success("Deleted"),
-                            onError: (e) => toast.error(errorMessageFromUnknown(e)),
-                          })
-                        }
-                        disabled={deleteSeq.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
           <Card className="zoho-card border-border p-5 sm:p-6">
-            <h2 className="font-semibold text-foreground mb-3">Completed</h2>
+            <h2 className="font-semibold text-foreground mb-3">Completed enrollments</h2>
+            <p className="text-xs text-muted-foreground mb-3">Last 30 days (finished nurture runs).</p>
             {completedLoading ? (
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             ) : completedEnrollments.length === 0 ? (
@@ -418,6 +578,29 @@ export default function Nurture() {
           </Card>
         </aside>
       </div>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedCustomIds.size} sequence{selectedCustomIds.size === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the templates and any active enrollments on those sequences (contacts will no longer advance those nurtures). This cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={bulkDeleting}
+              onClick={() => void handleBulkDeleteCustom()}
+            >
+              {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Sheet
         open={editOpen}

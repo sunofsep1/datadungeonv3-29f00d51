@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,8 @@ import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
+import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
+import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,9 +78,26 @@ const AUSTRALIAN_STATES = [
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  
+  const nurtureFocus = searchParams.get("nurtureFocus");
+
   const { data: contact, isLoading, isError, refetch } = useContact(id);
+
+  useEffect(() => {
+    if (!contact || nurtureFocus !== "1") return;
+    requestAnimationFrame(() => {
+      document.getElementById("contact-nurture-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("nurtureFocus");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [contact, nurtureFocus, setSearchParams]);
   const { data: contactsList = [] } = useContacts();
   const { data: interactions = [] } = useInteractions(id);
   const { data: appointments = [] } = useAppointments();
@@ -726,10 +745,15 @@ export default function ContactDetail() {
           {contact.notes && (
             <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
-              <p className="text-foreground whitespace-pre-wrap text-sm">{contact.notes}</p>
+              <div className="text-foreground text-sm">
+                <PrintNotesBody text={contact.notes} />
+              </div>
             </Card>
           )}
         </div>
+
+        <div className="space-y-6">
+          {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
 
         {/* Activity Timeline */}
         <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section print-activity-card">
@@ -809,6 +833,7 @@ export default function ContactDetail() {
             )}
           </div>
         </Card>
+        </div>
 
         {id && (
           <div className="lg:col-span-3 print:break-before-page">

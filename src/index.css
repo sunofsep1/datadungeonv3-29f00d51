@@ -1987,6 +1987,26 @@ html.density-compact [data-slot="row"] {
   max-width: 65ch;
   line-height: 1.5;
 }
+.contact-print-document .print-notes-body {
+  margin: 0;
+  max-width: none;
+}
+.contact-print-document .print-notes-body .print-notes-chunk + .print-notes-chunk {
+  margin-top: 0.85em;
+}
+
+/* Shared notes chunks (contact detail print + dedicated print route) */
+.print-contact-document .print-notes,
+.print-contact-document .print-prose-inline {
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+.print-contact-document .print-notes-body {
+  margin: 0;
+}
+.print-contact-document .print-notes-body .print-notes-chunk + .print-notes-chunk {
+  margin-top: 0.85em;
+}
 .contact-print-document .print-muted {
   margin: 0;
   color: hsl(var(--muted-foreground));
@@ -2155,10 +2175,10 @@ html.density-compact [data-slot="row"] {
     line-height: 1.5;
   }
 
-  /* Standalone contact print route: match active theme (same vars as app) */
+  /* Standalone contact print route: paper background (theme colours still apply on screen preview) */
   body:has(.contact-print-document) {
-    background: hsl(var(--background)) !important;
-    color: hsl(var(--foreground)) !important;
+    background: #fff !important;
+    color: #171717 !important;
   }
 
   /* Hide app chrome and print-only-hide (e.g. Close button on print page) */
@@ -2212,8 +2232,8 @@ html.density-compact [data-slot="row"] {
 
   @page {
     size: A4;
-    /* Slightly tighter than 18mm so content fits inside typical printer non-printable area */
-    margin: 14mm 12mm;
+    /* Outer margin only — inner padding is on .contact-print-document (avoid double “gutter”) */
+    margin: 10mm;
   }
 
   h1, h2, h3, h4, p, span, label, div, td, th, li {
@@ -2234,16 +2254,22 @@ html.density-compact [data-slot="row"] {
     max-width: 100% !important;
     font-family: "DM Sans", system-ui, -apple-system, sans-serif;
     color: #000 !important;
+    background: #fff !important;
   }
 
   .print-contact-document * {
     color: #000 !important;
   }
 
+  /* Tailwind `hidden` can beat `print:block`; force visible for contact summary title */
   .print-doc-header {
+    display: block !important;
+    visibility: visible !important;
     border-bottom: 2px solid #000;
     padding-bottom: 14px;
     margin-bottom: 24px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .print-doc-brand {
@@ -2292,10 +2318,10 @@ html.density-compact [data-slot="row"] {
     max-width: 100%;
   }
 
-  /* Contact detail page print (cards) — scoped so ContactPrintLayout is not forced to white/black */
+  /* Contact detail page print — allow sections to split across pages (avoid huge gaps / wrong order) */
   .print-contact-document .print-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
     margin-bottom: 24px !important;
     padding: 20px 24px !important;
     border: 1px solid #ccc !important;
@@ -2392,29 +2418,49 @@ html.density-compact [data-slot="row"] {
     color: #000 !important;
   }
 
-  /* Dedicated contact print — same theme tokens as screen (inherits from html.*) */
+  /* Dedicated contact print — light “customer PDF” look (not app dark theme) */
   .contact-print-document {
-    background: hsl(var(--card)) !important;
-    color: hsl(var(--foreground)) !important;
+    background: #fff !important;
+    color: #171717 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
-    orphans: 2;
-    widows: 2;
+    orphans: 3;
+    widows: 3;
+    font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  }
+  .contact-print-document h1,
+  .contact-print-document h2,
+  .contact-print-document h3,
+  .contact-print-document h4 {
+    font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
   }
   .contact-print-page {
     padding: 0 !important;
-    background: hsl(var(--background)) !important;
+    background: #fff !important;
     overflow: visible !important;
   }
+  /* Was 22mm each side + @page margin = huge white gutters in print preview */
+  .contact-print-document .print-letterhead-inner,
+  .contact-print-document .print-doc-hero,
+  .contact-print-document .print-doc-body,
+  .contact-print-document .print-doc-footer {
+    padding-left: 8mm !important;
+    padding-right: 8mm !important;
+  }
   .contact-print-document .print-doc-body {
-    padding-bottom: 20px !important;
+    padding-bottom: 16px !important;
+    padding-top: 12px !important;
   }
   .contact-print-document .print-section {
     break-inside: auto !important;
     page-break-inside: auto !important;
+    margin-bottom: 14px !important;
+    padding: 12px 14px !important;
   }
   .contact-print-document .print-section-title {
     break-after: avoid !important;
@@ -2430,19 +2476,26 @@ html.density-compact [data-slot="row"] {
     page-break-inside: avoid !important;
   }
   .contact-print-document .print-doc-hero {
-    background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 100%) !important;
-    border-bottom-color: hsl(var(--border)) !important;
+    background: #fafafa !important;
+    border-bottom: 1px solid #e5e5e5 !important;
   }
   .contact-print-document .print-letterhead {
-    background: hsl(var(--popover)) !important;
+    background: #fff !important;
+    border-bottom: 1px solid #e5e5e5 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  .contact-print-document .print-letterhead-brand {
+    color: #171717 !important;
+  }
+  .contact-print-document .print-letterhead-sub {
+    color: #737373 !important;
+  }
   .contact-print-document .print-letterhead-accent {
-    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--teal)) 100%) !important;
+    background: linear-gradient(90deg, #0d9488 0%, #0f766e 100%) !important;
   }
   .contact-print-document .print-doc-title {
-    color: hsl(var(--foreground)) !important;
+    color: #171717 !important;
     font-family: "DM Sans", system-ui, -apple-system, sans-serif !important;
     font-weight: 700 !important;
   }
@@ -2452,7 +2505,7 @@ html.density-compact [data-slot="row"] {
   .contact-print-document .print-dl-row dt,
   .contact-print-document .print-property-meta,
   .contact-print-document .print-activity-meta {
-    color: hsl(var(--muted-foreground)) !important;
+    color: #525252 !important;
   }
   .contact-print-document .print-dl-row dd,
   .contact-print-document .print-address,
@@ -2460,66 +2513,85 @@ html.density-compact [data-slot="row"] {
   .contact-print-document .print-row .print-value,
   .contact-print-document .print-property-address,
   .contact-print-document .print-activity-title {
-    color: hsl(var(--foreground)) !important;
+    color: #171717 !important;
   }
   .contact-print-document .print-section {
-    border-color: hsl(var(--border)) !important;
-    border-left-color: hsl(var(--primary)) !important;
-    background: hsl(var(--secondary)) !important;
+    border: 1px solid #e5e5e5 !important;
+    border-left: 3px solid #0d9488 !important;
+    border-radius: 4px !important;
+    background: #fafafa !important;
+    box-shadow: none !important;
   }
   .contact-print-document .print-section-title {
-    color: hsl(var(--primary)) !important;
-    border-bottom-color: hsl(var(--border)) !important;
+    color: #0f766e !important;
+    border-bottom-color: #e5e5e5 !important;
   }
   .contact-print-document .print-avatar {
-    background: linear-gradient(145deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 100%) !important;
-    color: hsl(var(--primary)) !important;
-    border-color: hsl(var(--border)) !important;
+    background: #f5f5f5 !important;
+    color: #0f766e !important;
+    border-color: #e5e5e5 !important;
   }
   .contact-print-document .print-badge {
-    background: hsl(var(--secondary)) !important;
-    color: hsl(var(--primary)) !important;
-    border-color: hsl(var(--border)) !important;
+    background: #fff !important;
+    color: #0f766e !important;
+    border-color: #d4d4d4 !important;
   }
   .contact-print-document .print-badge-muted {
-    background: hsl(var(--muted)) !important;
-    color: hsl(var(--muted-foreground)) !important;
-    border-color: hsl(var(--border)) !important;
+    background: #f5f5f5 !important;
+    color: #525252 !important;
+    border-color: #d4d4d4 !important;
   }
   .contact-print-document .print-tag {
-    background: hsl(var(--secondary)) !important;
-    color: hsl(var(--foreground)) !important;
-    border-color: hsl(var(--border)) !important;
+    background: #fff !important;
+    color: #171717 !important;
+    border-color: #d4d4d4 !important;
   }
   .contact-print-document .print-value-block {
-    background: hsl(var(--muted)) !important;
-    border-color: hsl(var(--border)) !important;
-    color: hsl(var(--foreground)) !important;
+    background: #fff !important;
+    border-color: #e5e5e5 !important;
+    color: #171717 !important;
   }
   .contact-print-document .print-property-card {
-    background: hsl(var(--secondary)) !important;
-    border-color: hsl(var(--border)) !important;
-    border-left-color: hsl(var(--teal)) !important;
+    background: #fff !important;
+    border-color: #e5e5e5 !important;
+    border-left-color: #14b8a6 !important;
   }
   .contact-print-document .print-property-price {
-    color: hsl(var(--info)) !important;
+    color: #0f766e !important;
   }
   .contact-print-document .print-role {
-    color: hsl(var(--teal)) !important;
+    color: #0d9488 !important;
   }
   .contact-print-document .print-activity-type {
-    color: hsl(var(--primary)) !important;
+    color: #0f766e !important;
   }
   .contact-print-document .print-activity-body {
-    color: hsl(var(--muted-foreground)) !important;
+    color: #525252 !important;
   }
   .contact-print-document .print-doc-footer {
-    border-top-color: hsl(var(--border)) !important;
-    background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--background)) 100%) !important;
-    color: hsl(var(--muted-foreground)) !important;
+    border-top: 1px solid #e5e5e5 !important;
+    background: #fafafa !important;
+    color: #737373 !important;
   }
   .contact-print-document .print-doc-footer span:first-child {
-    color: hsl(var(--primary)) !important;
+    color: #0f766e !important;
+  }
+  /* Full-width notes on paper; break between blank-line paragraphs */
+  .contact-print-document .print-address,
+  .contact-print-document .print-notes {
+    max-width: none !important;
+  }
+  .contact-print-document .print-prose {
+    max-width: none !important;
+  }
+  .contact-print-document .print-notes-body .print-notes-chunk {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .print-contact-document .print-notes-body .print-notes-chunk {
+    orphans: 3;
+    widows: 3;
   }
 }
 

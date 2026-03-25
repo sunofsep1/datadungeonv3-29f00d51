@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Contact, ContactWithMeta, ContactAddressRow } from "./useContacts";
 import { mapContactAddressToDisplay } from "./useContacts";
 
+/** No `properties(*)` embed: nested resource can trigger PostgREST 400 if FK/view/columns differ; properties are hydrated below. */
 const CONTACT_SELECT =
-  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes, properties(*)), contact_addresses(*)";
+  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes), contact_addresses(*)";
 
 function isRelationError(msg: string): boolean {
   const m = msg.toLowerCase();

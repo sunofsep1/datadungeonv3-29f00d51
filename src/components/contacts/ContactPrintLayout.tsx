@@ -69,6 +69,26 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+/** Split long notes on blank lines so pagination can break between paragraphs instead of one huge block. */
+export function PrintNotesBody({ text }: { text: string }) {
+  const chunks = text
+    .split(/\n{2,}/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (chunks.length <= 1) {
+    return <p className="print-notes print-prose-inline">{text}</p>;
+  }
+  return (
+    <div className="print-notes-body">
+      {chunks.map((chunk, i) => (
+        <p key={i} className="print-notes print-notes-chunk print-prose-inline">
+          {chunk}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function ContactPrintLayout({
   contact,
   interactions,
@@ -99,14 +119,15 @@ export function ContactPrintLayout({
         <div className="print-letterhead-accent" />
       </div>
 
-      <header className="print-doc-hero">
+      {/* Use div, not <header>: global @media print hides all header elements */}
+      <div className="print-doc-hero" role="banner">
         <h1 className="print-doc-title">{contact.name ?? "Contact"}</h1>
         <p className="print-doc-subtitle">Prepared {printedAt}</p>
         <div className="print-doc-hero-badges">
           {contact.status && <span className="print-badge">{contact.status}</span>}
           {category && <span className="print-badge print-badge-muted">{category}</span>}
         </div>
-      </header>
+      </div>
 
       <div className="print-doc-body">
         <Section title="Overview">
@@ -220,7 +241,7 @@ export function ContactPrintLayout({
 
         {contact.notes && (
           <Section title="Notes">
-            <p className="print-notes print-prose-inline">{contact.notes}</p>
+            <PrintNotesBody text={contact.notes} />
           </Section>
         )}
 

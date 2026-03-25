@@ -493,7 +493,17 @@ export default function Dashboard() {
       }
       case "contactTasks": {
         const contactName = (id: string) => contacts.find((c) => c.id === id)?.name ?? "Contact";
-        const top = openContactTasks.slice(0, 6);
+        const top = [...openContactTasks]
+          .sort((a, b) => {
+            const na = contactName(a.contact_id);
+            const nb = contactName(b.contact_id);
+            const byName = na.localeCompare(nb, undefined, { sensitivity: "base" });
+            if (byName !== 0) return byName;
+            const da = a.due_at ? new Date(a.due_at).getTime() : Infinity;
+            const db = b.due_at ? new Date(b.due_at).getTime() : Infinity;
+            return da - db;
+          })
+          .slice(0, 6);
         return (
           <Card className="zoho-card p-3">
             <div className="flex items-center justify-between mb-2">
@@ -509,18 +519,47 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground leading-relaxed">No open contact tasks. Add them from a contact&apos;s Nurture section.</p>
             ) : (
               <ul className="space-y-1">
-                {top.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      className="w-full text-left flex items-center justify-between gap-2 py-1.5 px-2 rounded-md border border-border hover:bg-muted/50 transition-colors"
-                      onClick={() => navigate(`/contacts/${t.contact_id}`)}
-                    >
-                      <span className="text-sm text-foreground truncate">{t.title}</span>
-                      <span className="text-[11px] text-muted-foreground shrink-0">{contactName(t.contact_id)}</span>
-                    </button>
-                  </li>
-                ))}
+                {top.map((t) => {
+                  const due = t.due_at ? new Date(t.due_at) : null;
+                  const overdue = due ? isPast(due) && !isToday(due) : false;
+                  const name = contactName(t.contact_id);
+                  const fromSequence = Boolean(t.sequence_enrollment_id);
+                  return (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        className={`w-full text-left flex items-start justify-between gap-2 py-2 px-2 rounded-md border hover:bg-muted/50 transition-colors ${
+                          overdue ? "border-amber-500/35 bg-amber-500/[0.06]" : "border-border"
+                        }`}
+                        onClick={() =>
+                          navigate(
+                            fromSequence
+                              ? `/contacts/${t.contact_id}?nurtureFocus=1`
+                              : `/contacts/${t.contact_id}`
+                          )
+                        }
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground truncate">{name}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">
+                            {fromSequence ? (
+                              <span className="font-medium text-primary/90">Sequence · </span>
+                            ) : null}
+                            <span>{t.title}</span>
+                            {due ? (
+                              <span className={overdue ? " text-amber-700 dark:text-amber-300" : ""}>
+                                {" "}
+                                · {format(due, "d MMM")}
+                                {overdue ? " · overdue" : ""}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>

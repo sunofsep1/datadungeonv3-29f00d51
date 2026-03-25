@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import type { Database, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
+import { updateLeadCategoriesFromDealChange } from "@/lib/leadCategoryService";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type Listing = Tables<"listings">;
 export type ListingInsert = TablesInsert<"listings">;
@@ -72,8 +74,21 @@ export function useCreateListing() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["listings"] });
+      if (data?.id) {
+        const stage = variables.pipeline_stage ?? data.pipeline_stage ?? null;
+        try {
+          await updateLeadCategoriesFromDealChange(supabase as SupabaseClient<Database>, data.id, stage, {
+            primaryContactId: data.contact_id ?? null,
+          });
+        } catch {
+          /* migration not applied or column missing */
+        }
+        queryClient.invalidateQueries({ queryKey: ["listing", data.id] });
+        queryClient.invalidateQueries({ queryKey: ["contacts"] });
+        queryClient.invalidateQueries({ queryKey: ["nurture_sequence_enrollments"] });
+      }
     },
   });
 }
@@ -93,8 +108,27 @@ export function useUpdateListing() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["listings"] });
+      if (
+        data &&
+        Object.prototype.hasOwnProperty.call(variables, "pipeline_stage") &&
+        variables.pipeline_stage !== undefined
+      ) {
+        try {
+          await updateLeadCategoriesFromDealChange(
+            supabase as SupabaseClient<Database>,
+            variables.id,
+            variables.pipeline_stage,
+            { primaryContactId: data.contact_id ?? null }
+          );
+        } catch {
+          /* migration not applied */
+        }
+        queryClient.invalidateQueries({ queryKey: ["listing", variables.id] });
+        queryClient.invalidateQueries({ queryKey: ["contacts"] });
+        queryClient.invalidateQueries({ queryKey: ["nurture_sequence_enrollments"] });
+      }
     },
   });
 }
