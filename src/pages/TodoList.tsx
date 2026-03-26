@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { useTodos, useAddTodo, useUpdateTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
 import { useDueSequenceActions } from "@/hooks/useContactTasks";
 import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
-import { Plus, Trash2, Loader2, ListTodo } from "lucide-react";
+import { Plus, Trash2, Loader2, ListTodo, User } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -153,6 +154,15 @@ export default function TodoList() {
                     <li key={task.id} className="rounded-md border border-border bg-background px-3 py-2">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
+                            <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                            <Link
+                              to={`/contacts/${task.contact_id}`}
+                              className="text-xs font-medium text-primary hover:underline truncate"
+                            >
+                              {task.contacts?.name?.trim() || "View contact"}
+                            </Link>
+                          </div>
                           <p className="text-sm font-medium">{task.title}</p>
                           <p className="text-xs text-muted-foreground">
                             {task.due_at ? `Due ${format(new Date(task.due_at), "d MMM yyyy, h:mm a")}` : "Due now"}

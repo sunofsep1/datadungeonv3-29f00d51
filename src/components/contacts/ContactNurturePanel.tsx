@@ -669,25 +669,12 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
               <p className="text-sm text-destructive py-1">{errorMessageFromUnknown(seqListErr)}</p>
             ) : enrollableSequences.length === 0 ? (
               <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
-                <p className="text-foreground font-medium mb-1">Nothing to enroll yet</p>
-                {sequences.length === 0 ? (
-                  <p>
-                    Create sequences under{" "}
-                    <Link to="/nurture" className="text-primary underline underline-offset-2 font-medium">
-                      Nurture
-                    </Link>{" "}
-                    , then use <strong className="text-foreground">Import missing starter sequences</strong> on the Nurture page. They will show up here
-                    for every contact.
-                  </p>
-                ) : (
-                  <p>
-                    You have sequences, but none are ready to enroll: each needs at least one step and must be active. Fix them under{" "}
-                    <Link to="/nurture" className="text-primary underline underline-offset-2">
-                      Nurture
-                    </Link>
-                    .
-                  </p>
-                )}
+                <p className="text-foreground font-medium">Nothing to enroll</p>
+                <p className="mt-1">
+                  <Link to="/nurture" className="text-primary underline underline-offset-2 font-medium">
+                    Nurture
+                  </Link>
+                </p>
               </div>
             ) : (
               <Select value={sequencePick} onValueChange={setSequencePick}>

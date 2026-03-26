@@ -516,7 +516,7 @@ export default function Dashboard() {
               </Button>
             </div>
             {top.length === 0 ? (
-              <p className="text-xs text-muted-foreground leading-relaxed">No open contact tasks. Add them from a contact&apos;s Nurture section.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">No open contact tasks.</p>
             ) : (
               <ul className="space-y-1">
                 {top.map((t) => {

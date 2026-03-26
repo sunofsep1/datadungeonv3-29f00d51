@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Github, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink } from "lucide-react";
+import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Code2, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Theme, Density } from "@/contexts/ThemeContext";
@@ -25,7 +25,7 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; des
   { value: "tomorrowNightBlue", label: "Tomorrow Night Blue", icon: Droplets, desc: "Blue-tinted dark theme (VS Code)." },
   { value: "dracula", label: "Dracula", icon: Ghost, desc: "Purple & pink accents." },
   { value: "monokai", label: "Monokai", icon: Palette, desc: "Teal & orange (Sublime Text)." },
-  { value: "githubDark", label: "GitHub Dark", icon: Github, desc: "Near-black with blue accents." },
+  { value: "githubDark", label: "GitHub Dark", icon: Code2, desc: "Near-black with blue accents." },
   { value: "oneDark", label: "One Dark", icon: Atom, desc: "Atom / One Dark Pro style." },
   { value: "solarizedDark", label: "Solarized Dark", icon: Sunset, desc: "Dark teal background." },
   { value: "nord", label: "Nord", icon: Snowflake, desc: "Cool greys and blues." },

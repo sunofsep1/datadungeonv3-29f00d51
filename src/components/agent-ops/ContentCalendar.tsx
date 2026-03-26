@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Instagram, Facebook, Linkedin, Twitter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Plus, Camera, Users, BriefcaseBusiness, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ContentPost {
@@ -17,10 +17,10 @@ interface ContentPost {
 }
 
 const platformIcons = {
-  instagram: <Instagram className="w-4 h-4" />,
-  facebook: <Facebook className="w-4 h-4" />,
-  linkedin: <Linkedin className="w-4 h-4" />,
-  twitter: <Twitter className="w-4 h-4" />,
+  instagram: <Camera className="w-4 h-4" />,
+  facebook: <Users className="w-4 h-4" />,
+  linkedin: <BriefcaseBusiness className="w-4 h-4" />,
+  twitter: <MessageCircle className="w-4 h-4" />,
 };
 
 const platformColors = {

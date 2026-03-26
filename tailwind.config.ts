@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss";
-import { colors, spacing, layout, typography, shadows, transitions } from "./src/lib/designTokens";
+import tailwindcssAnimate from "tailwindcss-animate";
+import { colors, layout, shadows } from "./src/lib/designTokens";
 
 export default {
   darkMode: ["class"],
@@ -84,7 +85,6 @@ export default {
         "dd-text-secondary": colors.text.secondary,
         "dd-text-muted": colors.text.muted,
       },
-      spacing: { ...spacing },
       width: {
         "sidebar": layout.sidebarWidth,
         "sidebar-collapsed": layout.sidebarCollapsed,
@@ -136,5 +136,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

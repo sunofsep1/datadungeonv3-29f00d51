@@ -15,12 +15,14 @@ import { useContacts } from "@/hooks/useContacts";
 import { useLogListingStageMove } from "@/hooks/useEvents";
 import { differenceInDays, format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 
-// Lifecycle: Appraisal → Listing → Under Contract → Settled → Past Client
+// Lifecycle: Appraisal → Listing → Under Contract → Unconditional → Settled → Past Client
 const PIPELINE_STAGES = [
   { id: "appraisal", name: "Appraisal", color: "bg-blue-500" },
   { id: "listing", name: "Listing", color: "bg-cyan-500" },
   { id: "under_contract", name: "Under Contract", color: "bg-purple-500" },
+  { id: "unconditional", name: "Unconditional", color: "bg-amber-500" },
   { id: "settled", name: "Settled", color: "bg-green-500" },
   { id: "past_client", name: "Past Client", color: "bg-slate-500" },
 ];
@@ -30,6 +32,7 @@ const STAGE_WARNINGS: Record<string, number> = {
   appraisal: 7,
   listing: 30,
   under_contract: 60,
+  unconditional: 21,
   settled: Infinity,
   past_client: Infinity,
 };
@@ -54,7 +57,7 @@ export default function Pipeline() {
   }, [contacts]);
 
   const getListingsByStage = (stageId: string) => {
-    return listings.filter((listing) => (listing.pipeline_stage || "appraisal") === stageId);
+    return listings.filter((listing) => listingKanbanColumnId(listing.pipeline_stage) === stageId);
   };
 
   const handleAddDeal = async () => {
@@ -69,7 +72,7 @@ export default function Pipeline() {
         pipeline_stage: newDeal.stage,
         property_type: newDeal.propertyType,
       });
-      setNewDeal({ address: "", price: "", stage: "new", propertyType: "house" });
+      setNewDeal({ address: "", price: "", stage: "appraisal", propertyType: "house" });
       setIsDialogOpen(false);
       toast({ title: "Success", description: "Deal added to pipeline!" });
     } catch (error) {
@@ -89,7 +92,7 @@ export default function Pipeline() {
 
   const handleDrop = async (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
-    if (!draggedItem || draggedItem.pipeline_stage === stageId) {
+    if (!draggedItem || listingKanbanColumnId(draggedItem.pipeline_stage) === stageId) {
       setDraggedItem(null);
       return;
     }
@@ -140,7 +143,7 @@ export default function Pipeline() {
 
   const getStageWarning = (listing: Listing): "none" | "warning" | "critical" => {
     const days = getDaysInStage(listing);
-    const threshold = STAGE_WARNINGS[listing.pipeline_stage || "appraisal"] || 30;
+    const threshold = STAGE_WARNINGS[listingKanbanColumnId(listing.pipeline_stage)] || 30;
     
     if (days > threshold * 1.5) return "critical";
     if (days > threshold) return "warning";

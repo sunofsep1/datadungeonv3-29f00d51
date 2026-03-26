@@ -18,6 +18,7 @@ import {
   Building2,
   ListTodo,
   Sparkles,
+  FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -53,12 +54,16 @@ const clientManagementItems: NavItem[] = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
 ];
 
+const listingsSalesItems: NavItem[] = [
+  { title: "Listings & Sales", url: "/listings-sales", icon: FolderKanban },
+];
+
 const businessItems: NavItem[] = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
 ];
 
-const navItems: NavItem[] = [...homeItems, ...clientManagementItems, ...businessItems];
+const navItems: NavItem[] = [...homeItems, ...clientManagementItems, ...listingsSalesItems, ...businessItems];
 
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
@@ -75,6 +80,11 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
+  if (
+    item.url === "/listings-sales" &&
+    (pathname.startsWith("/listings-sales") || pathname.startsWith("/listings/"))
+  )
+    return true;
   return false;
 }
 
@@ -229,6 +239,15 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
+                  <span>Listings & Sales</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {listingsSalesItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Business</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
@@ -351,6 +370,12 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-popover border-border">
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/listings-sales" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <FolderKanban className="w-4 h-4" />
+                        Listings & Sales
+                      </NavLink>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <NavLink to="/properties" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <Building2 className="w-4 h-4" />

@@ -382,10 +382,7 @@ export default function Tasks() {
                   ))}
                 </div>
               ) : contactTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No open tasks on contacts. Add tasks from each contact&apos;s{" "}
-                  <span className="text-foreground font-medium">Nurture &amp; tasks</span> section.
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-8">No open tasks on contacts.</p>
               ) : (
                 <div className="space-y-2">
                   {sortedContactTasks.map((t) => {

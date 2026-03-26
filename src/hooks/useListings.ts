@@ -4,6 +4,14 @@ import type { Database, Tables, TablesInsert, TablesUpdate } from "@/integration
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 import { updateLeadCategoriesFromDealChange } from "@/lib/leadCategoryService";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  parseMissingListingsTableColumn,
+  LISTING_INSERT_STRIPPABLE_COLUMN_NAMES,
+  isListingsPipelineStageCheckError,
+  LISTING_PIPELINE_STAGE_LEGACY_FALLBACK,
+  isListingsContactForeignKeyError,
+  isListingsPropertyForeignKeyError,
+} from "@/lib/supabaseErrorMessage";
 
 export type Listing = Tables<"listings">;
 export type ListingInsert = TablesInsert<"listings">;
@@ -64,15 +72,60 @@ export function useCreateListing() {
     mutationFn: async (listing: Omit<ListingInsert, "user_id">) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      
-      const { data, error } = await supabase
-        .from("listings")
-        .insert({ ...listing, user_id: user.id })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+
+      const stripUndefined = (row: Record<string, unknown>) => {
+        const o = { ...row };
+        for (const k of Object.keys(o)) {
+          if (o[k] === undefined) delete o[k];
+        }
+        return o;
+      };
+
+      let payload = stripUndefined({ ...listing, user_id: user.id } as Record<string, unknown>);
+      const strippable = new Set<string>(LISTING_INSERT_STRIPPABLE_COLUMN_NAMES);
+
+      for (let attempt = 0; attempt < strippable.size + 12; attempt++) {
+        const res = await supabase.from("listings").insert(payload as never).select().single();
+        if (!res.error) return res.data;
+
+        const missing = parseMissingListingsTableColumn(res.error);
+        if (missing && strippable.has(missing) && Object.prototype.hasOwnProperty.call(payload, missing)) {
+          const { [missing]: _, ...rest } = payload;
+          payload = stripUndefined(rest);
+          continue;
+        }
+
+        if (
+          isListingsContactForeignKeyError(res.error) &&
+          Object.prototype.hasOwnProperty.call(payload, "contact_id") &&
+          payload.contact_id != null
+        ) {
+          const { contact_id: _, ...rest } = payload;
+          payload = stripUndefined(rest);
+          continue;
+        }
+
+        if (
+          isListingsPropertyForeignKeyError(res.error) &&
+          Object.prototype.hasOwnProperty.call(payload, "property_id") &&
+          payload.property_id != null
+        ) {
+          const { property_id: _pid, listing_image_url: _img, ...rest } = payload;
+          payload = stripUndefined(rest);
+          continue;
+        }
+
+        if (isListingsPipelineStageCheckError(res.error) && typeof payload.pipeline_stage === "string") {
+          const fb = LISTING_PIPELINE_STAGE_LEGACY_FALLBACK[payload.pipeline_stage];
+          if (fb && fb !== payload.pipeline_stage) {
+            payload = stripUndefined({ ...payload, pipeline_stage: fb });
+            continue;
+          }
+        }
+
+        throw res.error;
+      }
+      throw new Error("Could not insert listing: too many schema retries");
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["listings"] });

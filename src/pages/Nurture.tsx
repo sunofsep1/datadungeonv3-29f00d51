@@ -354,10 +354,7 @@ export default function Nurture() {
 
   return (
     <div className="animate-fade-in min-h-[60vh] max-w-[1600px]">
-      <PageHeader
-        title="Nurture"
-        description="Live pipeline shows who is due next. Starter packs are the built-in catalog (classification auto-enroll uses these names). Your sequences are everything else — tidy old ones with multi-select delete. Enroll from each contact’s Nurture section."
-      />
+      <PageHeader title="Nurture" />
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-5 xl:gap-6">
         <div className="min-w-0 flex-1 lg:min-w-0">
@@ -373,10 +370,7 @@ export default function Nurture() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="font-semibold text-foreground">Starter sequences</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {STARTER_NURTURE_SEQUENCES.length} built-in seller/buyer templates. Import adds any you don’t already have (same name, ignoring extra
-                    spaces). These names power classification auto-enroll.
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">{STARTER_NURTURE_SEQUENCES.length} templates</p>
                 </div>
               </div>
               <Button
@@ -392,7 +386,7 @@ export default function Nurture() {
               {seqLoading ? (
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               ) : starterSequences.length === 0 ? (
-                <p className="text-sm text-muted-foreground">None in your workspace yet — import to add the catalog.</p>
+                <p className="text-sm text-muted-foreground">None imported.</p>
               ) : (
                 <ul className="space-y-2 max-h-[min(40vh,320px)] overflow-y-auto pr-1">
                   {starterSequences.map((s) => (

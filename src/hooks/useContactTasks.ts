@@ -6,6 +6,11 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type ContactTask = Database["public"]["Tables"]["contact_tasks"]["Row"];
 
+/** `useDueSequenceActions` embeds the related contact for display (name + link). */
+export type DueSequenceActionTask = ContactTask & {
+  contacts: { id: string; name: string | null } | null;
+};
+
 const baseKey = ["contact_tasks"] as const;
 
 export function useContactTasks(contactId?: string | null) {
@@ -51,19 +56,19 @@ export function useDueSequenceActions() {
 
   return useQuery({
     queryKey: [...baseKey, "due_sequence_actions", user?.id],
-    queryFn: async (): Promise<ContactTask[]> => {
+    queryFn: async (): Promise<DueSequenceActionTask[]> => {
       if (!user) return [];
       const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from("contact_tasks")
-        .select("*")
+        .select("*, contacts(id, name)")
         .eq("user_id", user.id)
         .not("sequence_enrollment_id", "is", null)
         .is("completed_at", null)
         .lte("due_at", nowIso)
         .order("due_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as ContactTask[];
+      return (data ?? []) as DueSequenceActionTask[];
     },
     enabled: Boolean(user),
   });

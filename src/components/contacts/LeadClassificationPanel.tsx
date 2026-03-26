@@ -30,7 +30,6 @@ import {
 } from "@/lib/leadCategoryService";
 import { tryAutoEnrollNurtureForContact } from "@/lib/nurtureAutoEnroll";
 import { invalidateContactInteractions } from "@/lib/contactActivityLog";
-import { Link } from "react-router-dom";
 import { Loader2, Tags } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -99,8 +98,7 @@ function shouldRetryClassificationWithoutMetaOnly(error: unknown): boolean {
   return !SCALAR_CLASSIFICATION_KEYS.some((k) => msg.includes(k));
 }
 
-const CLASSIFICATION_SETUP_HINT =
-  "Apply supabase/migrations/20260325120000_lead_classification.sql, then in Supabase SQL Editor run: NOTIFY pgrst, 'reload schema'; (or Dashboard → reload API).";
+const CLASSIFICATION_SETUP_HINT = "Lead classification migration not applied on the server.";
 
 function SourceHint({ manual }: { manual: boolean }) {
   return (
@@ -110,32 +108,29 @@ function SourceHint({ manual }: { manual: boolean }) {
   );
 }
 
-const AUTO_ENROLL_HELP_INTRO =
-  "Needs: not do-not-contact, temperature not Archived, Role not Referral partner; a Journey stage (and usually buyer/seller Role) that maps to a pack; and an active Nurture sequence whose name matches the starter pack (with at least one step).";
-
 function autoEnrollFailureCopy(
   reason: "skipped_do_not_contact" | "skipped_lead_archived" | "skipped_referral_partner" | "no_candidates"
 ): { hint: string; toastDescription: string } {
   switch (reason) {
     case "skipped_do_not_contact":
       return {
-        hint: "Skipped — do-not-contact is on. Turn it off on this contact to allow nurture auto-enroll.",
-        toastDescription: "Do-not-contact is enabled for this contact.",
+        hint: "Do-not-contact on.",
+        toastDescription: "Do-not-contact enabled.",
       };
     case "skipped_lead_archived":
       return {
-        hint: "Skipped — lead temperature is Archived. Set temperature to Hot, Warm, or Cold to allow auto-enroll.",
-        toastDescription: "Lead temperature is Archived.",
+        hint: "Lead archived.",
+        toastDescription: "Lead archived.",
       };
     case "skipped_referral_partner":
       return {
-        hint: "Skipped — Role is Referral partner (no starter-pack mapping). Choose a buyer/seller or other mapped role if you want auto-enroll.",
-        toastDescription: "Referral partner role is excluded from nurture auto-enroll.",
+        hint: "Referral partner role.",
+        toastDescription: "Referral partner skipped.",
       };
     case "no_candidates":
       return {
-        hint: "Skipped — Journey stage and Role don’t map to a pack name yet. Set Journey stage and a buyer/seller Role (see Sequence ideas), then add a matching sequence under Nurture.",
-        toastDescription: "No sequence name derived from this classification — check Journey stage and Role.",
+        hint: "No matching sequence name for this classification.",
+        toastDescription: "No sequence matched this classification.",
       };
   }
 }
@@ -350,8 +345,7 @@ export function LeadClassificationPanel({
     <Card className="zoho-card p-6 border-border print:hidden">
       {classificationDbMissing && (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-foreground">
-          <p className="font-medium text-destructive">Prospect classification isn’t enabled on your database yet.</p>
-          <p className="mt-1 text-muted-foreground">{CLASSIFICATION_SETUP_HINT}</p>
+          <p className="font-medium text-destructive">{CLASSIFICATION_SETUP_HINT}</p>
         </div>
       )}
       <div className="flex items-center justify-between gap-2 mb-1">
@@ -377,14 +371,6 @@ export function LeadClassificationPanel({
           Recalculate temperature
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground mb-3">
-        Each dropdown <span className="text-foreground/90">saves immediately</span> when you change it (no Save button). After save, we try to{" "}
-        <Link to="/nurture" className="text-primary underline-offset-2 hover:underline">
-          start a matching nurture sequence
-        </Link>{" "}
-        if one exists with the same name as the starter packs.{" "}
-        <span className="text-[10px] block mt-1.5 text-muted-foreground/90">{AUTO_ENROLL_HELP_INTRO}</span>
-      </p>
       {sequenceAutoEnrollHint && (
         <div className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
           <span className="font-medium text-muted-foreground">Last nurture auto-enroll: </span>
@@ -534,9 +520,6 @@ export function LeadClassificationPanel({
         <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border">
           <span className="font-medium text-foreground">Sequence ideas: </span>
           {suggestions.join(" · ")}
-          <span className="block mt-1.5 text-[10px]">
-            Saving classification will start the matching sequence when it exists under Nurture (replaces other active nurture sequences on this contact).
-          </span>
         </p>
       )}
     </Card>

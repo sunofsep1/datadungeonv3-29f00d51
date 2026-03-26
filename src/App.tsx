@@ -33,6 +33,7 @@ const Nurture = lazy(() => import("./pages/Nurture"));
 const TodoList = lazy(() => import("./pages/TodoList"));
 const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
 const Research = lazy(() => import("./pages/Research"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -48,7 +49,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<PageFallbackSkeleton />}>
               <Routes>
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />
+                <Route path="/listings-sales" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/properties/:id" element={<ProtectedRoute><MainLayout><PropertyDetail /></MainLayout></ProtectedRoute>} />

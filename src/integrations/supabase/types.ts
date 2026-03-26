@@ -1326,11 +1326,18 @@ export type Database = {
           bathrooms: number | null
           bedrooms: number | null
           contact_id: string | null
+          contract_body_corporate_days: number | null
+          contract_building_pest_days: number | null
+          contract_due_diligence_days: number | null
+          contract_finance_days: number | null
+          contract_subject_sale_days: number | null
           created_at: string
           id: string
+          listing_image_url: string | null
           notes: string | null
           pipeline_stage: string | null
           price: number | null
+          property_id: string | null
           property_type: string | null
           role_category: string | null
           timeframe_category: string
@@ -1347,11 +1354,18 @@ export type Database = {
           bathrooms?: number | null
           bedrooms?: number | null
           contact_id?: string | null
+          contract_body_corporate_days?: number | null
+          contract_building_pest_days?: number | null
+          contract_due_diligence_days?: number | null
+          contract_finance_days?: number | null
+          contract_subject_sale_days?: number | null
           created_at?: string
           id?: string
+          listing_image_url?: string | null
           notes?: string | null
           pipeline_stage?: string | null
           price?: number | null
+          property_id?: string | null
           property_type?: string | null
           role_category?: string | null
           timeframe_category?: string
@@ -1368,11 +1382,18 @@ export type Database = {
           bathrooms?: number | null
           bedrooms?: number | null
           contact_id?: string | null
+          contract_body_corporate_days?: number | null
+          contract_building_pest_days?: number | null
+          contract_due_diligence_days?: number | null
+          contract_finance_days?: number | null
+          contract_subject_sale_days?: number | null
           created_at?: string
           id?: string
+          listing_image_url?: string | null
           notes?: string | null
           pipeline_stage?: string | null
           price?: number | null
+          property_id?: string | null
           property_type?: string | null
           role_category?: string | null
           timeframe_category?: string

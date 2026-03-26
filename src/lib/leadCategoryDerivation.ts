@@ -22,7 +22,10 @@ const JOURNEY_SEQUENCE_NAMES: Record<JourneyStage, string[]> = {
   SELLER_CONSIDERING: ["Seller · New client — appraisal & listing path (30 days)"],
   SELLER_PREP: ["Seller · New client — appraisal & listing path (30 days)"],
   SELLER_GO_LIVE_PREP: ["Seller · OTM — on-market intensive (90 days)"],
-  SELLER_ON_MARKET: ["Seller · OTM — on-market intensive (90 days)"],
+  SELLER_ON_MARKET: [
+    "Seller · Listed with me — vendor updates & campaign rhythm (90 days)",
+    "Seller · OTM — on-market intensive (90 days)",
+  ],
   SELLER_ON_MARKET_OTHER_AGENT: ["Seller · Future seller — long nurture (24 months)"],
   SELLER_NEGOTIATION: ["Seller · OTM — on-market intensive (90 days)"],
   SELLER_UNDER_CONTRACT_CONDITIONAL: ["Seller · Under contract to settlement (seller)"],
@@ -34,8 +37,14 @@ const JOURNEY_SEQUENCE_NAMES: Record<JourneyStage, string[]> = {
   BUYER_PREPARATION: ["Buyer · First home — education & readiness (75 days)"],
   BUYER_ACTIVE_SEARCH: ["Buyer · Active search — inspections & offers (90 days)"],
   BUYER_NEGOTIATION: ["Buyer · Upsizing / growing family (90 days)"],
-  BUYER_UNDER_CONTRACT_CONDITIONAL: ["Buyer · Relocating — interstate / long-distance (90 days)"],
-  BUYER_UNDER_CONTRACT_UNCONDITIONAL: ["Buyer · Relocating — interstate / long-distance (90 days)"],
+  BUYER_UNDER_CONTRACT_CONDITIONAL: [
+    "Buyer · Under contract on my listing — conditions to settlement (120 days)",
+    "Buyer · Relocating — interstate / long-distance (90 days)",
+  ],
+  BUYER_UNDER_CONTRACT_UNCONDITIONAL: [
+    "Buyer · Under contract on my listing — conditions to settlement (120 days)",
+    "Buyer · Relocating — interstate / long-distance (90 days)",
+  ],
   BUYER_SETTLED_RECENT: ["Buyer · Past buyer — referrals & reviews (12 months)"],
   BUYER_PAST_CLIENT: ["Buyer · Past buyer — referrals & reviews (12 months)"],
 };
@@ -130,6 +139,7 @@ export function mapListingPipelineStageToJourneyStage(
     appraisal: "SELLER_CONSIDERING",
     listing: "SELLER_ON_MARKET",
     under_contract: "SELLER_UNDER_CONTRACT_CONDITIONAL",
+    unconditional: "SELLER_UNDER_CONTRACT_UNCONDITIONAL",
     settled: "SELLER_SETTLED_RECENT",
     past_client: "SELLER_PAST_CLIENT",
     new: "SELLER_CONSIDERING",
