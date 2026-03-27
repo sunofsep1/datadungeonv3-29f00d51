@@ -45,12 +45,22 @@ export function useContact(id: string | undefined) {
           throw new Error("Contact not found");
         }
       } else {
+        let addrs: ContactAddressRow[] = [];
+        try {
+          const { data: addrRows, error: addrErr } = await supabase
+            .from("contact_addresses")
+            .select("*")
+            .eq("contact_id", id);
+          if (!addrErr && Array.isArray(addrRows)) addrs = addrRows as ContactAddressRow[];
+        } catch {
+          addrs = [];
+        }
         contact = {
           ...(simpleData as Contact),
           contact_channels: [],
           contact_tags: [],
           contact_property_links: [],
-          contact_addresses: [],
+          contact_addresses: addrs,
         } as ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
       }
       try {

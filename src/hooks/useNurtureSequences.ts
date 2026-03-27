@@ -553,7 +553,12 @@ export function useSetNurtureEnrollmentCadencePaused() {
 
       const { error } = await supabase
         .from("nurture_sequence_enrollments")
-        .update({ pause_followup_cadence: input.pause_followup_cadence })
+        .update({
+          pause_followup_cadence: input.pause_followup_cadence,
+          pause_reason: input.pause_followup_cadence
+            ? input.pause_reason?.trim() || null
+            : null,
+        })
         .eq("id", input.enrollment_id);
 
       if (error) throw error;

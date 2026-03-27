@@ -94,7 +94,7 @@ const getGcalUrl = () => {
   return base ? `${base}/functions/v1/google-calendar` : null;
 };
 
-type AppointmentType = "valuation" | "meeting" | "call" | "inspection";
+type AppointmentType = "valuation" | "meeting" | "call" | "inspection" | "open_home";
 
 function EventChip({
   item,
@@ -595,6 +595,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                     <SelectItem value="meeting">Meeting</SelectItem>
                     <SelectItem value="call">Call</SelectItem>
                     <SelectItem value="inspection">Inspection</SelectItem>
+                    <SelectItem value="open_home">Open home</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

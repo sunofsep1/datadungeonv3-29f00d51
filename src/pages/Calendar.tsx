@@ -94,7 +94,7 @@ export default function Calendar() {
     startTime: "09:00",
     endTime: "",
     location: "",
-    type: "meeting" as "valuation" | "meeting" | "call" | "inspection",
+    type: "meeting" as "valuation" | "meeting" | "call" | "inspection" | "open_home",
     notes: "",
     syncToGoogle: true,
   });
@@ -561,6 +561,7 @@ export default function Calendar() {
                         <SelectItem value="meeting">Meeting</SelectItem>
                         <SelectItem value="call">Call</SelectItem>
                         <SelectItem value="inspection">Inspection</SelectItem>
+                        <SelectItem value="open_home">Open home</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

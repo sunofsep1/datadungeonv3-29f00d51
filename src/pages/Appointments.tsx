@@ -34,7 +34,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addHours } from "date-fns";
 
-type AppointmentType = "valuation" | "meeting" | "call" | "inspection";
+type AppointmentType = "valuation" | "meeting" | "call" | "inspection" | "open_home";
 
 const getGcalUrl = () => {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -298,6 +298,7 @@ export default function Appointments() {
       case "meeting": return "bg-info/20 text-info";
       case "call": return "bg-success/20 text-success";
       case "inspection": return "bg-warning/20 text-warning";
+      case "open_home": return "bg-orange-500/20 text-orange-800 dark:text-orange-200";
       default: return "bg-secondary text-secondary-foreground";
     }
   };
@@ -377,6 +378,7 @@ export default function Appointments() {
                           <SelectItem value="meeting">Meeting</SelectItem>
                           <SelectItem value="call">Call</SelectItem>
                           <SelectItem value="inspection">Inspection</SelectItem>
+                          <SelectItem value="open_home">Open home</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

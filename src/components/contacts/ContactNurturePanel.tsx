@@ -42,6 +42,14 @@ import { errorMessageFromUnknown, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { clearPauseReason, getPauseReason, setPauseReason } from "@/lib/nurturePauseReasonStore";
 
+function enrollmentPauseReasonText(
+  e: { id: string; pause_reason?: string | null }
+): string | null {
+  const fromDb = e.pause_reason?.trim();
+  if (fromDb) return fromDb;
+  return getPauseReason(e.id);
+}
+
 function stepTypeShortLabel(t: string | null | undefined) {
   const s = (t ?? "").toLowerCase();
   if (s === "email") return "Email";
@@ -521,7 +529,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                             return;
                           }
                           setPauseTargetEnrollment(e.id);
-                          setPauseReasonDraft(getPauseReason(e.id) ?? "");
+                          setPauseReasonDraft(enrollmentPauseReasonText(e) ?? "");
                           setPauseDialogOpen(true);
                         }}
                         disabled={setCadencePaused.isPending}
@@ -530,10 +538,10 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                       </Button>
                     </div>
                   </div>
-                  {e.pause_followup_cadence && getPauseReason(e.id) && (
+                  {e.pause_followup_cadence && enrollmentPauseReasonText(e) && (
                     <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-200">
                       <span className="font-medium">Paused reason: </span>
-                      {getPauseReason(e.id)}
+                      {enrollmentPauseReasonText(e)}
                     </div>
                   )}
                   {journeySteps.length > 0 ? (

@@ -33,7 +33,17 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
-import { useContacts, useUpdateContact, getPrimaryEmail, getPrimaryPhone, getAllEmails, getAllPhones, getTagNames, formatContactAddress } from "@/hooks/useContacts";
+import {
+  useContacts,
+  useUpdateContact,
+  getPrimaryEmail,
+  getPrimaryPhone,
+  getAllEmails,
+  getAllPhones,
+  getTagNames,
+  formatContactAddress,
+  getContactDisplayName,
+} from "@/hooks/useContacts";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import {
@@ -83,6 +93,9 @@ export default function ContactDetail() {
   const nurtureFocus = searchParams.get("nurtureFocus");
 
   const { data: contact, isLoading, isError, refetch } = useContact(id);
+
+  const displayName = useMemo(() => (contact ? getContactDisplayName(contact) : ""), [contact]);
+  const displayNameLabel = displayName === "—" ? "Contact" : displayName;
 
   useEffect(() => {
     if (!contact || nurtureFocus !== "1") return;
@@ -157,8 +170,11 @@ export default function ContactDetail() {
 
   const handleStartEdit = () => {
     if (contact) {
+      const resolved =
+        contact.name?.trim() ||
+        (getContactDisplayName(contact) === "—" ? "" : getContactDisplayName(contact));
       setEditFormData({
-        name: contact.name,
+        name: resolved,
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
         source: contact.source ?? "",
@@ -377,7 +393,7 @@ export default function ContactDetail() {
         items={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Contacts", href: "/contacts" },
-          { label: contact.name ?? "Contact" },
+          { label: displayNameLabel },
         ]}
         className="mb-4 print:hidden"
       />
@@ -398,7 +414,7 @@ export default function ContactDetail() {
           )}
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">{contact.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{displayNameLabel}</h1>
           <p className="text-muted-foreground">Contact Details</p>
         </div>
         <Button variant="outline" onClick={handlePrint} className="gap-2">
@@ -441,7 +457,7 @@ export default function ContactDetail() {
           open={emailComposeOpen}
           onOpenChange={setEmailComposeOpen}
           to={getPrimaryEmail(contact) ?? contact.email ?? ""}
-          contactName={contact.name ?? undefined}
+          contactName={displayName === "—" ? undefined : displayName}
           onSent={() => id && createInteraction.mutate({ contact_id: id, type: "email", channel: "email", subject: "Email sent", body: null })}
         />
       )}
@@ -450,7 +466,7 @@ export default function ContactDetail() {
           open={smsDialogOpen}
           onOpenChange={setSmsDialogOpen}
           to={smsToNumber || (getAllPhones(contact)[0]?.value ?? "")}
-          contactName={contact.name ?? undefined}
+          contactName={displayName === "—" ? undefined : displayName}
           onSent={() => id && createInteraction.mutate({ contact_id: id, type: "sms", channel: "sms", subject: "SMS sent", body: null })}
         />
       )}
@@ -459,7 +475,7 @@ export default function ContactDetail() {
       <Dialog open={printPreviewOpen} onOpenChange={setPrintPreviewOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col bg-card border-border">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Print preview — {contact.name}</DialogTitle>
+            <DialogTitle>Print preview — {displayNameLabel}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 flex flex-col gap-4">
             <div className="flex-1 min-h-[60vh] border border-border rounded-lg overflow-hidden bg-muted/30">
@@ -485,7 +501,7 @@ export default function ContactDetail() {
       {/* Print-only document header */}
       <div className="hidden print:block print-doc-header">
         <div className="print-doc-brand">Data Dungeon</div>
-        <h1 className="print-doc-title">{contact.name}</h1>
+        <h1 className="print-doc-title">{displayNameLabel}</h1>
         <div className="print-doc-meta">
           <span>Contact Summary</span>
           <span>Printed {format(new Date(), "d MMMM yyyy")}</span>
@@ -498,13 +514,13 @@ export default function ContactDetail() {
           <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-start gap-4">
               <AvatarCircle
-                name={contact.name}
+                name={displayName === "—" ? undefined : displayName}
                 size="lg"
-                initials={getInitials(undefined, undefined, contact.name)}
+                initials={getInitials(undefined, undefined, displayName === "—" ? undefined : displayName)}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <h2 className="text-xl font-semibold text-foreground">{contact.name}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{displayNameLabel}</h2>
                   {(contact as { category?: string | null }).category?.trim() && (
                     <Badge variant="secondary" className="text-xs font-normal">
                       {(contact as { category?: string | null }).category}
@@ -848,7 +864,7 @@ export default function ContactDetail() {
 
       {/* Print footer */}
       <div className="hidden print:block print-doc-footer">
-        <span>Data Dungeon CRM · {contact.name}</span>
+        <span>Data Dungeon CRM · {displayNameLabel}</span>
         <span>Confidential</span>
       </div>
 

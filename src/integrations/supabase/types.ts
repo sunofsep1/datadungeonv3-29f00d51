@@ -682,6 +682,7 @@ export type Database = {
           next_step_at: string | null
           completed_at: string | null
           pause_followup_cadence: boolean
+          pause_reason: string | null
           created_at: string
           updated_at: string
         }
@@ -695,6 +696,7 @@ export type Database = {
           next_step_at?: string | null
           completed_at?: string | null
           pause_followup_cadence?: boolean
+          pause_reason?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -708,6 +710,7 @@ export type Database = {
           next_step_at?: string | null
           completed_at?: string | null
           pause_followup_cadence?: boolean
+          pause_reason?: string | null
           created_at?: string
           updated_at?: string
         }

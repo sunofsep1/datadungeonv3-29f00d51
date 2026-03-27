@@ -439,9 +439,10 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
                           Next: {nextTitle}
                         </p>
                       )}
-                      {row.pause_followup_cadence && getPauseReason(row.id) && (
+                      {row.pause_followup_cadence &&
+                        (row.pause_reason?.trim() || getPauseReason(row.id)) && (
                         <p className="text-[11px] text-amber-900 dark:text-amber-200 border-t border-amber-500/25 pt-1.5 mt-0.5 line-clamp-2">
-                          Paused reason: {getPauseReason(row.id)}
+                          Paused reason: {row.pause_reason?.trim() || getPauseReason(row.id)}
                         </p>
                       )}
                     </button>

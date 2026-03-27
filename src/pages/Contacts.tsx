@@ -63,6 +63,7 @@ import {
   getPrimaryPhone,
   getTagNames,
   getLinkedPropertyAddress,
+  getContactDisplayName,
 } from "@/hooks/useContacts";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag, useRemoveContactTag } from "@/hooks/useContactTags";
@@ -194,11 +195,6 @@ const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; b
   { value: "pink", label: "Pink", bg: "bg-pink-500", border: "border-pink-500" },
   { value: "gray", label: "Gray", bg: "bg-slate-500", border: "border-slate-500" },
 ];
-
-/** Display name (DataDungeon schema) */
-function getContactDisplayName(c: ContactWithMeta): string {
-  return c.name?.trim() || "—";
-}
 
 function getCategoryLabel(c: ContactWithMeta | { category?: string | null }): string {
   const cat = (c as { category?: string | null }).category;
@@ -1246,7 +1242,7 @@ export default function Contacts() {
                         <div className="space-y-2">
                           <Label>State</Label>
                           <Select
-                            value={formData.state}
+                            value={formData.state || undefined}
                             onValueChange={(value) =>
                               setFormData({ ...formData, state: value })
                             }

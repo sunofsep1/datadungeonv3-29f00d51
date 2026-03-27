@@ -156,6 +156,52 @@ export function mapContactAddressToDisplay(
   };
 }
 
+/** Full name for list/detail when `name` is empty (HubSpot-style first/last columns). */
+export function getContactDisplayName(c: ContactWithMeta | Record<string, unknown>): string {
+  const row = c as Record<string, unknown>;
+  const n = typeof row.name === "string" ? row.name.trim() : "";
+  if (n) return n;
+  const fn = typeof row.first_name === "string" ? row.first_name.trim() : "";
+  const ln = typeof row.last_name === "string" ? row.last_name.trim() : "";
+  const combined = [fn, ln].filter(Boolean).join(" ").trim();
+  if (combined) return combined;
+  return "—";
+}
+
+function normalizeContactRowAfterWrite(
+  row: Record<string, unknown>,
+  requestedFullName: string | undefined
+): Record<string, unknown> {
+  const out = { ...row };
+  const hasName = typeof out.name === "string" && out.name.trim().length > 0;
+  if (hasName) return out;
+  const fn = String(out.first_name ?? "").trim();
+  const ln = String(out.last_name ?? "").trim();
+  const combined = [fn, ln].filter(Boolean).join(" ").trim();
+  if (combined) out.name = combined;
+  else if (requestedFullName?.trim()) out.name = requestedFullName.trim();
+  return out;
+}
+
+async function fetchContactAddressesByContactIds(
+  contactIds: string[]
+): Promise<Map<string, ContactAddressRow[]>> {
+  const map = new Map<string, ContactAddressRow[]>();
+  if (contactIds.length === 0) return map;
+  try {
+    const { data, error } = await supabase.from("contact_addresses").select("*").in("contact_id", contactIds);
+    if (error || !Array.isArray(data)) return map;
+    for (const row of data as ContactAddressRow[]) {
+      const list = map.get(row.contact_id) ?? [];
+      list.push(row);
+      map.set(row.contact_id, list);
+    }
+  } catch {
+    /* table missing or RLS */
+  }
+  return map;
+}
+
 /**
  * Fetches all contacts for the current user. Uses full select with relations when available,
  * falls back to simple select if relation tables are missing (e.g. before migrations).
@@ -173,28 +219,28 @@ export function useContacts() {
       if (!simpleError && simple != null) {
         const contacts = (simple ?? []) as Contact[];
         const contactIds = contacts.map((c) => c.id);
-        if (contactIds.length === 0) {
-          return contacts.map((c) => ({
+        const addrByContact = await fetchContactAddressesByContactIds(contactIds);
+
+        const asMetaNoLinks = (c: Contact): ContactWithMeta =>
+          mapContactAddressToDisplay({
             ...c,
             contact_channels: [],
             contact_tags: [],
             contact_property_links: [],
-            contact_addresses: [],
-          })) as ContactWithMeta[];
+            contact_addresses: addrByContact.get(c.id) ?? [],
+          } as ContactWithMeta);
+
+        if (contactIds.length === 0) {
+          return [];
         }
+
         try {
           const { data: links, error: linksErr } = await (supabase as any)
             .from("contact_property_links")
             .select("id, contact_id, property_id, role, notes")
             .in("contact_id", contactIds);
           if (linksErr || !Array.isArray(links) || links.length === 0) {
-            return contacts.map((c) => ({
-              ...c,
-              contact_channels: [],
-              contact_tags: [],
-              contact_property_links: [],
-              contact_addresses: [],
-            })) as ContactWithMeta[];
+            return contacts.map(asMetaNoLinks);
           }
           const propertyIds = [...new Set(links.map((l: { property_id: string }) => l.property_id))];
           const { data: propertyRows } = await (supabase as any)
@@ -231,22 +277,16 @@ export function useContacts() {
                 } as ContactPropertyLinkRow;
               }
             );
-            return {
+            return mapContactAddressToDisplay({
               ...c,
               contact_channels: [],
               contact_tags: [],
               contact_property_links: mergedLinks,
-              contact_addresses: [],
-            } as ContactWithMeta;
+              contact_addresses: addrByContact.get(c.id) ?? [],
+            } as ContactWithMeta);
           }) as ContactWithMeta[];
         } catch {
-          return contacts.map((c) => ({
-            ...c,
-            contact_channels: [],
-            contact_tags: [],
-            contact_property_links: [],
-            contact_addresses: [],
-          })) as ContactWithMeta[];
+          return contacts.map(asMetaNoLinks);
         }
       }
       // Fallback: try full select with relations (DataDungeon schema)
@@ -301,37 +341,43 @@ export function useCreateContact() {
         error = r.error;
       }
       if (error) throw error;
+      if (!data) throw new Error("Contact insert returned no row");
 
-      if (data?.id) {
+      const normalized = normalizeContactRowAfterWrite(
+        data as Record<string, unknown>,
+        typeof contactData.name === "string" ? contactData.name : undefined
+      ) as Contact & ContactAddressFields;
+
+      if (normalized?.id) {
         try {
-          await applyClassificationDefaultsForNewContact(supabase as SupabaseClient<Database>, data.id);
+          await applyClassificationDefaultsForNewContact(supabase as SupabaseClient<Database>, normalized.id);
         } catch {
           /* DB without classification columns or RLS */
         }
       }
 
       const addressFields = pickAddressFields(contactData as Record<string, unknown>);
-      if (addressFields && data?.id) {
+      if (addressFields && normalized?.id) {
         try {
           await (supabase as any)
             .from("contact_addresses")
-            .insert({ contact_id: data.id, ...addressFields, address_type: "home", is_primary: true });
+            .insert({ contact_id: normalized.id, ...addressFields, address_type: "home", is_primary: true });
         } catch {
           // RLS or missing table; skip
         }
       }
 
-      if (!skipActivityLog && data?.id) {
+      if (!skipActivityLog && normalized?.id) {
         const nm =
-          (data as { name?: string | null }).name ?? (contactData as { name?: string }).name;
+          (normalized as { name?: string | null }).name ?? (contactData as { name?: string }).name;
         await logContactActivity({
-          contactId: data.id,
+          contactId: normalized.id,
           subject: "Contact created",
           body: nm ? `Added: ${nm}` : "New contact added",
         });
       }
 
-      return data as Contact & ContactAddressFields;
+      return normalized;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });

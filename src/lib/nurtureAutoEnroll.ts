@@ -81,7 +81,7 @@ export async function insertNurtureEnrollmentRow(
   userId: string,
   contactId: string,
   sequenceId: string,
-  pauseFollowup = true
+  pauseFollowup = false
 ): Promise<void> {
   const { data: steps, error: se } = await client
     .from("nurture_sequence_steps")
@@ -173,7 +173,7 @@ export async function tryAutoEnrollNurtureForContact(
   }
 
   await completeActiveNurtureEnrollmentsForContact(client, userId, contactId);
-  await insertNurtureEnrollmentRow(client, userId, contactId, target.id, true);
+  await insertNurtureEnrollmentRow(client, userId, contactId, target.id, false);
 
   await logContactActivity({
     contactId,

@@ -32,7 +32,12 @@ export function useTodos() {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return (data ?? []) as Todo[];
+      return (data ?? []).map((row) => ({
+        ...row,
+        priority: (row as Todo).priority ?? "medium",
+        due_at: (row as Todo).due_at ?? null,
+        recurrence: (row as Todo).recurrence ?? "none",
+      })) as Todo[];
     },
     enabled: Boolean(user),
   });

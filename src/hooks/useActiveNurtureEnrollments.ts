@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { isSameDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getContactDisplayName } from "@/hooks/useContacts";
 
 export type ActiveNurtureEnrollmentItem = {
   id: string;
@@ -9,6 +10,7 @@ export type ActiveNurtureEnrollmentItem = {
   sequence_id: string;
   next_step_at: string | null;
   pause_followup_cadence: boolean;
+  pause_reason: string | null;
   current_step_index: number;
   total_steps: number;
   started_at: string;
@@ -69,7 +71,9 @@ export function useActiveNurtureEnrollments() {
 
       const { data: rows, error } = await supabase
         .from("nurture_sequence_enrollments")
-        .select("id, contact_id, sequence_id, next_step_at, pause_followup_cadence, current_step_index, started_at, updated_at")
+        .select(
+          "id, contact_id, sequence_id, next_step_at, pause_followup_cadence, pause_reason, current_step_index, started_at, updated_at"
+        )
         .eq("user_id", user.id)
         .is("completed_at", null);
       if (error) throw error;
@@ -80,6 +84,7 @@ export function useActiveNurtureEnrollments() {
         sequence_id: string;
         next_step_at: string | null;
         pause_followup_cadence: boolean;
+        pause_reason: string | null;
         current_step_index: number;
         started_at: string;
         updated_at: string;
@@ -93,7 +98,7 @@ export function useActiveNurtureEnrollments() {
       const sIds = [...new Set(list.map((r) => r.sequence_id))];
 
       const [{ data: cRows, error: cErr }, { data: sRows, error: sErr }, { data: stepRows, error: stErr }] = await Promise.all([
-        supabase.from("contacts").select("id, name").in("id", cIds),
+        supabase.from("contacts").select("id, name, first_name, last_name").in("id", cIds),
         supabase.from("nurture_sequences").select("id, name").in("id", sIds),
         supabase
           .from("nurture_sequence_steps")
@@ -104,7 +109,12 @@ export function useActiveNurtureEnrollments() {
       if (sErr) throw sErr;
       if (stErr) throw stErr;
 
-      const cMap = new Map((cRows ?? []).map((c) => [c.id, c.name ?? "Contact"]));
+      const cMap = new Map(
+        (cRows ?? []).map((c) => {
+          const dn = getContactDisplayName(c as Record<string, unknown>);
+          return [c.id, dn === "—" ? "Contact" : dn] as const;
+        })
+      );
       const sMap = new Map((sRows ?? []).map((s) => [s.id, s.name ?? "Sequence"]));
       const stepsBySeq = buildStepsBySequence(
         (stepRows ?? []) as Array<{
@@ -130,6 +140,7 @@ export function useActiveNurtureEnrollments() {
           sequence_id: r.sequence_id,
           next_step_at: r.next_step_at,
           pause_followup_cadence: r.pause_followup_cadence,
+          pause_reason: r.pause_reason ?? null,
           current_step_index: r.current_step_index,
           total_steps,
           started_at: r.started_at,
