@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,13 @@ function TodoRow({
   isToggling: boolean;
   isDeleting: boolean;
 }) {
+  const dueLabel = todo.due_at ? format(new Date(todo.due_at), "d MMM yyyy") : null;
+  const priorityClass =
+    todo.priority === "high"
+      ? "bg-destructive/15 text-destructive border-destructive/25"
+      : todo.priority === "low"
+        ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/25"
+        : "bg-amber-500/15 text-amber-700 border-amber-500/25";
   return (
     <div
       className={cn(
@@ -44,14 +51,27 @@ function TodoRow({
       {isToggling ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
       ) : null}
-      <span
-        className={cn(
-          "flex-1 min-w-0 text-sm",
-          todo.completed && "line-through text-muted-foreground"
-        )}
-      >
-        {todo.title}
-      </span>
+      <div className="flex-1 min-w-0">
+        <span
+          className={cn(
+            "block text-sm",
+            todo.completed && "line-through text-muted-foreground"
+          )}
+        >
+          {todo.title}
+        </span>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className={cn("inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase", priorityClass)}>
+            {todo.priority}
+          </span>
+          {dueLabel && (
+            <span className="text-[10px] text-muted-foreground">Due {dueLabel}</span>
+          )}
+          {todo.recurrence !== "none" && (
+            <span className="text-[10px] text-muted-foreground capitalize">Repeats {todo.recurrence}</span>
+          )}
+        </div>
+      </div>
       <Button
         variant="ghost"
         size="icon"
@@ -71,6 +91,9 @@ function TodoRow({
 
 export default function TodoList() {
   const [newTitle, setNewTitle] = useState("");
+  const [newPriority, setNewPriority] = useState<Todo["priority"]>("medium");
+  const [newDueDate, setNewDueDate] = useState("");
+  const [newRecurrence, setNewRecurrence] = useState<Todo["recurrence"]>("none");
   const { data: todos = [], isLoading } = useTodos();
   const { data: dueSequenceActions = [], isLoading: dueSequenceLoading } = useDueSequenceActions();
   const addTodo = useAddTodo();
@@ -87,16 +110,41 @@ export default function TodoList() {
   const handleAdd = () => {
     const title = newTitle.trim();
     if (!title) return;
-    addTodo.mutate(title, {
+    addTodo.mutate(
+      {
+        title,
+        priority: newPriority,
+        due_at: newDueDate ? new Date(`${newDueDate}T09:00:00`).toISOString() : null,
+        recurrence: newRecurrence,
+      },
+      {
       onSuccess: () => {
         setNewTitle("");
+        setNewPriority("medium");
+        setNewDueDate("");
+        setNewRecurrence("none");
         toast.success("Added to list");
       },
       onError: (e) => toast.error(e.message || "Failed to add"),
-    });
+      }
+    );
   };
 
-  const incomplete = todos.filter((t) => !t.completed);
+  const incomplete = useMemo(
+    () =>
+      todos
+        .filter((t) => !t.completed)
+        .sort((a, b) => {
+          const priorityRank = { high: 0, medium: 1, low: 2 } as const;
+          const pa = priorityRank[a.priority];
+          const pb = priorityRank[b.priority];
+          if (pa !== pb) return pa - pb;
+          const da = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+          const db = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+          return da - db;
+        }),
+    [todos]
+  );
   const completed = todos.filter((t) => t.completed);
 
   return (
@@ -122,6 +170,31 @@ export default function TodoList() {
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
+            <select
+              className="h-10 rounded-md border border-border bg-background px-2 text-sm"
+              value={newPriority}
+              onChange={(e) => setNewPriority(e.target.value as Todo["priority"])}
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <Input
+              type="date"
+              value={newDueDate}
+              onChange={(e) => setNewDueDate(e.target.value)}
+              className="bg-background border-border w-[150px]"
+            />
+            <select
+              className="h-10 rounded-md border border-border bg-background px-2 text-sm"
+              value={newRecurrence}
+              onChange={(e) => setNewRecurrence(e.target.value as Todo["recurrence"])}
+            >
+              <option value="none">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
             <Button
               size="sm"
               onClick={handleAdd}
