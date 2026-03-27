@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Theme, Density } from "@/contexts/ThemeContext";
 import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/hooks/useUserReminderPreferences";
+import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { toast } from "sonner";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
@@ -56,6 +57,7 @@ const DENSITY_OPTIONS: { value: Density; label: string }[] = [
 export default function Settings() {
   const { user } = useAuth();
   const { theme, setTheme, density, setDensity } = useTheme();
+  const { commissionRate, setCommissionRate } = useCommissionRate();
   const { data: reminderPrefs, isSuccess: reminderPrefsLoaded } = useUserReminderPreferences();
   const upsertReminder = useUpsertUserReminderPreferences();
   const reminderPrefsSeeded = React.useRef(false);
@@ -158,6 +160,29 @@ export default function Settings() {
                 Your theme and density preferences are saved automatically and will persist across sessions.
               </p>
             </div>
+          </div>
+        </Card>
+
+        <Card className="zoho-card p-6 border-border">
+          <div className="flex items-center gap-3 mb-6">
+            <Calendar className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Business defaults</h3>
+          </div>
+          <div className="space-y-2 max-w-xs">
+            <Label htmlFor="commission-rate">Default commission rate (%)</Label>
+            <Input
+              id="commission-rate"
+              type="number"
+              min={0}
+              max={10}
+              step={0.1}
+              value={commissionRate}
+              onChange={(e) => setCommissionRate(Number(e.target.value))}
+              className="bg-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used for Projected GCI in Listings &amp; Sales and Performance.
+            </p>
           </div>
         </Card>
 

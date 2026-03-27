@@ -526,7 +526,7 @@ export function useSetNurtureEnrollmentCadencePaused() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { enrollment_id: string; pause_followup_cadence: boolean }) => {
+    mutationFn: async (input: { enrollment_id: string; pause_followup_cadence: boolean; pause_reason?: string | null }) => {
       const { data: en, error: eErr } = await supabase
         .from("nurture_sequence_enrollments")
         .select("contact_id")
@@ -536,12 +536,38 @@ export function useSetNurtureEnrollmentCadencePaused() {
       if (eErr) throw eErr;
       if (!en?.contact_id) throw new Error("Enrollment not found or not accessible");
 
+      const { data: seqRef } = await supabase
+        .from("nurture_sequence_enrollments")
+        .select("sequence_id")
+        .eq("id", input.enrollment_id)
+        .maybeSingle();
+      let seqName: string | undefined;
+      if (seqRef?.sequence_id) {
+        const { data: seq } = await supabase
+          .from("nurture_sequences")
+          .select("name")
+          .eq("id", seqRef.sequence_id)
+          .maybeSingle();
+        seqName = (seq as { name?: string } | null)?.name;
+      }
+
       const { error } = await supabase
         .from("nurture_sequence_enrollments")
         .update({ pause_followup_cadence: input.pause_followup_cadence })
         .eq("id", input.enrollment_id);
 
       if (error) throw error;
+
+      await logContactActivity({
+        contactId: en.contact_id as string,
+        subject: input.pause_followup_cadence ? "Nurture cadence paused" : "Nurture cadence resumed",
+        body: [
+          seqName ? `Sequence: ${seqName}` : null,
+          input.pause_followup_cadence && input.pause_reason?.trim() ? `Reason: ${input.pause_reason.trim()}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
 
       return { contact_id: en.contact_id as string };
     },

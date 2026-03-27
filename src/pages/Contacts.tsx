@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
@@ -207,6 +207,59 @@ function getCategoryLabel(c: ContactWithMeta | { category?: string | null }): st
   return found?.label ?? cat;
 }
 
+function normalizeLeadTemperature(value: string | null | undefined): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function deriveCategoryFromClassification(contact: ContactWithMeta): ContactCategory | null {
+  const temperature = normalizeLeadTemperature(contact.lead_temperature);
+  if (temperature.includes("archived")) return "gray";
+  if (temperature.includes("hot")) return "red";
+  if (temperature.includes("warm")) return "orange";
+  if (temperature.includes("cold")) return "blue";
+  if (temperature.includes("lead")) return "yellow";
+
+  const timeframe = String(contact.timeframe_category ?? "").toLowerCase();
+  if (timeframe.includes("0_3") || timeframe.includes("0-3")) return "red";
+  if (timeframe.includes("3_6") || timeframe.includes("3-6")) return "orange";
+  if (timeframe.includes("6_12") || timeframe.includes("6-12")) return "yellow";
+  if (timeframe.includes("12_24") || timeframe.includes("12-24")) return "green";
+  if (timeframe.includes("24")) return "blue";
+  return null;
+}
+
+function getEffectiveCategory(contact: ContactWithMeta): ContactCategory | null {
+  const explicit = (contact as { category?: string | null }).category;
+  if (explicit && CONTACT_CATEGORIES.some((c) => c.value === explicit)) {
+    return explicit as ContactCategory;
+  }
+  return deriveCategoryFromClassification(contact);
+}
+
+function getLastTouchDate(contact: ContactWithMeta): Date | null {
+  const values = [contact.updated_at, contact.created_at].filter(Boolean) as string[];
+  let latest: Date | null = null;
+  for (const value of values) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) continue;
+    if (!latest || parsed.getTime() > latest.getTime()) latest = parsed;
+  }
+  return latest;
+}
+
+function getDaysSinceLastTouch(contact: ContactWithMeta): number | null {
+  const lastTouch = getLastTouchDate(contact);
+  if (!lastTouch) return null;
+  return Math.max(0, differenceInCalendarDays(new Date(), lastTouch));
+}
+
+function getTouchBadgeClasses(daysSinceTouch: number | null): string {
+  if (daysSinceTouch == null) return "bg-muted text-muted-foreground";
+  if (daysSinceTouch >= 30) return "bg-destructive/15 text-destructive border border-destructive/30";
+  if (daysSinceTouch >= 14) return "bg-amber-500/15 text-amber-600 border border-amber-500/30";
+  return "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30";
+}
+
 const createEmptyContact = () => ({
   name: "",
   phone: "",
@@ -343,9 +396,8 @@ export default function Contacts() {
     
     if (filterLastTouched !== "all") {
       list = list.filter((c) => {
-        if (!c.updated_at) return false;
-        const updated = new Date(c.updated_at);
-        const daysDiff = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24));
+        const daysDiff = getDaysSinceLastTouch(c);
+        if (daysDiff == null) return false;
 
         switch (filterLastTouched) {
           case "today":
@@ -749,6 +801,36 @@ export default function Contacts() {
     }
   };
 
+  const autoCategoriseContacts = async (targetContacts: ContactWithMeta[]) => {
+    const updates = targetContacts
+      .map((contact) => {
+        const category = deriveCategoryFromClassification(contact);
+        if (!category) return null;
+        return { id: contact.id, category };
+      })
+      .filter((row): row is { id: string; category: ContactCategory } => !!row);
+
+    if (updates.length === 0) {
+      toast({ title: "No changes", description: "No matching classification data to derive categories." });
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      updates.map((row) => updateContact.mutateAsync({ id: row.id, category: row.category }))
+    );
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.length - succeeded;
+
+    if (succeeded > 0) {
+      toast({
+        title: "Categories updated",
+        description: failed > 0 ? `${succeeded} updated, ${failed} failed.` : `${succeeded} contact(s) auto-categorised.`,
+      });
+    } else {
+      toast({ title: "Error", description: "Could not auto-categorise contacts.", variant: "destructive" });
+    }
+  };
+
   const toggleTagFilter = (tagId: string) => {
     setFilterTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
@@ -848,6 +930,9 @@ export default function Contacts() {
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
     const linkedProperty = getLinkedPropertyAddress(contact);
+    const effectiveCategory = getEffectiveCategory(contact);
+    const lastTouch = getLastTouchDate(contact);
+    const daysSinceTouch = getDaysSinceLastTouch(contact);
     const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
     return (
       <>
@@ -872,10 +957,10 @@ export default function Contacts() {
             <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                {(contact as { category?: string | null }).category && CONTACT_CATEGORIES.some((c) => c.value === (contact as { category?: string | null }).category) && (
+                {effectiveCategory && (
                   <span
-                    className={cn("w-2.5 h-2.5 rounded-full shrink-0", CONTACT_CATEGORIES.find((c) => c.value === (contact as { category?: string | null }).category)?.bg)}
-                    title={CONTACT_CATEGORIES.find((c) => c.value === (contact as { category?: string | null }).category)?.label}
+                    className={cn("w-2.5 h-2.5 rounded-full shrink-0", CONTACT_CATEGORIES.find((c) => c.value === effectiveCategory)?.bg)}
+                    title={CONTACT_CATEGORIES.find((c) => c.value === effectiveCategory)?.label}
                   />
                 )}
                 <span className="font-medium text-foreground text-sm truncate block">{getContactDisplayName(contact)}</span>
@@ -898,7 +983,9 @@ export default function Contacts() {
           </div>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle hidden md:table-cell">
-          <span className="text-xs text-foreground">{getCategoryLabel(contact)}</span>
+          <span className="text-xs text-foreground">
+            {effectiveCategory ? getCategoryLabel({ category: effectiveCategory }) : "—"}
+          </span>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell max-w-[120px]" title={primaryPhone ?? ""}>
           <span className="truncate block">{primaryPhone ? formatPhoneDisplay(primaryPhone) : "—"}</span>
@@ -912,8 +999,13 @@ export default function Contacts() {
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden md:table-cell min-w-0" title={linkedProperty || ""}>
           <span className="truncate block">{linkedProperty || "—"}</span>
         </td>
-        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden lg:table-cell whitespace-nowrap" title={contact.updated_at ? new Date(contact.updated_at).toLocaleString() : ""}>
-          {contact.updated_at ? format(new Date(contact.updated_at), "d MMM yyyy") : "—"}
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden lg:table-cell whitespace-nowrap" title={lastTouch ? lastTouch.toLocaleString() : ""}>
+          {lastTouch ? format(lastTouch, "d MMM yyyy") : "—"}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle hidden xl:table-cell">
+          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums", getTouchBadgeClasses(daysSinceTouch))}>
+            {daysSinceTouch == null ? "—" : `${daysSinceTouch}d`}
+          </span>
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle w-[1%] whitespace-nowrap">
           {listActionButtons(contact)}
@@ -928,6 +1020,9 @@ export default function Contacts() {
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
     const linkedProperty = getLinkedPropertyAddress(contact);
+    const effectiveCategory = getEffectiveCategory(contact);
+    const lastTouch = getLastTouchDate(contact);
+    const daysSinceTouch = getDaysSinceLastTouch(contact);
     const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
     const isCompact = _layout === "list" || _layout === "grid";
 
@@ -942,8 +1037,8 @@ export default function Contacts() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{getContactDisplayName(contact)}</span>
-              {(contact as { category?: string | null }).category && (
-                <span className="text-xs text-muted-foreground">{getCategoryLabel(contact)}</span>
+              {effectiveCategory && (
+                <span className="text-xs text-muted-foreground">{getCategoryLabel({ category: effectiveCategory })}</span>
               )}
               {tagNames.length > 0 && (
                 <span className="flex flex-wrap gap-1">
@@ -971,6 +1066,10 @@ export default function Contacts() {
               {contact.source && (
                 <span className="text-xs bg-secondary px-2 py-0.5 rounded">{contact.source}</span>
               )}
+              <span className={cn("text-[10px] px-2 py-0.5 rounded-full", getTouchBadgeClasses(daysSinceTouch))}>
+                {daysSinceTouch == null ? "No touch yet" : `${daysSinceTouch}d since touch`}
+              </span>
+              <span className="text-xs">{lastTouch ? format(lastTouch, "d MMM") : "—"}</span>
             </div>
           </div>
         </div>
@@ -1441,6 +1540,17 @@ export default function Contacts() {
                     <Download className="w-4 h-4 mr-2" />
                     Export
                   </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
+                    onClick={async () => {
+                      await autoCategoriseContacts(filteredAndSortedContacts);
+                      setActionsPopoverOpen(false);
+                    }}
+                  >
+                    <Tag className="w-4 h-4 mr-2" />
+                    Auto-categorise filtered
+                  </button>
                 </PopoverContent>
               </Popover>
               <Select value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
@@ -1514,6 +1624,18 @@ export default function Contacts() {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-3" align="end">
                 <p className="text-xs text-muted-foreground mb-2">Assign colour to {selectedContactIds.size} contact(s)</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mb-2 w-full"
+                  onClick={async () => {
+                    const selected = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
+                    await autoCategoriseContacts(selected);
+                    setSelectedContactIds(new Set());
+                  }}
+                >
+                  Auto-categorise from classification
+                </Button>
                 <div className="flex flex-wrap gap-1.5">
                   {CONTACT_CATEGORIES.map((cat) => (
                     <button
@@ -1666,7 +1788,8 @@ export default function Contacts() {
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Email</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Source</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Property</th>
-                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden lg:table-cell w-[120px]">Last Activity</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden lg:table-cell w-[120px]">Last Contacted</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden xl:table-cell w-[120px]">Since Touch</th>
                       <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Actions" />
                     </tr>
                   </thead>

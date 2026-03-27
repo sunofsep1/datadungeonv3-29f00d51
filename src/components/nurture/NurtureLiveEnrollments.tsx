@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -15,6 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { isFeatureEnabled } from "@/lib/featureFlags";
+import { getPauseReason } from "@/lib/nurturePauseReasonStore";
+import { useAdvanceNurtureEnrollmentStep } from "@/hooks/useNurtureSequences";
+import { toast } from "sonner";
 import {
   useActiveNurtureEnrollments,
   type ActiveNurtureEnrollmentItem,
@@ -86,6 +89,9 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "due" | "paused">("all");
   const [rowsLimit, setRowsLimit] = useState(variant === "dashboard" ? 12 : 40);
+  const [workSessionIndex, setWorkSessionIndex] = useState(0);
+  const [workSessionActive, setWorkSessionActive] = useState(false);
+  const advanceNurtureStep = useAdvanceNurtureEnrollmentStep();
 
   const filteredItems = useMemo(() => {
     return items.filter((row) => {
@@ -103,6 +109,59 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
   }, [items, search, statusFilter]);
 
   const { rows: top, dueCount, total: sequenceRowTotal } = useEnrichedPipeline(filteredItems, rowsLimit);
+  const dueRows = useMemo(() => top.filter((x) => x.due), [top]);
+  const activeWorkItem = dueRows[Math.min(workSessionIndex, Math.max(0, dueRows.length - 1))] ?? null;
+
+  useEffect(() => {
+    if (!workSessionActive) return;
+    if (dueRows.length === 0) {
+      setWorkSessionActive(false);
+      setWorkSessionIndex(0);
+      return;
+    }
+    setWorkSessionIndex((idx) => Math.min(idx, dueRows.length - 1));
+  }, [workSessionActive, dueRows.length]);
+
+  useEffect(() => {
+    if (!workSessionActive) return;
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const typingContext =
+        tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+      if (typingContext) return;
+
+      if (event.key.toLowerCase() === "j") {
+        event.preventDefault();
+        setWorkSessionIndex((idx) => Math.min(Math.max(0, dueRows.length - 1), idx + 1));
+      } else if (event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setWorkSessionIndex((idx) => Math.max(0, idx - 1));
+      } else if (event.key.toLowerCase() === "o" && activeWorkItem) {
+        event.preventDefault();
+        navigate(`/contacts/${activeWorkItem.row.contact_id}?nurtureFocus=1`);
+      } else if (event.key.toLowerCase() === "c" && activeWorkItem && !advanceNurtureStep.isPending) {
+        event.preventDefault();
+        advanceNurtureStep.mutate(
+          { enrollment_id: activeWorkItem.row.id, contact_id: activeWorkItem.row.contact_id },
+          {
+            onSuccess: (data) => {
+              toast.success(data.finished ? "Sequence completed" : "Step completed and advanced");
+              setWorkSessionIndex((idx) => Math.max(0, idx));
+            },
+            onError: (err) =>
+              toast.error(err instanceof Error ? err.message : "Could not complete step"),
+          }
+        );
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setWorkSessionActive(false);
+        setWorkSessionIndex(0);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [workSessionActive, dueRows.length, activeWorkItem, advanceNurtureStep, navigate]);
 
   const showManageLink = variant === "dashboard";
   const contactsHint = (
@@ -182,8 +241,81 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
             <Button size="sm" variant={statusFilter === "due" ? "default" : "outline"} onClick={() => setStatusFilter("due")}>Due</Button>
             <Button size="sm" variant={statusFilter === "paused" ? "default" : "outline"} onClick={() => setStatusFilter("paused")}>Paused</Button>
           </div>
+          {dueRows.length > 0 && (
+            <Button
+              size="sm"
+              variant={workSessionActive ? "secondary" : "default"}
+              onClick={() => {
+                setWorkSessionActive((prev) => !prev);
+                setWorkSessionIndex(0);
+              }}
+            >
+              {workSessionActive ? "End due session" : "Work through all due"}
+            </Button>
+          )}
         </div>
       ) : null}
+
+      {!dash && compactNurtureV2 && workSessionActive && activeWorkItem && (
+        <div className="mb-3 rounded-md border border-primary/30 bg-primary/8 p-2.5">
+          <p className="text-xs text-muted-foreground mb-1">
+            Working due items {workSessionIndex + 1} of {dueRows.length}
+          </p>
+          <p className="text-sm font-medium text-foreground">{activeWorkItem.row.contactName}</p>
+          <p className="text-xs text-muted-foreground">{activeWorkItem.row.sequenceName}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8"
+              disabled={advanceNurtureStep.isPending}
+              onClick={() =>
+                advanceNurtureStep.mutate(
+                  { enrollment_id: activeWorkItem.row.id, contact_id: activeWorkItem.row.contact_id },
+                  {
+                    onSuccess: (data) => {
+                      toast.success(data.finished ? "Sequence completed" : "Step completed and advanced");
+                    },
+                    onError: (err) =>
+                      toast.error(err instanceof Error ? err.message : "Could not complete step"),
+                  }
+                )
+              }
+            >
+              Complete & next
+            </Button>
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => navigate(`/contacts/${activeWorkItem.row.contact_id}?nurtureFocus=1`)}
+            >
+              Open contact
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={workSessionIndex <= 0}
+              onClick={() => setWorkSessionIndex((i) => Math.max(0, i - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={workSessionIndex >= dueRows.length - 1}
+              onClick={() => setWorkSessionIndex((i) => Math.min(dueRows.length - 1, i + 1))}
+            >
+              Next due
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Shortcuts: <span className="font-medium">C</span> complete, <span className="font-medium">O</span> open,
+            <span className="font-medium"> J/K</span> next/previous, <span className="font-medium">Esc</span> end session.
+          </p>
+        </div>
+      )}
 
       {!loading && sequenceSummary.activeTotal > 0 && (
         <div className={cn("grid grid-cols-2 sm:grid-cols-4", dash ? "gap-1.5 mb-2" : "gap-2 mb-4")}>
@@ -305,6 +437,11 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
                       {nextTitle && (
                         <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug border-t border-border/50 pt-1.5 mt-0.5">
                           Next: {nextTitle}
+                        </p>
+                      )}
+                      {row.pause_followup_cadence && getPauseReason(row.id) && (
+                        <p className="text-[11px] text-amber-900 dark:text-amber-200 border-t border-amber-500/25 pt-1.5 mt-0.5 line-clamp-2">
+                          Paused reason: {getPauseReason(row.id)}
                         </p>
                       )}
                     </button>

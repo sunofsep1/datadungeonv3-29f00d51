@@ -40,6 +40,7 @@ import {
 import type { ContactWithMeta } from "@/hooks/useContacts";
 import { errorMessageFromUnknown, cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clearPauseReason, getPauseReason, setPauseReason } from "@/lib/nurturePauseReasonStore";
 
 function stepTypeShortLabel(t: string | null | undefined) {
   const s = (t ?? "").toLowerCase();
@@ -107,6 +108,9 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
     step_run_id: string;
     existing_notes: string | null;
   } | null>(null);
+  const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [pauseReasonDraft, setPauseReasonDraft] = useState("");
+  const [pauseTargetEnrollment, setPauseTargetEnrollment] = useState<string | null>(null);
   const completedTasks = useMemo(() => {
     return [...tasks]
       .filter((t) => t.completed_at)
@@ -502,22 +506,36 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                       <Button
                         size="sm"
                         variant={e.pause_followup_cadence ? "secondary" : "ghost"}
-                        onClick={() =>
-                          setCadencePaused.mutate(
-                            { enrollment_id: e.id, pause_followup_cadence: !e.pause_followup_cadence },
-                            {
-                              onSuccess: () =>
-                                toast.success(e.pause_followup_cadence ? "Cadence resumed" : "Cadence paused"),
-                              onError: (err) => toast.error(errorMessageFromUnknown(err)),
-                            }
-                          )
-                        }
+                        onClick={() => {
+                          if (e.pause_followup_cadence) {
+                            setCadencePaused.mutate(
+                              { enrollment_id: e.id, pause_followup_cadence: false },
+                              {
+                                onSuccess: () => {
+                                  clearPauseReason(e.id);
+                                  toast.success("Cadence resumed");
+                                },
+                                onError: (err) => toast.error(errorMessageFromUnknown(err)),
+                              }
+                            );
+                            return;
+                          }
+                          setPauseTargetEnrollment(e.id);
+                          setPauseReasonDraft(getPauseReason(e.id) ?? "");
+                          setPauseDialogOpen(true);
+                        }}
                         disabled={setCadencePaused.isPending}
                       >
                         {e.pause_followup_cadence ? "Resume cadence" : "Pause cadence"}
                       </Button>
                     </div>
                   </div>
+                  {e.pause_followup_cadence && getPauseReason(e.id) && (
+                    <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-200">
+                      <span className="font-medium">Paused reason: </span>
+                      {getPauseReason(e.id)}
+                    </div>
+                  )}
                   {journeySteps.length > 0 ? (
                     <div className="rounded-md border border-border/80 bg-muted/20 px-3 py-2.5 space-y-2">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -722,6 +740,67 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={pauseDialogOpen}
+        onOpenChange={(open) => {
+          setPauseDialogOpen(open);
+          if (!open) {
+            setPauseTargetEnrollment(null);
+            setPauseReasonDraft("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px] bg-popover border-border">
+          <DialogHeader>
+            <DialogTitle>Pause cadence</DialogTitle>
+            <DialogDescription>
+              Add a reason so future you knows why this sequence was paused.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Reason</Label>
+            <Textarea
+              className="bg-input min-h-[100px]"
+              placeholder="e.g. Owner requested no follow-up until after Easter."
+              value={pauseReasonDraft}
+              onChange={(e) => setPauseReasonDraft(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setPauseDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!pauseTargetEnrollment || setCadencePaused.isPending}
+              onClick={() => {
+                if (!pauseTargetEnrollment) return;
+                const reason = pauseReasonDraft.trim();
+                setCadencePaused.mutate(
+                  {
+                    enrollment_id: pauseTargetEnrollment,
+                    pause_followup_cadence: true,
+                    pause_reason: reason || null,
+                  },
+                  {
+                    onSuccess: () => {
+                      if (reason) setPauseReason(pauseTargetEnrollment, reason);
+                      toast.success("Cadence paused");
+                      setPauseDialogOpen(false);
+                      setPauseTargetEnrollment(null);
+                      setPauseReasonDraft("");
+                    },
+                    onError: (err) => toast.error(errorMessageFromUnknown(err)),
+                  }
+                );
+              }}
+            >
+              Pause cadence
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

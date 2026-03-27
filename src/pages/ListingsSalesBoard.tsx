@@ -23,10 +23,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useListings, useUpdateListing, type Listing, type ListingWithContact } from "@/hooks/useListings";
 import { useContacts } from "@/hooks/useContacts";
 import { useLogListingStageMove } from "@/hooks/useEvents";
-import { differenceInDays, format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 import { AddListingDialog } from "@/components/listings/AddListingDialog";
+import { useCommissionRate } from "@/hooks/useCommissionRate";
 
 /**
  * Kanban columns for your listings / sales pipeline.
@@ -53,6 +54,7 @@ const STAGE_WARNINGS: Record<string, number> = {
 export default function ListingsSalesBoard() {
   const { data: listings = [], isLoading } = useListings();
   const { data: contacts = [] } = useContacts();
+  const { commissionRate } = useCommissionRate();
   const updateListing = useUpdateListing();
   const { logStageMove } = useLogListingStageMove();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -102,7 +104,15 @@ export default function ListingsSalesBoard() {
 
   const getDaysInStage = (listing: Listing): number => {
     if (!listing.updated_at) return 0;
-    return differenceInDays(new Date(), new Date(listing.updated_at));
+    return Math.max(0, differenceInCalendarDays(new Date(), new Date(listing.updated_at)));
+  };
+
+  const getDaysOnMarket = (listing: Listing): number | null => {
+    const column = listingKanbanColumnId(listing.pipeline_stage);
+    if (column === "appraisal" || column === "past_client") return null;
+    const anchor = listing.created_at || listing.updated_at;
+    if (!anchor) return null;
+    return Math.max(0, differenceInCalendarDays(new Date(), new Date(anchor)));
   };
 
   const getStageWarning = (listing: Listing): "none" | "warning" | "critical" => {
@@ -150,8 +160,9 @@ export default function ListingsSalesBoard() {
       totalValue: sumPrice(dealRows),
       avgGuide,
       settlementRate,
+      projectedGci: (sumPrice(activePipeline) * commissionRate) / 100,
     };
-  }, [listings]);
+  }, [listings, commissionRate]);
 
   return (
     <div className="animate-fade-in min-h-[60vh]">
@@ -192,6 +203,7 @@ export default function ListingsSalesBoard() {
                     (listing as ListingWithContact).contacts ||
                     (listing.contact_id ? contactMap.get(listing.contact_id) : null);
                   const daysInStage = getDaysInStage(listing);
+                  const daysOnMarket = getDaysOnMarket(listing);
                   const warning = getStageWarning(listing);
                   return (
                     <Card
@@ -251,6 +263,9 @@ export default function ListingsSalesBoard() {
                               </Badge>
                             )}
                           </div>
+                          {daysOnMarket != null && (
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">DOM {daysOnMarket}d</p>
+                          )}
                           {listing.property_type && (
                             <div className="flex items-center gap-1 mt-1">
                               <Home className="w-3 h-3 text-muted-foreground" />
@@ -310,6 +325,15 @@ export default function ListingsSalesBoard() {
               </div>
               <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
                 {formatCompactCurrency(kpi.pipelineValue)}
+              </p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <Percent className="w-3.5 h-3.5" />
+                Projected GCI ({commissionRate.toFixed(1)}%)
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
+                {formatCompactCurrency(kpi.projectedGci)}
               </p>
             </Card>
             <Card className="zoho-card p-4 border-border">

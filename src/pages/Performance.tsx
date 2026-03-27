@@ -12,9 +12,14 @@ import { PerformanceChart, type PerformanceChartDataPoint } from "@/components/p
 import { DateRangePicker, getDefaultDateRange, type DateRange } from "@/components/performance/DateRangePicker";
 import { ExportReportButton, type ExportRow } from "@/components/performance/ExportReportButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useActivities } from "@/hooks/useActivities";
 import { useContacts } from "@/hooks/useContacts";
 import { useAppointments } from "@/hooks/useAppointments";
+import { useListings } from "@/hooks/useListings";
+import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
+import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { format, subDays, parseISO, startOfWeek } from "date-fns";
 
 export default function Performance() {
@@ -22,6 +27,8 @@ export default function Performance() {
   const { data: activities = [], isLoading: activitiesLoading } = useActivities();
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: appointments = [], isLoading: appointmentsLoading } = useAppointments();
+  const { data: listings = [], isLoading: listingsLoading } = useListings();
+  const { commissionRate, setCommissionRate } = useCommissionRate();
 
   const rangeStart = dateRange.start.getTime();
   const rangeEnd = dateRange.end.getTime();
@@ -113,21 +120,32 @@ export default function Performance() {
       ? `↑ ${prevSalesTotals.gci === 0 ? "—" : Math.round(((salesTotals.gci - prevSalesTotals.gci) / prevSalesTotals.gci) * 100) + "%"} vs previous period`
       : `↓ ${prevSalesTotals.gci === 0 ? "" : Math.round(((prevSalesTotals.gci - salesTotals.gci) / prevSalesTotals.gci) * 100) + "%"} vs previous period`;
 
+  const projectedPipelineGci = useMemo(() => {
+    const activePipelineValue = listings
+      .filter((l) => {
+        const stage = listingKanbanColumnId(l.pipeline_stage);
+        return stage === "appraisal" || stage === "listing" || stage === "under_contract" || stage === "unconditional";
+      })
+      .reduce((sum, l) => sum + (Number(l.price) || 0), 0);
+    return (activePipelineValue * commissionRate) / 100;
+  }, [listings, commissionRate]);
+
   const exportData: ExportRow[] = useMemo(
     () => [
       { metric: "Closings", value: salesTotals.closings, period: "current" },
       { metric: "GCI Earned", value: salesTotals.gci, period: "current" },
       { metric: "Total Contacts", value: contactTotals.total, period: "current" },
+      { metric: "Projected GCI (pipeline)", value: projectedPipelineGci, period: "current" },
       { metric: "Hot", value: contactTotals.hot, period: "current" },
       { metric: "Warm", value: contactTotals.warm, period: "current" },
       { metric: "Cold", value: contactTotals.cold, period: "current" },
       { metric: "Lead", value: contactTotals.lead, period: "current" },
       { metric: "Appointments", value: appointments.length, period: "current" },
     ],
-    [salesTotals, contactTotals, appointments.length]
+    [salesTotals, contactTotals, appointments.length, projectedPipelineGci]
   );
 
-  const isLoadingOverview = activitiesLoading || contactsLoading || appointmentsLoading;
+  const isLoadingOverview = activitiesLoading || contactsLoading || appointmentsLoading || listingsLoading;
 
   return (
     <div className="animate-fade-in">
@@ -180,6 +198,32 @@ export default function Performance() {
               value={appointments.length}
               isLoading={isLoadingOverview}
             />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <PerformanceMetricCard
+              title="Projected GCI"
+              value={new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(projectedPipelineGci)}
+              comparison={`Based on active pipeline at ${commissionRate.toFixed(1)}%`}
+              isLoading={isLoadingOverview}
+            />
+            <Card className="zoho-card p-4 border-border lg:col-span-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Default commission rate</p>
+                  <p className="text-xs text-muted-foreground">Used for projected GCI across Listings and Performance.</p>
+                </div>
+                <div className="w-full sm:w-48">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={commissionRate}
+                    onChange={(e) => setCommissionRate(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            </Card>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <PerformanceMetricCard title="Hot" value={contactTotals.hot} isLoading={isLoadingOverview} />
