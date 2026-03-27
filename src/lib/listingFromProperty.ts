@@ -31,6 +31,25 @@ export function getFirstPropertyImageUrl(images: unknown): string | null {
   return typeof u === "string" && u.trim() ? u.trim() : null;
 }
 
+/** De-duplicated hero URLs: listing hero first, then property gallery order. */
+export function collectListingHeroUrls(
+  listingImageUrl: string | null | undefined,
+  propertyImages: unknown
+): string[] {
+  const out: string[] = [];
+  const add = (s: string | null | undefined) => {
+    const v = typeof s === "string" ? s.trim() : "";
+    if (v && !out.includes(v)) out.push(v);
+  };
+  add(listingImageUrl ?? null);
+  if (Array.isArray(propertyImages)) {
+    for (const item of propertyImages) {
+      add(typeof item === "string" ? item : null);
+    }
+  }
+  return out;
+}
+
 /**
  * Vendor / seller contact for this property: owner on file, else first owner/seller link, else any linked contact.
  */

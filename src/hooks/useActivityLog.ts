@@ -64,8 +64,8 @@ export function useActivityLogByProperty(propertyId: string | null | undefined) 
   return useActivityLog({ propertyId });
 }
 
-export function useActivityLogByListing(listingId: string | null | undefined) {
-  return useActivityLog({ listingId });
+export function useActivityLogByListing(listingId: string | null | undefined, limit = 120) {
+  return useActivityLog({ listingId, limit });
 }
 
 /** User-scoped recent activity for dashboard feed */
