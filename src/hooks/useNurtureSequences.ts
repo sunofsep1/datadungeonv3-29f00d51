@@ -198,7 +198,7 @@ export function useCreateNurtureSequence() {
       description?: string;
       steps: {
         offset_days: number;
-        step_type: "task" | "email" | "prompt";
+        step_type: "task" | "email" | "prompt" | "sms";
         title: string;
         body?: string;
         email_subject?: string;
@@ -248,7 +248,7 @@ export function useUpdateNurtureSequence() {
       is_active?: boolean;
       steps: {
         offset_days: number;
-        step_type: "task" | "email" | "prompt";
+        step_type: "task" | "email" | "prompt" | "sms";
         title: string;
         body?: string;
         email_subject?: string;

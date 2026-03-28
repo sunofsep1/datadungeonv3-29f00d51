@@ -89,7 +89,11 @@ export default function ListingsSalesBoard() {
     const oldStage = draggedItem.pipeline_stage || "appraisal";
     const label = SALES_KANBAN_STAGES.find((s) => s.id === columnId)?.name || columnId;
     try {
-      await updateListing.mutateAsync({ id: draggedItem.id, pipeline_stage: columnId });
+      await updateListing.mutateAsync({
+        id: draggedItem.id,
+        pipeline_stage: columnId,
+        previous_pipeline_stage: oldStage,
+      });
       try {
         await logStageMove(draggedItem.id, draggedItem.contact_id, oldStage, columnId, draggedItem.address);
       } catch {

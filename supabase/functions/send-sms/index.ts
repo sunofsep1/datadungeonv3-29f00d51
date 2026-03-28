@@ -1,36 +1,30 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  digitsKey,
+  mobileMessageCredsFromEnv,
+  postMobileMessageBatch,
+  toE164Australia,
+} from "../_shared/smsCore.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
 const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
-const MOBILE_MESSAGE_API_USER = Deno.env.get("MOBILE_MESSAGE_API_USER");
-const MOBILE_MESSAGE_API_PASSWORD = Deno.env.get("MOBILE_MESSAGE_API_PASSWORD");
-const MOBILE_MESSAGE_SENDER = Deno.env.get("MOBILE_MESSAGE_SENDER");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-const useMobileMessage = Boolean(
-  MOBILE_MESSAGE_API_USER && MOBILE_MESSAGE_API_PASSWORD && MOBILE_MESSAGE_SENDER
-);
+const mmCreds = mobileMessageCredsFromEnv();
+const useMobileMessage = Boolean(mmCreds);
 
-/** Normalize Australian numbers to E.164. Twilio and many APIs require +61... */
-function toE164Australia(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 9 && digits.startsWith("4")) {
-    return `+61${digits}`;
-  }
-  if (digits.length === 10 && digits.startsWith("04")) {
-    return `+61${digits.slice(1)}`;
-  }
-  if (digits.length === 11 && digits.startsWith("61")) {
-    return `+${digits}`;
-  }
-  return raw.startsWith("+") ? raw : `+${digits}`;
+function previewBody(text: string, max = 200): string {
+  const t = text.trim();
+  return t.length <= max ? t : `${t.slice(0, max)}…`;
 }
 
 Deno.serve(async (req) => {
@@ -38,7 +32,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // GET ping: verify URL and deployment (no auth). Remove or restrict in production if desired.
   if (req.method === "GET") {
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -57,145 +50,230 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "").trim();
     if (!token) {
-      console.error("[send-sms] Missing token");
-      return new Response(
-        JSON.stringify({ error: "Missing token. Sign in and try again." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing token. Sign in and try again." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-    console.log("[send-sms] Auth: Bearer token present");
 
-    // With verify_jwt = false, the gateway does not validate the JWT. We require a non-empty
-    // Bearer token (the client only sends it when signed in).
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return new Response(JSON.stringify({ error: "Supabase not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: claimData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = claimData.claims.sub as string;
+
     if (useMobileMessage) {
-      // Mobile Message (Australia) – https://mobilemessage.com.au/api-documentation
-      if (!MOBILE_MESSAGE_API_USER || !MOBILE_MESSAGE_API_PASSWORD || !MOBILE_MESSAGE_SENDER) {
+      if (!mmCreds) {
         return new Response(
-          JSON.stringify({ error: "Mobile Message not fully configured. Set MOBILE_MESSAGE_API_USER, MOBILE_MESSAGE_API_PASSWORD, MOBILE_MESSAGE_SENDER." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Mobile Message not fully configured." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
     } else if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-      console.error("[send-sms] No provider configured: useMobileMessage=", useMobileMessage, "twilio=", !!TWILIO_ACCOUNT_SID);
       return new Response(
         JSON.stringify({
-          error: "SMS service not configured. Set either (1) MOBILE_MESSAGE_API_USER, MOBILE_MESSAGE_API_PASSWORD, MOBILE_MESSAGE_SENDER or (2) TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in Edge Function secrets.",
+          error:
+            "SMS service not configured. Set MOBILE_MESSAGE_* or TWILIO_* secrets on send-sms.",
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    console.log("[send-sms] Provider:", useMobileMessage ? "Mobile Message" : "Twilio");
 
-    let body: { to?: string; body?: string };
+    let payload: { to?: string; body?: string; contact_id?: string | null };
     try {
-      body = await req.json();
-    } catch (parseErr) {
-      const msg = parseErr instanceof Error ? parseErr.message : "Invalid JSON";
-      console.error("[send-sms] Body parse error:", msg);
-      return new Response(
-        JSON.stringify({ error: "Invalid request body. Expected JSON with to and body." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      payload = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-    const { to, body: messageBody } = body;
+
+    const { to, body: messageBody, contact_id } = payload;
 
     if (!to || typeof to !== "string" || !to.trim()) {
-      console.error("[send-sms] Missing or invalid to");
       return new Response(JSON.stringify({ error: "Missing to (phone number)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (!messageBody || typeof messageBody !== "string" || !messageBody.trim()) {
-      console.error("[send-sms] Missing or invalid body");
       return new Response(JSON.stringify({ error: "Missing body (message text)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    console.log("[send-sms] Request: to=", to.trim().slice(0, 15), "body length=", String(messageBody).length);
 
-    let toNormalized = to.trim().replace(/\s/g, "");
-    // Australian numbers: 04... or 4... -> +614... for E.164
-    if (/^0?4\d{8}$/.test(toNormalized.replace(/\D/g, "")) || /^61\d{9}$/.test(toNormalized.replace(/\D/g, ""))) {
-      toNormalized = toE164Australia(toNormalized);
+    const svc = SUPABASE_SERVICE_ROLE_KEY
+      ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+      : null;
+
+    let resolvedContactId: string | null = contact_id && typeof contact_id === "string" ? contact_id : null;
+
+    if (resolvedContactId && !svc) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Server missing SUPABASE_SERVICE_ROLE_KEY on send-sms. Add it in Supabase Dashboard to enforce opt-out and logging.",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    if (useMobileMessage) {
-      console.log("[send-sms] Calling Mobile Message API");
-      const auth = btoa(`${MOBILE_MESSAGE_API_USER}:${MOBILE_MESSAGE_API_PASSWORD}`);
-      const res = await fetch("https://api.mobilemessage.com.au/v1/messages", {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              to: toNormalized,
-              message: messageBody.trim(),
-              sender: MOBILE_MESSAGE_SENDER,
-            },
-          ],
-        }),
-      });
-      const resData = await res.json().catch(() => ({}));
+    if (svc && resolvedContactId) {
+      const { data: row } = await svc
+        .from("contacts")
+        .select("id, sms_opt_out, user_id, owner_id")
+        .eq("id", resolvedContactId)
+        .maybeSingle();
 
-      if (!res.ok) {
-        const msg = resData?.error || res.statusText || "Failed to send SMS";
-        console.error("[send-sms] Mobile Message error:", res.status, resData);
-        return new Response(JSON.stringify({ error: msg }), {
+      const ok =
+        row &&
+        (row.user_id === userId || row.owner_id === userId);
+      if (!ok) {
+        return new Response(JSON.stringify({ error: "Contact not found or access denied" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (row.sms_opt_out === true) {
+        return new Response(JSON.stringify({ error: "Contact has opted out of SMS" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    } else if (svc) {
+      let toNorm = to.trim().replace(/\s/g, "");
+      if (/^0?4\d{8}$/.test(toNorm.replace(/\D/g, "")) || /^61\d{9}$/.test(toNorm.replace(/\D/g, ""))) {
+        toNorm = toE164Australia(toNorm);
+      }
+      const key = digitsKey(toNorm);
 
-      const first = resData?.results?.[0];
-      const messageId = first?.message_id ?? first?.status;
-      console.log("[send-sms] Mobile Message success:", messageId);
-      return new Response(JSON.stringify({ sid: messageId, success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const [{ data: byUser }, { data: byOwner }] = await Promise.all([
+        svc.from("contacts").select("id, sms_opt_out").eq("user_id", userId),
+        svc.from("contacts").select("id, sms_opt_out").eq("owner_id", userId),
+      ]);
+      const contactMeta = new Map<string, boolean | null>();
+      for (const r of [...(byUser ?? []), ...(byOwner ?? [])] as { id: string; sms_opt_out: boolean | null }[]) {
+        contactMeta.set(r.id, r.sms_opt_out);
+      }
+      const ids = [...contactMeta.keys()];
+      if (ids.length > 0) {
+        const { data: chs } = await svc
+          .from("contact_channels")
+          .select("contact_id, value")
+          .eq("channel_type", "phone")
+          .in("contact_id", ids);
+        for (const ch of chs ?? []) {
+          if (!ch.value || digitsKey(ch.value) !== key) continue;
+          const opt = contactMeta.get(ch.contact_id);
+          if (opt === true) {
+            return new Response(JSON.stringify({ error: "Contact has opted out of SMS" }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          resolvedContactId = ch.contact_id;
+          break;
+        }
+      }
     }
 
-    // Twilio
-    console.log("[send-sms] Calling Twilio API");
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-    const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-    const form = new URLSearchParams({
-      To: toNormalized,
-      From: TWILIO_PHONE_NUMBER,
-      Body: messageBody.trim(),
-    });
+    let toNormalized = to.trim().replace(/\s/g, "");
+    if (/^0?4\d{8}$/.test(toNormalized.replace(/\D/g, "")) || /^61\d{9}$/.test(toNormalized.replace(/\D/g, ""))) {
+      toNormalized = toE164Australia(toNormalized);
+    }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form.toString(),
-    });
+    const provider = useMobileMessage ? "mobile_message" : "twilio";
+    let providerMessageId: string | null = null;
+    let sendError: string | null = null;
 
-    const resData = await res.json().catch(() => ({}));
+    if (useMobileMessage && mmCreds) {
+      const batch = await postMobileMessageBatch(mmCreds, [{ to: toNormalized, message: messageBody.trim() }]);
+      if (!batch.ok) {
+        sendError =
+          (batch.data?.error as string) ||
+          (batch.data?.message as string) ||
+          `Mobile Message HTTP ${batch.status}`;
+      } else {
+        const first = (batch.data?.results as Array<{ message_id?: string; status?: string }> | undefined)?.[0];
+        providerMessageId = first?.message_id ?? first?.status ?? null;
+      }
+    } else {
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+      const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+      const form = new URLSearchParams({
+        To: toNormalized,
+        From: TWILIO_PHONE_NUMBER!,
+        Body: messageBody.trim(),
+      });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      });
+      const resData = (await res.json().catch(() => ({}))) as { sid?: string; message?: string; error_message?: string };
+      if (!res.ok) {
+        sendError = resData?.message || resData?.error_message || res.statusText || "Twilio failed";
+      } else {
+        providerMessageId = resData.sid ?? null;
+      }
+    }
 
-    if (!res.ok) {
-      const msg = resData?.message || resData?.error_message || res.statusText || "Failed to send SMS";
-      console.error("[send-sms] Twilio error:", res.status, resData);
-      return new Response(JSON.stringify({ error: msg }), {
+    if (sendError) {
+      if (svc) {
+        await svc.from("sms_outbound").insert({
+          user_id: userId,
+          contact_id: resolvedContactId,
+          to_phone: toNormalized,
+          body_preview: previewBody(messageBody),
+          provider,
+          provider_message_id: null,
+          status: "failed",
+          error: sendError.slice(0, 500),
+        });
+      }
+      return new Response(JSON.stringify({ error: sendError }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("[send-sms] Twilio success:", resData.sid);
-    return new Response(JSON.stringify({ sid: resData.sid, success: true }), {
+    if (svc) {
+      await svc.from("sms_outbound").insert({
+        user_id: userId,
+        contact_id: resolvedContactId,
+        to_phone: toNormalized,
+        body_preview: previewBody(messageBody),
+        provider,
+        provider_message_id: providerMessageId,
+        status: "sent",
+        error: null,
+      });
+    }
+
+    return new Response(JSON.stringify({ sid: providerMessageId, success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[send-sms] Unhandled error:", message, error);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

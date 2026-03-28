@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Mail,
   ListTodo,
+  MessageSquare,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ function stepTypeLabel(t: string | null) {
   const s = (t ?? "").toLowerCase();
   if (s === "email") return "Email";
   if (s === "prompt") return "Prompt";
+  if (s === "sms") return "SMS";
   return "Task";
 }
 
@@ -405,6 +407,8 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
                             <span className="text-[10px] inline-flex items-center gap-0.5 uppercase tracking-wide border border-border rounded px-1.5 py-0.5 text-muted-foreground">
                               {row.next_step_type === "email" ? (
                                 <Mail className="w-3 h-3" />
+                              ) : row.next_step_type === "sms" ? (
+                                <MessageSquare className="w-3 h-3" />
                               ) : (
                                 <ListTodo className="w-3 h-3" />
                               )}

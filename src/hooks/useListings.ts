@@ -12,6 +12,7 @@ import {
   isListingsContactForeignKeyError,
   isListingsPropertyForeignKeyError,
 } from "@/lib/supabaseErrorMessage";
+import { invokeListingStageAutomation } from "@/lib/listingStageAutomation";
 
 export type Listing = Tables<"listings">;
 export type ListingInsert = TablesInsert<"listings">;
@@ -146,11 +147,17 @@ export function useCreateListing() {
   });
 }
 
+export type ListingUpdateVariables = ListingUpdate & {
+  id: string;
+  /** When pipeline_stage changes, used for optional listing-stage automations */
+  previous_pipeline_stage?: string | null;
+};
+
 export function useUpdateListing() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, ...updates }: ListingUpdate & { id: string }) => {
+    mutationFn: async ({ id, previous_pipeline_stage: _prev, ...updates }: ListingUpdateVariables) => {
       const { data, error } = await supabase
         .from("listings")
         .update(updates)
@@ -181,6 +188,11 @@ export function useUpdateListing() {
         queryClient.invalidateQueries({ queryKey: ["listing", variables.id] });
         queryClient.invalidateQueries({ queryKey: ["contacts"] });
         queryClient.invalidateQueries({ queryKey: ["nurture_sequence_enrollments"] });
+        void invokeListingStageAutomation(
+          variables.id,
+          variables.previous_pipeline_stage ?? null,
+          variables.pipeline_stage ?? data.pipeline_stage ?? null,
+        );
       }
     },
   });

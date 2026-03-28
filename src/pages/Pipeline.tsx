@@ -104,6 +104,7 @@ export default function Pipeline() {
       await updateListing.mutateAsync({
         id: draggedItem.id,
         pipeline_stage: stageId,
+        previous_pipeline_stage: oldStage,
       });
       
       // Log activity event for stage movement

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatAddressForDisplay } from "@/lib/formatAddressDisplay";
 import type { ContactChannel } from "./useContactChannels";
 
 // Type definitions (tables not in auto-generated types)
@@ -371,5 +372,6 @@ export function formatPropertyAddress(p: Property & { address?: string | null })
     p.postcode,
     p.country,
   ].filter(Boolean);
-  return parts.join(", ") || "—";
+  const raw = parts.join(", ") || "—";
+  return raw === "—" ? raw : formatAddressForDisplay(raw);
 }

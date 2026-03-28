@@ -466,6 +466,7 @@ export default function ContactDetail() {
           open={smsDialogOpen}
           onOpenChange={setSmsDialogOpen}
           to={smsToNumber || (getAllPhones(contact)[0]?.value ?? "")}
+          contactId={id}
           contactName={displayName === "—" ? undefined : displayName}
           onSent={() => id && createInteraction.mutate({ contact_id: id, type: "sms", channel: "sms", subject: "SMS sent", body: null })}
         />

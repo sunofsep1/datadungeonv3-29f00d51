@@ -50,6 +50,7 @@ import {
   Square,
   Building2,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -92,6 +93,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
+import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
 
 type SortOption =
   | "name-asc"
@@ -308,6 +310,7 @@ export default function Contacts() {
   const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
   const [filterPanelOpen, setFilterPanelOpen] = useState(initialPrefs.filterPanelOpen);
@@ -1567,7 +1570,11 @@ export default function Contacts() {
           <span className="text-sm text-foreground">
             {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""} selected
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setBulkSmsOpen(true)}>
+              <MessageSquare className="w-4 h-4" />
+              Bulk SMS
+            </Button>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -1855,6 +1862,12 @@ export default function Contacts() {
       </div>
 
       <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
+      <BulkSmsCampaignDialog
+        open={bulkSmsOpen}
+        onOpenChange={setBulkSmsOpen}
+        contactIds={[...selectedContactIds]}
+        onComplete={() => setSelectedContactIds(new Set())}
+      />
     </div>
   );
 }

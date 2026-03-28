@@ -1,4 +1,5 @@
 import type { PropertyWithLinks } from "@/hooks/useProperties";
+import { formatAddressForDisplay } from "@/lib/formatAddressDisplay";
 
 /** Property row fields that exist on newer Supabase schemas */
 export type PropertyForListing = PropertyWithLinks & {
@@ -22,7 +23,8 @@ export function formatPropertyAddressLine(p: PropertyForListing): string {
   const mid = [sub, statePost].filter(Boolean).join(" ");
   const parts = [line1, p.address_line2, mid, p.country].filter(Boolean);
   const s = parts.join(", ").trim();
-  return s || "—";
+  const raw = s || "—";
+  return raw === "—" ? raw : formatAddressForDisplay(raw);
 }
 
 export function getFirstPropertyImageUrl(images: unknown): string | null {

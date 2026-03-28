@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,8 @@ interface SendSmsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   to: string;
+  /** Used for opt-out enforcement and logging */
+  contactId?: string | null;
   contactName?: string;
   onSent?: () => void;
 }
@@ -24,6 +27,7 @@ export function SendSmsDialog({
   open,
   onOpenChange,
   to,
+  contactId,
   contactName,
   onSent,
 }: SendSmsDialogProps) {
@@ -59,7 +63,11 @@ export function SendSmsDialog({
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ to: to.trim().replace(/\s/g, ""), body: body.trim() }),
+        body: JSON.stringify({
+          to: to.trim().replace(/\s/g, ""),
+          body: body.trim(),
+          ...(contactId ? { contact_id: contactId } : {}),
+        }),
       });
       const text = await res.text();
       let data: { error?: string; message?: string; error_message?: string } = {};
@@ -120,6 +128,13 @@ export function SendSmsDialog({
             Send a text message to this contact. Number should include country code (e.g. +61 for Australia).
           </DialogDescription>
         </DialogHeader>
+        <Alert className="border-amber-500/40 bg-amber-500/10">
+          <AlertTitle className="text-sm">Compliance</AlertTitle>
+          <AlertDescription className="text-xs">
+            Send only with consent. Opted-out contacts are blocked server-side. Follow the Spam Act (AU) and your brokerage
+            rules.
+          </AlertDescription>
+        </Alert>
         <div className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label>To</Label>

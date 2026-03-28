@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  mobileMessageCredsFromEnv,
+  postMobileMessageBatch,
+  toE164Australia,
+} from "../_shared/smsCore.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +32,33 @@ function getContactEmail(contact: {
   const anyEmail = channels.find((c) => c.channel_type === "email" && c.value);
   if (anyEmail?.value) return String(anyEmail.value);
   return contact.email ?? null;
+}
+
+function getContactPhone(contact: {
+  mobile?: string | null;
+  phone?: string | null;
+  contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean | null }>;
+} | null): string | null {
+  if (!contact) return null;
+  const channels = contact.contact_channels ?? [];
+  const primary = channels.find((c) => c.channel_type === "phone" && c.is_primary && c.value);
+  if (primary?.value) return String(primary.value);
+  const anyP = channels.find((c) => c.channel_type === "phone" && c.value);
+  if (anyP?.value) return String(anyP.value);
+  return contact.mobile ?? contact.phone ?? null;
+}
+
+function mergeNurtureSmsBody(
+  template: string,
+  contact: { first_name?: string | null; last_name?: string | null; name?: string | null },
+): string {
+  const first = (contact?.first_name ?? "").trim() || (contact?.name ?? "").split(/\s+/)[0] || "";
+  const last = (contact?.last_name ?? "").trim();
+  const name = (contact?.name ?? "").trim() || [first, last].filter(Boolean).join(" ");
+  return template
+    .replace(/\{\{\s*first_name\s*\}\}/gi, first)
+    .replace(/\{\{\s*last_name\s*\}\}/gi, last)
+    .replace(/\{\{\s*name\s*\}\}/gi, name);
 }
 
 async function advanceEnrollment(
@@ -192,6 +224,47 @@ Deno.serve(async (req) => {
             continue;
           }
 
+          if (step.step_type === "sms" && !existingRun.error) {
+            const { data: existingNotifSms } = await supabase
+              .from("notifications")
+              .select("id")
+              .eq("user_id", enrollment.user_id)
+              .eq("kind", "nurture_step_due")
+              .eq("entity_type", "nurture_sequence_step_runs")
+              .eq("entity_id", existingRun.id)
+              .maybeSingle();
+
+            if (!existingNotifSms) {
+              await supabase.from("notifications").insert({
+                user_id: enrollment.user_id,
+                kind: "nurture_step_due",
+                title: step.title,
+                body: "Sequence SMS step is due now.",
+                entity_type: "nurture_sequence_step_runs",
+                entity_id: existingRun.id,
+                read_at: null,
+              });
+            }
+
+            const { error: rpcErrSms } = await supabase.rpc("complete_nurture_step_and_advance", {
+              p_enrollment_id: enrollment.id,
+              p_step_run_id: existingRun.id,
+              p_outcome: "completed",
+            });
+
+            if (rpcErrSms) {
+              results.push({
+                enrollment_id: enrollment.id,
+                action: "sms_rpc_error_after_pending_run",
+                detail: rpcErrSms.message,
+              });
+              continue;
+            }
+
+            results.push({ enrollment_id: enrollment.id, action: "sms_advanced_after_pending_run" });
+            continue;
+          }
+
           // For task/prompt (and for email fallback requiring manual action), create notification only once.
           const { data: existingNotif } = await supabase
             .from("notifications")
@@ -227,7 +300,9 @@ Deno.serve(async (req) => {
 
       const { data: contact } = await supabase
         .from("contacts")
-        .select(`id, name, first_name, last_name, email, contact_channels ( channel_type, value, is_primary )`)
+        .select(
+          `id, name, first_name, last_name, email, mobile, phone, sms_opt_out, contact_channels ( channel_type, value, is_primary )`,
+        )
         .eq("id", enrollment.contact_id)
         .single();
 
@@ -390,6 +465,185 @@ Deno.serve(async (req) => {
         }
 
         results.push({ enrollment_id: enrollment.id, action: "email_sent_and_advanced" });
+      } else if (step.step_type === "sms") {
+        const mm = mobileMessageCredsFromEnv();
+        const c = contact as {
+          sms_opt_out?: boolean | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          name?: string | null;
+        } | null;
+
+        const msgTemplate = (step.body || step.title || "").trim() || "Message from your agent.";
+        const merged = mergeNurtureSmsBody(msgTemplate, c ?? {});
+
+        if (!mm || c?.sms_opt_out === true) {
+          const { data: taskRow, error: taskErr } = await supabase
+            .from("contact_tasks")
+            .insert({
+              contact_id: enrollment.contact_id,
+              user_id: enrollment.user_id,
+              title: step.title,
+              notes:
+                (step.body || "SMS step requires manual action") +
+                (!mm ? " (Mobile Message not configured on sequence-runner)" : " (contact opted out of SMS)"),
+              due_at: dueAt.toISOString(),
+              sequence_enrollment_id: enrollment.id,
+            })
+            .select("id")
+            .single();
+          if (taskErr) {
+            results.push({ enrollment_id: enrollment.id, action: "sms_fallback_task_error", detail: taskErr.message });
+            continue;
+          }
+          const { data: runRow, error: runErr } = await supabase
+            .from("nurture_sequence_step_runs")
+            .insert({
+              enrollment_id: enrollment.id,
+              step_index: idx,
+              step_id: step.id,
+              status: "pending",
+              task_id: taskRow?.id ?? null,
+              activated_at: new Date().toISOString(),
+              error: !mm ? "missing_mobile_message_config" : "contact_sms_opt_out",
+            })
+            .select("id")
+            .single();
+          if (runErr) {
+            results.push({ enrollment_id: enrollment.id, action: "sms_fallback_run_error", detail: runErr.message });
+            continue;
+          }
+          const createdRunId = runRow?.id as string | undefined;
+          await supabase.from("notifications").insert({
+            user_id: enrollment.user_id,
+            kind: "nurture_step_due",
+            title: step.title,
+            body: !mm
+              ? "SMS step is due, but Mobile Message is not configured on the sequence-runner function."
+              : "SMS step is due, but contact opted out of SMS.",
+            entity_type: "nurture_sequence_step_runs",
+            entity_id: createdRunId ?? null,
+            read_at: null,
+          });
+          results.push({ enrollment_id: enrollment.id, action: "sms_fallback_task_created" });
+          continue;
+        }
+
+        const rawPhone = getContactPhone(contact as Parameters<typeof getContactPhone>[0]);
+        if (!rawPhone?.trim()) {
+          const { data: taskRow, error: taskErr } = await supabase
+            .from("contact_tasks")
+            .insert({
+              contact_id: enrollment.contact_id,
+              user_id: enrollment.user_id,
+              title: step.title,
+              notes: (step.body || "SMS step") + " (missing contact phone)",
+              due_at: dueAt.toISOString(),
+              sequence_enrollment_id: enrollment.id,
+            })
+            .select("id")
+            .single();
+          if (taskErr) {
+            results.push({ enrollment_id: enrollment.id, action: "sms_fallback_task_error", detail: taskErr.message });
+            continue;
+          }
+          const { data: runRow, error: runErr } = await supabase
+            .from("nurture_sequence_step_runs")
+            .insert({
+              enrollment_id: enrollment.id,
+              step_index: idx,
+              step_id: step.id,
+              status: "pending",
+              task_id: taskRow?.id ?? null,
+              activated_at: new Date().toISOString(),
+              error: "missing_contact_phone",
+            })
+            .select("id")
+            .single();
+          if (runErr) {
+            results.push({ enrollment_id: enrollment.id, action: "sms_fallback_run_error", detail: runErr.message });
+            continue;
+          }
+          const createdRunId = runRow?.id as string | undefined;
+          await supabase.from("notifications").insert({
+            user_id: enrollment.user_id,
+            kind: "nurture_step_due",
+            title: step.title,
+            body: "SMS step is due, but contact has no phone number.",
+            entity_type: "nurture_sequence_step_runs",
+            entity_id: createdRunId ?? null,
+            read_at: null,
+          });
+          results.push({ enrollment_id: enrollment.id, action: "sms_fallback_task_created" });
+          continue;
+        }
+
+        let to = rawPhone.trim().replace(/\s/g, "");
+        if (/^0?4\d{8}$/.test(to.replace(/\D/g, "")) || /^61\d{9}$/.test(to.replace(/\D/g, ""))) {
+          to = toE164Australia(to);
+        }
+
+        const batch = await postMobileMessageBatch(mm, [{ to, message: merged }]);
+        if (!batch.ok) {
+          const detail =
+            (batch.data?.error as string) || (batch.data?.message as string) || `HTTP ${batch.status}`;
+          results.push({ enrollment_id: enrollment.id, action: "sms_failed", detail });
+          continue;
+        }
+
+        const first = (batch.data?.results as Array<{ message_id?: string }> | undefined)?.[0];
+        await supabase.from("sms_outbound").insert({
+          user_id: enrollment.user_id,
+          contact_id: enrollment.contact_id,
+          to_phone: to,
+          body_preview: merged.length > 200 ? `${merged.slice(0, 200)}…` : merged,
+          provider: "mobile_message",
+          provider_message_id: first?.message_id ?? null,
+          status: "sent",
+          error: null,
+        });
+
+        const { data: runRow, error: runErr } = await supabase
+          .from("nurture_sequence_step_runs")
+          .insert({
+            enrollment_id: enrollment.id,
+            step_index: idx,
+            step_id: step.id,
+            status: "pending",
+            activated_at: new Date().toISOString(),
+            error: null,
+          })
+          .select("id")
+          .single();
+
+        if (runErr) {
+          results.push({ enrollment_id: enrollment.id, action: "sms_run_error", detail: runErr.message });
+          continue;
+        }
+
+        const createdRunId = runRow?.id as string | undefined;
+        await supabase.from("notifications").insert({
+          user_id: enrollment.user_id,
+          kind: "nurture_step_due",
+          title: step.title,
+          body: "Sequence SMS step is due now.",
+          entity_type: "nurture_sequence_step_runs",
+          entity_id: createdRunId ?? null,
+          read_at: null,
+        });
+
+        const { error: rpcErrSms2 } = await supabase.rpc("complete_nurture_step_and_advance", {
+          p_enrollment_id: enrollment.id,
+          p_step_run_id: createdRunId,
+          p_outcome: "completed",
+        });
+
+        if (rpcErrSms2) {
+          results.push({ enrollment_id: enrollment.id, action: "sms_rpc_error_after_send", detail: rpcErrSms2.message });
+          continue;
+        }
+
+        results.push({ enrollment_id: enrollment.id, action: "sms_sent_and_advanced" });
       }
     }
 

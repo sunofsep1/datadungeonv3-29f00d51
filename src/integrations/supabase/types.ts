@@ -147,6 +147,81 @@ export type Database = {
           },
         ]
       }
+      listing_stage_automations: {
+        Row: {
+          created_at: string
+          email_html: string | null
+          email_subject: string | null
+          id: string
+          pipeline_stage: string
+          sms_body: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_html?: string | null
+          email_subject?: string | null
+          id?: string
+          pipeline_stage: string
+          sms_body?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_html?: string | null
+          email_subject?: string | null
+          id?: string
+          pipeline_stage?: string
+          sms_body?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_outbound: {
+        Row: {
+          batch_id: string | null
+          body_preview: string | null
+          contact_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          provider: string
+          provider_message_id: string | null
+          status: string
+          to_phone: string
+          user_id: string
+        }
+        Insert: {
+          batch_id?: string | null
+          body_preview?: string | null
+          contact_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          provider: string
+          provider_message_id?: string | null
+          status?: string
+          to_phone: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string | null
+          body_preview?: string | null
+          contact_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          provider?: string
+          provider_message_id?: string | null
+          status?: string
+          to_phone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       affirmations: {
         Row: {
           created_at: string

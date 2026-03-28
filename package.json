@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "health": "tsx scripts/health.ts",
     "export:contacts": "tsx scripts/export-contacts.ts",
+    "db:backfill-property-addresses": "tsx scripts/backfill-property-address-titlecase.ts",
     "db:push": "npx supabase db push",
     "db:migrate": "npx supabase migration up",
     "supabase:sync": "node scripts/sync-supabase-project.mjs",

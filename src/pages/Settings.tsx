@@ -14,6 +14,7 @@ import type { Theme, Density } from "@/contexts/ThemeContext";
 import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/hooks/useUserReminderPreferences";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { toast } from "sonner";
+import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
   { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
@@ -216,7 +217,11 @@ export default function Settings() {
               <MessageSquare className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">SMS</p>
-                <p className="text-xs text-muted-foreground">Send SMS from Contact detail. Use Mobile Message (Australia) or Twilio: set Edge Function secrets for send-sms. See docs/MOBILE_MESSAGE_SETUP.md or docs/SMS_SETUP.md.</p>
+                <p className="text-xs text-muted-foreground">
+                  Send SMS from Contact detail or bulk SMS from Contacts. Configure send-sms, send-sms-broadcast, and
+                  sequence-runner with Mobile Message secrets; add SUPABASE_SERVICE_ROLE_KEY on send-sms for opt-out checks
+                  and logging. See docs/MOBILE_MESSAGE_SETUP.md and docs/COMMUNICATION_AUTOMATION_OPS.md.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 pt-2 border-t border-border">
@@ -241,6 +246,8 @@ export default function Settings() {
             </div>
           </div>
         </Card>
+
+        <ListingStageAutomationCard />
 
         {/* Notifications */}
         <Card className="zoho-card p-6 border-border">
@@ -291,10 +298,14 @@ export default function Settings() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-foreground">Appointment reminders</p>
-                <p className="text-xs text-muted-foreground">Get reminded before appointments</p>
+                <p className="text-xs text-muted-foreground">
+                  Email via Resend when configured. Optional SMS: set secret{" "}
+                  <code className="text-[10px]">APPOINTMENT_REMINDER_SMS=true</code> on appointment-reminders plus Mobile
+                  Message secrets (same as send-sms).
+                </p>
               </div>
               <Switch defaultChecked />
             </div>

@@ -34,8 +34,13 @@ In **Supabase Dashboard** → **Edge Functions** → **send-sms** → **Secrets*
 | `MOBILE_MESSAGE_API_USER` | Your **login email** (API username) | `you@company.com` |
 | `MOBILE_MESSAGE_API_PASSWORD` | Your **login password** (API password) | (your Mobile Message password) |
 | `MOBILE_MESSAGE_SENDER` | A registered Sender ID from [Sender ID page](https://app.mobilemessage.com.au/senderid) | `61485900177` (shared) or `61466805992` (your number) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Required on `send-sms`** for `sms_opt_out` enforcement and `sms_outbound` logging (same value as Dashboard → Settings → API → service_role) | (secret) |
 
-If these three are set, Data Dungeon will use **Mobile Message** for “Send SMS”. If they are not set, the app falls back to **Twilio** (if `TWILIO_*` secrets are set).
+If the three Mobile Message variables are set, Data Dungeon will use **Mobile Message** for “Send SMS”. If they are not set, the app falls back to **Twilio** (if `TWILIO_*` secrets are set).
+
+**Bulk SMS**: deploy `send-sms-broadcast` and attach the same `MOBILE_MESSAGE_*` + `SUPABASE_SERVICE_ROLE_KEY` secrets. Use **Contacts → Bulk SMS** after selecting contacts.
+
+**Nurture SMS**: add the same `MOBILE_MESSAGE_*` secrets to the **`sequence-runner`** function so automated **SMS** steps can send.
 
 **Example (using shared number):**
 - `MOBILE_MESSAGE_SENDER`: `61485900177`

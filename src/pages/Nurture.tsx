@@ -39,7 +39,7 @@ import { format } from "date-fns";
 
 type SequenceStepDraft = {
   offset_days: number;
-  step_type: "task" | "email" | "prompt";
+  step_type: "task" | "email" | "prompt" | "sms";
   title: string;
   body: string;
   email_subject: string;
@@ -70,7 +70,9 @@ function stepsToDraft(steps: NurtureSequenceStep[]): SequenceStepDraft[] {
   if (steps.length === 0) return [emptyStep()];
   return steps.map((s) => ({
     offset_days: s.offset_days,
-    step_type: (s.step_type === "email" || s.step_type === "prompt" ? s.step_type : "task") as SequenceStepDraft["step_type"],
+    step_type: (s.step_type === "email" || s.step_type === "prompt" || s.step_type === "sms"
+      ? s.step_type
+      : "task") as SequenceStepDraft["step_type"],
     title: s.title ?? "",
     body: s.body ?? "",
     email_subject: s.email_subject ?? "",
@@ -130,6 +132,7 @@ function SequenceStepsFields({
                 <option value="task">Task</option>
                 <option value="prompt">Prompt</option>
                 <option value="email">Email</option>
+                <option value="sms">SMS (auto)</option>
               </select>
             </div>
             {steps.length > 1 && (
@@ -141,10 +144,19 @@ function SequenceStepsFields({
           <Input className="bg-input" placeholder="Title" value={step.title} onChange={(e) => update(i, { title: e.target.value })} />
           <Textarea
             className="bg-input text-sm min-h-[50px]"
-            placeholder="Body / task notes"
+            placeholder={
+              step.step_type === "sms"
+                ? "SMS text ({{first_name}}, {{name}}). Requires Mobile Message secrets on sequence-runner."
+                : "Body / task notes"
+            }
             value={step.body}
             onChange={(e) => update(i, { body: e.target.value })}
           />
+          {step.step_type === "sms" && (
+            <p className="text-[11px] text-muted-foreground">
+              Automated SMS when the step is due. Opt-outs and missing phones create a manual task instead.
+            </p>
+          )}
           {step.step_type === "email" && (
             <>
               <Input
