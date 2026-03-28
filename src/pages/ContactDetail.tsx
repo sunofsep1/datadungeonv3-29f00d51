@@ -468,6 +468,8 @@ export default function ContactDetail() {
           to={smsToNumber || (getAllPhones(contact)[0]?.value ?? "")}
           contactId={id}
           contactName={displayName === "—" ? undefined : displayName}
+          firstName={contact.first_name}
+          lastName={contact.last_name}
           onSent={() => id && createInteraction.mutate({ contact_id: id, type: "sms", channel: "sms", subject: "SMS sent", body: null })}
         />
       )}

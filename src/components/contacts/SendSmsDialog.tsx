@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
+import { isSignatureUnfilled } from "@/lib/smsTemplateMerge";
+import {
+  SmsProspectingComposer,
+  buildFinalSmsBody,
+  defaultSmsComposerCustomFields,
+  type SmsComposerCustomFields,
+} from "@/components/contacts/SmsProspectingComposer";
 
 function getSendSmsUrl() {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -20,6 +27,8 @@ interface SendSmsDialogProps {
   /** Used for opt-out enforcement and logging */
   contactId?: string | null;
   contactName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   onSent?: () => void;
 }
 
@@ -29,14 +38,48 @@ export function SendSmsDialog({
   to,
   contactId,
   contactName,
+  firstName,
+  lastName,
   onSent,
 }: SendSmsDialogProps) {
   const { toast } = useToast();
+  const { data: commSettings } = useUserCommunicationSettings();
+  const smsSignature = commSettings?.sms_signature ?? "";
   const [body, setBody] = useState("");
+  const [custom, setCustom] = useState<SmsComposerCustomFields>(() => defaultSmsComposerCustomFields());
+  const [includeOptOutIfMissing, setIncludeOptOutIfMissing] = useState(true);
   const [sending, setSending] = useState(false);
 
+  const resetComposition = useCallback(() => {
+    setBody("");
+    setCustom(defaultSmsComposerCustomFields());
+    setIncludeOptOutIfMissing(true);
+  }, []);
+
   const handleSend = async () => {
-    if (!body.trim()) {
+    if (isSignatureUnfilled(body, smsSignature)) {
+      toast({
+        title: "SMS signature missing",
+        description: "Add your name and agency under Settings → SMS signature, then try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const merged = buildFinalSmsBody(
+      body,
+      {
+        first_name: firstName,
+        last_name: lastName,
+        name: contactName,
+        signature: smsSignature,
+        custom1: custom.custom1,
+        custom2: custom.custom2,
+        custom3: custom.custom3,
+        custom4: custom.custom4,
+      },
+      includeOptOutIfMissing,
+    );
+    if (!merged.trim()) {
       toast({ title: "Error", description: "Please enter a message", variant: "destructive" });
       return;
     }
@@ -65,7 +108,7 @@ export function SendSmsDialog({
         },
         body: JSON.stringify({
           to: to.trim().replace(/\s/g, ""),
-          body: body.trim(),
+          body: merged,
           ...(contactId ? { contact_id: contactId } : {}),
         }),
       });
@@ -92,7 +135,7 @@ export function SendSmsDialog({
         throw new Error(msg);
       }
       toast({ title: "Success", description: "SMS sent!" });
-      setBody("");
+      resetComposition();
       onOpenChange(false);
       onSent?.();
     } catch (e) {
@@ -115,43 +158,51 @@ export function SendSmsDialog({
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) setBody("");
+    if (!next) resetComposition();
     onOpenChange(next);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[440px] bg-popover border-border" aria-describedby="send-sms-desc">
+      <DialogContent
+        className="sm:max-w-2xl max-h-[min(92vh,900px)] overflow-y-auto bg-popover border-border"
+        aria-describedby="send-sms-desc"
+      >
         <DialogHeader>
           <DialogTitle>Send SMS</DialogTitle>
           <DialogDescription id="send-sms-desc">
-            Send a text message to this contact. Number should include country code (e.g. +61 for Australia).
+            Pick a prospecting template or write your own. Names merge from this contact; use custom fields for address,
+            suburb, and listing details. Include country code (e.g. +61).
           </DialogDescription>
         </DialogHeader>
         <Alert className="border-amber-500/40 bg-amber-500/10">
           <AlertTitle className="text-sm">Compliance</AlertTitle>
           <AlertDescription className="text-xs">
-            Send only with consent. Opted-out contacts are blocked server-side. Follow the Spam Act (AU) and your brokerage
-            rules.
+            Send only with consent. Opted-out contacts are blocked server-side. Commercial messages need identification and
+            a working opt-out (e.g. Reply STOP). Follow the Spam Act (AU) and your brokerage rules.
           </AlertDescription>
         </Alert>
-        <div className="space-y-4 mt-4">
+        <div className="space-y-4 mt-2">
           <div className="space-y-2">
             <Label>To</Label>
             <Input className="bg-input" value={to} disabled readOnly placeholder="+61412345678" />
           </div>
-          <div className="space-y-2">
-            <Label>Message</Label>
-            <Textarea
-              className="bg-input min-h-[120px]"
-              placeholder="Your message..."
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              maxLength={1600}
-            />
-            <p className="text-xs text-muted-foreground">{body.length} / 1600</p>
-          </div>
-          <div className="flex justify-end gap-3">
+          <SmsProspectingComposer
+            body={body}
+            onBodyChange={setBody}
+            custom={custom}
+            onCustomChange={setCustom}
+            includeOptOutIfMissing={includeOptOutIfMissing}
+            onIncludeOptOutIfMissingChange={setIncludeOptOutIfMissing}
+            mergePreviewContext={{
+              first_name: firstName,
+              last_name: lastName,
+              name: contactName,
+              signature: smsSignature,
+              ...custom,
+            }}
+          />
+          <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>

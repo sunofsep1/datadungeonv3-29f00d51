@@ -11,7 +11,9 @@ import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Code2, Atom, Sunset, C
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Theme, Density } from "@/contexts/ThemeContext";
+import { Textarea } from "@/components/ui/textarea";
 import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/hooks/useUserReminderPreferences";
+import { useUserCommunicationSettings, useUpsertUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { toast } from "sonner";
 import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
@@ -61,7 +63,14 @@ export default function Settings() {
   const { commissionRate, setCommissionRate } = useCommissionRate();
   const { data: reminderPrefs, isSuccess: reminderPrefsLoaded } = useUserReminderPreferences();
   const upsertReminder = useUpsertUserReminderPreferences();
+  const { data: commSettings } = useUserCommunicationSettings();
+  const upsertComm = useUpsertUserCommunicationSettings();
+  const [smsSigDraft, setSmsSigDraft] = React.useState("");
   const reminderPrefsSeeded = React.useRef(false);
+
+  React.useEffect(() => {
+    if (commSettings) setSmsSigDraft(commSettings.sms_signature ?? "");
+  }, [commSettings?.sms_signature, commSettings?.updated_at]);
 
   React.useEffect(() => {
     if (!user || !reminderPrefsLoaded || reminderPrefs !== null || reminderPrefsSeeded.current) return;
@@ -184,6 +193,47 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground">
               Used for Projected GCI in Listings &amp; Sales and Performance.
             </p>
+          </div>
+        </Card>
+
+        <Card className="zoho-card p-6 border-border">
+          <div className="flex items-center gap-3 mb-6">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">SMS signature</h3>
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Used automatically in SMS templates as <code className="text-xs">{"{{signature}}"}</code>. Include your name
+              and agency so messages meet identification rules (e.g. Spam Act AU). Bulk sends use this value from the
+              server when messages go out.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="sms-signature">Signature text</Label>
+              <Textarea
+                id="sms-signature"
+                className="bg-input min-h-[88px] text-sm"
+                placeholder="e.g. Greg Leigh, Sotheby's International Realty"
+                value={smsSigDraft}
+                onChange={(e) => setSmsSigDraft(e.target.value)}
+                maxLength={280}
+              />
+              <p className="text-xs text-muted-foreground">{smsSigDraft.length} / 280</p>
+            </div>
+            <Button
+              type="button"
+              onClick={() =>
+                upsertComm.mutate(
+                  { sms_signature: smsSigDraft },
+                  {
+                    onSuccess: () => toast.success("SMS signature saved"),
+                    onError: () => toast.error("Could not save signature"),
+                  },
+                )
+              }
+              disabled={upsertComm.isPending}
+            >
+              {upsertComm.isPending ? "Saving…" : "Save signature"}
+            </Button>
           </div>
         </Card>
 

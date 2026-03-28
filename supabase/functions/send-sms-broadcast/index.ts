@@ -1,9 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  appendCommercialOptOutIfMissing,
   digitsKey,
+  mergeSmsTemplateForRecipient,
   mobileMessageCredsFromEnv,
   postMobileMessageBatch,
   toE164Australia,
+  type SmsMergeFields,
 } from "../_shared/smsCore.ts";
 
 const corsHeaders = {
@@ -24,19 +27,6 @@ const mmCreds = mobileMessageCredsFromEnv();
 function previewBody(text: string, max = 200): string {
   const t = text.trim();
   return t.length <= max ? t : `${t.slice(0, max)}…`;
-}
-
-function mergeTemplate(
-  template: string,
-  row: { first_name?: string | null; last_name?: string | null; name?: string | null },
-): string {
-  const first = (row.first_name ?? "").trim() || (row.name ?? "").split(/\s+/)[0] || "there";
-  const last = (row.last_name ?? "").trim();
-  const name = (row.name ?? "").trim() || [first, last].filter(Boolean).join(" ");
-  return template
-    .replace(/\{\{\s*first_name\s*\}\}/gi, first)
-    .replace(/\{\{\s*last_name\s*\}\}/gi, last)
-    .replace(/\{\{\s*name\s*\}\}/gi, name);
 }
 
 type RecipientRow = {
@@ -113,17 +103,40 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    const { data: commRow } = await svc
+      .from("user_communication_settings")
+      .select("sms_signature")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const smsSignatureFromDb = typeof commRow?.sms_signature === "string" ? commRow.sms_signature.trim() : "";
+
     const body = await req.json().catch(() => null) as {
       contact_ids?: string[];
       message?: string;
+      merge_fields?: SmsMergeFields;
+      append_opt_out_if_missing?: boolean;
     } | null;
 
     if (!body?.contact_ids || !Array.isArray(body.contact_ids) || !body.message?.trim()) {
-      return new Response(JSON.stringify({ error: "Expected { contact_ids: string[], message: string }" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error:
+            "Expected { contact_ids: string[], message: string, merge_fields?: object, append_opt_out_if_missing?: boolean }",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
+
+    const mergeFields: SmsMergeFields = {
+      custom1: typeof body.merge_fields?.custom1 === "string" ? body.merge_fields.custom1 : "",
+      custom2: typeof body.merge_fields?.custom2 === "string" ? body.merge_fields.custom2 : "",
+      custom3: typeof body.merge_fields?.custom3 === "string" ? body.merge_fields.custom3 : "",
+      custom4: typeof body.merge_fields?.custom4 === "string" ? body.merge_fields.custom4 : "",
+    };
+    const appendOptOut = body.append_opt_out_if_missing !== false;
 
     const uniqueIds = [...new Set(body.contact_ids.filter((id) => typeof id === "string" && id.length > 0))];
     if (uniqueIds.length === 0) {
@@ -180,7 +193,10 @@ Deno.serve(async (req) => {
         skipped.push({ contact_id: c.id, reason: "invalid_phone" });
         continue;
       }
-      const text = mergeTemplate(body.message, c);
+      let text = mergeSmsTemplateForRecipient(body.message, c, mergeFields, smsSignatureFromDb);
+      if (appendOptOut) {
+        text = appendCommercialOptOutIfMissing(text);
+      }
       if (!text.trim()) {
         skipped.push({ contact_id: c.id, reason: "empty_message" });
         continue;

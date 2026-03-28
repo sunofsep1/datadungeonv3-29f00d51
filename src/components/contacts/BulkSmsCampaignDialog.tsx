@@ -8,12 +8,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
+import { isSignatureUnfilled } from "@/lib/smsTemplateMerge";
 import { Loader2 } from "lucide-react";
+import {
+  SmsProspectingComposer,
+  defaultSmsComposerCustomFields,
+  type SmsComposerCustomFields,
+} from "@/components/contacts/SmsProspectingComposer";
 
 function getBroadcastUrl() {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -27,6 +32,13 @@ type BulkSmsCampaignDialogProps = {
   onComplete?: () => void;
 };
 
+/** Sample name for preview only — each contact gets their own first name when sending. */
+const BULK_PREVIEW_MERGE = {
+  first_name: "Alex",
+  last_name: "",
+  name: "Alex",
+};
+
 export function BulkSmsCampaignDialog({
   open,
   onOpenChange,
@@ -34,9 +46,11 @@ export function BulkSmsCampaignDialog({
   onComplete,
 }: BulkSmsCampaignDialogProps) {
   const { toast } = useToast();
-  const [message, setMessage] = useState(
-    "Hi {{first_name}}, quick note from me — reply anytime if you have questions.",
-  );
+  const { data: commSettings } = useUserCommunicationSettings();
+  const smsSignature = commSettings?.sms_signature ?? "";
+  const [body, setBody] = useState("");
+  const [custom, setCustom] = useState<SmsComposerCustomFields>(() => defaultSmsComposerCustomFields());
+  const [includeOptOutIfMissing, setIncludeOptOutIfMissing] = useState(true);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{
     sent?: number;
@@ -44,9 +58,27 @@ export function BulkSmsCampaignDialog({
     failures?: { contact_id: string; error: string }[];
   } | null>(null);
 
+  const resetWhenClose = (next: boolean) => {
+    if (!next) {
+      setBody("");
+      setCustom(defaultSmsComposerCustomFields());
+      setIncludeOptOutIfMissing(true);
+      setResult(null);
+    }
+    onOpenChange(next);
+  };
+
   const handleSend = async () => {
-    if (!message.trim()) {
+    if (!body.trim()) {
       toast({ title: "Message required", variant: "destructive" });
+      return;
+    }
+    if (isSignatureUnfilled(body, smsSignature)) {
+      toast({
+        title: "SMS signature missing",
+        description: "Add your name and agency under Settings → SMS signature, then try again.",
+        variant: "destructive",
+      });
       return;
     }
     const url = getBroadcastUrl();
@@ -69,7 +101,17 @@ export function BulkSmsCampaignDialog({
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ contact_ids: contactIds, message: message.trim() }),
+        body: JSON.stringify({
+          contact_ids: contactIds,
+          message: body.trim(),
+          merge_fields: {
+            custom1: custom.custom1,
+            custom2: custom.custom2,
+            custom3: custom.custom3,
+            custom4: custom.custom4,
+          },
+          append_opt_out_if_missing: includeOptOutIfMissing,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -97,31 +139,39 @@ export function BulkSmsCampaignDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg bg-popover border-border">
+    <Dialog open={open} onOpenChange={resetWhenClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[min(92vh,900px)] overflow-y-auto bg-popover border-border">
         <DialogHeader>
           <DialogTitle>Bulk SMS ({contactIds.length} contacts)</DialogTitle>
           <DialogDescription>
-            Uses Mobile Message (Australia). Messages are chunked in batches of up to 100. Merge fields:{" "}
-            <code className="text-xs">{"{{first_name}}"}</code>, <code className="text-xs">{"{{name}}"}</code>.
+            Templates use{" "}
+            <code className="text-xs">{"{{first_name}}"}</code>, <code className="text-xs">{"{{name}}"}</code>,{" "}
+            <code className="text-xs">{"{{last_name}}"}</code> per contact. Custom fields below apply to everyone in this
+            send. Preview uses the name &quot;Alex&quot; as an example.
           </DialogDescription>
         </DialogHeader>
         <Alert>
           <AlertTitle>Compliance</AlertTitle>
           <AlertDescription className="text-xs">
-            Only send to contacts who have agreed to SMS. Opted-out contacts are skipped automatically. Follow the Australian
-            Spam Act and your agency policies.
+            Only send to contacts who have agreed to SMS. Opted-out contacts are skipped automatically. Turn on &quot;Add
+            opt-out if missing&quot; for commercial content (Spam Act AU).
           </AlertDescription>
         </Alert>
-        <div className="space-y-2">
-          <Label>Message</Label>
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="min-h-[120px] bg-input border-border"
-            placeholder="Your message…"
-          />
-        </div>
+        <SmsProspectingComposer
+          body={body}
+          onBodyChange={setBody}
+          custom={custom}
+          onCustomChange={setCustom}
+          includeOptOutIfMissing={includeOptOutIfMissing}
+          onIncludeOptOutIfMissingChange={setIncludeOptOutIfMissing}
+          mergePreviewContext={{
+            first_name: BULK_PREVIEW_MERGE.first_name,
+            last_name: BULK_PREVIEW_MERGE.last_name,
+            name: BULK_PREVIEW_MERGE.name,
+            signature: smsSignature,
+            ...custom,
+          }}
+        />
         {result && (
           <div className="text-xs text-muted-foreground space-y-1 max-h-32 overflow-y-auto border border-border rounded-md p-2">
             <p>
@@ -136,7 +186,7 @@ export function BulkSmsCampaignDialog({
           </div>
         )}
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
+          <Button variant="outline" onClick={() => resetWhenClose(false)} disabled={sending}>
             Close
           </Button>
           <Button onClick={() => void handleSend()} disabled={sending || contactIds.length === 0}>

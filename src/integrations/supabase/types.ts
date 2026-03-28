@@ -2111,6 +2111,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_communication_settings: {
+        Row: {
+          sms_signature: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          sms_signature?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          sms_signature?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_google_tokens: {
         Row: {
           access_token: string

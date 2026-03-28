@@ -282,6 +282,8 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
           to={smsToNumber || (getAllPhones(contact)[0]?.value ?? "")}
           contactId={contactId}
           contactName={contact.name ?? undefined}
+          firstName={contact.first_name}
+          lastName={contact.last_name}
           onSent={() => createInteraction.mutate({ contact_id: contactId, type: "sms", channel: "sms", subject: "SMS sent", body: null })}
         />
       )}
