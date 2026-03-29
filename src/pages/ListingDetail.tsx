@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,10 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  ArrowLeft,
   Home,
   Pencil,
   Calendar,
@@ -36,7 +35,6 @@ import {
   Bath,
   CarFront,
   Ruler,
-  Clock,
   ChevronDown,
   Sparkles,
 } from "lucide-react";
@@ -51,6 +49,18 @@ import { useToast } from "@/hooks/use-toast";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
 import { collectListingHeroUrls } from "@/lib/listingFromProperty";
 import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
+import {
+  getPrimaryCampaignStage,
+  computeListingCampaignHealth,
+  secondaryListingTags,
+  daysInPrimaryStage,
+} from "@/lib/listingCampaignDashboard";
+import { ListingDetailHeaderStrip } from "@/components/listings/ListingDetailHeaderStrip";
+import {
+  ListingStickyActionBar,
+  type ListingActionModalKey,
+} from "@/components/listings/ListingStickyActionBar";
+import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { useActivityLogByListing } from "@/hooks/useActivityLog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,21 +70,6 @@ import { getInitials, cn } from "@/lib/utils";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 
-const PIPELINE_STAGE_LABELS: Record<string, string> = {
-  appraisal: "Appraisal / prep",
-  listing: "Listed",
-  under_contract: "Under contract",
-  unconditional: "Unconditional",
-  settled: "Settled",
-  past_client: "Past client",
-};
-
-function pipelineStageLabel(slug: string | null | undefined): string {
-  if (!slug) return "—";
-  const id = listingKanbanColumnId(slug);
-  return PIPELINE_STAGE_LABELS[id] ?? String(slug).replace(/-/g, " ");
-}
-
 function formatAud(value: number | null | undefined) {
   if (value == null || !Number.isFinite(Number(value))) return "—";
   return new Intl.NumberFormat("en-AU", {
@@ -82,6 +77,54 @@ function formatAud(value: number | null | undefined) {
     currency: "AUD",
     maximumFractionDigits: 0,
   }).format(Number(value));
+}
+
+const LISTING_ACTION_MODAL_COPY: Record<
+  ListingActionModalKey,
+  { title: string; description: string }
+> = {
+  call_vendor: {
+    title: "Call vendor",
+    description: "Click-to-call and call logging will connect here. For now, use the linked contact’s phone from the contact card below.",
+  },
+  log_feedback: {
+    title: "Log feedback",
+    description: "Capture buyer or vendor feedback after inspections. Full form coming in the next iteration.",
+  },
+  add_note: {
+    title: "Add note",
+    description: "Quick notes will sync to the activity timeline. Use the timeline’s add note for now, or continue here once wired.",
+  },
+  book_inspection: {
+    title: "Book inspection",
+    description: "Inspection booking will open your calendar workflow. Connects to Appointments / calendar in a future release.",
+  },
+  vendor_update: {
+    title: "Send vendor update",
+    description: "Email or SMS templates to the vendor will launch from here. Use Contact detail comms until this is connected.",
+  },
+  change_stage: {
+    title: "Change stage",
+    description: "Stage transitions will include a checklist and optional vendor notification. Pipeline edit on the board still applies today.",
+  },
+};
+
+function listingCampaignKpiFields(listing: Listing) {
+  const L = listing as Record<string, unknown>;
+  const n = (k: string) => {
+    const v = L[k];
+    return typeof v === "number" && Number.isFinite(v) ? v : 0;
+  };
+  const s = (k: string): string | null => (typeof L[k] === "string" ? (L[k] as string) : null);
+  return {
+    enquiryCount: n("campaign_enquiry_count"),
+    lastEnquiryAt: s("campaign_last_enquiry_at"),
+    inspectionCount: n("campaign_inspection_count"),
+    nextInspectionAt: s("campaign_next_inspection_at"),
+    offersCount: n("campaign_offers_count"),
+    buyerMatchesCount: n("campaign_buyer_matches_count"),
+    campaignStartAt: s("campaign_start_at"),
+  };
 }
 
 export default function ListingDetail() {
@@ -99,6 +142,7 @@ export default function ListingDetail() {
   const { data: recentActivity = [] } = useActivityLogByListing(id ?? null, 4);
 
   const [editOpen, setEditOpen] = useState(false);
+  const [actionModal, setActionModal] = useState<ListingActionModalKey | null>(null);
   const [classifyOpen, setClassifyOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroUploading, setHeroUploading] = useState(false);
@@ -135,18 +179,13 @@ export default function ListingDetail() {
   }, [listing]);
 
   const daysInStage = useMemo(() => {
-    if (!listing?.updated_at) return 0;
-    return Math.max(0, differenceInCalendarDays(new Date(), new Date(listing.updated_at)));
-  }, [listing?.updated_at]);
+    if (!listing) return 0;
+    return daysInPrimaryStage(listing);
+  }, [listing]);
 
-  const isNewListing = useMemo(() => {
-    if (!listing?.created_at) return false;
-    return differenceInCalendarDays(new Date(), new Date(listing.created_at)) <= 14;
-  }, [listing?.created_at]);
-
-  const stageCol = listing ? listingKanbanColumnId(listing.pipeline_stage) : "appraisal";
-  const showUnderOfferBadge =
-    listing?.status === "pending" || stageCol === "under_contract" || stageCol === "unconditional";
+  const primaryStage = useMemo(() => (listing ? getPrimaryCampaignStage(listing) : null), [listing]);
+  const secondaryTags = useMemo(() => (listing ? secondaryListingTags(listing) : []), [listing]);
+  const campaignHealth = useMemo(() => (listing ? computeListingCampaignHealth(listing) : null), [listing]);
 
   const linkedName = linkedContact ? getContactDisplayName(linkedContact) : null;
   const agentLabel =
@@ -320,53 +359,65 @@ export default function ListingDetail() {
   const beds = listing.bedrooms ?? linkedProperty?.bedrooms ?? null;
   const baths = listing.bathrooms ?? linkedProperty?.bathrooms ?? null;
 
+  const kpi = listingCampaignKpiFields(listing);
+
   return (
-    <div className="animate-fade-in max-w-5xl mx-auto">
+    <div className="animate-fade-in max-w-6xl mx-auto px-3 sm:px-0">
       <PageBreadcrumbs
         items={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Listings", href: "/listings-sales" },
           { label: listing.address || "Listing" },
         ]}
-        className="mb-4"
+        className="mb-3"
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{listing.address || "Listing"}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {pipelineStageLabel(listing.pipeline_stage)}
-            {listing.updated_at ? ` · Updated ${format(new Date(listing.updated_at), "d MMM yyyy")}` : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
-          <Button variant="outline" size="sm" onClick={() => void handleShare()} className="gap-1.5">
-            <Share2 className="w-4 h-4" />
-            Share
-          </Button>
-          <Button variant="outline" size="sm" onClick={openEdit} className="gap-1.5">
-            <Pencil className="w-4 h-4" />
-            Edit
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/calendar")} className="gap-1.5">
-            <Calendar className="w-4 h-4" />
-            Viewing
-          </Button>
-          {(listing.status === "active" || listing.status === "pending") && (
-            <>
-              <Button variant="outline" size="sm" onClick={() => void handleStatusChange("sold")} className="gap-1.5">
-                <Tag className="w-4 h-4" />
-                Mark sold
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => void handleStatusChange("withdrawn")}>
-                Off-market
-              </Button>
-            </>
-          )}
-        </div>
+      <div className="sticky top-0 z-40 -mx-3 sm:-mx-0 mb-4 rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-sm px-3 sm:px-4 py-2 sm:py-3">
+        {primaryStage && campaignHealth ? (
+          <ListingDetailHeaderStrip
+            listingId={listing.id}
+            address={listing.address || "Listing"}
+            suburb={linkedProperty?.suburb ?? null}
+            primaryStage={primaryStage}
+            secondaryTags={secondaryTags}
+            daysInStage={daysInStage}
+            stageLabelForDays={primaryStage.label}
+            health={campaignHealth}
+            headerActions={
+              <>
+                <Button variant="outline" size="sm" onClick={() => void handleShare()} className="gap-1.5 h-8 text-xs">
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share
+                </Button>
+                <Button variant="outline" size="sm" onClick={openEdit} className="gap-1.5 h-8 text-xs">
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate("/calendar")} className="gap-1.5 h-8 text-xs">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Viewing
+                </Button>
+                {(listing.status === "active" || listing.status === "pending") && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleStatusChange("sold")}
+                      className="gap-1.5 h-8 text-xs"
+                    >
+                      <Tag className="w-3.5 h-3.5" />
+                      Mark sold
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void handleStatusChange("withdrawn")} className="h-8 text-xs">
+                      Off-market
+                    </Button>
+                  </>
+                )}
+              </>
+            }
+          />
+        ) : null}
+        <ListingStickyActionBar onOpenAction={(key) => setActionModal(key)} />
       </div>
 
       {/* Hero / gallery */}
@@ -390,28 +441,6 @@ export default function ListingDetail() {
               </p>
             </div>
           )}
-
-          <div className="absolute top-3 left-3 right-14 flex flex-wrap gap-1.5 z-10">
-            {listing.status && (
-              <Badge variant="secondary" className="bg-background/90 text-foreground capitalize border-0 shadow-sm">
-                {listing.status}
-              </Badge>
-            )}
-            <Badge variant="secondary" className="bg-background/90 text-foreground border-0 shadow-sm">
-              {pipelineStageLabel(listing.pipeline_stage)}
-            </Badge>
-            {isNewListing && (
-              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white border-0 shadow-sm">New listing</Badge>
-            )}
-            {showUnderOfferBadge && (
-              <Badge className="bg-amber-500 hover:bg-amber-500 text-foreground border-0 shadow-sm">Under offer</Badge>
-            )}
-            {listing.lead_temperature && (
-              <Badge variant="outline" className="bg-background/85 border-border capitalize text-xs">
-                {String(listing.lead_temperature).replace(/_/g, " ")}
-              </Badge>
-            )}
-          </div>
 
           {heroUrls.length > 1 && (
             <>
@@ -462,66 +491,61 @@ export default function ListingDetail() {
           </div>
         </div>
 
-        {/* Spec strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border-t border-border bg-border">
-          {[
-            {
-              icon: Bed,
-              label: "Beds",
-              value: beds != null ? String(beds) : "—",
-            },
-            {
-              icon: Bath,
-              label: "Baths",
-              value: baths != null ? String(baths) : "—",
-            },
-            {
-              icon: CarFront,
-              label: "Parking",
-              value: carSpaces != null ? String(carSpaces) : "—",
-            },
-            {
-              icon: Ruler,
-              label: "Land",
-              value: landSqm != null ? `${landSqm} m²` : "—",
-            },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="bg-card flex items-center gap-3 p-3 sm:p-4">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="w-4 h-4" />
+        {/* Spec strip — spaced tiles so content does not sit on shared grid lines */}
+        <div className="border-t border-border bg-muted/15 p-3 sm:p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            {[
+              {
+                icon: Bed,
+                label: "Beds",
+                value: beds != null ? String(beds) : "—",
+              },
+              {
+                icon: Bath,
+                label: "Baths",
+                value: baths != null ? String(baths) : "—",
+              },
+              {
+                icon: CarFront,
+                label: "Parking",
+                value: carSpaces != null ? String(carSpaces) : "—",
+              },
+              {
+                icon: Ruler,
+                label: "Land",
+                value: landSqm != null ? `${landSqm} m²` : "—",
+              },
+            ].map(({ icon: Icon, label, value }) => (
+              <div
+                key={label}
+                className="flex items-center gap-3 rounded-lg border border-border/70 bg-card p-3 sm:p-3.5 shadow-sm"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+                  <p className="text-sm font-semibold text-foreground tabular-nums truncate">{value}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-                <p className="text-sm font-semibold text-foreground tabular-nums truncate">{value}</p>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </Card>
 
-      {/* Quick stats + agent + activity preview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="zoho-card p-4 border-border md:col-span-1">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Quick stats</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                DOM
-              </span>
-              <span className="font-medium tabular-nums">{domDays != null ? `${domDays}d` : "—"}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">In stage</span>
-              <span className="font-medium tabular-nums">{daysInStage}d</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Listing type</span>
-              <span className="font-medium capitalize">{listing.property_type || "—"}</span>
-            </div>
-          </div>
-        </Card>
+      <ListingCampaignKpiRow
+        domDays={domDays}
+        enquiryCount={kpi.enquiryCount}
+        lastEnquiryAt={kpi.lastEnquiryAt}
+        inspectionCount={kpi.inspectionCount}
+        nextInspectionAt={kpi.nextInspectionAt}
+        offersCount={kpi.offersCount}
+        buyerMatchesCount={kpi.buyerMatchesCount}
+        campaignStartAt={kpi.campaignStartAt}
+        createdAt={listing.created_at}
+      />
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card className="zoho-card p-4 border-border md:col-span-1">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Agent</h3>
           <div className="flex items-center gap-3">
@@ -628,6 +652,24 @@ export default function ListingDetail() {
         <ActivityTimeline entityType="listing" entityId={id} showAddNote={true} />
       </Card>
 
+      <Dialog open={actionModal != null} onOpenChange={(open) => !open && setActionModal(null)}>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>
+              {actionModal ? LISTING_ACTION_MODAL_COPY[actionModal].title : "Action"}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              {actionModal ? LISTING_ACTION_MODAL_COPY[actionModal].description : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setActionModal(null)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[560px] bg-card border-border max-h-[min(92vh,880px)] overflow-y-auto">
           <DialogHeader>
@@ -691,7 +733,7 @@ export default function ListingDetail() {
               <div>
                 <Label>Status</Label>
                 <Select value={editForm.status} onValueChange={(v: ListingStatus) => setEditForm({ ...editForm, status: v })}>
-                  <SelectTrigger className="bg-input mt-1">
+                  <SelectTrigger className="bg-input mt-1.5 h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

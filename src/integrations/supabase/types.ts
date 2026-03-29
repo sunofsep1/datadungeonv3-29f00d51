@@ -1398,11 +1398,122 @@ export type Database = {
           },
         ]
       }
+      listing_contact_links: {
+        Row: {
+          contact_id: string
+          created_at: string
+          firm_name: string | null
+          id: string
+          listing_id: string
+          offer_status: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          firm_name?: string | null
+          id?: string
+          listing_id: string
+          offer_status?: string | null
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          firm_name?: string | null
+          id?: string
+          listing_id?: string
+          offer_status?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      listing_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          due_at: string | null
+          id: string
+          listing_id: string
+          sort_order: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          listing_id: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          listing_id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      listing_vendor_updates: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          listing_id: string
+          sent_at: string
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          sent_at?: string
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          sent_at?: string
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       listings: {
         Row: {
+          action_plan_name: string | null
+          action_plan_progress: number
           address: string
           bathrooms: number | null
           bedrooms: number | null
+          campaign_buyer_matches_count: number
+          campaign_enquiry_count: number
+          campaign_inspection_count: number
+          campaign_last_enquiry_at: string | null
+          campaign_next_inspection_at: string | null
+          campaign_offers_count: number
+          campaign_start_at: string | null
           contact_id: string | null
           contract_body_corporate_days: number | null
           contract_building_pest_days: number | null
@@ -1423,14 +1534,39 @@ export type Database = {
           journey_stage: string | null
           relationship_category: string | null
           classification_meta: Json
+          compliance_agency_agreement_signed: boolean
+          compliance_form6_uploaded: boolean
+          compliance_id_verified: boolean
+          key_date_appraisal: string | null
+          key_date_contract: string | null
+          key_date_listed: string | null
+          key_date_settlement: string | null
+          mkt_brochure_status: string
+          mkt_copywriting_status: string
+          mkt_domain_status: string
+          mkt_photography_status: string
+          mkt_realestate_status: string
+          mkt_social_ads_status: string
+          mkt_video_status: string
           status: string | null
           updated_at: string
           user_id: string
+          vendor_update_last_sent_at: string | null
+          vendor_update_next_due_at: string | null
         }
         Insert: {
+          action_plan_name?: string | null
+          action_plan_progress?: number
           address: string
           bathrooms?: number | null
           bedrooms?: number | null
+          campaign_buyer_matches_count?: number
+          campaign_enquiry_count?: number
+          campaign_inspection_count?: number
+          campaign_last_enquiry_at?: string | null
+          campaign_next_inspection_at?: string | null
+          campaign_offers_count?: number
+          campaign_start_at?: string | null
           contact_id?: string | null
           contract_body_corporate_days?: number | null
           contract_building_pest_days?: number | null
@@ -1451,14 +1587,39 @@ export type Database = {
           journey_stage?: string | null
           relationship_category?: string | null
           classification_meta?: Json
+          compliance_agency_agreement_signed?: boolean
+          compliance_form6_uploaded?: boolean
+          compliance_id_verified?: boolean
+          key_date_appraisal?: string | null
+          key_date_contract?: string | null
+          key_date_listed?: string | null
+          key_date_settlement?: string | null
+          mkt_brochure_status?: string
+          mkt_copywriting_status?: string
+          mkt_domain_status?: string
+          mkt_photography_status?: string
+          mkt_realestate_status?: string
+          mkt_social_ads_status?: string
+          mkt_video_status?: string
           status?: string | null
           updated_at?: string
           user_id: string
+          vendor_update_last_sent_at?: string | null
+          vendor_update_next_due_at?: string | null
         }
         Update: {
+          action_plan_name?: string | null
+          action_plan_progress?: number
           address?: string
           bathrooms?: number | null
           bedrooms?: number | null
+          campaign_buyer_matches_count?: number
+          campaign_enquiry_count?: number
+          campaign_inspection_count?: number
+          campaign_last_enquiry_at?: string | null
+          campaign_next_inspection_at?: string | null
+          campaign_offers_count?: number
+          campaign_start_at?: string | null
           contact_id?: string | null
           contract_body_corporate_days?: number | null
           contract_building_pest_days?: number | null
@@ -1479,9 +1640,25 @@ export type Database = {
           journey_stage?: string | null
           relationship_category?: string | null
           classification_meta?: Json
+          compliance_agency_agreement_signed?: boolean
+          compliance_form6_uploaded?: boolean
+          compliance_id_verified?: boolean
+          key_date_appraisal?: string | null
+          key_date_contract?: string | null
+          key_date_listed?: string | null
+          key_date_settlement?: string | null
+          mkt_brochure_status?: string
+          mkt_copywriting_status?: string
+          mkt_domain_status?: string
+          mkt_photography_status?: string
+          mkt_realestate_status?: string
+          mkt_social_ads_status?: string
+          mkt_video_status?: string
           status?: string | null
           updated_at?: string
           user_id?: string
+          vendor_update_last_sent_at?: string | null
+          vendor_update_next_due_at?: string | null
         }
         Relationships: []
       }

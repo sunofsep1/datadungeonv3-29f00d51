@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,10 +91,8 @@ export function SmsProspectingComposer({
   );
 
   const [categoryFilter, setCategoryFilter] = useState<string>(SMS_PROSPECTING_TEMPLATE_CATEGORIES[0]);
-
-  useEffect(() => {
-    if (matchedTemplate) setCategoryFilter(matchedTemplate.category);
-  }, [matchedTemplate?.id]);
+  /** When the body matches a template, keep the category control aligned with that template without syncing in an effect. */
+  const selectCategory = matchedTemplate?.category ?? categoryFilter;
 
   const applyTemplate = (t: SmsProspectingTemplate) => {
     onBodyChange(t.body);
@@ -110,12 +108,12 @@ export function SmsProspectingComposer({
   const { length: previewLen, segments: previewSeg } = estimateSmsSegments(mergedFinal);
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Template category</Label>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="bg-input w-full">
+    <div className={cn("space-y-5", className)}>
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+        <div className="space-y-2.5">
+          <Label className="text-sm">Template category</Label>
+          <Select value={selectCategory} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="bg-input w-full h-10">
               <SelectValue placeholder="Choose a category…" />
             </SelectTrigger>
             <SelectContent className="max-h-[min(60vh,320px)]">
@@ -127,8 +125,8 @@ export function SmsProspectingComposer({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Template</Label>
+        <div className="space-y-2.5">
+          <Label className="text-sm">Template</Label>
           <Select
             value={matchedTemplate?.id}
             onValueChange={(id) => {
@@ -136,7 +134,7 @@ export function SmsProspectingComposer({
               if (t) applyTemplate(t);
             }}
           >
-            <SelectTrigger className="bg-input w-full">
+            <SelectTrigger className="bg-input w-full h-10">
               <SelectValue placeholder="Choose a template…" />
             </SelectTrigger>
             <SelectContent className="max-h-[min(60vh,360px)]">
@@ -160,7 +158,7 @@ export function SmsProspectingComposer({
             <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/coll:rotate-180" />
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-3 pt-1">
+        <CollapsibleContent className="space-y-4 pt-2">
           <p className="text-xs text-muted-foreground">
             Your SMS signature (name + agency) is set in{" "}
             <Link to="/settings" className="text-primary underline underline-offset-2">
@@ -168,12 +166,12 @@ export function SmsProspectingComposer({
             </Link>
             . Use these four slots for listing-specific details (same values for bulk sends).
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {SMS_CUSTOM_FIELD_HINTS.map((h) => (
-              <div key={h.key} className="space-y-1.5">
+              <div key={h.key} className="space-y-2">
                 <Label className="text-xs font-medium">{h.label}</Label>
                 <Input
-                  className="bg-input h-9 text-sm"
+                  className="bg-input h-10 px-3.5 text-sm"
                   placeholder={h.placeholder}
                   value={custom[h.key]}
                   onChange={(e) => onCustomChange({ ...custom, [h.key]: e.target.value })}
@@ -184,7 +182,7 @@ export function SmsProspectingComposer({
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="flex items-start justify-between gap-4 rounded-md border border-border bg-muted/30 p-3">
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
         <div className="space-y-1 flex-1 min-w-0">
           <Label htmlFor="sms-opt-out-toggle" className="text-sm font-medium cursor-pointer">
             Add opt-out if missing
@@ -207,10 +205,10 @@ export function SmsProspectingComposer({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label>Message</Label>
+      <div className="space-y-2.5">
+        <Label className="text-sm">Message</Label>
         <Textarea
-          className="bg-input min-h-[140px] font-mono text-sm"
+          className="bg-input min-h-[140px] font-mono text-sm px-3.5 py-3"
           placeholder="Type a message or pick a template above. Placeholders: {{first_name}}, {{signature}}, {{custom1}}…"
           value={body}
           onChange={(e) => onBodyChange(e.target.value)}
@@ -240,9 +238,9 @@ export function SmsProspectingComposer({
         </p>
       ) : null}
 
-      <div className="space-y-2">
-        <Label className="text-muted-foreground">Preview as sent</Label>
-        <div className="rounded-md border border-border bg-background p-3 text-sm whitespace-pre-wrap break-words min-h-[4rem] max-h-48 overflow-y-auto">
+      <div className="space-y-2.5">
+        <Label className="text-sm text-muted-foreground">Preview as sent</Label>
+        <div className="rounded-lg border border-border bg-background p-4 text-sm whitespace-pre-wrap break-words min-h-[4rem] max-h-48 overflow-y-auto">
           {mergedFinal || <span className="text-muted-foreground italic">Nothing to preview yet.</span>}
         </div>
       </div>

@@ -41,6 +41,13 @@ export const LISTING_INSERT_STRIPPABLE_COLUMN_NAMES = [
   "property_type",
   "bedrooms",
   "bathrooms",
+  "campaign_enquiry_count",
+  "campaign_last_enquiry_at",
+  "campaign_inspection_count",
+  "campaign_next_inspection_at",
+  "campaign_offers_count",
+  "campaign_buyer_matches_count",
+  "campaign_start_at",
 ] as const;
 
 /** Parse PostgREST / Postgres "column missing on listings" messages. */
