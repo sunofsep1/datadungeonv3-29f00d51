@@ -37,8 +37,11 @@ import {
   Ruler,
   ChevronDown,
   Sparkles,
+  Phone,
+  Mail,
+  MessageSquare,
 } from "lucide-react";
-import { formatPhoneDisplay } from "@/lib/formatPhone";
+import { formatPhoneDisplay, phoneToTelHref } from "@/lib/formatPhone";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useListing, useUpdateListing, type Listing } from "@/hooks/useListings";
 import { useContact } from "@/hooks/useContact";
@@ -48,7 +51,10 @@ import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { useToast } from "@/hooks/use-toast";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
 import { collectListingHeroUrls } from "@/lib/listingFromProperty";
-import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
+import {
+  LISTING_PIPELINE_STAGE_OPTIONS,
+  listingKanbanColumnId,
+} from "@/lib/listingKanbanStages";
 import {
   getPrimaryCampaignStage,
   computeListingCampaignHealth,
@@ -61,10 +67,18 @@ import {
   type ListingActionModalKey,
 } from "@/components/listings/ListingStickyActionBar";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
-import { useActivityLogByListing } from "@/hooks/useActivityLog";
+import { useActivityLogByListing, useCreateActivityLog } from "@/hooks/useActivityLog";
+import { useCreateAppointment } from "@/hooks/useAppointments";
+import { useLogListingStageMove } from "@/hooks/useEvents";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getContactDisplayName } from "@/hooks/useContacts";
+import {
+  getContactDisplayName,
+  getPrimaryEmail,
+  getPrimaryPhone,
+  type ContactWithMeta,
+} from "@/hooks/useContacts";
+import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { getInitials, cn } from "@/lib/utils";
 
@@ -79,35 +93,25 @@ function formatAud(value: number | null | undefined) {
   }).format(Number(value));
 }
 
-const LISTING_ACTION_MODAL_COPY: Record<
-  ListingActionModalKey,
-  { title: string; description: string }
-> = {
+const LISTING_ACTION_MODAL_COPY: Record<ListingActionModalKey, { title: string; description?: string }> = {
   call_vendor: {
     title: "Call vendor",
-    description: "Click-to-call and call logging will connect here. For now, use the linked contact’s phone from the contact card below.",
+    description: "Dial from this device, then optionally log the call on this listing’s timeline.",
   },
-  log_feedback: {
-    title: "Log feedback",
-    description: "Capture buyer or vendor feedback after inspections. Full form coming in the next iteration.",
-  },
-  add_note: {
-    title: "Add note",
-    description: "Quick notes will sync to the activity timeline. Use the timeline’s add note for now, or continue here once wired.",
-  },
-  book_inspection: {
-    title: "Book inspection",
-    description: "Inspection booking will open your calendar workflow. Connects to Appointments / calendar in a future release.",
-  },
+  log_feedback: { title: "Log feedback" },
+  add_note: { title: "Add note" },
+  book_inspection: { title: "Book inspection" },
   vendor_update: {
     title: "Send vendor update",
-    description: "Email or SMS templates to the vendor will launch from here. Use Contact detail comms until this is connected.",
+    description: "SMS, email, or a quick note — all tied to this listing when you log here.",
   },
-  change_stage: {
-    title: "Change stage",
-    description: "Stage transitions will include a checklist and optional vendor notification. Pipeline edit on the board still applies today.",
-  },
+  change_stage: { title: "Change pipeline stage" },
 };
+
+function pipelineStageLabel(stageId: string): string {
+  const o = LISTING_PIPELINE_STAGE_OPTIONS.find((s) => s.id === stageId);
+  return o?.label ?? stageId;
+}
 
 function listingCampaignKpiFields(listing: Listing) {
   const L = listing as Record<string, unknown>;
@@ -140,9 +144,23 @@ export default function ListingDetail() {
   const updateListing = useUpdateListing();
   const updateProperty = useUpdateProperty();
   const { data: recentActivity = [] } = useActivityLogByListing(id ?? null, 4);
+  const createActivityLog = useCreateActivityLog();
+  const createAppointment = useCreateAppointment();
+  const { logStageMove } = useLogListingStageMove();
 
   const [editOpen, setEditOpen] = useState(false);
   const [actionModal, setActionModal] = useState<ListingActionModalKey | null>(null);
+  const [feedbackBody, setFeedbackBody] = useState("");
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteBody, setNoteBody] = useState("");
+  const [inspectionTitle, setInspectionTitle] = useState("");
+  const [inspectionDatetime, setInspectionDatetime] = useState("");
+  const [inspectionNotes, setInspectionNotes] = useState("");
+  const [newPipelineStage, setNewPipelineStage] = useState<string>("appraisal");
+  const [stageChangeNote, setStageChangeNote] = useState("");
+  const [callLogNotes, setCallLogNotes] = useState("");
+  const [vendorSmsOpen, setVendorSmsOpen] = useState(false);
+  const [vendorTouchNote, setVendorTouchNote] = useState("");
   const [classifyOpen, setClassifyOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroUploading, setHeroUploading] = useState(false);
@@ -186,6 +204,19 @@ export default function ListingDetail() {
   const primaryStage = useMemo(() => (listing ? getPrimaryCampaignStage(listing) : null), [listing]);
   const secondaryTags = useMemo(() => (listing ? secondaryListingTags(listing) : []), [listing]);
   const campaignHealth = useMemo(() => (listing ? computeListingCampaignHealth(listing) : null), [listing]);
+
+  const contactMeta = (linkedContact ?? null) as ContactWithMeta | null;
+  const primaryPhone = contactMeta ? getPrimaryPhone(contactMeta) : null;
+  const primaryEmail = contactMeta ? getPrimaryEmail(contactMeta) : null;
+  const telHref = phoneToTelHref(primaryPhone);
+  const vendorMailtoHref = useMemo(() => {
+    if (!listing?.address || !primaryEmail) return null;
+    const q = new URLSearchParams({
+      subject: `Listing update: ${listing.address}`,
+      body: "Hi,\n\nQuick update on your listing:\n\n",
+    });
+    return `mailto:${primaryEmail}?${q.toString()}`;
+  }, [listing?.address, primaryEmail]);
 
   const linkedName = linkedContact ? getContactDisplayName(linkedContact) : null;
   const agentLabel =
@@ -242,6 +273,235 @@ export default function ListingDetail() {
       refetch();
     } catch (e) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Update failed", variant: "destructive" });
+    }
+  };
+
+  const openListingAction = useCallback(
+    (key: ListingActionModalKey) => {
+      if (listing) {
+        if (key === "book_inspection") {
+          setInspectionTitle(`Inspection — ${listing.address || "Listing"}`);
+          setInspectionDatetime("");
+          setInspectionNotes("");
+        }
+        if (key === "change_stage") {
+          setNewPipelineStage(listingKanbanColumnId(listing.pipeline_stage));
+          setStageChangeNote("");
+        }
+      }
+      if (key === "log_feedback") setFeedbackBody("");
+      if (key === "add_note") {
+        setNoteTitle("");
+        setNoteBody("");
+      }
+      if (key === "call_vendor") setCallLogNotes("");
+      if (key === "vendor_update") setVendorTouchNote("");
+      setActionModal(key);
+    },
+    [listing],
+  );
+
+  const submitLogFeedback = async () => {
+    if (!id || !listing) return;
+    const body = feedbackBody.trim();
+    if (!body) {
+      toast({
+        title: "Add some feedback",
+        description: "Enter details before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await createActivityLog.mutateAsync({
+        activity_type: "note",
+        title: "Buyer / vendor feedback",
+        description: body,
+        listing_id: id,
+        contact_id: contactId ?? null,
+        property_id: listing.property_id ?? null,
+      });
+      toast({ title: "Saved", description: "Feedback appears on the activity timeline below." });
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not save",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitQuickNote = async () => {
+    if (!id || !listing) return;
+    if (!noteTitle.trim() && !noteBody.trim()) {
+      toast({
+        title: "Add a note",
+        description: "Enter a title or some text before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const title = noteTitle.trim() || "Note";
+    const desc = noteBody.trim() || null;
+    try {
+      await createActivityLog.mutateAsync({
+        activity_type: "note",
+        title,
+        description: desc,
+        listing_id: id,
+        contact_id: contactId ?? null,
+        property_id: listing.property_id ?? null,
+      });
+      toast({ title: "Note added", description: "Visible on this listing’s timeline." });
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not save",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitBookInspection = async () => {
+    if (!id || !listing) return;
+    const dt = inspectionDatetime.trim();
+    if (!dt) {
+      toast({
+        title: "Pick date & time",
+        description: "Choose when the inspection is scheduled.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const iso = new Date(dt).toISOString();
+    const title = inspectionTitle.trim() || `Inspection — ${listing.address || "Listing"}`;
+    try {
+      await createAppointment.mutateAsync({
+        title,
+        date: iso,
+        notes: inspectionNotes.trim() || null,
+        contact_id: contactId ?? null,
+        type: "inspection",
+      });
+      await createActivityLog.mutateAsync({
+        activity_type: "inspection",
+        title,
+        description: inspectionNotes.trim() || `Scheduled for ${format(new Date(iso), "d MMM yyyy, h:mm a")}`,
+        listing_id: id,
+        contact_id: contactId ?? null,
+        property_id: listing.property_id ?? null,
+      });
+      toast({ title: "Inspection booked", description: "Added to your appointments and the timeline." });
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not book",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitChangeStage = async () => {
+    if (!id || !listing) return;
+    const oldRaw = listing.pipeline_stage || "appraisal";
+    const oldCol = listingKanbanColumnId(oldRaw);
+    if (newPipelineStage === oldCol) {
+      toast({
+        title: "No change",
+        description: "Select a different stage than the listing is in now.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await updateListing.mutateAsync({
+        id,
+        pipeline_stage: newPipelineStage,
+        previous_pipeline_stage: oldRaw,
+      });
+      await createActivityLog.mutateAsync({
+        activity_type: "status_change",
+        title: `Pipeline: ${pipelineStageLabel(oldCol)} → ${pipelineStageLabel(newPipelineStage)}`,
+        description: stageChangeNote.trim() || null,
+        listing_id: id,
+        contact_id: contactId ?? null,
+        property_id: listing.property_id ?? null,
+      });
+      await logStageMove(id, contactId ?? null, oldRaw, newPipelineStage, listing.address || "Listing");
+      toast({
+        title: "Stage updated",
+        description: `Pipeline is now ${pipelineStageLabel(newPipelineStage)}. The board will match on refresh.`,
+      });
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not update stage",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitLogCall = async () => {
+    if (!id || !listing) return;
+    if (!contactId) {
+      toast({ title: "No contact", description: "Link a contact to this listing first.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createActivityLog.mutateAsync({
+        activity_type: "call",
+        title: callLogNotes.trim() ? "Call — vendor / contact" : "Call logged",
+        description: callLogNotes.trim() || null,
+        listing_id: id,
+        contact_id: contactId,
+        property_id: listing.property_id ?? null,
+      });
+      toast({ title: "Logged", description: "Call added to the activity timeline." });
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not log call",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitVendorTouchNote = async () => {
+    if (!id || !listing) return;
+    const t = vendorTouchNote.trim();
+    if (!t) {
+      toast({ title: "Add a note", description: "Describe what you sent or discussed.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createActivityLog.mutateAsync({
+        activity_type: "note",
+        title: "Vendor / listing touchpoint",
+        description: t,
+        listing_id: id,
+        contact_id: contactId ?? null,
+        property_id: listing.property_id ?? null,
+      });
+      toast({ title: "Saved", description: "Note added to the timeline." });
+      setVendorTouchNote("");
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not save",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
     }
   };
 
@@ -417,7 +677,7 @@ export default function ListingDetail() {
             }
           />
         ) : null}
-        <ListingStickyActionBar onOpenAction={(key) => setActionModal(key)} />
+        <ListingStickyActionBar onOpenAction={openListingAction} />
       </div>
 
       {/* Hero / gallery */}
@@ -653,22 +913,366 @@ export default function ListingDetail() {
       </Card>
 
       <Dialog open={actionModal != null} onOpenChange={(open) => !open && setActionModal(null)}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
+        <DialogContent className="sm:max-w-lg bg-card border-border max-h-[min(90vh,720px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {actionModal ? LISTING_ACTION_MODAL_COPY[actionModal].title : "Action"}
             </DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed">
-              {actionModal ? LISTING_ACTION_MODAL_COPY[actionModal].description : null}
-            </DialogDescription>
+            {actionModal &&
+            ["call_vendor", "vendor_update"].includes(actionModal) &&
+            LISTING_ACTION_MODAL_COPY[actionModal].description ? (
+              <DialogDescription className="text-sm leading-relaxed">
+                {LISTING_ACTION_MODAL_COPY[actionModal].description}
+              </DialogDescription>
+            ) : actionModal === "log_feedback" ? (
+              <DialogDescription className="text-sm leading-relaxed">
+                Saved to this listing&apos;s activity timeline below.
+              </DialogDescription>
+            ) : actionModal === "add_note" ? (
+              <DialogDescription className="text-sm leading-relaxed">
+                Same as Add note on the timeline — quick access from the bar.
+              </DialogDescription>
+            ) : actionModal === "book_inspection" ? (
+              <DialogDescription className="text-sm leading-relaxed">
+                Creates an appointment and a timeline entry. Appears on Calendar with your other bookings.
+              </DialogDescription>
+            ) : actionModal === "change_stage" && listing ? (
+              <DialogDescription className="text-sm leading-relaxed">
+                Currently:{" "}
+                <span className="font-medium text-foreground">
+                  {pipelineStageLabel(listingKanbanColumnId(listing.pipeline_stage))}
+                </span>
+                . Same stages as the listings board.
+              </DialogDescription>
+            ) : null}
           </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setActionModal(null)}>
-              Close
-            </Button>
-          </div>
+
+          {actionModal === "log_feedback" ? (
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="listing-feedback">Feedback</Label>
+                <Textarea
+                  id="listing-feedback"
+                  className="bg-input mt-1.5 min-h-[120px] text-sm"
+                  value={feedbackBody}
+                  onChange={(e) => setFeedbackBody(e.target.value)}
+                  placeholder="e.g. Buyer loved the kitchen; vendor open to offers before auction…"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={() => void submitLogFeedback()} disabled={createActivityLog.isPending}>
+                  {createActivityLog.isPending ? "Saving…" : "Save to timeline"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {actionModal === "add_note" ? (
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="listing-note-title">Title</Label>
+                <Input
+                  id="listing-note-title"
+                  className="bg-input mt-1.5"
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  placeholder="Short label (optional)"
+                />
+              </div>
+              <div>
+                <Label htmlFor="listing-note-body">Note</Label>
+                <Textarea
+                  id="listing-note-body"
+                  className="bg-input mt-1.5 min-h-[100px] text-sm"
+                  value={noteBody}
+                  onChange={(e) => setNoteBody(e.target.value)}
+                  placeholder="Details…"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={() => void submitQuickNote()} disabled={createActivityLog.isPending}>
+                  {createActivityLog.isPending ? "Saving…" : "Save note"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {actionModal === "book_inspection" ? (
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="insp-title">Title</Label>
+                <Input
+                  id="insp-title"
+                  className="bg-input mt-1.5"
+                  value={inspectionTitle}
+                  onChange={(e) => setInspectionTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="insp-when">Date &amp; time</Label>
+                <Input
+                  id="insp-when"
+                  type="datetime-local"
+                  className="bg-input mt-1.5"
+                  value={inspectionDatetime}
+                  onChange={(e) => setInspectionDatetime(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="insp-notes">Notes (optional)</Label>
+                <Textarea
+                  id="insp-notes"
+                  className="bg-input mt-1.5 min-h-[72px] text-sm"
+                  value={inspectionNotes}
+                  onChange={(e) => setInspectionNotes(e.target.value)}
+                  placeholder="Access, keys, buyer name…"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void submitBookInspection()}
+                  disabled={createAppointment.isPending || createActivityLog.isPending}
+                >
+                  {createAppointment.isPending || createActivityLog.isPending ? "Saving…" : "Book inspection"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {actionModal === "change_stage" ? (
+            <div className="space-y-3 py-2">
+              <div>
+                <Label>New stage</Label>
+                <Select value={newPipelineStage} onValueChange={setNewPipelineStage}>
+                  <SelectTrigger className="bg-input mt-1.5 h-10 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LISTING_PIPELINE_STAGE_OPTIONS.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="stage-note">Note for timeline (optional)</Label>
+                <Textarea
+                  id="stage-note"
+                  className="bg-input mt-1.5 min-h-[72px] text-sm"
+                  value={stageChangeNote}
+                  onChange={(e) => setStageChangeNote(e.target.value)}
+                  placeholder="e.g. Verbal acceptance, moving to contract prep…"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void submitChangeStage()}
+                  disabled={updateListing.isPending || createActivityLog.isPending}
+                >
+                  {updateListing.isPending ? "Updating…" : "Update stage"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {actionModal === "call_vendor" ? (
+            <div className="space-y-4 py-2">
+              {!contactId || !linkedContact ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Link a contact to this listing to see their phone number and log calls on the timeline.
+                  </p>
+                  <div className="flex justify-end">
+                    <Button type="button" variant="secondary" onClick={() => setActionModal(null)}>
+                      Close
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{linkedName}</p>
+                    {primaryPhone ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          {formatPhoneDisplay(primaryPhone)}
+                        </span>
+                        {telHref ? (
+                          <Button type="button" size="sm" className="gap-1.5" asChild>
+                            <a href={telHref}>
+                              <Phone className="w-4 h-4" />
+                              Call now
+                            </a>
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No phone on file. Add one on the contact record.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="call-log-notes">After the call — outcome (optional)</Label>
+                    <Textarea
+                      id="call-log-notes"
+                      className="bg-input mt-1.5 min-h-[88px] text-sm"
+                      value={callLogNotes}
+                      onChange={(e) => setCallLogNotes(e.target.value)}
+                      placeholder="e.g. Discussed auction date; vendor keen on early offers…"
+                    />
+                  </div>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                      Close
+                    </Button>
+                    <Button type="button" variant="secondary" asChild>
+                      <Link to={`/contacts/${contactId}`} onClick={() => setActionModal(null)}>
+                        Open contact
+                      </Link>
+                    </Button>
+                    <Button type="button" onClick={() => void submitLogCall()} disabled={createActivityLog.isPending}>
+                      {createActivityLog.isPending ? "Saving…" : "Save call to timeline"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {actionModal === "vendor_update" ? (
+            <div className="space-y-4 py-2">
+              {!contactId || !linkedContact ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Link a contact (usually the vendor) to send SMS or email from here.
+                  </p>
+                  <div className="flex justify-end">
+                    <Button type="button" variant="secondary" onClick={() => setActionModal(null)}>
+                      Close
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{linkedName}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {primaryPhone ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => {
+                            setActionModal(null);
+                            setVendorSmsOpen(true);
+                          }}
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          Send SMS
+                        </Button>
+                      ) : null}
+                      {vendorMailtoHref ? (
+                        <Button type="button" size="sm" variant="outline" className="gap-1.5" asChild>
+                          <a href={vendorMailtoHref}>
+                            <Mail className="w-4 h-4" />
+                            Email update
+                          </a>
+                        </Button>
+                      ) : null}
+                      {telHref ? (
+                        <Button type="button" size="sm" variant="outline" className="gap-1.5" asChild>
+                          <a href={telHref}>
+                            <Phone className="w-4 h-4" />
+                            Call
+                          </a>
+                        </Button>
+                      ) : null}
+                    </div>
+                    {!primaryPhone && !primaryEmail ? (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Add a phone or email on the contact to message from here.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <Label htmlFor="vendor-touch-note">Log what you sent (timeline)</Label>
+                    <Textarea
+                      id="vendor-touch-note"
+                      className="bg-input mt-1.5 min-h-[88px] text-sm"
+                      value={vendorTouchNote}
+                      onChange={(e) => setVendorTouchNote(e.target.value)}
+                      placeholder="e.g. Emailed weekly stats and next open home time…"
+                    />
+                  </div>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                      Close
+                    </Button>
+                    <Button type="button" variant="secondary" asChild>
+                      <Link to={`/contacts/${contactId}`} onClick={() => setActionModal(null)}>
+                        Open contact
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => void submitVendorTouchNote()}
+                      disabled={!vendorTouchNote.trim() || createActivityLog.isPending}
+                    >
+                      {createActivityLog.isPending ? "Saving…" : "Save note to timeline"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
+
+      {contactId && primaryPhone ? (
+        <SendSmsDialog
+          open={vendorSmsOpen}
+          onOpenChange={setVendorSmsOpen}
+          to={primaryPhone}
+          contactId={contactId}
+          contactName={linkedName ?? undefined}
+          firstName={linkedContact?.first_name ?? null}
+          lastName={linkedContact?.last_name ?? undefined}
+          onSent={async () => {
+            if (!id || !listing) return;
+            try {
+              await createActivityLog.mutateAsync({
+                activity_type: "note",
+                title: "SMS — vendor / listing update",
+                description: "Outbound SMS sent from listing quick action.",
+                listing_id: id,
+                contact_id: contactId,
+                property_id: listing.property_id ?? null,
+              });
+              refetch();
+            } catch {
+              /* timeline log is best-effort after successful send */
+            }
+          }}
+        />
+      ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[560px] bg-card border-border max-h-[min(92vh,880px)] overflow-y-auto">

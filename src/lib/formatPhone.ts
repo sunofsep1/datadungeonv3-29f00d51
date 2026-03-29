@@ -42,3 +42,18 @@ export function formatPhoneDisplay(phone: string | null | undefined): string {
   }
   return digits;
 }
+
+/**
+ * Build a `tel:` href for mobile / desktop dialers. Returns null if there are no digits.
+ */
+export function phoneToTelHref(phone: string | null | undefined): string | null {
+  if (phone == null || typeof phone !== "string") return null;
+  const trimmed = phone.trim();
+  const d = trimmed.replace(/\D/g, "");
+  if (!d) return null;
+  if (trimmed.startsWith("+")) return `tel:${trimmed.replace(/\s/g, "")}`;
+  if (d.startsWith("61")) return `tel:+${d}`;
+  if (d.startsWith("0") && d.length >= 9) return `tel:+61${d.slice(1)}`;
+  if (d.length >= 9) return `tel:+${d}`;
+  return `tel:${d}`;
+}

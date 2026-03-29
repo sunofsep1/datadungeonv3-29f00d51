@@ -10,6 +10,16 @@ export const LISTING_KANBAN_COLUMN_IDS = [
 
 export type ListingKanbanColumnId = (typeof LISTING_KANBAN_COLUMN_IDS)[number];
 
+/** Labels for `pipeline_stage` selects (matches sales board columns). */
+export const LISTING_PIPELINE_STAGE_OPTIONS: { id: ListingKanbanColumnId; label: string }[] = [
+  { id: "appraisal", label: "Appraisal / prep" },
+  { id: "listing", label: "Listed" },
+  { id: "under_contract", label: "Under contract" },
+  { id: "unconditional", label: "Unconditional" },
+  { id: "settled", label: "Settled" },
+  { id: "past_client", label: "Past client" },
+];
+
 /**
  * Map stored `pipeline_stage` to a kanban column. Unknown values fall back to appraisal.
  */

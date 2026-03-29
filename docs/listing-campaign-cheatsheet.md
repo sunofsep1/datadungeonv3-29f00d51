@@ -23,16 +23,14 @@ Open any listing from **Listings** (`/listings-sales`): click a card to open **`
 
 ## Quick actions row (under the header)
 
-These open **placeholder dialogs** today: they describe what will connect next (phone, notes, calendar, comms, stage checklist). Use **linked contact** + **activity timeline** for real work until each action is wired.
-
-| Button | Intent (today) |
+| Button | What it does |
 |--------|----------------|
-| **Call vendor** | Will tie to click-to-call + call logging; use contact phone from the card below for now. |
-| **Log feedback** | Future form for buyer/vendor feedback after inspections. |
-| **Add note** | Will sync to activity; use **Activity timeline → Add note** for now. |
-| **Book inspection** | Will hook into appointments/calendar. |
-| **Send vendor update** | Future email/SMS templates; use **Contact** comms until then. |
-| **Change stage** | Future checklist + optional vendor notify; **pipeline moves on the board** still apply today. |
+| **Call vendor** | **Call now** (`tel:` link), optional **outcome note**, **Save call to timeline** (`call` activity). |
+| **Log feedback** | Form → saves a **note** on this listing’s **activity timeline** (“Buyer / vendor feedback”). |
+| **Add note** | Form → same timeline as **Activity timeline → Add note**. |
+| **Book inspection** | **Date/time** + title/notes → creates an **appointment** (Calendar) and an **inspection** row on the timeline. |
+| **Send vendor update** | **Send SMS** (full composer + Edge send-sms), **Email update** (`mailto` with subject/body), **Call**, optional **timeline note**; successful SMS also logs a timeline entry. |
+| **Change stage** | Chooses **pipeline stage** (same columns as the board), updates the listing, logs **status_change** on the timeline, and runs stage automations when configured. |
 
 ---
 

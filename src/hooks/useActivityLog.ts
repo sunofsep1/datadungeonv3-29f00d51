@@ -115,7 +115,10 @@ export function useCreateActivityLog() {
       queryClient.invalidateQueries({ queryKey: ["activity_log"] });
       if (row.contact_id) queryClient.invalidateQueries({ queryKey: ["contact", row.contact_id] });
       if (row.property_id) queryClient.invalidateQueries({ queryKey: ["properties", row.property_id] });
-      if (row.listing_id) queryClient.invalidateQueries({ queryKey: ["listings"] });
+      if (row.listing_id) {
+        queryClient.invalidateQueries({ queryKey: ["listings"] });
+        queryClient.invalidateQueries({ queryKey: ["listing", row.listing_id] });
+      }
     },
   });
 }

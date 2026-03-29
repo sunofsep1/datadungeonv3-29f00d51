@@ -35,14 +35,26 @@ async function fetchNews(q = "real estate OR property OR housing Australia", pag
       "Content-Type": "application/json",
     },
   });
-  const data: NewsApiResponse = await res.json().catch(() => ({}));
+
+  let data: NewsApiResponse = {};
+  try {
+    const text = await res.text();
+    data = text ? (JSON.parse(text) as NewsApiResponse) : {};
+  } catch {
+    return [];
+  }
+
+  // Undeployed function, wrong JWT, or missing NEWS_API_KEY — degrade silently (no dashboard error state).
+  if (res.status === 401 || res.status === 403) {
+    return [];
+  }
 
   if (!res.ok || data.status === "error") {
-    throw new Error(data.error ?? data.message ?? "Failed to fetch news");
+    return [];
   }
 
   if (data.error) {
-    throw new Error(data.error);
+    return [];
   }
 
   const articles = data.articles ?? [];
@@ -57,6 +69,6 @@ export function useNewsApi(options?: { q?: string; pageSize?: number }) {
     queryKey: ["news", q, pageSize],
     queryFn: () => fetchNews(q, pageSize),
     staleTime: 5 * 60 * 1000,
-    retry: 1,
+    retry: false,
   });
 }
