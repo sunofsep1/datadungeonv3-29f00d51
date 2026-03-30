@@ -222,6 +222,136 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_contact_list_members: {
+        Row: {
+          contact_id: string
+          created_at: string
+          list_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          list_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          list_id?: string
+        }
+        Relationships: []
+      }
+      sms_contact_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_scheduled_broadcast_recipients: {
+        Row: {
+          broadcast_id: string
+          contact_id: string
+        }
+        Insert: {
+          broadcast_id: string
+          contact_id: string
+        }
+        Update: {
+          broadcast_id?: string
+          contact_id?: string
+        }
+        Relationships: []
+      }
+      sms_scheduled_broadcasts: {
+        Row: {
+          append_opt_out: boolean
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          merge_fields: Json
+          message: string
+          scheduled_at: string
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          append_opt_out?: boolean
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          merge_fields?: Json
+          message: string
+          scheduled_at: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          append_opt_out?: boolean
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          merge_fields?: Json
+          message?: string
+          scheduled_at?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_user_templates: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       affirmations: {
         Row: {
           created_at: string

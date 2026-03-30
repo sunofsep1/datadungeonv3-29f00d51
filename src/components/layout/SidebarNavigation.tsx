@@ -19,6 +19,7 @@ import {
   ListTodo,
   Sparkles,
   FolderKanban,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,15 @@ const businessItems: NavItem[] = [
   { title: "Performance", url: "/performance", icon: BarChart3 },
 ];
 
-const navItems: NavItem[] = [...homeItems, ...clientManagementItems, ...listingsSalesItems, ...businessItems];
+const communicationsItems: NavItem[] = [{ title: "SMS suite", url: "/communications/sms", icon: MessageSquare }];
+
+const navItems: NavItem[] = [
+  ...homeItems,
+  ...clientManagementItems,
+  ...listingsSalesItems,
+  ...businessItems,
+  ...communicationsItems,
+];
 
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
@@ -85,6 +94,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
     (pathname.startsWith("/listings-sales") || pathname.startsWith("/listings/"))
   )
     return true;
+  if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
   return false;
 }
 
@@ -255,6 +265,15 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                   {businessItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
+                  <span>Communications</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {communicationsItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
             </>
           )}
         </nav>
@@ -392,6 +411,12 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                       <NavLink to="/performance" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <BarChart3 className="w-4 h-4" />
                         Performance
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/communications/sms" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <MessageSquare className="w-4 h-4" />
+                        SMS suite
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-border" />
