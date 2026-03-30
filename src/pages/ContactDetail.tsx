@@ -774,8 +774,8 @@ export default function ContactDetail() {
         <div className="space-y-6">
           {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
 
-        {/* Activity Timeline */}
-        <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section print-activity-card">
+        {/* Activity Timeline — hidden when printing (use /contacts/:id/print for briefing PDF) */}
+        <Card className="zoho-card p-6 border-border print:hidden print-activity-card">
           <div className="flex items-center justify-between mb-4 print:hidden">
             <h3 className="font-semibold text-foreground">Activity Timeline</h3>
             <Button size="sm" onClick={() => setAddInteractionOpen(true)} className="gap-1">

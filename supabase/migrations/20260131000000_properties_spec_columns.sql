@@ -13,6 +13,7 @@ ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS property_condition TEXT;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS year_built INTEGER;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 
 -- Indexes for performance (per spec)
 CREATE INDEX IF NOT EXISTS idx_properties_status ON public.properties(status);

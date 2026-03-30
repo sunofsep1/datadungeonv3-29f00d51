@@ -3,15 +3,21 @@
  * be opened in an iframe for print preview or in a new window for printing.
  * No sidebar or app chrome.
  */
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { THEME_HTML_CLASSES } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { useContact } from "@/hooks/useContact";
-import { useInteractions } from "@/hooks/useInteractions";
 import { useProperties } from "@/hooks/useProperties";
-import { useAppointments } from "@/hooks/useAppointments";
-import { ContactPrintLayout, type LinkedPropertyForPrint, type AppointmentForPrint } from "@/components/contacts/ContactPrintLayout";
+import {
+  useNurtureEnrollmentsForContact,
+  useNurtureSequencesList,
+} from "@/hooks/useNurtureSequences";
+import {
+  ContactPrintLayout,
+  type LinkedPropertyForPrint,
+  type NurtureJourneyForPrint,
+} from "@/components/contacts/ContactPrintLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { X } from "lucide-react";
 
@@ -29,9 +35,9 @@ export default function ContactPrintPage() {
     html.classList.add("light");
   }, []);
   const { data: contact, isLoading, isError } = useContact(id);
-  const { data: interactions = [] } = useInteractions(id);
   const { data: allProperties = [] } = useProperties();
-  const { data: appointments = [] } = useAppointments();
+  const { data: enrollments = [] } = useNurtureEnrollmentsForContact(id);
+  const { data: sequencesList = [] } = useNurtureSequencesList();
 
   const linkedProperties: LinkedPropertyForPrint[] = (contact?.contact_property_links ?? [])
     .map((link) => {
@@ -60,14 +66,31 @@ export default function ContactPrintPage() {
     })
     .filter(Boolean) as LinkedPropertyForPrint[];
 
-  const contactAppointments: AppointmentForPrint[] = (appointments ?? [])
-    .filter((apt) => apt.contact_id === id)
-    .map((apt) => ({
-      id: apt.id,
-      title: apt.title ?? null,
-      date: apt.date,
-      location: apt.location ?? null,
-    }));
+  const nurtureJourneys: NurtureJourneyForPrint[] = useMemo(() => {
+    const seqMap = new Map(sequencesList.map((s) => [s.id, s]));
+    return enrollments.map((e) => {
+      const seq = seqMap.get(e.sequence_id);
+      const steps = (seq?.steps ?? [])
+        .slice()
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((st) => ({
+          title: st.title ?? `Step ${(st.sort_order ?? 0) + 1}`,
+          stepType: st.step_type ?? null,
+        }));
+      return {
+        enrollmentId: e.id,
+        sequenceName: seq?.name?.trim() || "Sequence",
+        sequenceDescription: seq?.description?.trim() ?? null,
+        startedAt: e.started_at,
+        nextStepAt: e.next_step_at,
+        currentStepIndex: e.current_step_index,
+        totalSteps: steps.length,
+        pauseFollowupCadence: Boolean(e.pause_followup_cadence),
+        pauseReason: e.pause_reason ?? null,
+        steps,
+      };
+    });
+  }, [enrollments, sequencesList]);
 
   if (isLoading) {
     return (
@@ -107,9 +130,8 @@ export default function ContactPrintPage() {
       </div>
       <ContactPrintLayout
         contact={contact}
-        interactions={interactions}
         linkedProperties={linkedProperties}
-        contactAppointments={contactAppointments}
+        nurtureJourneys={nurtureJourneys}
       />
     </div>
   );

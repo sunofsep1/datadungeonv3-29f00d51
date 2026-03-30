@@ -11,9 +11,9 @@ import {
 } from "@/hooks/useContacts";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { formatPropertyAddress } from "@/hooks/useProperties";
-import type { Interaction } from "@/hooks/useInteractions";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { formatAddressForPrint } from "@/lib/formatPrintAddress";
+import { PrintWorksheetAreas } from "@/components/print/PrintWorksheetAreas";
 
 export type LinkedPropertyForPrint = {
   id: string;
@@ -35,18 +35,31 @@ export type LinkedPropertyForPrint = {
   };
 };
 
-export type AppointmentForPrint = {
-  id: string;
-  title: string | null;
-  date: string;
-  location?: string | null;
+export type NurtureJourneyStepForPrint = {
+  title: string;
+  stepType: string | null;
+};
+
+export type NurtureJourneyForPrint = {
+  enrollmentId: string;
+  sequenceName: string;
+  sequenceDescription: string | null;
+  startedAt: string;
+  nextStepAt: string | null;
+  /** Index of the next step to run; steps with lower index are treated as completed. */
+  currentStepIndex: number;
+  totalSteps: number;
+  pauseFollowupCadence: boolean;
+  pauseReason: string | null;
+  steps: NurtureJourneyStepForPrint[];
 };
 
 interface ContactPrintLayoutProps {
   contact: ContactWithMeta;
-  interactions: Interaction[];
   linkedProperties: LinkedPropertyForPrint[];
-  contactAppointments: AppointmentForPrint[];
+  nurtureJourneys: NurtureJourneyForPrint[];
+  /** Letterhead line under brand, e.g. "Listing briefing" for other print routes. */
+  documentSubtitle?: string;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -89,11 +102,28 @@ export function PrintNotesBody({ text }: { text: string }) {
   );
 }
 
+function formatClassificationLabel(raw: string): string {
+  return raw
+    .trim()
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function stepTypeLabel(t: string | null): string | null {
+  const s = (t ?? "").toLowerCase();
+  if (s === "email") return "Email";
+  if (s === "prompt") return "Prompt";
+  if (s === "task") return "Task";
+  return t?.trim() ? t : null;
+}
+
 export function ContactPrintLayout({
   contact,
-  interactions,
   linkedProperties,
-  contactAppointments,
+  nurtureJourneys,
+  documentSubtitle = "Contact briefing",
 }: ContactPrintLayoutProps) {
   const printedAt = format(new Date(), "d MMMM yyyy");
   const phones = getAllPhones(contact).flatMap((p) =>
@@ -106,6 +136,14 @@ export function ContactPrintLayout({
   const addressLine = rawAddress && rawAddress !== "—" ? formatAddressForPrint(rawAddress) : null;
   const tags = getTagNames(contact);
   const category = (contact as { category?: string | null }).category?.trim();
+  const leadTemp = contact.lead_temperature?.trim();
+  const relCat = contact.relationship_category?.trim();
+  const timeframe = contact.timeframe_category?.trim();
+  const pipelineStage = contact.pipeline_stage?.trim();
+  const journeyStage = contact.journey_stage?.trim();
+
+  const worksheetContext =
+    [contact.name ?? "Contact", phones[0] ? formatPhoneDisplay(phones[0]) : null].filter(Boolean).join(" · ");
 
   return (
     <div className="contact-print-document">
@@ -113,7 +151,7 @@ export function ContactPrintLayout({
         <div className="print-letterhead-inner">
           <div className="print-letterhead-text">
             <span className="print-letterhead-brand">Data Dungeon</span>
-            <span className="print-letterhead-sub">CRM · Contact record</span>
+            <span className="print-letterhead-sub">CRM · {documentSubtitle}</span>
           </div>
         </div>
         <div className="print-letterhead-accent" />
@@ -122,7 +160,7 @@ export function ContactPrintLayout({
       {/* Use div, not <header>: global @media print hides all header elements */}
       <div className="print-doc-hero" role="banner">
         <h1 className="print-doc-title">{contact.name ?? "Contact"}</h1>
-        <p className="print-doc-subtitle">Prepared {printedAt}</p>
+        <p className="print-doc-subtitle">Prepared for appointment · {printedAt}</p>
         <div className="print-doc-hero-badges">
           {contact.status && <span className="print-badge">{contact.status}</span>}
           {category && <span className="print-badge print-badge-muted">{category}</span>}
@@ -130,56 +168,84 @@ export function ContactPrintLayout({
       </div>
 
       <div className="print-doc-body">
-        <Section title="Overview">
-          <div className="print-overview">
-            <div className="print-avatar" aria-hidden>
-              {getInitials(undefined, undefined, contact.name ?? "")}
+        <div className="print-brief-grid">
+          <Section title="At a glance">
+            <div className="print-overview">
+              <div className="print-avatar" aria-hidden>
+                {getInitials(undefined, undefined, contact.name ?? "")}
+              </div>
+              <div className="print-overview-content">
+                <dl className="print-dl">
+                  {phones.length > 0 && (
+                    <div className="print-dl-row">
+                      <dt>Phone</dt>
+                      <dd>
+                        {phones.map((num, i) => (
+                          <span key={i}>
+                            {formatPhoneDisplay(num)}
+                            {i < phones.length - 1 ? " · " : ""}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {emails.length > 0 && (
+                    <div className="print-dl-row">
+                      <dt>Email</dt>
+                      <dd>
+                        {emails.map((addr, i) => (
+                          <span key={i}>
+                            {addr}
+                            {i < emails.length - 1 ? " · " : ""}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {contact.source && (
+                    <div className="print-dl-row">
+                      <dt>Source</dt>
+                      <dd>{contact.source}</dd>
+                    </div>
+                  )}
+                </dl>
+                {tags.length > 0 && (
+                  <div className="print-tags">
+                    {tags.map((t) => (
+                      <span key={t} className="print-tag">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="print-overview-content">
-              <dl className="print-dl">
-                {phones.length > 0 && (
-                  <div className="print-dl-row">
-                    <dt>Phone</dt>
-                    <dd>
-                      {phones.map((num, i) => (
-                        <span key={i}>{formatPhoneDisplay(num)}
-                          {i < phones.length - 1 ? " · " : ""}
-                        </span>
-                      ))}
-                    </dd>
-                  </div>
-                )}
-                {emails.length > 0 && (
-                  <div className="print-dl-row">
-                    <dt>Email</dt>
-                    <dd>
-                      {emails.map((addr, i) => (
-                        <span key={i}>{addr}{i < emails.length - 1 ? " · " : ""}</span>
-                      ))}
-                    </dd>
-                  </div>
-                )}
-                {contact.source && (
-                  <div className="print-dl-row">
-                    <dt>Source</dt>
-                    <dd>{contact.source}</dd>
-                  </div>
-                )}
-              </dl>
-              {tags.length > 0 && (
-                <div className="print-tags">
-                  {tags.map((t) => (
-                    <span key={t} className="print-tag">{t}</span>
-                  ))}
-                </div>
+          </Section>
+
+          <Section title="Location">
+            {addressLine ? (
+              <p className="print-address print-address--hero">{addressLine}</p>
+            ) : (
+              <p className="print-muted">No postal address on file.</p>
+            )}
+          </Section>
+        </div>
+
+        {(leadTemp || relCat || timeframe) && (
+          <Section title="Classification snapshot">
+            <div className="print-classification-chips">
+              {leadTemp && <span className="print-classification-chip">{formatClassificationLabel(leadTemp)}</span>}
+              {timeframe && (
+                <span className="print-classification-chip print-classification-chip--muted">
+                  {formatClassificationLabel(timeframe)}
+                </span>
+              )}
+              {relCat && (
+                <span className="print-classification-chip print-classification-chip--muted">
+                  {formatClassificationLabel(relCat)}
+                </span>
               )}
             </div>
-          </div>
-        </Section>
-
-        {addressLine && (
-          <Section title="Contact information">
-            <p className="print-address">{addressLine}</p>
           </Section>
         )}
 
@@ -220,7 +286,6 @@ export function ContactPrintLayout({
         <Section title="Story & intent">
           <div className="print-prose">
             <Row label="Story" value={contact.story} />
-            <Row label="Pipeline stage" value={contact.pipeline_stage} />
             <Row label="Selling intentions" value={contact.selling_intentions} />
             <Row label="Current situation" value={contact.current_situation_notes} />
           </div>
@@ -239,40 +304,95 @@ export function ContactPrintLayout({
           </div>
         </Section>
 
-        {contact.notes && (
-          <Section title="Notes">
+        <Section title="Notes (from CRM)">
+          {contact.notes?.trim() ? (
             <PrintNotesBody text={contact.notes} />
-          </Section>
-        )}
-
-        <Section title="Activity timeline">
-          <div className="print-activity-list">
-            {contactAppointments.map((apt) => (
-              <div key={apt.id} className="print-activity-item">
-                <span className="print-activity-type">Appointment</span>
-                <span className="print-activity-title">{apt.title ?? "—"}</span>
-                <span className="print-activity-meta">
-                  {format(new Date(apt.date), "d MMM yyyy, h:mm a")}
-                  {apt.location ? ` · ${apt.location}` : ""}
-                </span>
-              </div>
-            ))}
-            {interactions.map((i) => (
-              <div key={i.id} className="print-activity-item">
-                <span className="print-activity-type">{i.type}</span>
-                {i.subject && <span className="print-activity-title">{i.subject}</span>}
-                {i.body && <span className="print-activity-body">{i.body}</span>}
-                <span className="print-activity-meta">
-                  {format(new Date(i.timestamp), "d MMM yyyy, h:mm a")}
-                  {i.channel ? ` · ${i.channel}` : ""}
-                </span>
-              </div>
-            ))}
-            {interactions.length === 0 && contactAppointments.length === 0 && (
-              <p className="print-muted">No activity recorded.</p>
-            )}
-          </div>
+          ) : (
+            <p className="print-muted">No notes in the system yet. Use the worksheet at the end for this visit.</p>
+          )}
         </Section>
+
+        <Section title="Journey & nurture sequences">
+          {(pipelineStage || journeyStage) && (
+            <div className="print-journey-crm print-prose">
+              {pipelineStage && (
+                <div className="print-row">
+                  <span className="print-label">Pipeline</span>
+                  <span className="print-value print-prose-inline">{pipelineStage}</span>
+                </div>
+              )}
+              {journeyStage && (
+                <div className="print-row">
+                  <span className="print-label">Journey stage</span>
+                  <span className="print-value print-prose-inline">{formatClassificationLabel(journeyStage)}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {nurtureJourneys.length === 0 ? (
+            <p className="print-muted">No active nurture sequences for this contact.</p>
+          ) : (
+            <div className="print-nurture-journeys">
+              {nurtureJourneys.map((j) => (
+                <div key={j.enrollmentId} className="print-nurture-block">
+                  <div className="print-nurture-header">
+                    <h4 className="print-nurture-sequence-name">{j.sequenceName}</h4>
+                    <p className="print-nurture-meta">
+                      Started {format(new Date(j.startedAt), "d MMM yyyy")}
+                      {j.totalSteps > 0 && (
+                        <>
+                          {" · "}
+                          Step {Math.min(j.currentStepIndex + 1, j.totalSteps)} of {j.totalSteps}
+                        </>
+                      )}
+                      {j.nextStepAt && (
+                        <>
+                          {" · "}
+                          Next touch {format(new Date(j.nextStepAt), "d MMM yyyy, h:mm a")}
+                        </>
+                      )}
+                    </p>
+                    {j.pauseFollowupCadence && (
+                      <p className="print-nurture-paused">
+                        Follow-up cadence paused
+                        {j.pauseReason?.trim() ? ` — ${j.pauseReason.trim()}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  {j.sequenceDescription?.trim() && (
+                    <p className="print-nurture-desc">{j.sequenceDescription.trim()}</p>
+                  )}
+                  {j.steps.length > 0 ? (
+                    <ol className="print-journey-steps">
+                      {j.steps.map((step, i) => {
+                        const done = i < j.currentStepIndex;
+                        const current = i === j.currentStepIndex;
+                        const stLabel = stepTypeLabel(step.stepType);
+                        return (
+                          <li
+                            key={`${j.enrollmentId}-${i}`}
+                            className={cn(
+                              "print-journey-step",
+                              done && "print-journey-step--done",
+                              current && "print-journey-step--current"
+                            )}
+                          >
+                            <span className="print-journey-step-title">{step.title}</span>
+                            {stLabel && <span className="print-journey-step-type">{stLabel}</span>}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  ) : (
+                    <p className="print-muted">No steps defined for this sequence.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        <PrintWorksheetAreas contextHint={worksheetContext} />
       </div>
 
       <footer className="print-doc-footer">

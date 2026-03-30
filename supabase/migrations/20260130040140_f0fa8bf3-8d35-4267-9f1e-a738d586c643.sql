@@ -24,6 +24,11 @@ CREATE TABLE IF NOT EXISTS public.properties (
 
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own properties" ON public.properties;
+DROP POLICY IF EXISTS "Users can create their own properties" ON public.properties;
+DROP POLICY IF EXISTS "Users can update their own properties" ON public.properties;
+DROP POLICY IF EXISTS "Users can delete their own properties" ON public.properties;
+
 CREATE POLICY "Users can view their own properties" ON public.properties
   FOR SELECT USING (auth.uid() = user_id);
 
@@ -53,6 +58,11 @@ CREATE TABLE IF NOT EXISTS public.tags (
 
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own tags" ON public.tags;
+DROP POLICY IF EXISTS "Users can create their own tags" ON public.tags;
+DROP POLICY IF EXISTS "Users can update their own tags" ON public.tags;
+DROP POLICY IF EXISTS "Users can delete their own tags" ON public.tags;
+
 CREATE POLICY "Users can view their own tags" ON public.tags
   FOR SELECT USING (auth.uid() = user_id);
 
@@ -76,6 +86,8 @@ CREATE TABLE IF NOT EXISTS public.contact_tags (
 
 ALTER TABLE public.contact_tags ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage contact_tags" ON public.contact_tags;
+
 CREATE POLICY "Users can manage contact_tags" ON public.contact_tags
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.contacts c WHERE c.id = contact_id AND c.user_id = auth.uid())
@@ -96,6 +108,8 @@ CREATE TABLE IF NOT EXISTS public.contact_channels (
 );
 
 ALTER TABLE public.contact_channels ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage contact_channels" ON public.contact_channels;
 
 CREATE POLICY "Users can manage contact_channels" ON public.contact_channels
   FOR ALL USING (
@@ -124,6 +138,8 @@ CREATE TABLE IF NOT EXISTS public.contact_property_links (
 
 ALTER TABLE public.contact_property_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage contact_property_links" ON public.contact_property_links;
+
 CREATE POLICY "Users can manage contact_property_links" ON public.contact_property_links
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.contacts c WHERE c.id = contact_id AND c.user_id = auth.uid())
@@ -148,9 +164,22 @@ CREATE INDEX IF NOT EXISTS idx_contact_channels_contact ON public.contact_channe
 CREATE INDEX IF NOT EXISTS idx_contact_property_links_contact ON public.contact_property_links(contact_id);
 CREATE INDEX IF NOT EXISTS idx_contact_property_links_property ON public.contact_property_links(property_id);
 
--- Enable realtime for all new tables
-ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tags;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.contact_tags;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.contact_channels;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.contact_property_links;
+-- Enable realtime for all new tables (skip if already added by an earlier migration)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'properties') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'tags') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tags;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'contact_tags') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.contact_tags;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'contact_channels') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.contact_channels;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'contact_property_links') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.contact_property_links;
+  END IF;
+END $$;

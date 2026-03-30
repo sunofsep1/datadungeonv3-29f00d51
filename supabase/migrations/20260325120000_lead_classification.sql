@@ -59,6 +59,10 @@ ALTER TABLE public.contacts ADD CONSTRAINT contacts_relationship_category_check 
 
 COMMENT ON COLUMN public.contacts.classification_meta IS 'e.g. {"lead_temperature":{"source":"manual"}} — source derived|manual per field';
 
+ALTER TABLE public.contacts
+  ADD COLUMN IF NOT EXISTS do_not_contact boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS lifecycle_stage text;
+
 -- Best-effort backfill from legacy lead_status / flags
 UPDATE public.contacts
 SET lead_temperature = 'LEAD_ARCHIVED'
