@@ -551,6 +551,21 @@ export function AttentionHubWidget() {
     [deleteContactTask, deleteTodo, toast]
   );
 
+  const handleOpenItem = useCallback(
+    (item: AttentionItem) => {
+      if (item.kind === "appointment") {
+        navigate("/appointments");
+        return;
+      }
+      if (item.contactId) {
+        navigate(item.kind === "sequenceTask" ? `/contacts/${item.contactId}?nurtureFocus=1` : `/contacts/${item.contactId}`);
+        return;
+      }
+      navigate("/tasks");
+    },
+    [navigate]
+  );
+
   const handleAdd = useCallback(async () => {
     const title = newTitle.trim();
     if (!title) {
@@ -653,22 +668,7 @@ export function AttentionHubWidget() {
                       <p className="truncate text-[11px] text-primary/90">{item.reason}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-[11px]"
-                        onClick={() => {
-                          if (item.kind === "appointment") {
-                            navigate("/appointments");
-                            return;
-                          }
-                          if (item.contactId) {
-                            navigate(item.kind === "sequenceTask" ? `/contacts/${item.contactId}?nurtureFocus=1` : `/contacts/${item.contactId}`);
-                            return;
-                          }
-                          navigate("/tasks");
-                        }}
-                      >
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => handleOpenItem(item)}>
                         Open
                       </Button>
                       {canEdit ? (
@@ -923,10 +923,19 @@ export function AttentionHubWidget() {
             <div
               key={focusItem.id}
               className={cn(
-                "rounded-xl border p-3 shadow-sm",
+                "rounded-xl border p-3 shadow-sm cursor-pointer transition-colors hover:bg-accent/20",
                 spotlightCardClass(focusItem.urgency),
                 idx === 0 && focusItem.urgency === "immediate" && "animate-pulse"
               )}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleOpenItem(focusItem)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleOpenItem(focusItem);
+                }
+              }}
             >
               <div className="flex items-stretch gap-3">
                 <div className={cn("w-1.5 rounded-full shrink-0", spotlightRailClass(focusItem.urgency))} />
@@ -958,30 +967,13 @@ export function AttentionHubWidget() {
                     <p className="mt-2 text-xs font-medium text-primary/95">{focusItem.reason}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => {
-                        if (focusItem.kind === "appointment") return navigate("/appointments");
-                        if (focusItem.contactId) {
-                          return navigate(
-                            focusItem.kind === "sequenceTask"
-                              ? `/contacts/${focusItem.contactId}?nurtureFocus=1`
-                              : `/contacts/${focusItem.contactId}`
-                          );
-                        }
-                        return navigate("/tasks");
-                      }}
-                    >
-                      Open
-                    </Button>
                     {focusItem.canComplete && focusItem.kind !== "appointment" ? (
                       <Button
                         size="sm"
                         className="h-8"
                         disabled={completingItemId !== null && completingItemId !== focusItem.id}
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setNoteItemId(focusItem.id);
                           setQuickNote("");
                         }}
@@ -989,7 +981,14 @@ export function AttentionHubWidget() {
                         Work now
                       </Button>
                     ) : focusItem.kind === "appointment" ? (
-                      <Button size="sm" className="h-8" onClick={() => navigate("/appointments")}>
+                      <Button
+                        size="sm"
+                        className="h-8"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate("/appointments");
+                        }}
+                      >
                         Prep now
                       </Button>
                     ) : null}
