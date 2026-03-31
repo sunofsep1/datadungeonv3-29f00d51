@@ -267,6 +267,20 @@ export default function Properties() {
     const beds = formData.bedrooms;
     const baths = formData.bathrooms;
     const priceVal = formData.price;
+    if (!editingProperty) {
+      if (!formData.property_type?.trim()) {
+        toast({ title: "Error", description: "Please choose a property type.", variant: "destructive" });
+        return;
+      }
+      if (beds == null || Number.isNaN(Number(beds))) {
+        toast({ title: "Error", description: "Please enter bedrooms for new properties.", variant: "destructive" });
+        return;
+      }
+      if (baths == null || Number.isNaN(Number(baths))) {
+        toast({ title: "Error", description: "Please enter bathrooms for new properties.", variant: "destructive" });
+        return;
+      }
+    }
     if (beds != null && (Number.isNaN(Number(beds)) || beds < 0 || Math.floor(beds) !== beds)) {
       toast({ title: "Error", description: "Bedrooms must be a non-negative whole number", variant: "destructive" });
       return;

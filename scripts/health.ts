@@ -27,12 +27,11 @@ const CORE_TABLES = [
 ] as const;
 
 async function checkTable(table: string): Promise<{ ok: boolean; count: number | null; error?: string }> {
-  const { count, error } = await supabase
-    .from(table)
-    .select("id", { count: "exact", head: true });
+  const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true });
 
   if (error) {
-    return { ok: false, count: null, error: error.message };
+    const detail = [error.code, error.message, error.details, error.hint].filter(Boolean).join(" | ");
+    return { ok: false, count: null, error: detail || "Unknown table query error" };
   }
   return { ok: true, count: count ?? 0 };
 }

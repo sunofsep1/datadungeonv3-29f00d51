@@ -744,6 +744,26 @@ export default function Contacts() {
       });
       return;
     }
+    if (!editingContact) {
+      const hasPhone = Boolean(formData.phone?.trim());
+      const hasEmail = Boolean(formData.email?.trim());
+      if (!hasPhone && !hasEmail) {
+        toast({
+          title: "Error",
+          description: "Please add at least a phone or an email for new contacts.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!formData.source?.trim()) {
+        toast({
+          title: "Error",
+          description: "Please set a source for new contacts.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     try {
       let contactId: string;
       if (editingContact) {

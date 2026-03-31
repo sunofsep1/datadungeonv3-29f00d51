@@ -43,6 +43,7 @@ import { useActiveNurtureEnrollments } from "@/hooks/useActiveNurtureEnrollments
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
+import { useDataHealth } from "@/hooks/useDataHealth";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, isPast, isToday } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
@@ -162,6 +163,7 @@ export default function Dashboard() {
     dueSoon24h: 0,
   };
   const { data: posts = [] } = usePosts();
+  const { data: dataHealth } = useDataHealth();
 
   const createContact = useCreateContact();
   const createAppointmentWithGcal = useCreateAppointmentWithGcal();
@@ -174,6 +176,7 @@ export default function Dashboard() {
     { label: "Appointments", value: appointments.length, icon: Calendar, path: "/appointments" },
     { label: "Posts", value: posts.length, icon: TrendingUp, path: "/marketing" },
   ];
+  const healthScore = Math.max(0, Math.min(100, Math.round(Number(dataHealth?.health_score ?? 0))));
 
   const recentContacts = useMemo(
     () => [...contacts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5),
@@ -605,6 +608,19 @@ export default function Dashboard() {
           Timeline hub on top, widgets below. Drag widgets to reorder; layout is saved for this account.
         </span>
       </p>
+      <Card className="zoho-card p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Data health</p>
+            <p className="text-lg font-semibold text-foreground">{healthScore}%</p>
+          </div>
+          <div className="text-right text-xs text-muted-foreground space-y-0.5">
+            <p>Missing contact category: {dataHealth?.contacts_missing_category ?? 0}</p>
+            <p>Missing touch date: {dataHealth?.contacts_missing_touch_date ?? 0}</p>
+            <p>Properties missing details: {dataHealth?.properties_missing_details ?? 0}</p>
+          </div>
+        </div>
+      </Card>
 
       {widgetOrder.length === 0 ? (
         <Card className="zoho-card p-8 md:p-10 border-dashed border-border max-w-lg">
