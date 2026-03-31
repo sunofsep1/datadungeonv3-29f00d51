@@ -185,21 +185,36 @@ const AUSTRALIAN_STATES = [
   { value: "ACT", label: "Australian Capital Territory" },
 ];
 
-export type ContactCategory = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "gray";
+export type ContactCategory = "immediate" | "priority" | "planned" | "backlog";
 
 const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; border: string }[] = [
-  { value: "red", label: "Red", bg: "bg-red-500", border: "border-red-500" },
-  { value: "orange", label: "Orange", bg: "bg-orange-500", border: "border-orange-500" },
-  { value: "yellow", label: "Yellow", bg: "bg-amber-400", border: "border-amber-400" },
-  { value: "green", label: "Green", bg: "bg-emerald-500", border: "border-emerald-500" },
-  { value: "blue", label: "Blue", bg: "bg-blue-500", border: "border-blue-500" },
-  { value: "purple", label: "Purple", bg: "bg-violet-500", border: "border-violet-500" },
-  { value: "pink", label: "Pink", bg: "bg-pink-500", border: "border-pink-500" },
-  { value: "gray", label: "Gray", bg: "bg-slate-500", border: "border-slate-500" },
+  { value: "immediate", label: "Immediate", bg: "bg-red-500", border: "border-red-500" },
+  { value: "priority", label: "Priority", bg: "bg-amber-500", border: "border-amber-500" },
+  { value: "planned", label: "Planned", bg: "bg-sky-500", border: "border-sky-500" },
+  { value: "backlog", label: "Backlog", bg: "bg-emerald-500", border: "border-emerald-500" },
 ];
 
+function normalizeLegacyCategory(value: string | null | undefined): ContactCategory | null {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+    return raw as ContactCategory;
+  }
+  const legacyMap: Record<string, ContactCategory> = {
+    red: "immediate",
+    orange: "priority",
+    yellow: "priority",
+    green: "planned",
+    blue: "planned",
+    purple: "backlog",
+    pink: "backlog",
+    gray: "backlog",
+  };
+  return legacyMap[raw] ?? null;
+}
+
 function getCategoryLabel(c: ContactWithMeta | { category?: string | null }): string {
-  const cat = (c as { category?: string | null }).category;
+  const cat = normalizeLegacyCategory((c as { category?: string | null }).category);
   if (!cat) return "—";
   const found = CONTACT_CATEGORIES.find((x) => x.value === cat);
   return found?.label ?? cat;
@@ -211,25 +226,25 @@ function normalizeLeadTemperature(value: string | null | undefined): string {
 
 function deriveCategoryFromClassification(contact: ContactWithMeta): ContactCategory | null {
   const temperature = normalizeLeadTemperature(contact.lead_temperature);
-  if (temperature.includes("archived")) return "gray";
-  if (temperature.includes("hot")) return "red";
-  if (temperature.includes("warm")) return "orange";
-  if (temperature.includes("cold")) return "blue";
-  if (temperature.includes("lead")) return "yellow";
+  if (temperature.includes("hot")) return "immediate";
+  if (temperature.includes("warm")) return "priority";
+  if (temperature.includes("cold")) return "planned";
+  if (temperature.includes("archived")) return "backlog";
+  if (temperature.includes("lead")) return "priority";
 
   const timeframe = String(contact.timeframe_category ?? "").toLowerCase();
-  if (timeframe.includes("0_3") || timeframe.includes("0-3")) return "red";
-  if (timeframe.includes("3_6") || timeframe.includes("3-6")) return "orange";
-  if (timeframe.includes("6_12") || timeframe.includes("6-12")) return "yellow";
-  if (timeframe.includes("12_24") || timeframe.includes("12-24")) return "green";
-  if (timeframe.includes("24")) return "blue";
+  if (timeframe.includes("0_3") || timeframe.includes("0-3")) return "immediate";
+  if (timeframe.includes("3_6") || timeframe.includes("3-6")) return "priority";
+  if (timeframe.includes("6_12") || timeframe.includes("6-12")) return "planned";
+  if (timeframe.includes("12_24") || timeframe.includes("12-24")) return "backlog";
+  if (timeframe.includes("24")) return "backlog";
   return null;
 }
 
 function getEffectiveCategory(contact: ContactWithMeta): ContactCategory | null {
-  const explicit = (contact as { category?: string | null }).category;
+  const explicit = normalizeLegacyCategory((contact as { category?: string | null }).category);
   if (explicit && CONTACT_CATEGORIES.some((c) => c.value === explicit)) {
-    return explicit as ContactCategory;
+    return explicit;
   }
   return deriveCategoryFromClassification(contact);
 }
@@ -279,6 +294,59 @@ const createEmptyContact = () => ({
   postcode: "",
   country: "Australia",
 });
+
+type ContactFormState = ReturnType<typeof createEmptyContact>;
+
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  const trimmed = String(value ?? "").trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function buildNormalizedFormData(formData: ContactFormState): Record<string, string | null> {
+  return {
+    name: normalizeOptionalText(formData.name),
+    phone: normalizeOptionalText(formData.phone),
+    email: normalizeOptionalText(formData.email),
+    source: normalizeOptionalText(formData.source),
+    notes: normalizeOptionalText(formData.notes),
+    category: normalizeLegacyCategory(formData.category) ?? null,
+    pipeline_stage: normalizeOptionalText(formData.pipeline_stage),
+    story: normalizeOptionalText(formData.story),
+    selling_intentions: normalizeOptionalText(formData.selling_intentions),
+    pain_points: normalizeOptionalText(formData.pain_points),
+    pleasure_points: normalizeOptionalText(formData.pleasure_points),
+    current_situation_notes: normalizeOptionalText(formData.current_situation_notes),
+    address_line1: normalizeOptionalText(formData.address_line1),
+    address_line2: normalizeOptionalText(formData.address_line2),
+    city: normalizeOptionalText(formData.city),
+    state: normalizeOptionalText(formData.state),
+    postcode: normalizeOptionalText(formData.postcode),
+    country: normalizeOptionalText(formData.country) ?? "Australia",
+  };
+}
+
+function buildNormalizedExistingContact(contact: ContactWithMeta): Record<string, string | null> {
+  return {
+    name: normalizeOptionalText(contact.name ?? getContactDisplayName(contact)),
+    phone: normalizeOptionalText(getPrimaryPhone(contact) ?? contact.phone),
+    email: normalizeOptionalText(getPrimaryEmail(contact) ?? contact.email),
+    source: normalizeOptionalText(contact.source),
+    notes: normalizeOptionalText(contact.notes),
+    category: normalizeLegacyCategory((contact as { category?: string | null }).category) ?? null,
+    pipeline_stage: normalizeOptionalText(contact.pipeline_stage),
+    story: normalizeOptionalText(contact.story),
+    selling_intentions: normalizeOptionalText(contact.selling_intentions),
+    pain_points: normalizeOptionalText(contact.pain_points),
+    pleasure_points: normalizeOptionalText(contact.pleasure_points),
+    current_situation_notes: normalizeOptionalText(contact.current_situation_notes),
+    address_line1: normalizeOptionalText((contact as { address_line1?: string | null }).address_line1),
+    address_line2: normalizeOptionalText((contact as { address_line2?: string | null }).address_line2),
+    city: normalizeOptionalText((contact as { city?: string | null }).city),
+    state: normalizeOptionalText((contact as { state?: string | null }).state),
+    postcode: normalizeOptionalText((contact as { postcode?: string | null }).postcode),
+    country: normalizeOptionalText((contact as { country?: string | null }).country) ?? "Australia",
+  };
+}
 
 export default function Contacts() {
   const navigate = useNavigate();
@@ -597,7 +665,7 @@ export default function Contacts() {
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
-        category: (contact as { category?: string | null }).category ?? "",
+        category: normalizeLegacyCategory((contact as { category?: string | null }).category) ?? "",
         story: contact.story ?? "",
         selling_intentions: contact.selling_intentions ?? "",
         pain_points: contact.pain_points ?? "",
@@ -635,29 +703,23 @@ export default function Contacts() {
     try {
       let contactId: string;
       if (editingContact) {
-        const updated = await updateContact.mutateAsync({
-          id: editingContact.id,
-          name: formData.name,
-          phone: formData.phone || null,
-          email: formData.email || null,
-          source: formData.source || null,
-          notes: formData.notes || null,
-          category: formData.category?.trim() || null,
-          pipeline_stage: formData.pipeline_stage || null,
-          story: formData.story || null,
-          selling_intentions: formData.selling_intentions || null,
-          pain_points: formData.pain_points || null,
-          pleasure_points: formData.pleasure_points || null,
-          current_situation_notes: formData.current_situation_notes || null,
-          // Store address directly on contact
-          address_line1: formData.address_line1?.trim() || null,
-          address_line2: formData.address_line2?.trim() || null,
-          city: formData.city?.trim() || null,
-          state: formData.state || null,
-          postcode: formData.postcode?.trim() || null,
-          country: formData.country || "Australia",
-        });
-        contactId = updated.id;
+        const nextValues = buildNormalizedFormData(formData);
+        const previousValues = buildNormalizedExistingContact(editingContact);
+        const changedPayload = Object.fromEntries(
+          Object.entries(nextValues).filter(([key, value]) => value !== previousValues[key]),
+        ) as Record<string, string | null>;
+        const changedKeys = Object.keys(changedPayload);
+        const isCategoryOnlyUpdate = changedKeys.length === 1 && changedKeys[0] === "category";
+        if (changedKeys.length > 0) {
+          const updated = await updateContact.mutateAsync({
+            id: editingContact.id,
+            ...changedPayload,
+            ...(isCategoryOnlyUpdate ? { skipActivityLog: true } : {}),
+          });
+          contactId = updated.id;
+        } else {
+          contactId = editingContact.id;
+        }
         toast({ title: "Success", description: "Contact updated!" });
       } else {
         const created = await createContact.mutateAsync({
@@ -704,9 +766,11 @@ export default function Contacts() {
         }
       }
 
-      // If contact has an address, create a property from it and link to this contact (owner)
+      // Auto-create property only for brand-new contacts with an address.
+      // Editing an existing contact (e.g. urgency/category updates) should not create properties.
       const hasAddress = Boolean(formData.address_line1?.trim());
-      if (hasAddress && contactId) {
+      const shouldAutoCreateProperty = !editingContact && hasAddress && contactId;
+      if (shouldAutoCreateProperty) {
         try {
           await createFromAddress.createAndLink({
             contact_id: contactId,
@@ -815,14 +879,14 @@ export default function Contacts() {
     }
 
     const results = await Promise.allSettled(
-      updates.map((row) => updateContact.mutateAsync({ id: row.id, category: row.category }))
+      updates.map((row) => updateContact.mutateAsync({ id: row.id, category: row.category, skipActivityLog: true }))
     );
     const succeeded = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.length - succeeded;
 
     if (succeeded > 0) {
       toast({
-        title: "Categories updated",
+        title: "Urgency updated",
         description: failed > 0 ? `${succeeded} updated, ${failed} failed.` : `${succeeded} contact(s) auto-categorised.`,
       });
     } else {
@@ -1127,7 +1191,7 @@ export default function Contacts() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Category</Label>
+                        <Label>Urgency category</Label>
                         <Select
                           value={formData.category || "none"}
                           onValueChange={(value) =>
@@ -1135,7 +1199,7 @@ export default function Contacts() {
                           }
                         >
                           <SelectTrigger className="bg-input">
-                            <SelectValue placeholder="Colour category" />
+                            <SelectValue placeholder="Urgency category" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">None</SelectItem>
@@ -1622,11 +1686,11 @@ export default function Contacts() {
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
                   <div className="w-3 h-3 rounded-full bg-muted-foreground/30 mr-1.5" />
-                  Categorise
+                  Set urgency
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-3" align="end">
-                <p className="text-xs text-muted-foreground mb-2">Assign colour to {selectedContactIds.size} contact(s)</p>
+                <p className="text-xs text-muted-foreground mb-2">Assign urgency category to {selectedContactIds.size} contact(s)</p>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -1649,9 +1713,9 @@ export default function Contacts() {
                         const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
                         try {
                           for (const c of toUpdate) {
-                            await updateContact.mutateAsync({ id: c.id, category: cat.value });
+                            await updateContact.mutateAsync({ id: c.id, category: cat.value, skipActivityLog: true });
                           }
-                          toast({ title: "Category set", description: `Set ${toUpdate.length} contact(s) to ${cat.label}` });
+                          toast({ title: "Urgency set", description: `Set ${toUpdate.length} contact(s) to ${cat.label}` });
                           setSelectedContactIds(new Set());
                         } catch (e: unknown) {
                           toast({ title: "Error", description: (e as Error).message || "Failed to update", variant: "destructive" });
@@ -1669,9 +1733,9 @@ export default function Contacts() {
                       const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
                       try {
                         for (const c of toUpdate) {
-                          await updateContact.mutateAsync({ id: c.id, category: null });
+                          await updateContact.mutateAsync({ id: c.id, category: null, skipActivityLog: true });
                         }
-                        toast({ title: "Category cleared", description: `Cleared category for ${toUpdate.length} contact(s)` });
+                        toast({ title: "Urgency cleared", description: `Cleared category for ${toUpdate.length} contact(s)` });
                         setSelectedContactIds(new Set());
                       } catch (e: unknown) {
                         toast({ title: "Error", description: (e as Error).message || "Failed to update", variant: "destructive" });
@@ -1786,7 +1850,7 @@ export default function Contacts() {
                         </Button>
                       </th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium">Name</th>
-                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Category</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Urgency</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[120px]">Phone</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Email</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell w-[100px]">Source</th>

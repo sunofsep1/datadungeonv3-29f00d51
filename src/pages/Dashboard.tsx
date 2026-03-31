@@ -600,9 +600,9 @@ export default function Dashboard() {
     <div className="animate-fade-in flex min-h-0 flex-1 flex-col gap-4 pb-6">
       <DashboardWelcomeHeader />
 
-      <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1 mb-1">
+      <p className="text-[11px] text-muted-foreground/85 flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1">
         <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] text-foreground/85">
-          Drag to reorder, or ✕ to remove. Layout is saved in this browser for your account.
+          Timeline hub on top, widgets below. Drag widgets to reorder; layout is saved for this account.
         </span>
       </p>
 

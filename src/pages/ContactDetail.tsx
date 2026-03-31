@@ -85,6 +85,50 @@ const AUSTRALIAN_STATES = [
   { value: "ACT", label: "Australian Capital Territory" },
 ];
 
+const URGENCY_OPTIONS: Array<{ value: ContactUrgencyCategory; label: string }> = [
+  { value: "immediate", label: "Immediate" },
+  { value: "priority", label: "Priority" },
+  { value: "planned", label: "Planned" },
+  { value: "backlog", label: "Backlog" },
+];
+
+type ContactUrgencyCategory = "immediate" | "priority" | "planned" | "backlog";
+
+function normalizeContactCategory(value: string | null | undefined): ContactUrgencyCategory | null {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+    return raw as ContactUrgencyCategory;
+  }
+  const legacyMap: Record<string, ContactUrgencyCategory> = {
+    red: "immediate",
+    orange: "priority",
+    yellow: "priority",
+    green: "planned",
+    blue: "planned",
+    purple: "backlog",
+    pink: "backlog",
+    gray: "backlog",
+  };
+  return legacyMap[raw] ?? null;
+}
+
+function urgencyLabel(category: ContactUrgencyCategory | null): string {
+  if (category === "immediate") return "Immediate";
+  if (category === "priority") return "Priority";
+  if (category === "planned") return "Planned";
+  if (category === "backlog") return "Backlog";
+  return "Unassigned";
+}
+
+function urgencyBadgeClass(category: ContactUrgencyCategory | null): string {
+  if (category === "immediate") return "border-red-500/45 bg-red-500/15 text-red-200";
+  if (category === "priority") return "border-amber-500/45 bg-amber-500/15 text-amber-200";
+  if (category === "planned") return "border-sky-500/45 bg-sky-500/15 text-sky-200";
+  if (category === "backlog") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
+  return "border-border/70 bg-muted/50 text-muted-foreground";
+}
+
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -96,6 +140,7 @@ export default function ContactDetail() {
 
   const displayName = useMemo(() => (contact ? getContactDisplayName(contact) : ""), [contact]);
   const displayNameLabel = displayName === "—" ? "Contact" : displayName;
+  const contactUrgency = normalizeContactCategory((contact as { category?: string | null } | null)?.category);
 
   useEffect(() => {
     if (!contact || nurtureFocus !== "1") return;
@@ -177,6 +222,7 @@ export default function ContactDetail() {
         name: resolved,
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
+        category: normalizeContactCategory((contact as { category?: string | null }).category) ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
         story: contact.story ?? "",
@@ -199,11 +245,16 @@ export default function ContactDetail() {
   const handleSaveEdit = async () => {
     if (!contact) return;
     try {
+      const requestedCategory = normalizeContactCategory(editFormData.category) ?? null;
+      const existingCategory = normalizeContactCategory((contact as { category?: string | null }).category) ?? null;
+      const categoryChanged = requestedCategory !== existingCategory;
+
       const payload = {
         id: contact.id,
         name: editFormData.name,
         email: editFormData.email || null,
         phone: editFormData.phone || null,
+        category: requestedCategory,
         source: editFormData.source || null,
         notes: editFormData.notes || null,
         story: editFormData.story || null,
@@ -220,6 +271,20 @@ export default function ContactDetail() {
         country: editFormData.country || "Australia",
       };
       await updateContact.mutateAsync(payload as any);
+      if (categoryChanged) {
+        const refreshed = await refetch();
+        const refreshedCategory = normalizeContactCategory(
+          (refreshed.data as { category?: string | null } | undefined)?.category ?? null
+        );
+        if (refreshedCategory !== requestedCategory) {
+          toast({
+            title: "Urgency not saved",
+            description: "Category update did not persist. Please run `npm run db:push` and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
       toast({ title: "Success", description: "Contact updated!" });
       setIsEditing(false);
     } catch (error: any) {
@@ -522,13 +587,17 @@ export default function ContactDetail() {
                 initials={getInitials(undefined, undefined, displayName === "—" ? undefined : displayName)}
               />
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-semibold text-foreground">{displayNameLabel}</h2>
-                  {(contact as { category?: string | null }).category?.trim() && (
-                    <Badge variant="secondary" className="text-xs font-normal">
-                      {(contact as { category?: string | null }).category}
-                    </Badge>
-                  )}
+                </div>
+                <div className="mt-2 mb-3 flex items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Urgency</span>
+                  <Badge
+                    variant="outline"
+                    className={`rounded-full border px-3 py-1 text-sm font-semibold ${urgencyBadgeClass(contactUrgency)}`}
+                  >
+                    {urgencyLabel(contactUrgency)}
+                  </Badge>
                 </div>
                 <div className="flex flex-col gap-3 text-sm">
                   {getAllPhones(contact).flatMap((p) =>
@@ -906,13 +975,32 @@ export default function ContactDetail() {
                 <ContactChannelsEdit contactId={id} />
               </div>
             )}
-            <div className="space-y-2 col-span-2">
+            <div className="space-y-2">
               <Label>Source</Label>
               <Input
                 className="bg-input"
                 value={editFormData.source || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, source: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Urgency category</Label>
+              <Select
+                value={editFormData.category || "none"}
+                onValueChange={(value) => setEditFormData({ ...editFormData, category: value === "none" ? "" : value })}
+              >
+                <SelectTrigger className="bg-input">
+                  <SelectValue placeholder="Select urgency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {URGENCY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="col-span-2 space-y-2">
               <Label>Address Line 1</Label>

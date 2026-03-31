@@ -127,6 +127,7 @@ export function useUpdateContactTask() {
       notes?: string | null;
       due_at?: string | null;
       completed_at?: string | null;
+      completion_note?: string | null;
     }) => {
       const updates: Record<string, unknown> = {};
       if (input.title !== undefined) updates.title = input.title;
@@ -141,7 +142,8 @@ export function useUpdateContactTask() {
       let body: string | undefined = row.title;
       if (input.completed_at !== undefined && input.completed_at) {
         subj = "Task completed";
-        body = row.title;
+        const trimmedNote = input.completion_note?.trim();
+        body = trimmedNote ? `${row.title}\n\n${trimmedNote}` : row.title;
       }
       await logContactActivity({
         contactId: input.contact_id,

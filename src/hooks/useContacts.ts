@@ -48,6 +48,51 @@ function toContactUpdatePayload(payload: Record<string, unknown>): Record<string
   return out;
 }
 
+type PostgrestColumnError = { code?: string | null; message?: string | null };
+
+function isMissingColumnError(error: PostgrestColumnError | null | undefined): boolean {
+  if (!error) return false;
+  const message = String(error.message ?? "").toLowerCase();
+  if (error.code === "PGRST204" || error.code === "42703") return true;
+  return message.includes("column") && (message.includes("could not find") || message.includes("does not exist"));
+}
+
+function getMissingColumnName(error: PostgrestColumnError | null | undefined): string | null {
+  if (!error?.message) return null;
+  const message = String(error.message);
+
+  const pgrstMatch = message.match(/'([a-zA-Z0-9_]+)'\s+column/i);
+  if (pgrstMatch?.[1]) return pgrstMatch[1];
+
+  const postgresMatch = message.match(/column\s+["']?([a-zA-Z0-9_]+)["']?/i);
+  if (postgresMatch?.[1]) return postgresMatch[1];
+
+  return null;
+}
+
+function omitMissingColumn(
+  payload: Record<string, unknown>,
+  error: PostgrestColumnError | null | undefined,
+): Record<string, unknown> | null {
+  const column = getMissingColumnName(error);
+  if (!column || !(column in payload)) return null;
+  const { [column]: _ignored, ...rest } = payload;
+  return rest;
+}
+
+function keepExistingColumns(
+  payload: Record<string, unknown>,
+  existingRow: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  if (!existingRow) return payload;
+  const available = new Set(Object.keys(existingRow));
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (available.has(key)) out[key] = value;
+  }
+  return out;
+}
+
 /** Split full name into first_name and last_name for HubSpot-style schema (no name column) */
 function splitName(full: string): { first_name: string; last_name: string } {
   const s = String(full ?? "").trim();
@@ -327,18 +372,36 @@ export function useCreateContact() {
       const tryInsert = (payload: Record<string, unknown>) =>
         (supabase as any).from("contacts").insert(payload).select().single();
 
-      const isColumnError = (e: { code?: string; message?: string } | null) =>
-        e && (e.code === "PGRST204" || (e.message && String(e.message).toLowerCase().includes("column")));
-
       // Prefer DataDungeon schema (user_id + name). Fall back to HubSpot schema (owner_id + first/last).
       let payload: Record<string, unknown> = toContactInsertPayload({ ...contactData }, user.id);
       let { data, error } = await tryInsert(payload);
 
-      if (isColumnError(error)) {
+      // Retry same schema after removing optional missing columns.
+      const maxPayloadRetries = Math.max(1, Object.keys(payload).length + 2);
+      for (let attempt = 0; error && isMissingColumnError(error) && attempt < maxPayloadRetries; attempt += 1) {
+        const reducedPayload = omitMissingColumn(payload, error);
+        if (!reducedPayload) break;
+        payload = reducedPayload;
+        const retry = await tryInsert(payload);
+        data = retry.data;
+        error = retry.error;
+      }
+
+      // If insert still fails with schema mismatch, try HubSpot-style fallback payload.
+      if (error && isMissingColumnError(error)) {
         payload = pickHubSpotContactInsert({ ...contactData, owner_id: user.id });
-        let r = await tryInsert(payload);
-        data = r.data;
-        error = r.error;
+        const firstFallback = await tryInsert(payload);
+        data = firstFallback.data;
+        error = firstFallback.error;
+        const maxFallbackRetries = Math.max(1, Object.keys(payload).length + 2);
+        for (let attempt = 0; error && isMissingColumnError(error) && attempt < maxFallbackRetries; attempt += 1) {
+          const reducedPayload = omitMissingColumn(payload, error);
+          if (!reducedPayload) break;
+          payload = reducedPayload;
+          const retry = await tryInsert(payload);
+          data = retry.data;
+          error = retry.error;
+        }
       }
       if (error) throw error;
       if (!data) throw new Error("Contact insert returned no row");
@@ -408,23 +471,36 @@ export function useUpdateContact() {
         .single();
 
       const contactPayload = toContactUpdatePayload(updates as Record<string, unknown>) as Record<string, unknown>;
+      let persistedPayload = keepExistingColumns(
+        { ...contactPayload },
+        (beforeRow as Record<string, unknown> | null | undefined) ?? null,
+      );
+      if (Object.keys(persistedPayload).length === 0) {
+        throw new Error("No editable fields are available for this contact in the current database schema.");
+      }
       let { data, error } = await supabase
         .from("contacts")
-        .update(contactPayload)
+        .update(persistedPayload)
         .eq("id", id)
         .select()
         .single();
-      // If DB doesn't have coming_to_market yet (migration not run), retry without it so lead status etc. still save
-      if (error && (error.code === "42703" || String(error.message).includes("coming_to_market"))) {
-        const { coming_to_market: _cm, ...payloadWithoutCm } = contactPayload as Record<string, unknown>;
-        const res = await supabase
+      // Gracefully retry when optional columns are missing in schema cache.
+      const maxUpdateRetries = Math.max(1, Object.keys(persistedPayload).length + 2);
+      for (let attempt = 0; error && isMissingColumnError(error) && attempt < maxUpdateRetries; attempt += 1) {
+        const reducedPayload = omitMissingColumn(persistedPayload, error);
+        if (!reducedPayload) break;
+        persistedPayload = reducedPayload;
+        if (Object.keys(persistedPayload).length === 0) {
+          throw new Error("No updatable fields are available in this database schema. Run pending migrations and try again.");
+        }
+        const retry = await supabase
           .from("contacts")
-          .update(payloadWithoutCm)
+          .update(persistedPayload)
           .eq("id", id)
           .select()
           .single();
-        data = res.data;
-        error = res.error;
+        data = retry.data;
+        error = retry.error;
       }
       if (error) throw error;
 
@@ -455,7 +531,7 @@ export function useUpdateContact() {
 
       if (!skipActivityLog) {
         const bodyParts: string[] = [];
-        const keys = Object.keys(contactPayload).filter((k) => contactPayload[k] !== undefined);
+        const keys = Object.keys(persistedPayload).filter((k) => persistedPayload[k] !== undefined);
         if (keys.length && beforeRow) {
           const lines = diffContactRows(
             beforeRow as Record<string, unknown>,

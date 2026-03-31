@@ -44,6 +44,7 @@ import { layout } from "@/lib/designTokens";
 type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
 const homeItems: NavItem[] = [
+  { title: "Daily Hub", url: "/attention-hub", icon: Sparkles },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
 ];
 
@@ -85,6 +86,7 @@ const mobileNavItems = [
 function isNavActive(item: { url: string }, pathname: string): boolean {
   if (pathname === item.url) return true;
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
+  if (item.url === "/attention-hub" && pathname.startsWith("/attention-hub")) return true;
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
