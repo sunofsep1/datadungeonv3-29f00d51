@@ -4,6 +4,7 @@ export type ContactUrgencyTier = "immediate" | "priority" | "planned" | "backlog
 
 export type ContactUrgencySignals = {
   contactId: string;
+  manualTier?: ContactUrgencyTier | null;
   lastActivityAt?: string | null;
   taskDueAts: Array<string | null>;
   sequenceTaskDueAts: Array<string | null>;
@@ -106,7 +107,18 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
     }
   }
 
-  const tier = tierFromScore(score);
+  const autoTier = tierFromScore(score);
+  const tier = signals.manualTier ?? autoTier;
+  const minScoreByTier: Record<ContactUrgencyTier, number> = {
+    immediate: 130,
+    priority: 80,
+    planned: 35,
+    backlog: 0,
+  };
+  if (signals.manualTier) {
+    score = Math.max(score, minScoreByTier[signals.manualTier]);
+    reasons.unshift(`manually set to ${signals.manualTier}`);
+  }
   return {
     contactId: signals.contactId,
     score,

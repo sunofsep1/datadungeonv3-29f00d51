@@ -69,7 +69,10 @@ export function useCreateInteraction() {
 
       if (error) throw error;
 
-      await supabase.from("contacts").update({ last_activity_at: now }).eq("id", interaction.contact_id);
+      await supabase
+        .from("contacts")
+        .update({ last_activity_at: now, last_touch_date: now })
+        .eq("id", interaction.contact_id);
 
       return data;
     },

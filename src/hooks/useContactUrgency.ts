@@ -4,6 +4,26 @@ import { useOpenContactTasksForUser } from "@/hooks/useContactTasks";
 import { useAppointments } from "@/hooks/useAppointments";
 import { buildContactUrgency, type ContactUrgencyResult } from "@/lib/contactUrgency";
 
+type ContactUrgencyTier = "immediate" | "priority" | "planned" | "backlog";
+
+function normalizeManualUrgencyTier(value: string | null | undefined): ContactUrgencyTier | null {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+    return raw as ContactUrgencyTier;
+  }
+  const legacyMap: Record<string, ContactUrgencyTier> = {
+    red: "immediate",
+    orange: "priority",
+    yellow: "priority",
+    green: "planned",
+    blue: "planned",
+    purple: "backlog",
+    pink: "backlog",
+    gray: "backlog",
+  };
+  return legacyMap[raw] ?? null;
+}
+
 export function useContactUrgency() {
   const { data: contacts = [] } = useContacts();
   const { data: tasks = [] } = useOpenContactTasksForUser();
@@ -18,6 +38,7 @@ export function useContactUrgency() {
 
       const result = buildContactUrgency({
         contactId: contact.id,
+        manualTier: normalizeManualUrgencyTier((contact as { category?: string | null }).category),
         lastActivityAt: (contact as { last_activity_at?: string | null }).last_activity_at ?? null,
         taskDueAts: contactTasks.map((task) => task.due_at),
         sequenceTaskDueAts: contactTasks

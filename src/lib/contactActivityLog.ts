@@ -77,7 +77,7 @@ export function formatAddressLines(addr: Record<string, unknown>): string {
   return parts.join(", ") || "(address details)";
 }
 
-/** Inserts a `interactions` row (type note, channel system) and bumps `last_activity_at`. */
+/** Inserts a `interactions` row (type note, channel system) and bumps touch/activity timestamps. */
 export async function logContactActivity(params: {
   contactId: string;
   subject: string;
@@ -102,7 +102,10 @@ export async function logContactActivity(params: {
       console.warn("[contactActivityLog]", error);
       return;
     }
-    await supabase.from("contacts").update({ last_activity_at: now }).eq("id", params.contactId);
+    await supabase
+      .from("contacts")
+      .update({ last_activity_at: now, last_touch_date: now })
+      .eq("id", params.contactId);
   } catch (e) {
     console.warn("[contactActivityLog]", e);
   }

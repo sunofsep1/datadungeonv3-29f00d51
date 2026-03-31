@@ -35,4 +35,17 @@ describe("contact urgency tiers", () => {
     });
     expect(["priority", "planned"]).toContain(result.tier);
   });
+
+  it("respects manual urgency tier override", () => {
+    const result = buildContactUrgency({
+      contactId: "c3",
+      manualTier: "priority",
+      lastActivityAt: isoHoursFromNow(-2),
+      taskDueAts: [],
+      sequenceTaskDueAts: [],
+      appointmentDates: [],
+    });
+    expect(result.tier).toBe("priority");
+    expect(result.reasons[0]).toContain("manually set");
+  });
 });

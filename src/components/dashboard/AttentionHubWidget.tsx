@@ -32,7 +32,7 @@ import { useTodos, useUpdateTodo, useAddTodo, useDeleteTodo, type Todo } from "@
 import { cn } from "@/lib/utils";
 import type { ContactUrgencyTier } from "@/lib/contactUrgency";
 
-type AttentionItemKind = "sequenceTask" | "contactTask" | "todoTask" | "appointment";
+type AttentionItemKind = "sequenceTask" | "contactTask" | "todoTask" | "appointment" | "contactReminder";
 type AttentionItemUrgency = ContactUrgencyTier;
 
 type AttentionItem = {
@@ -83,6 +83,7 @@ function fallbackScoreByUrgency(
 function kindBadgeLabel(kind: AttentionItemKind): string {
   if (kind === "sequenceTask") return "Sequence";
   if (kind === "contactTask") return "Contact";
+  if (kind === "contactReminder") return "Contact";
   if (kind === "todoTask") return "General";
   return "Appointment";
 }
@@ -203,6 +204,7 @@ export function AttentionHubWidget() {
   const items = useMemo(() => {
     const nextItems: AttentionItem[] = [];
     const now = Date.now();
+    const contactIdsWithActionItems = new Set<string>();
 
     openContactTasks.forEach((task: ContactTask) => {
       const dueAt = task.due_at ? new Date(task.due_at) : null;
@@ -244,6 +246,7 @@ export function AttentionHubWidget() {
         canComplete: true,
         reason,
       });
+      contactIdsWithActionItems.add(task.contact_id);
     });
 
     todos
@@ -310,7 +313,42 @@ export function AttentionHubWidget() {
           canComplete: false,
           reason,
         });
+        if (appointment.contact_id) contactIdsWithActionItems.add(appointment.contact_id);
       });
+
+    contacts.forEach((contact) => {
+      if (contactIdsWithActionItems.has(contact.id)) return;
+      const contactUrgency = urgencyByContactId.get(contact.id);
+      if (!contactUrgency) return;
+
+      const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
+      const nextTouchDate = nextTouchRaw ? new Date(nextTouchRaw) : null;
+      const dueAt = nextTouchDate && !Number.isNaN(nextTouchDate.getTime()) ? nextTouchDate : null;
+      const contactName = getContactDisplayName(contact);
+
+      const whenText =
+        dueAt == null
+          ? "No next touch date set"
+          : isPast(dueAt) && !isToday(dueAt)
+            ? `Touch overdue since ${format(dueAt, "EEE d MMM")}`
+            : isToday(dueAt)
+              ? `Touch due today at ${format(dueAt, "h:mm a")}`
+              : `Touch ${formatDistanceToNow(dueAt, { addSuffix: true })}`;
+
+      nextItems.push({
+        id: `contact-reminder-${contact.id}`,
+        kind: "contactReminder",
+        urgency: contactUrgency.tier,
+        score: contactUrgency.score + 6,
+        title: contactName,
+        detail: "Relationship follow-up reminder",
+        whenText,
+        dueAt,
+        contactId: contact.id,
+        canComplete: false,
+        reason: contactUrgency.reasons[0] ?? "Manual/derived urgency indicates this contact should stay active.",
+      });
+    });
 
     return nextItems
       .sort((a, b) => {
@@ -320,7 +358,7 @@ export function AttentionHubWidget() {
         return at - bt;
       })
       .slice(0, 12);
-  }, [appointments, contactNameById, openContactTasks, todos, urgencyByContactId]);
+  }, [appointments, contacts, contactNameById, openContactTasks, todos, urgencyByContactId]);
 
   const visibleItems = useMemo(
     () => items.filter((item) => !hiddenItemIds.includes(item.id)),
@@ -649,7 +687,7 @@ export function AttentionHubWidget() {
                         <Button size="sm" className="h-7 px-2 text-[11px]" onClick={() => navigate("/appointments")}>
                           Prep
                         </Button>
-                      ) : (
+                      ) : item.canComplete ? (
                         <Button
                           size="sm"
                           className="h-7 px-2 text-[11px]"
@@ -661,7 +699,7 @@ export function AttentionHubWidget() {
                         >
                           {completingItemId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Complete"}
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   {isEditing ? (
@@ -936,11 +974,11 @@ export function AttentionHubWidget() {
                   >
                     Work now
                   </Button>
-                ) : (
+                ) : focusItem.kind === "appointment" ? (
                   <Button size="sm" className="h-8" onClick={() => navigate("/appointments")}>
                     Prep now
                   </Button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
