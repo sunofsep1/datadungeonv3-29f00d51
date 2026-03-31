@@ -1054,6 +1054,7 @@ export type Database = {
           buying_budget_min: number | null
           city: string | null
           contact_type: string | null
+          contact_category: string
           country: string | null
           created_at: string | null
           coming_to_market: string | null
@@ -1064,12 +1065,14 @@ export type Database = {
           first_name: string | null
           id: string
           last_activity_at: string | null
+          last_touch_date: string | null
           last_name: string | null
           lead_status: string | null
           lifecycle_stage: string | null
           mobile: string | null
           name: string | null
           next_follow_up_at: string | null
+          next_touch_date: string | null
           notes: string | null
           owner_id: string | null
           pain_points: string | null
@@ -1107,6 +1110,7 @@ export type Database = {
           buying_budget_min?: number | null
           city?: string | null
           contact_type?: string | null
+          contact_category?: string
           country?: string | null
           created_at?: string | null
           coming_to_market?: string | null
@@ -1117,12 +1121,14 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_activity_at?: string | null
+          last_touch_date?: string | null
           last_name?: string | null
           lead_status?: string | null
           lifecycle_stage?: string | null
           mobile?: string | null
           name?: string | null
           next_follow_up_at?: string | null
+          next_touch_date?: string | null
           notes?: string | null
           owner_id?: string | null
           pain_points?: string | null
@@ -1160,6 +1166,7 @@ export type Database = {
           buying_budget_min?: number | null
           city?: string | null
           contact_type?: string | null
+          contact_category?: string
           country?: string | null
           created_at?: string | null
           coming_to_market?: string | null
@@ -1170,12 +1177,14 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_activity_at?: string | null
+          last_touch_date?: string | null
           last_name?: string | null
           lead_status?: string | null
           lifecycle_stage?: string | null
           mobile?: string | null
           name?: string | null
           next_follow_up_at?: string | null
+          next_touch_date?: string | null
           notes?: string | null
           owner_id?: string | null
           pain_points?: string | null

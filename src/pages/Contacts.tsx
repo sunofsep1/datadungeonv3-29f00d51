@@ -186,12 +186,31 @@ const AUSTRALIAN_STATES = [
 ];
 
 export type ContactCategory = "immediate" | "priority" | "planned" | "backlog";
+type ContactClassificationCategory =
+  | "top_100"
+  | "past_client"
+  | "referral_partner"
+  | "hot_lead"
+  | "warm_lead"
+  | "seller_nurture";
 
 const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; border: string }[] = [
   { value: "immediate", label: "Immediate", bg: "bg-red-500", border: "border-red-500" },
   { value: "priority", label: "Priority", bg: "bg-amber-500", border: "border-amber-500" },
   { value: "planned", label: "Planned", bg: "bg-sky-500", border: "border-sky-500" },
   { value: "backlog", label: "Backlog", bg: "bg-emerald-500", border: "border-emerald-500" },
+];
+
+const CONTACT_CLASSIFICATION_CATEGORIES: Array<{
+  value: ContactClassificationCategory;
+  label: string;
+}> = [
+  { value: "top_100", label: "Top 100" },
+  { value: "past_client", label: "Past Client" },
+  { value: "referral_partner", label: "Referral Partner" },
+  { value: "hot_lead", label: "Hot Lead" },
+  { value: "warm_lead", label: "Warm Lead" },
+  { value: "seller_nurture", label: "Seller Nurture" },
 ];
 
 function normalizeLegacyCategory(value: string | null | undefined): ContactCategory | null {
@@ -211,6 +230,23 @@ function normalizeLegacyCategory(value: string | null | undefined): ContactCateg
     gray: "backlog",
   };
   return legacyMap[raw] ?? null;
+}
+
+function normalizeContactClassificationCategory(
+  value: string | null | undefined,
+): ContactClassificationCategory {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (
+    raw === "top_100" ||
+    raw === "past_client" ||
+    raw === "referral_partner" ||
+    raw === "hot_lead" ||
+    raw === "warm_lead" ||
+    raw === "seller_nurture"
+  ) {
+    return raw as ContactClassificationCategory;
+  }
+  return "warm_lead";
 }
 
 function getCategoryLabel(c: ContactWithMeta | { category?: string | null }): string {
@@ -279,6 +315,7 @@ const createEmptyContact = () => ({
   email: "",
   source: "",
   notes: "",
+  contact_category: "warm_lead" as ContactClassificationCategory,
   category: "",
   story: "",
   selling_intentions: "",
@@ -309,6 +346,7 @@ function buildNormalizedFormData(formData: ContactFormState): Record<string, str
     email: normalizeOptionalText(formData.email),
     source: normalizeOptionalText(formData.source),
     notes: normalizeOptionalText(formData.notes),
+    contact_category: normalizeContactClassificationCategory(formData.contact_category),
     category: normalizeLegacyCategory(formData.category) ?? null,
     pipeline_stage: normalizeOptionalText(formData.pipeline_stage),
     story: normalizeOptionalText(formData.story),
@@ -332,6 +370,9 @@ function buildNormalizedExistingContact(contact: ContactWithMeta): Record<string
     email: normalizeOptionalText(getPrimaryEmail(contact) ?? contact.email),
     source: normalizeOptionalText(contact.source),
     notes: normalizeOptionalText(contact.notes),
+    contact_category: normalizeContactClassificationCategory(
+      (contact as { contact_category?: string | null }).contact_category,
+    ),
     category: normalizeLegacyCategory((contact as { category?: string | null }).category) ?? null,
     pipeline_stage: normalizeOptionalText(contact.pipeline_stage),
     story: normalizeOptionalText(contact.story),
@@ -665,6 +706,9 @@ export default function Contacts() {
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
+        contact_category: normalizeContactClassificationCategory(
+          (contact as { contact_category?: string | null }).contact_category,
+        ),
         category: normalizeLegacyCategory((contact as { category?: string | null }).category) ?? "",
         story: contact.story ?? "",
         selling_intentions: contact.selling_intentions ?? "",
@@ -728,6 +772,7 @@ export default function Contacts() {
           email: formData.email || null,
           source: formData.source || null,
           notes: formData.notes || null,
+          contact_category: normalizeContactClassificationCategory(formData.contact_category),
           status: "lead",
           category: formData.category?.trim() || null,
           pipeline_stage: formData.pipeline_stage || null,
@@ -1189,6 +1234,29 @@ export default function Contacts() {
                             setFormData({ ...formData, name: e.target.value })
                           }
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Contact category</Label>
+                        <Select
+                          value={formData.contact_category || "warm_lead"}
+                          onValueChange={(value) =>
+                            setFormData({
+                              ...formData,
+                              contact_category: normalizeContactClassificationCategory(value),
+                            })
+                          }
+                        >
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Contact category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CONTACT_CLASSIFICATION_CATEGORIES.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Urgency category</Label>

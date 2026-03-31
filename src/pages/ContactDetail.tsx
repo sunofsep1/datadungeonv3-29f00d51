@@ -93,6 +93,22 @@ const URGENCY_OPTIONS: Array<{ value: ContactUrgencyCategory; label: string }> =
 ];
 
 type ContactUrgencyCategory = "immediate" | "priority" | "planned" | "backlog";
+type ContactClassificationCategory =
+  | "top_100"
+  | "past_client"
+  | "referral_partner"
+  | "hot_lead"
+  | "warm_lead"
+  | "seller_nurture";
+
+const CONTACT_CLASSIFICATION_OPTIONS: Array<{ value: ContactClassificationCategory; label: string }> = [
+  { value: "top_100", label: "Top 100" },
+  { value: "past_client", label: "Past Client" },
+  { value: "referral_partner", label: "Referral Partner" },
+  { value: "hot_lead", label: "Hot Lead" },
+  { value: "warm_lead", label: "Warm Lead" },
+  { value: "seller_nurture", label: "Seller Nurture" },
+];
 
 function normalizeContactCategory(value: string | null | undefined): ContactUrgencyCategory | null {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -127,6 +143,23 @@ function urgencyBadgeClass(category: ContactUrgencyCategory | null): string {
   if (category === "planned") return "border-sky-500/45 bg-sky-500/15 text-sky-200";
   if (category === "backlog") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
   return "border-border/70 bg-muted/50 text-muted-foreground";
+}
+
+function normalizeContactClassificationCategory(
+  value: string | null | undefined,
+): ContactClassificationCategory {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (
+    raw === "top_100" ||
+    raw === "past_client" ||
+    raw === "referral_partner" ||
+    raw === "hot_lead" ||
+    raw === "warm_lead" ||
+    raw === "seller_nurture"
+  ) {
+    return raw as ContactClassificationCategory;
+  }
+  return "warm_lead";
 }
 
 export default function ContactDetail() {
@@ -222,6 +255,9 @@ export default function ContactDetail() {
         name: resolved,
         email: getPrimaryEmail(contact) ?? contact.email ?? "",
         phone: getPrimaryPhone(contact) ?? contact.phone ?? "",
+        contact_category: normalizeContactClassificationCategory(
+          (contact as { contact_category?: string | null }).contact_category,
+        ),
         category: normalizeContactCategory((contact as { category?: string | null }).category) ?? "",
         source: contact.source ?? "",
         notes: contact.notes ?? "",
@@ -254,6 +290,7 @@ export default function ContactDetail() {
         name: editFormData.name,
         email: editFormData.email || null,
         phone: editFormData.phone || null,
+        contact_category: normalizeContactClassificationCategory(editFormData.contact_category),
         category: requestedCategory,
         source: editFormData.source || null,
         notes: editFormData.notes || null,
@@ -995,6 +1032,29 @@ export default function ContactDetail() {
                 <SelectContent>
                   <SelectItem value="none">Unassigned</SelectItem>
                   {URGENCY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Contact category</Label>
+              <Select
+                value={editFormData.contact_category || "warm_lead"}
+                onValueChange={(value) =>
+                  setEditFormData({
+                    ...editFormData,
+                    contact_category: normalizeContactClassificationCategory(value),
+                  })
+                }
+              >
+                <SelectTrigger className="bg-input">
+                  <SelectValue placeholder="Select contact category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONTACT_CLASSIFICATION_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

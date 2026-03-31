@@ -22,6 +22,7 @@ export const CONTACT_FIELD_LABELS: Record<string, string> = {
   country: "Country",
   status: "Status",
   category: "Category",
+  contact_category: "Contact category",
   lead_status: "Lead status",
   coming_to_market: "Coming to market",
   hubspot_contact_id: "HubSpot ID",
