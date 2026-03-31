@@ -399,16 +399,25 @@ export function AttentionHubWidget() {
 
   const criticalCount = visibleItems.filter((item) => item.urgency === "immediate").length;
   const highCount = visibleItems.filter((item) => item.urgency === "priority").length;
-  const focusItem = useMemo(() => {
+  const focusItems = useMemo(() => {
     if (tierFilteredItems.length === 0) return null;
+    const urgencyRank: Record<ContactUrgencyTier, number> = {
+      immediate: 0,
+      priority: 1,
+      planned: 2,
+      backlog: 3,
+    };
     const ranked = [...tierFilteredItems].sort((a, b) => {
+      const tierDiff = urgencyRank[a.urgency] - urgencyRank[b.urgency];
+      if (tierDiff !== 0) return tierDiff;
       if (b.score !== a.score) return b.score - a.score;
       const at = a.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
       const bt = b.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return at - bt;
     });
-    return ranked[0] ?? null;
-  }, [tierFilteredItems]);
+    const showQueue = visibleUrgencyTiers.size === 4;
+    return ranked.slice(0, showQueue ? 4 : 1);
+  }, [tierFilteredItems, visibleUrgencyTiers]);
 
   const handleComplete = useCallback(
     async (item: AttentionItem, note?: string) => {
@@ -908,80 +917,87 @@ export function AttentionHubWidget() {
         </div>
       </div>
 
-      {focusItem ? (
-        <div
-          className={cn(
-            "mb-3 rounded-xl border p-3 shadow-sm",
-            spotlightCardClass(focusItem.urgency),
-            focusItem.urgency === "immediate" && "animate-pulse"
-          )}
-        >
-          <div className="flex items-stretch gap-3">
-            <div className={cn("w-1.5 rounded-full shrink-0", spotlightRailClass(focusItem.urgency))} />
-            <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Focus Box</p>
-                <p className="mt-1 text-lg font-bold text-foreground truncate">
-                  {focusItem.kind === "todoTask" ? focusItem.title : focusItem.detail}
-                </p>
-                <p className="text-sm text-muted-foreground truncate">
-                  {focusItem.kind === "todoTask" ? "General task" : focusItem.title}
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <Badge variant="outline" className="text-[10px] border-border/80">
-                    {kindBadgeLabel(focusItem.kind)}
-                  </Badge>
-                  <Badge variant="outline" className={cn("text-[10px]", urgencyBadgeClass(focusItem.urgency))}>
-                    {urgencyLabel(focusItem.urgency)}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px] border-border/80">
-                    {focusItem.whenText}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px] border-border/80">
-                    Top priority
-                  </Badge>
+      {focusItems?.length ? (
+        <div className="mb-3 space-y-2">
+          {focusItems.map((focusItem, idx) => (
+            <div
+              key={focusItem.id}
+              className={cn(
+                "rounded-xl border p-3 shadow-sm",
+                spotlightCardClass(focusItem.urgency),
+                idx === 0 && focusItem.urgency === "immediate" && "animate-pulse"
+              )}
+            >
+              <div className="flex items-stretch gap-3">
+                <div className={cn("w-1.5 rounded-full shrink-0", spotlightRailClass(focusItem.urgency))} />
+                <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {idx === 0 ? "Focus Box" : `Focus #${idx + 1}`}
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-foreground truncate">
+                      {focusItem.kind === "todoTask" ? focusItem.title : focusItem.detail}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {focusItem.kind === "todoTask" ? "General task" : focusItem.title}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="text-[10px] border-border/80">
+                        {kindBadgeLabel(focusItem.kind)}
+                      </Badge>
+                      <Badge variant="outline" className={cn("text-[10px]", urgencyBadgeClass(focusItem.urgency))}>
+                        {urgencyLabel(focusItem.urgency)}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] border-border/80">
+                        {focusItem.whenText}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] border-border/80">
+                        {idx === 0 ? "Top priority" : "Next priority"}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-primary/95">{focusItem.reason}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => {
+                        if (focusItem.kind === "appointment") return navigate("/appointments");
+                        if (focusItem.contactId) {
+                          return navigate(
+                            focusItem.kind === "sequenceTask"
+                              ? `/contacts/${focusItem.contactId}?nurtureFocus=1`
+                              : `/contacts/${focusItem.contactId}`
+                          );
+                        }
+                        return navigate("/tasks");
+                      }}
+                    >
+                      Open
+                    </Button>
+                    {focusItem.canComplete && focusItem.kind !== "appointment" ? (
+                      <Button
+                        size="sm"
+                        className="h-8"
+                        disabled={completingItemId !== null && completingItemId !== focusItem.id}
+                        onClick={() => {
+                          setNoteItemId(focusItem.id);
+                          setQuickNote("");
+                        }}
+                      >
+                        Work now
+                      </Button>
+                    ) : focusItem.kind === "appointment" ? (
+                      <Button size="sm" className="h-8" onClick={() => navigate("/appointments")}>
+                        Prep now
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="mt-2 text-xs font-medium text-primary/95">{focusItem.reason}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() => {
-                    if (focusItem.kind === "appointment") return navigate("/appointments");
-                    if (focusItem.contactId) {
-                      return navigate(
-                        focusItem.kind === "sequenceTask"
-                          ? `/contacts/${focusItem.contactId}?nurtureFocus=1`
-                          : `/contacts/${focusItem.contactId}`
-                      );
-                    }
-                    return navigate("/tasks");
-                  }}
-                >
-                  Open
-                </Button>
-                {focusItem.canComplete && focusItem.kind !== "appointment" ? (
-                  <Button
-                    size="sm"
-                    className="h-8"
-                    disabled={completingItemId !== null && completingItemId !== focusItem.id}
-                    onClick={() => {
-                      setNoteItemId(focusItem.id);
-                      setQuickNote("");
-                    }}
-                  >
-                    Work now
-                  </Button>
-                ) : focusItem.kind === "appointment" ? (
-                  <Button size="sm" className="h-8" onClick={() => navigate("/appointments")}>
-                    Prep now
-                  </Button>
-                ) : null}
               </div>
             </div>
-          </div>
+          ))}
         </div>
       ) : null}
 
