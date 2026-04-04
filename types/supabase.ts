@@ -604,6 +604,7 @@ export type Database = {
           buying_budget_min: number | null
           contact_type: string | null
           created_at: string | null
+          date_of_birth: string | null
           do_not_contact: boolean | null
           email: string | null
           email_opt_out: boolean | null
@@ -637,6 +638,7 @@ export type Database = {
           buying_budget_min?: number | null
           contact_type?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
@@ -670,6 +672,7 @@ export type Database = {
           buying_budget_min?: number | null
           contact_type?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
