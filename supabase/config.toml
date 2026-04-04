@@ -32,3 +32,12 @@ verify_jwt = false
 
 [functions.sequence-runner]
 verify_jwt = false
+
+[functions.nightly-lead-score-recompute]
+verify_jwt = false
+
+[functions.birthday-reminders]
+verify_jwt = false
+
+[functions.notification-digest]
+verify_jwt = false
