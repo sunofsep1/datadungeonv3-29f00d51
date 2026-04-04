@@ -15,6 +15,7 @@ import {
   BarChart3,
   MoreHorizontal,
   Home,
+  ClipboardCheck,
   ChevronDown,
   Search,
 } from "lucide-react";
@@ -70,6 +71,7 @@ const navGroups: NavGroup[] = [
       { title: "Marketing", url: "/marketing", icon: Megaphone },
       { title: "Performance", url: "/performance", icon: BarChart3 },
       { title: "Research", url: "/research", icon: Search },
+      { title: "Annual reviews", url: "/annual-reviews", icon: ClipboardCheck },
     ],
   },
 ];
@@ -308,6 +310,12 @@ export function AppSidebar() {
                       <NavLink to="/performance" className="flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
                         Performance
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/annual-reviews" className="flex items-center gap-2">
+                        <ClipboardCheck className="w-4 h-4" />
+                        Annual reviews
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

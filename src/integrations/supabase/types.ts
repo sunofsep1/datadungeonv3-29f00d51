@@ -155,6 +155,8 @@ export type Database = {
           id: string
           pipeline_stage: string
           sms_body: string | null
+          task_due_days: number | null
+          task_title: string | null
           updated_at: string
           user_id: string
         }
@@ -165,6 +167,8 @@ export type Database = {
           id?: string
           pipeline_stage: string
           sms_body?: string | null
+          task_due_days?: number | null
+          task_title?: string | null
           updated_at?: string
           user_id: string
         }
@@ -175,6 +179,8 @@ export type Database = {
           id?: string
           pipeline_stage?: string
           sms_body?: string | null
+          task_due_days?: number | null
+          task_title?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -424,6 +430,144 @@ export type Database = {
           type?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      annual_reviews: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          insurance_partner: string | null
+          loan_officer_partner: string | null
+          notes: string | null
+          scheduled_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          insurance_partner?: string | null
+          loan_officer_partner?: string | null
+          notes?: string | null
+          scheduled_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          insurance_partner?: string | null
+          loan_officer_partner?: string | null
+          notes?: string | null
+          scheduled_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      community_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          id: string
+          location: string | null
+          name: string
+          quarter: number | null
+          status: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date: string
+          id?: string
+          location?: string | null
+          name: string
+          quarter?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          id?: string
+          location?: string | null
+          name?: string
+          quarter?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      event_invites: {
+        Row: {
+          contact_id: string
+          event_id: string
+          id: string
+          invited_at: string
+          responded_at: string | null
+          rsvp_status: string
+        }
+        Insert: {
+          contact_id: string
+          event_id: string
+          id?: string
+          invited_at?: string
+          responded_at?: string | null
+          rsvp_status?: string
+        }
+        Update: {
+          contact_id?: string
+          event_id?: string
+          id?: string
+          invited_at?: string
+          responded_at?: string | null
+          rsvp_status?: string
+        }
+        Relationships: []
+      }
+      review_prep_checklist: {
+        Row: {
+          annual_review_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_complete: boolean
+          item: string
+        }
+        Insert: {
+          annual_review_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_complete?: boolean
+          item: string
+        }
+        Update: {
+          annual_review_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_complete?: boolean
+          item?: string
         }
         Relationships: []
       }
@@ -875,6 +1019,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_workflow_enrollments: {
+        Row: {
+          completed_at: string | null
+          contact_id: string | null
+          context: Json
+          current_step_order: number
+          enrolled_at: string
+          id: string
+          listing_id: string | null
+          next_action_at: string
+          status: string
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_id?: string | null
+          context?: Json
+          current_step_order?: number
+          enrolled_at?: string
+          id?: string
+          listing_id?: string | null
+          next_action_at?: string
+          status?: string
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          contact_id?: string | null
+          context?: Json
+          current_step_order?: number
+          enrolled_at?: string
+          id?: string
+          listing_id?: string | null
+          next_action_at?: string
+          status?: string
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      crm_workflow_steps: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          delay_minutes: number
+          id: string
+          step_order: number
+          workflow_id: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          created_at?: string
+          delay_minutes?: number
+          id?: string
+          step_order: number
+          workflow_id: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          delay_minutes?: number
+          id?: string
+          step_order?: number
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      crm_workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          enrollment_count: number
+          id: string
+          is_active: boolean
+          last_executed_at: string | null
+          name: string
+          trigger_conditions: Json
+          trigger_object: string
+          trigger_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enrollment_count?: number
+          id?: string
+          is_active?: boolean
+          last_executed_at?: string | null
+          name: string
+          trigger_conditions?: Json
+          trigger_object?: string
+          trigger_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enrollment_count?: number
+          id?: string
+          is_active?: boolean
+          last_executed_at?: string | null
+          name?: string
+          trigger_object?: string
+          trigger_type?: string
+          trigger_conditions?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       nurture_sequence_enrollments: {
         Row: {
@@ -1441,6 +1702,7 @@ export type Database = {
         Row: {
           budget_max: number | null
           budget_min: number | null
+          contact_id: string | null
           created_at: string
           email: string | null
           id: string
@@ -1457,6 +1719,7 @@ export type Database = {
         Insert: {
           budget_max?: number | null
           budget_min?: number | null
+          contact_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -1473,6 +1736,7 @@ export type Database = {
         Update: {
           budget_max?: number | null
           budget_min?: number | null
+          contact_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -1486,7 +1750,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leads_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       list_memberships: {
         Row: {
@@ -2003,6 +2275,103 @@ export type Database = {
           },
         ]
       }
+      competitor_listings: {
+        Row: {
+          address: string
+          analysis_id: string
+          condition_vs_ours: string | null
+          days_on_market: number | null
+          id: string
+          list_price: number | null
+          notes: string | null
+        }
+        Insert: {
+          address: string
+          analysis_id: string
+          condition_vs_ours?: string | null
+          days_on_market?: number | null
+          id?: string
+          list_price?: number | null
+          notes?: string | null
+        }
+        Update: {
+          address?: string
+          analysis_id?: string
+          condition_vs_ours?: string | null
+          days_on_market?: number | null
+          id?: string
+          list_price?: number | null
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      price_brackets: {
+        Row: {
+          active_supply: number
+          analysis_id: string
+          bracket_high: number
+          bracket_low: number
+          id: string
+          opportunity_score: number | null
+          recent_demand: number
+        }
+        Insert: {
+          active_supply?: number
+          analysis_id: string
+          bracket_high: number
+          bracket_low: number
+          id?: string
+          recent_demand?: number
+        }
+        Update: {
+          active_supply?: number
+          analysis_id?: string
+          bracket_high?: number
+          bracket_low?: number
+          id?: string
+          recent_demand?: number
+        }
+        Relationships: []
+      }
+      pricing_analyses: {
+        Row: {
+          bracket_size: number
+          created_at: string
+          id: string
+          listing_id: string
+          listing_price_estimate: number | null
+          notes: string | null
+          recommended_price: number | null
+          tam_high: number
+          tam_low: number
+          updated_at: string
+        }
+        Insert: {
+          bracket_size?: number
+          created_at?: string
+          id?: string
+          listing_id: string
+          listing_price_estimate?: number | null
+          notes?: string | null
+          recommended_price?: number | null
+          tam_high: number
+          tam_low: number
+          updated_at?: string
+        }
+        Update: {
+          bracket_size?: number
+          created_at?: string
+          id?: string
+          listing_id?: string
+          listing_price_estimate?: number | null
+          notes?: string | null
+          recommended_price?: number | null
+          tam_high?: number
+          tam_low?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           address: string | null
@@ -2133,6 +2502,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scripts: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          psychology_note: string | null
+          situation_trigger: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          psychology_note?: string | null
+          situation_trigger?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          psychology_note?: string | null
+          situation_trigger?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       saved_views: {
         Row: {
@@ -2614,6 +3025,10 @@ export type Database = {
     Functions: {
       create_contact_with_address: { Args: { payload: Json }; Returns: Json }
       create_property_with_address: { Args: { payload: Json }; Returns: Json }
+      seed_january_annual_reviews: {
+        Args: { p_max?: number; p_year: number }
+        Returns: Json
+      }
       update_contact_with_address: { Args: { payload: Json }; Returns: Json }
     }
     Enums: {

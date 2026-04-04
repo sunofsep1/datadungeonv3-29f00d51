@@ -17,6 +17,9 @@ import { useUserCommunicationSettings, useUpsertUserCommunicationSettings } from
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { toast } from "sonner";
 import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
+import { InboundLeadWebhookHelp } from "@/components/settings/InboundLeadWebhookHelp";
+import { LeadCsvImportBlock } from "@/components/settings/LeadCsvImportBlock";
+import { CrmWorkflowEngineCard } from "@/components/settings/CrmWorkflowEngineCard";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
   { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
@@ -263,6 +266,8 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">Send email from Contact detail or Marketing → Email Campaigns. From address is set in Supabase Edge Function secrets (RESEND_API_KEY, EMAIL_FROM).</p>
               </div>
             </div>
+            <InboundLeadWebhookHelp />
+            <LeadCsvImportBlock />
             <div className="flex items-start gap-3 pt-2 border-t border-border">
               <MessageSquare className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
@@ -298,6 +303,8 @@ export default function Settings() {
         </Card>
 
         <ListingStageAutomationCard />
+
+        <CrmWorkflowEngineCard />
 
         {/* Notifications */}
         <Card className="zoho-card p-6 border-border">

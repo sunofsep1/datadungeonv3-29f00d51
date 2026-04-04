@@ -37,6 +37,7 @@ const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
 const Research = lazy(() => import("./pages/Research"));
+const AnnualReviews = lazy(() => import("./pages/AnnualReviews"));
 const SmsSuitePage = lazy(() => import("./pages/sms/SmsSuitePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
@@ -81,6 +82,7 @@ const App = () => (
                 <Route path="/performance" element={<ProtectedRoute><MainLayout><ErrorBoundary><Performance /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/scripts" element={<ProtectedRoute><MainLayout><Scripts /></MainLayout></ProtectedRoute>} />
                 <Route path="/research" element={<ProtectedRoute><MainLayout><Research /></MainLayout></ProtectedRoute>} />
+                <Route path="/annual-reviews" element={<ProtectedRoute><MainLayout><AnnualReviews /></MainLayout></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />

@@ -17,6 +17,7 @@ import { MarketingBudgetCalculator } from "@/components/marketing/MarketingBudge
 import { CampaignEmailDialog } from "@/components/marketing/CampaignEmailDialog";
 import { ContentCalendar } from "@/components/agent-ops/ContentCalendar";
 import { CampaignManager } from "@/components/agent-ops/CampaignManager";
+import { ProspectingLeads } from "@/components/agent-ops/ProspectingLeads";
 import { format } from "date-fns";
 
 export default function Marketing() {
@@ -195,6 +196,7 @@ export default function Marketing() {
           <TabsTrigger value="posts">Posts & Campaigns</TabsTrigger>
           <TabsTrigger value="campaigns">Email Campaigns</TabsTrigger>
           <TabsTrigger value="calendar">Content Calendar</TabsTrigger>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
         </TabsList>
 
         <TabsContent value="budget">
@@ -288,6 +290,10 @@ export default function Marketing() {
 
         <TabsContent value="calendar">
           <ContentCalendar />
+        </TabsContent>
+
+        <TabsContent value="leads">
+          <ProspectingLeads />
         </TabsContent>
       </Tabs>
     </div>

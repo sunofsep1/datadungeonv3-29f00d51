@@ -8,6 +8,8 @@ export type DataHealthResult = {
   contacts_missing_touch_date: number;
   total_properties: number;
   properties_missing_details: number;
+  /** Documents how the score denominator is built (matches playbook: contacts×2 + properties×4). */
+  checks_mode?: string;
 };
 
 export function useDataHealth() {
@@ -33,6 +35,7 @@ export function useDataHealth() {
         contacts_missing_touch_date: Number(row.contacts_missing_touch_date ?? 0),
         total_properties: Number(row.total_properties ?? 0),
         properties_missing_details: Number(row.properties_missing_details ?? 0),
+        checks_mode: typeof row.checks_mode === "string" ? row.checks_mode : undefined,
       };
     },
     staleTime: 60_000,

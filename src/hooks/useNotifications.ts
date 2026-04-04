@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 export interface AppNotification {
   id: string;
   user_id: string;
   kind: string;
+  priority: "urgent" | "action_required" | "info";
   title: string;
   body: string | null;
+  action_url: string | null;
+  action_label: string | null;
+  related_contact_id: string | null;
+  related_listing_id: string | null;
   entity_type: string | null;
   entity_id: string | null;
+  event_key: string | null;
   read_at: string | null;
   created_at: string;
 }
@@ -18,6 +25,8 @@ const notificationsKey = ["notifications"] as const;
 
 export function useNotifications(limit = 20) {
   const { user } = useAuth();
+  useRealtimeSubscription("notifications", [["notifications"]]);
+
   return useQuery({
     queryKey: [...notificationsKey, user?.id, limit],
     queryFn: async (): Promise<AppNotification[]> => {
@@ -29,7 +38,11 @@ export function useNotifications(limit = 20) {
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []) as AppNotification[];
+      const rows = (data ?? []) as AppNotification[];
+      return rows.map((n) => ({
+        ...n,
+        priority: (n.priority ?? "info") as AppNotification["priority"],
+      }));
     },
     enabled: Boolean(user),
   });

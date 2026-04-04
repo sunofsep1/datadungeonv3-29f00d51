@@ -13,6 +13,7 @@ const prefetchers: Record<string, () => Promise<unknown>> = {
   "/marketing": () => import("@/pages/Marketing"),
   "/performance": () => import("@/pages/Performance"),
   "/research": () => import("@/pages/Research"),
+  "/annual-reviews": () => import("@/pages/AnnualReviews"),
   "/settings": () => import("@/pages/Settings"),
   "/scripts": () => import("@/pages/Scripts"),
   "/hot-leads": () => import("@/pages/HotLeads"),

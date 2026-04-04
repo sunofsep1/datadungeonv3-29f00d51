@@ -31,6 +31,8 @@ export function ListingStageAutomationCard() {
   const [smsBody, setSmsBody] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailHtml, setEmailHtml] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDueDays, setTaskDueDays] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -40,7 +42,7 @@ export function ListingStageAutomationCard() {
     try {
       const { data, error } = await supabase
         .from("listing_stage_automations")
-        .select("sms_body, email_subject, email_html")
+        .select("sms_body, email_subject, email_html, task_title, task_due_days")
         .eq("user_id", user.id)
         .eq("pipeline_stage", stage)
         .maybeSingle();
@@ -48,6 +50,12 @@ export function ListingStageAutomationCard() {
       setSmsBody(data?.sms_body ?? "");
       setEmailSubject(data?.email_subject ?? "");
       setEmailHtml(data?.email_html ?? "");
+      setTaskTitle(data?.task_title ?? "");
+      setTaskDueDays(
+        data?.task_due_days != null && Number.isFinite(data.task_due_days)
+          ? String(data.task_due_days)
+          : "",
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not load rule");
     } finally {
@@ -63,6 +71,11 @@ export function ListingStageAutomationCard() {
     if (!user?.id) return;
     setSaving(true);
     try {
+      const dueParsed = taskDueDays.trim() === "" ? null : Number.parseInt(taskDueDays.trim(), 10);
+      const taskDueDaysValue =
+        dueParsed != null && Number.isFinite(dueParsed) && dueParsed >= 0
+          ? Math.min(3650, dueParsed)
+          : null;
       const { error } = await supabase.from("listing_stage_automations").upsert(
         {
           user_id: user.id,
@@ -70,6 +83,8 @@ export function ListingStageAutomationCard() {
           sms_body: smsBody.trim() || null,
           email_subject: emailSubject.trim() || null,
           email_html: emailHtml.trim() || null,
+          task_title: taskTitle.trim() || null,
+          task_due_days: taskDueDaysValue,
         },
         { onConflict: "user_id,pipeline_stage" },
       );
@@ -95,6 +110,8 @@ export function ListingStageAutomationCard() {
       setSmsBody("");
       setEmailSubject("");
       setEmailHtml("");
+      setTaskTitle("");
+      setTaskDueDays("");
       toast.success("Removed rule for this stage");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -110,8 +127,9 @@ export function ListingStageAutomationCard() {
         <h3 className="font-semibold text-foreground">Listing stage automations</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        When you move a listing into a stage on the board, optional SMS (Mobile Message) and/or email (Resend) go to the
-        linked contact. Tokens: <code className="text-[10px]">{"{{listing_address}}"}</code>,{" "}
+        When you move a listing into a stage on the board, optional SMS (Mobile Message), email (Resend), and/or a listing
+        task can run. Messages require a linked contact. Tokens:{" "}
+        <code className="text-[10px]">{"{{listing_address}}"}</code>,{" "}
         <code className="text-[10px]">{"{{contact_name}}"}</code>.
       </p>
       <div className="space-y-3">
@@ -159,6 +177,29 @@ export function ListingStageAutomationCard() {
             onChange={(e) => setEmailHtml(e.target.value)}
             disabled={loading}
           />
+        </div>
+        <div className="space-y-2">
+          <Label>Listing task title (optional)</Label>
+          <Input
+            className="bg-input"
+            placeholder="Follow up: {{listing_address}}"
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            disabled={loading}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Task due in (days, optional)</Label>
+          <Input
+            type="number"
+            min={0}
+            className="bg-input max-w-[120px]"
+            placeholder="—"
+            value={taskDueDays}
+            onChange={(e) => setTaskDueDays(e.target.value)}
+            disabled={loading}
+          />
+          <p className="text-[11px] text-muted-foreground">Leave blank for no due date.</p>
         </div>
         <div className="flex flex-wrap gap-2 pt-2">
           <Button type="button" onClick={() => void save()} disabled={saving || loading}>

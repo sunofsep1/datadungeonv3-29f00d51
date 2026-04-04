@@ -67,6 +67,7 @@ import {
   type ListingActionModalKey,
 } from "@/components/listings/ListingStickyActionBar";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
+import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
 import { useActivityLogByListing, useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useCreateAppointment } from "@/hooks/useAppointments";
 import { useLogListingStageMove } from "@/hooks/useEvents";
@@ -907,6 +908,12 @@ export default function ListingDetail() {
           )}
         </Card>
       </div>
+
+      <ListingPricingPanel
+        listingId={listing.id}
+        listingPrice={listing.price != null ? Number(listing.price) : null}
+        onListingUpdated={() => void refetch()}
+      />
 
       <Card className="zoho-card p-6 border-border">
         <ActivityTimeline entityType="listing" entityId={id} showAddNote={true} />

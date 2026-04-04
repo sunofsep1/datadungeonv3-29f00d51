@@ -136,44 +136,75 @@ Deno.serve(async (req) => {
 
     const { data: rule } = await svc
       .from("listing_stage_automations")
-      .select("sms_body, email_subject, email_html")
+      .select("sms_body, email_subject, email_html, task_title, task_due_days")
       .eq("user_id", userId)
       .eq("pipeline_stage", body.new_stage)
       .maybeSingle();
 
-    if (!rule || (!rule.sms_body?.trim() && !rule.email_subject?.trim())) {
+    const hasSmsOrEmail =
+      Boolean(rule?.sms_body?.trim()) || Boolean(rule?.email_subject?.trim());
+    const hasTask = Boolean(rule?.task_title?.trim());
+
+    if (!rule || (!hasSmsOrEmail && !hasTask)) {
       return new Response(JSON.stringify({ skipped: true, reason: "no_rule" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!listing.contact_id) {
-      return new Response(JSON.stringify({ skipped: true, reason: "no_contact_on_listing" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    let contact: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      mobile?: string | null;
+      phone?: string | null;
+      sms_opt_out?: boolean | null;
+      email_opt_out?: boolean | null;
+      contact_channels?: Array<{
+        channel_type: string;
+        value?: string | null;
+        is_primary?: boolean | null;
+      }>;
+    } | null = null;
 
-    const { data: contact, error: cErr } = await svc
-      .from("contacts")
-      .select("id, name, email, mobile, phone, sms_opt_out, email_opt_out, contact_channels ( channel_type, value, is_primary )")
-      .eq("id", listing.contact_id)
-      .maybeSingle();
+    if (hasSmsOrEmail) {
+      if (!listing.contact_id) {
+        return new Response(JSON.stringify({ skipped: true, reason: "no_contact_on_listing" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    if (cErr || !contact) {
-      return new Response(JSON.stringify({ error: "Contact not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const { data: cRow, error: cErr } = await svc
+        .from("contacts")
+        .select("id, name, email, mobile, phone, sms_opt_out, email_opt_out, contact_channels ( channel_type, value, is_primary )")
+        .eq("id", listing.contact_id)
+        .maybeSingle();
+
+      if (cErr || !cRow) {
+        return new Response(JSON.stringify({ error: "Contact not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      contact = cRow;
+    } else if (hasTask && listing.contact_id) {
+      const { data: nameRow } = await svc
+        .from("contacts")
+        .select("name")
+        .eq("id", listing.contact_id)
+        .maybeSingle();
+      if (nameRow?.name) {
+        contact = { id: listing.contact_id, name: nameRow.name };
+      }
     }
 
     const ctx = {
       listing_address: listing.address ?? "",
-      contact_name: contact.name ?? "",
+      contact_name: contact?.name ?? "",
     };
 
     const actions: Record<string, unknown> = {};
 
-    if (rule.sms_body?.trim() && mmCreds && contact.sms_opt_out !== true) {
+    if (rule.sms_body?.trim() && contact && mmCreds && contact.sms_opt_out !== true) {
       const raw = getContactPhone(contact);
       if (raw?.trim()) {
         let to = raw.trim().replace(/\s/g, "");
@@ -204,7 +235,7 @@ Deno.serve(async (req) => {
       } else actions.sms = "skipped_no_phone";
     } else if (rule.sms_body?.trim()) actions.sms = "skipped_no_mm_or_opt_out";
 
-    if (rule.email_subject?.trim() && RESEND_API_KEY && contact.email_opt_out !== true) {
+    if (rule.email_subject?.trim() && contact && RESEND_API_KEY && contact.email_opt_out !== true) {
       const to = getContactEmail(contact);
       if (to) {
         const sub = mergeListingTokens(rule.email_subject, ctx);
@@ -226,6 +257,39 @@ Deno.serve(async (req) => {
         if (!res.ok) actions.email_error = await res.json().catch(() => ({}));
       } else actions.email = "skipped_no_email";
     } else if (rule.email_subject?.trim()) actions.email = "skipped_no_resend_or_opt_out";
+
+    if (hasTask && rule.task_title?.trim()) {
+      const title = mergeListingTokens(rule.task_title.trim(), ctx);
+      let due_at: string | null = null;
+      const days = rule.task_due_days;
+      if (typeof days === "number" && Number.isFinite(days) && days >= 0) {
+        const d = new Date();
+        const add = Math.min(3650, Math.floor(days));
+        d.setUTCDate(d.getUTCDate() + add);
+        due_at = d.toISOString();
+      }
+      const { data: maxRow } = await svc
+        .from("listing_tasks")
+        .select("sort_order")
+        .eq("listing_id", body.listing_id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const nextSort = (typeof maxRow?.sort_order === "number" ? maxRow.sort_order : -1) + 1;
+      const { error: taskErr } = await svc.from("listing_tasks").insert({
+        listing_id: body.listing_id,
+        user_id: userId,
+        title,
+        due_at,
+        sort_order: nextSort,
+      });
+      if (taskErr) {
+        actions.task = "failed";
+        actions.task_error = taskErr.message;
+      } else {
+        actions.task = "created";
+      }
+    }
 
     return new Response(JSON.stringify({ ok: true, actions }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

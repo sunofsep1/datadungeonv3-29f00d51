@@ -837,7 +837,12 @@ export function EnhancedCalendarWidget() {
                   <SelectItem value="">None</SelectItem>
                   {leads.map((lead) => (
                     <SelectItem key={lead.id} value={lead.id}>
-                      {lead.name}
+                      <span className="flex items-center gap-2">
+                        {lead.name}
+                        {lead.contact_id ? (
+                          <span className="text-[10px] text-muted-foreground font-normal">CRM</span>
+                        ) : null}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

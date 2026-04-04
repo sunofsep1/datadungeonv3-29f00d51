@@ -96,6 +96,12 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
     ? user.email.slice(0, 2).toUpperCase()
     : "U";
 
+  const priorityDotClass = (priority: string) => {
+    if (priority === "urgent") return "bg-red-500";
+    if (priority === "action_required") return "bg-amber-500";
+    return "bg-sky-500";
+  };
+
   return (
     <header
       className={cn(
@@ -191,13 +197,20 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
                     className="flex flex-col items-start gap-1 whitespace-normal py-2"
                     onClick={() => {
                       if (!n.read_at) markRead.mutate(n.id);
+                      if (n.action_url) navigate(n.action_url);
                     }}
                   >
                     <div className="flex w-full items-center justify-between gap-2">
-                      <span className={cn("text-sm", !n.read_at && "font-semibold")}>{n.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("h-2 w-2 rounded-full", priorityDotClass(n.priority))} />
+                        <span className={cn("text-sm", !n.read_at && "font-semibold")}>{n.title}</span>
+                      </div>
                       {!n.read_at ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
                     </div>
                     {n.body ? <span className="text-xs text-muted-foreground">{n.body}</span> : null}
+                    {n.action_label ? (
+                      <span className="text-[11px] text-primary">{n.action_label}</span>
+                    ) : null}
                   </DropdownMenuItem>
                 ))}
               </div>

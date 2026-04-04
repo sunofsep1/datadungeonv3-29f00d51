@@ -1,0 +1,212 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/**
+ * Inbound lead capture for forms, landing pages, or Zapier/Make.
+ *
+ * Deploy with verify_jwt=false. Set secret in Supabase Dashboard → Edge Functions → Secrets:
+ *   INBOUND_WEBHOOK_SECRET   long random string (preferred for external form posts)
+ *
+ * Auth (either):
+ *   Authorization: Bearer <INBOUND_WEBHOOK_SECRET>
+ *   Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>   (fallback; do not expose to public forms)
+ *
+ * POST JSON body:
+ *   owner_user_id (required uuid) — CRM user who owns this lead (your Supabase auth user id)
+ *   name (optional) — full name; else first_name + last_name required between them
+ *   first_name, last_name, email, phone
+ *   source (optional, default "inbound_webhook")
+ *   notes, property_interest, budget_min, budget_max, timeline
+ *   create_contact (optional, default true) — also insert a contacts row; lead row is updated with contact_id when that succeeds
+ */
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isAuthorized(req: Request): boolean {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+  const token = authHeader.slice(7);
+  const webhookSecret = Deno.env.get("INBOUND_WEBHOOK_SECRET");
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (webhookSecret && token === webhookSecret) return true;
+  if (serviceRole && token === serviceRole) return true;
+  return false;
+}
+
+function splitName(full: string): { first: string; last: string } {
+  const t = full.trim();
+  if (!t) return { first: "Lead", last: "" };
+  const parts = t.split(/\s+/);
+  if (parts.length === 1) return { first: parts[0]!, last: "" };
+  return { first: parts[0]!, last: parts.slice(1).join(" ") };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (!isAuthorized(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) {
+    return new Response(JSON.stringify({ error: "Server misconfigured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const ownerUserId = typeof body.owner_user_id === "string" ? body.owner_user_id.trim() : "";
+  if (!ownerUserId || !UUID_RE.test(ownerUserId)) {
+    return new Response(JSON.stringify({ error: "owner_user_id must be a valid UUID" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const firstRaw = typeof body.first_name === "string" ? body.first_name.trim() : "";
+  const lastRaw = typeof body.last_name === "string" ? body.last_name.trim() : "";
+  const nameRaw = typeof body.name === "string" ? body.name.trim() : "";
+
+  let displayName: string;
+  let firstName: string;
+  let lastName: string;
+  if (nameRaw) {
+    const s = splitName(nameRaw);
+    firstName = firstRaw || s.first;
+    lastName = lastRaw || s.last;
+    displayName = nameRaw;
+  } else if (firstRaw || lastRaw) {
+    firstName = firstRaw || "Lead";
+    lastName = lastRaw;
+    displayName = `${firstName} ${lastName}`.trim();
+  } else {
+    return new Response(
+      JSON.stringify({ error: "Provide name or first_name / last_name" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const email = typeof body.email === "string" ? body.email.trim() || null : null;
+  const phone = typeof body.phone === "string" ? body.phone.trim() || null : null;
+  const source = typeof body.source === "string" && body.source.trim() ? body.source.trim() : "inbound_webhook";
+  const notes = typeof body.notes === "string" ? body.notes.trim() || null : null;
+  const propertyInterest =
+    typeof body.property_interest === "string" ? body.property_interest.trim() || null : null;
+  const timeline = typeof body.timeline === "string" ? body.timeline.trim() || null : null;
+  const budgetMin =
+    typeof body.budget_min === "number" ? body.budget_min : typeof body.budget_min === "string" ? Number(body.budget_min) : null;
+  const budgetMax =
+    typeof body.budget_max === "number" ? body.budget_max : typeof body.budget_max === "string" ? Number(body.budget_max) : null;
+  const createContact = body.create_contact === false ? false : true;
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data: leadRow, error: leadErr } = await supabase
+    .from("leads")
+    .insert({
+      user_id: ownerUserId,
+      name: displayName,
+      email,
+      phone,
+      source,
+      notes,
+      property_interest: propertyInterest,
+      budget_min: budgetMin != null && Number.isFinite(budgetMin) ? budgetMin : null,
+      budget_max: budgetMax != null && Number.isFinite(budgetMax) ? budgetMax : null,
+      timeline,
+      status: "new",
+    })
+    .select("id")
+    .single();
+
+  if (leadErr) {
+    console.error("[inbound-lead] leads insert:", leadErr);
+    return new Response(JSON.stringify({ error: leadErr.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  let contactId: string | null = null;
+  if (createContact) {
+    const { data: cRow, error: cErr } = await supabase
+      .from("contacts")
+      .insert({
+        user_id: ownerUserId,
+        owner_id: ownerUserId,
+        first_name: firstName,
+        last_name: lastName || null,
+        name: displayName,
+        email,
+        phone,
+        source,
+        notes,
+        contact_category: "warm_lead",
+        property_requirements: propertyInterest ? { summary: propertyInterest } : null,
+        buying_budget_min: budgetMin != null && Number.isFinite(budgetMin) ? budgetMin : null,
+        buying_budget_max: budgetMax != null && Number.isFinite(budgetMax) ? budgetMax : null,
+      })
+      .select("id")
+      .single();
+
+    if (cErr) {
+      console.error("[inbound-lead] contacts insert:", cErr);
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          lead_id: leadRow.id,
+          contact_id: null,
+          warning: `Lead created but contact failed: ${cErr.message}`,
+        }),
+        { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    contactId = cRow?.id ?? null;
+    if (contactId) {
+      const { error: linkErr } = await supabase
+        .from("leads")
+        .update({ contact_id: contactId })
+        .eq("id", leadRow.id);
+      if (linkErr) {
+        console.error("[inbound-lead] lead contact_id link:", linkErr);
+      }
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      lead_id: leadRow.id,
+      contact_id: contactId,
+    }),
+    { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+});

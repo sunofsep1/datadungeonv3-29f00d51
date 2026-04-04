@@ -14,7 +14,8 @@ type TableName =
   | "contact_tags"
   | "contact_channels"
   | "properties"
-  | "contact_property_links";
+  | "contact_property_links"
+  | "notifications";
 
 export function useRealtimeSubscription(
   tableName: TableName,
