@@ -77,6 +77,9 @@ export function DashboardWelcomeHeader() {
             `${greeting}!`
           )}
         </p>
+        <p className="mt-1.5 text-xs text-muted-foreground max-w-md" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+          Daily command center: follow-ups, tasks, and what needs attention next.
+        </p>
       </div>
     </div>
   );

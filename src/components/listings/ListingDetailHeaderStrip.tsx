@@ -40,7 +40,7 @@ export function ListingDetailHeaderStrip({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-start gap-2 min-w-0">
           <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" asChild aria-label="Back to listings">
-            <Link to="/listings-sales">
+            <Link to="/listings">
               <ArrowLeft className="w-5 h-5" />
             </Link>
           </Button>

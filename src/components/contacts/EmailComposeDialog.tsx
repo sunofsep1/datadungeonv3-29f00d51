@@ -16,6 +16,8 @@ interface EmailComposeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   to: string;
+  /** When set, a sent email is logged on the contact timeline (interactions). */
+  contactId?: string;
   contactName?: string;
   onSent?: () => void;
 }
@@ -24,6 +26,7 @@ export function EmailComposeDialog({
   open,
   onOpenChange,
   to,
+  contactId,
   contactName,
   onSent,
 }: EmailComposeDialogProps) {
@@ -59,6 +62,7 @@ export function EmailComposeDialog({
           to,
           subject: subject.trim(),
           html: body.trim().replace(/\n/g, "<br>") || "<p></p>",
+          ...(contactId ? { contact_id: contactId, log_to_timeline: true } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));

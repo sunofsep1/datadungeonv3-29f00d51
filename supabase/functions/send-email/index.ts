@@ -44,8 +44,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = await req.json();
-    const { to, subject, html, replyTo } = body;
+    const body = await req.json() as {
+      to?: unknown;
+      subject?: unknown;
+      html?: unknown;
+      replyTo?: unknown;
+      contact_id?: unknown;
+      log_to_timeline?: unknown;
+    };
+    const { to, subject, html, replyTo, contact_id: contactIdRaw, log_to_timeline: logTimeline } = body;
 
     if (!to || !subject) {
       return new Response(JSON.stringify({ error: "Missing to or subject" }), {
@@ -55,6 +62,7 @@ Deno.serve(async (req) => {
     }
 
     const userEmail = data.claims.email as string | undefined;
+    const userId = data.claims.sub as string;
 
     // Sanitize HTML: strip script tags, event handlers, javascript: URIs
     const sanitize = (h: string): string =>
@@ -85,6 +93,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: resData?.message || "Failed to send email" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const safeHtml = sanitize(html || "");
+    if (logTimeline !== false && contactIdRaw && typeof contactIdRaw === "string") {
+      const bodyPreview = safeHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 2000);
+      await supabase.from("interactions").insert({
+        contact_id: contactIdRaw,
+        user_id: userId,
+        type: "email",
+        channel: "email",
+        subject: String(subject),
+        body: bodyPreview || null,
       });
     }
 

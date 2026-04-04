@@ -53,6 +53,8 @@ export interface ContactsFilterPanelProps {
   onFilterTimeframeCategoryChange: (v: string) => void;
   filterRoleCategory: string;
   onFilterRoleCategoryChange: (v: string) => void;
+  filterContactClassification: string;
+  onFilterContactClassificationChange: (v: string) => void;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
 }
@@ -78,6 +80,8 @@ export function ContactsFilterPanel({
   onFilterTimeframeCategoryChange,
   filterRoleCategory,
   onFilterRoleCategoryChange,
+  filterContactClassification,
+  onFilterContactClassificationChange,
   hasActiveFilters,
   onClearFilters,
 }: ContactsFilterPanelProps) {
@@ -147,6 +151,26 @@ export function ContactsFilterPanel({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+          Contact category (playbook)
+        </Label>
+        <Select value={filterContactClassification} onValueChange={onFilterContactClassificationChange}>
+          <SelectTrigger className="w-full bg-input border-border text-foreground">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="top_100">Top 100</SelectItem>
+            <SelectItem value="past_client">Past client</SelectItem>
+            <SelectItem value="referral_partner">Referral partner</SelectItem>
+            <SelectItem value="hot_lead">Hot lead</SelectItem>
+            <SelectItem value="warm_lead">Warm lead</SelectItem>
+            <SelectItem value="seller_nurture">Seller nurture</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>

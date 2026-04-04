@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { differenceInCalendarDays, format } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
@@ -94,6 +94,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
+import {
+  CONTACT_SMART_LISTS,
+  parseSmartListParam,
+  isClassificationSmartList,
+  type ContactClassificationKey,
+} from "@/lib/contactSmartLists";
 
 type SortOption =
   | "name-asc"
@@ -391,6 +397,8 @@ function buildNormalizedExistingContact(contact: ContactWithMeta): Record<string
 
 export default function Contacts() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const smartParam = searchParams.get("smart");
   const { data: contacts, isLoading, isError, refetch } = useContacts();
   const { data: tags } = useTags();
   const createContact = useCreateContact();
@@ -415,6 +423,8 @@ export default function Contacts() {
   const [newTagName, setNewTagName] = useState("");
   const [filterHasProperty, setFilterHasProperty] = useState<boolean | null>(initialPrefs.filterHasProperty);
   const [filterLastTouched, setFilterLastTouched] = useState<string>(initialPrefs.filterLastTouched);
+  const [filterContactClassification, setFilterContactClassification] = useState<"all" | ContactClassificationKey>("all");
+  const [filterNoNextTouch, setFilterNoNextTouch] = useState(false);
   const [filterLeadTemperature, setFilterLeadTemperature] = useState("all");
   const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
@@ -430,6 +440,34 @@ export default function Contacts() {
   );
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
+
+  useEffect(() => {
+    const s = parseSmartListParam(smartParam);
+    if (s == null) return;
+    if (s === "all") {
+      setFilterContactClassification("all");
+      setFilterNoNextTouch(false);
+      setFilterLastTouched("all");
+      return;
+    }
+    if (isClassificationSmartList(s)) {
+      setFilterContactClassification(s);
+      setFilterNoNextTouch(false);
+      setFilterLastTouched("all");
+      return;
+    }
+    if (s === "stale") {
+      setFilterContactClassification("all");
+      setFilterNoNextTouch(false);
+      setFilterLastTouched("stale");
+      return;
+    }
+    if (s === "no_next_touch") {
+      setFilterContactClassification("all");
+      setFilterNoNextTouch(true);
+      setFilterLastTouched("all");
+    }
+  }, [smartParam]);
 
   useEffect(() => {
     const prefs: ContactsListPersistedPrefs = {
@@ -531,7 +569,20 @@ export default function Contacts() {
     if (filterRoleCategory !== "all") {
       list = list.filter((c) => (c.role_category ?? "") === filterRoleCategory);
     }
-    
+
+    if (filterContactClassification !== "all") {
+      list = list.filter(
+        (c) =>
+          normalizeContactClassificationCategory(
+            (c as { contact_category?: string | null }).contact_category,
+          ) === filterContactClassification,
+      );
+    }
+
+    if (filterNoNextTouch) {
+      list = list.filter((c) => !(c as { next_touch_date?: string | null }).next_touch_date);
+    }
+
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
       const name = (c.name || "").trim();
@@ -575,6 +626,8 @@ export default function Contacts() {
     filterLeadTemperature,
     filterTimeframeCategory,
     filterRoleCategory,
+    filterContactClassification,
+    filterNoNextTouch,
     sortBy,
   ]);
 
@@ -598,6 +651,8 @@ export default function Contacts() {
     filterLeadTemperature,
     filterTimeframeCategory,
     filterRoleCategory,
+    filterContactClassification,
+    filterNoNextTouch,
     sortBy,
   ]);
 
@@ -609,7 +664,11 @@ export default function Contacts() {
     filterLastTouched !== "all" ||
     filterLeadTemperature !== "all" ||
     filterTimeframeCategory !== "all" ||
-    filterRoleCategory !== "all";
+    filterRoleCategory !== "all" ||
+    filterContactClassification !== "all" ||
+    filterNoNextTouch;
+
+  const clearSmartListParam = () => setSearchParams({}, { replace: true });
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -620,6 +679,9 @@ export default function Contacts() {
     setFilterLeadTemperature("all");
     setFilterTimeframeCategory("all");
     setFilterRoleCategory("all");
+    setFilterContactClassification("all");
+    setFilterNoNextTouch(false);
+    clearSmartListParam();
     setCurrentPage(1);
   };
 
@@ -1001,25 +1063,55 @@ export default function Contacts() {
 
   const filterPanelProps = {
     searchQuery,
-    onSearchChange: setSearchQuery,
+    onSearchChange: (v: string) => {
+      setSearchQuery(v);
+      clearSmartListParam();
+    },
     filterTagIds,
-    onToggleTagFilter: toggleTagFilter,
+    onToggleTagFilter: (id: string) => {
+      toggleTagFilter(id);
+      clearSmartListParam();
+    },
     tags,
     filterSource,
-    onFilterSourceChange: setFilterSource,
+    onFilterSourceChange: (v: string) => {
+      setFilterSource(v);
+      clearSmartListParam();
+    },
     distinctSources,
     filterHasProperty,
-    onFilterHasPropertyChange: setFilterHasProperty,
+    onFilterHasPropertyChange: (v: boolean | null) => {
+      setFilterHasProperty(v);
+      clearSmartListParam();
+    },
     filterLastTouched,
-    onFilterLastTouchedChange: setFilterLastTouched,
+    onFilterLastTouchedChange: (v: string) => {
+      setFilterLastTouched(v);
+      clearSmartListParam();
+    },
     sortBy,
     onSortChange: setSortBy,
     filterLeadTemperature,
-    onFilterLeadTemperatureChange: setFilterLeadTemperature,
+    onFilterLeadTemperatureChange: (v: string) => {
+      setFilterLeadTemperature(v);
+      clearSmartListParam();
+    },
     filterTimeframeCategory,
-    onFilterTimeframeCategoryChange: setFilterTimeframeCategory,
+    onFilterTimeframeCategoryChange: (v: string) => {
+      setFilterTimeframeCategory(v);
+      clearSmartListParam();
+    },
     filterRoleCategory,
-    onFilterRoleCategoryChange: setFilterRoleCategory,
+    onFilterRoleCategoryChange: (v: string) => {
+      setFilterRoleCategory(v);
+      clearSmartListParam();
+    },
+    filterContactClassification,
+    onFilterContactClassificationChange: (v: string) => {
+      setFilterContactClassification(v === "all" ? "all" : (v as ContactClassificationKey));
+      setFilterNoNextTouch(false);
+      clearSmartListParam();
+    },
     hasActiveFilters,
     onClearFilters: clearAllFilters,
   };
@@ -1210,8 +1302,36 @@ export default function Contacts() {
     <div className="animate-fade-in">
       <PageHeader
         title="Contacts"
-        description="Manage your contacts"
+        description="Smart lists and filters for your playbook categories and touch hygiene."
       />
+
+      <div className="flex flex-wrap gap-2 mb-6 -mt-1">
+        {CONTACT_SMART_LISTS.map((sl) => {
+          const urlSmart = parseSmartListParam(searchParams.get("smart")) ?? "all";
+          const active = urlSmart === sl.id;
+          return (
+            <Button
+              key={sl.id}
+              type="button"
+              variant={active ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                if (sl.id === "all") {
+                  setSearchParams({}, { replace: true });
+                  setFilterContactClassification("all");
+                  setFilterNoNextTouch(false);
+                  setFilterLastTouched("all");
+                } else {
+                  setSearchParams({ smart: sl.id }, { replace: true });
+                }
+              }}
+            >
+              {sl.short ?? sl.label}
+            </Button>
+          );
+        })}
+      </div>
 
       <Dialog
         open={isDialogOpen}

@@ -38,6 +38,8 @@ const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
 const Research = lazy(() => import("./pages/Research"));
 const AnnualReviews = lazy(() => import("./pages/AnnualReviews"));
+const Automations = lazy(() => import("./pages/Automations"));
+const DataHealth = lazy(() => import("./pages/DataHealth"));
 const SmsSuitePage = lazy(() => import("./pages/sms/SmsSuitePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
@@ -72,8 +74,8 @@ const App = () => (
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />
-                <Route path="/listings-sales" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
-                <Route path="/listings" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/listings" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
+                <Route path="/listings-sales" element={<Navigate to="/listings" replace />} />
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/properties/:id" element={<ProtectedRoute><MainLayout><PropertyDetail /></MainLayout></ProtectedRoute>} />
                 <Route path="/vision/:id" element={<ProtectedRoute><MainLayout><VisionCardDetail /></MainLayout></ProtectedRoute>} />
@@ -81,6 +83,8 @@ const App = () => (
                 <Route path="/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
                 <Route path="/performance" element={<ProtectedRoute><MainLayout><ErrorBoundary><Performance /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/scripts" element={<ProtectedRoute><MainLayout><Scripts /></MainLayout></ProtectedRoute>} />
+                <Route path="/automations" element={<ProtectedRoute><MainLayout><ErrorBoundary><Automations /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/data-health" element={<ProtectedRoute><MainLayout><DataHealth /></MainLayout></ProtectedRoute>} />
                 <Route path="/research" element={<ProtectedRoute><MainLayout><Research /></MainLayout></ProtectedRoute>} />
                 <Route path="/annual-reviews" element={<ProtectedRoute><MainLayout><AnnualReviews /></MainLayout></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />

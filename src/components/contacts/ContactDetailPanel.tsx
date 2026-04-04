@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface ContactDetailPanelProps {
 
 export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDetailPanelProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: contact, isLoading } = useContact(contactId || undefined);
   const { data: interactions = [] } = useInteractions(contactId || undefined);
@@ -270,8 +272,11 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
             open={emailComposeOpen}
             onOpenChange={setEmailComposeOpen}
             to={email}
+            contactId={contactId}
             contactName={contact.name ?? undefined}
-            onSent={() => createInteraction.mutate({ contact_id: contactId, type: "email", channel: "email", subject: "Email sent", body: null })}
+            onSent={() =>
+              contactId && queryClient.invalidateQueries({ queryKey: ["interactions", contactId] })
+            }
           />
         ) : null;
       })()}

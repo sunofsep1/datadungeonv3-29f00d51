@@ -5,11 +5,36 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { useContacts } from "@/hooks/useContacts";
 import { useProperties, formatPropertyAddress } from "@/hooks/useProperties";
 import { useListings } from "@/hooks/useListings";
-import { Users, Building2, Home } from "lucide-react";
+import {
+  Users,
+  Building2,
+  Home,
+  Sparkles,
+  ListTodo,
+  Workflow,
+  Activity,
+  Flame,
+  FileText,
+  Settings,
+  LayoutDashboard,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 
 const GLOBAL_SEARCH_EVENT = "open-global-search";
+
+const NAV_SHORTCUTS: Array<{ path: string; label: string; icon: typeof Users }> = [
+  { path: "/attention-hub", label: "Daily Hub", icon: Sparkles },
+  { path: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { path: "/tasks", label: "Tasks", icon: ListTodo },
+  { path: "/contacts", label: "Contacts", icon: Users },
+  { path: "/listings", label: "Listings", icon: Home },
+  { path: "/hot-leads", label: "Hot leads", icon: Flame },
+  { path: "/automations", label: "Automations", icon: Workflow },
+  { path: "/data-health", label: "Data health", icon: Activity },
+  { path: "/scripts", label: "Scripts", icon: FileText },
+  { path: "/settings", label: "Settings", icon: Settings },
+];
 
 export function GlobalSearch() {
   const navigate = useNavigate();
@@ -86,25 +111,61 @@ export function GlobalSearch() {
       <DialogContent className="zoho-dialog overflow-hidden p-0 gap-0 max-w-2xl bg-popover border-border text-popover-foreground shadow-xl" aria-describedby="global-search-desc">
         <DialogTitle className="sr-only">Search</DialogTitle>
         <DialogDescription id="global-search-desc" className="sr-only">
-          Search contacts, properties, and listings. Type to filter, then select a result to open it.
+          Search records or jump to a page. Type to filter contacts, properties, and listings, or use quick navigation when the search is empty.
         </DialogDescription>
         <Command
           className="rounded-lg border-0 bg-transparent [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-item][data-selected=true]]:bg-accent [&_[cmdk-item][data-selected=true]]:text-foreground"
           shouldFilter={false}
         >
           <CommandInput
-            placeholder="Search contacts, properties, listings… (⌘K)"
+            placeholder="Search or jump — contacts, properties, listings… (⌘K)"
             value={query}
             onValueChange={setQuery}
             className="placeholder:text-muted-foreground text-foreground border-b border-border h-12"
           />
         </Command>
-        <div className="max-h-[320px] overflow-y-auto border-t border-border">
-          {query && total === 0 && (
-            <div className="py-6 text-center text-sm text-muted-foreground">No results. Try a different search.</div>
-          )}
+        <div className="max-h-[min(420px,70vh)] overflow-y-auto border-t border-border">
           {!query && (
-            <div className="py-4 px-3 text-sm text-muted-foreground">Type to search contacts, properties, or listings.</div>
+            <div className="py-2">
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick navigation</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5 px-1 pb-2">
+                {NAV_SHORTCUTS.map(({ path, label, icon: Icon }) => (
+                  <button
+                    key={path}
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-md"
+                    onClick={() => handleSelect(path)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="px-3 pb-3 text-xs text-muted-foreground border-t border-border/60 pt-2">
+                Type to filter contacts, properties, and listings.
+              </p>
+            </div>
+          )}
+          {query && total === 0 && (
+            <div className="py-4 px-3 space-y-3">
+              <p className="text-center text-sm text-muted-foreground">No matching records. Try another term or open a page below.</p>
+              <div>
+                <div className="px-1 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick navigation</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+                  {NAV_SHORTCUTS.map(({ path, label, icon: Icon }) => (
+                    <button
+                      key={path}
+                      type="button"
+                      className="flex w-full items-center gap-2 px-2 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-md"
+                      onClick={() => handleSelect(path)}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="truncate">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
           {filteredContacts.length > 0 && (
             <div className="py-1">

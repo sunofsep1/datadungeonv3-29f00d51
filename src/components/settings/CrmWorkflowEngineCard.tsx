@@ -35,10 +35,16 @@ export function CrmWorkflowEngineCard() {
         <h3 className="font-semibold text-foreground">CRM workflows (automation)</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Linear workflows with timed steps: notifications, tasks, nurture enrollment, and safe contact updates. Runs on the{" "}
-        <code className="text-[10px]">process-workflows</code> Edge Function (service role + pg_cron every ~5 min). Deploy
-        with <code className="text-[10px]">npm run supabase:deploy:process-workflows</code> and apply migration{" "}
-        <code className="text-[10px]">20260404180000_crm_workflow_engine.sql</code>.
+        Workflows support linear steps, <strong className="font-medium text-foreground">if_branch</strong> (see migration{" "}
+        <code className="text-[10px]">20260404210000</code>), optional real SMS/email when step config sets{" "}
+        <code className="text-[10px]">execute_send: true</code> (Mobile Message + Resend). Listing workflows: set trigger to{" "}
+        <code className="text-[10px]">listing_stage_change</code> or <code className="text-[10px]">deal_stage_change</code>,{" "}
+        object <code className="text-[10px]">listing</code>, and{" "}
+        <code className="text-[10px]">trigger_conditions</code> like{" "}
+        <code className="text-[10px]">{`{"pipeline_stage":"Listed"}`}</code> — enrollments are created automatically when{" "}
+        <code className="text-[10px]">pipeline_stage</code> updates. Processor:{" "}
+        <code className="text-[10px]">process-workflows</code> (service role); schedule pg_cron every ~5 min (see{" "}
+        <code className="text-[10px]">RUN_IN_SUPABASE_DASHBOARD_process_workflows_cron.sql</code>).
       </p>
 
       <div className="space-y-3">

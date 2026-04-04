@@ -18,8 +18,14 @@ import {
   Building2,
   ListTodo,
   Sparkles,
-  FolderKanban,
   MessageSquare,
+  CheckSquare,
+  Workflow,
+  Activity,
+  ClipboardCheck,
+  Search,
+  Flame,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,41 +51,59 @@ type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
 const homeItems: NavItem[] = [
   { title: "Daily Hub", url: "/attention-hub", icon: Sparkles },
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Home", url: "/dashboard", icon: LayoutDashboard },
 ];
 
-const clientManagementItems: NavItem[] = [
-  { title: "To-Do", url: "/todos", icon: ListTodo },
+const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "Listings", url: "/listings", icon: Building2 },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare },
+];
+
+const relationshipItems: NavItem[] = [
   { title: "Nurture", url: "/nurture", icon: Sparkles },
+  { title: "To-Do lists", url: "/todos", icon: ListTodo },
   { title: "Properties", url: "/properties", icon: Building2 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
 ];
 
-const listingsSalesItems: NavItem[] = [
-  { title: "Listings & Sales", url: "/listings-sales", icon: FolderKanban },
+const automationItems: NavItem[] = [
+  { title: "Automations", url: "/automations", icon: Workflow },
+  { title: "Scripts", url: "/scripts", icon: FileText },
 ];
+
+const planningItems: NavItem[] = [{ title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck }];
 
 const businessItems: NavItem[] = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
 ];
 
+const insightsItems: NavItem[] = [
+  { title: "Data health", url: "/data-health", icon: Activity },
+  { title: "Research", url: "/research", icon: Search },
+  { title: "Hot leads", url: "/hot-leads", icon: Flame },
+  { title: "Recent", url: "/recent", icon: Clock },
+];
+
 const communicationsItems: NavItem[] = [{ title: "SMS suite", url: "/communications/sms", icon: MessageSquare }];
 
 const navItems: NavItem[] = [
   ...homeItems,
-  ...clientManagementItems,
-  ...listingsSalesItems,
+  ...dailyWorkItems,
+  ...relationshipItems,
+  ...automationItems,
+  ...planningItems,
   ...businessItems,
+  ...insightsItems,
   ...communicationsItems,
 ];
 
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Properties", url: "/properties", icon: Building2 },
-  { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Listings", url: "/listings", icon: Building2 },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare },
   { title: "More", url: "#more", icon: MoreHorizontal },
 ];
 
@@ -88,14 +112,14 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
   if (item.url === "/attention-hub" && pathname.startsWith("/attention-hub")) return true;
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
+  if (item.url === "/tasks" && pathname.startsWith("/tasks")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
-  if (
-    item.url === "/listings-sales" &&
-    (pathname.startsWith("/listings-sales") || pathname.startsWith("/listings/"))
-  )
-    return true;
+  if (item.url === "/listings" && (pathname === "/listings" || pathname.startsWith("/listings/"))) return true;
+  if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;
+  if (item.url === "/automations" && pathname.startsWith("/automations")) return true;
+  if (item.url === "/data-health" && pathname.startsWith("/data-health")) return true;
   if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
   return false;
 }
@@ -242,20 +266,38 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Client management</span>
+                  <span>Daily work</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {clientManagementItems.map((item) => renderNavItem(item, location.pathname))}
+                  {dailyWorkItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Listings & Sales</span>
+                  <span>Relationships & records</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {listingsSalesItems.map((item) => renderNavItem(item, location.pathname))}
+                  {relationshipItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
+                  <span>Automation & scripts</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {automationItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+              <Collapsible defaultOpen className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
+                  <span>Planning</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {planningItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
@@ -265,6 +307,15 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
                   {businessItems.map((item) => renderNavItem(item, location.pathname))}
+                </CollapsibleContent>
+              </Collapsible>
+              <Collapsible defaultOpen={false} className="space-y-0.5">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
+                  <span>Insights</span>
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 pt-0.5">
+                  {insightsItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
@@ -392,9 +443,21 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-popover border-border">
                     <DropdownMenuItem asChild>
-                      <NavLink to="/listings-sales" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
-                        <FolderKanban className="w-4 h-4" />
-                        Listings & Sales
+                      <NavLink to="/automations" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <Workflow className="w-4 h-4" />
+                        Automations
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/data-health" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <Activity className="w-4 h-4" />
+                        Data health
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/annual-reviews" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <ClipboardCheck className="w-4 h-4" />
+                        Reviews & events
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -438,13 +501,13 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                 </DropdownMenu>
               );
             }
-            const active = location.pathname === item.url;
+            const active = isNavActive(item, location.pathname);
             return (
               <NavLink
                 key={item.title}
                 to={item.url}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[64px]",
+                  "flex flex-col items-center justify-center gap-1 px-2 py-2 min-w-[56px]",
                   active ? "text-sidebar-primary" : "text-sidebar-foreground"
                 )}
               >

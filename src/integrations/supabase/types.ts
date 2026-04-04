@@ -1066,27 +1066,36 @@ export type Database = {
         Row: {
           action_config: Json
           action_type: string
+          branch_condition: Json
           created_at: string
           delay_minutes: number
           id: string
+          next_step_order_if_false: number | null
+          next_step_order_if_true: number | null
           step_order: number
           workflow_id: string
         }
         Insert: {
           action_config?: Json
           action_type: string
+          branch_condition?: Json
           created_at?: string
           delay_minutes?: number
           id?: string
+          next_step_order_if_false?: number | null
+          next_step_order_if_true?: number | null
           step_order: number
           workflow_id: string
         }
         Update: {
           action_config?: Json
           action_type?: string
+          branch_condition?: Json
           created_at?: string
           delay_minutes?: number
           id?: string
+          next_step_order_if_false?: number | null
+          next_step_order_if_true?: number | null
           step_order?: number
           workflow_id?: string
         }
@@ -2503,6 +2512,42 @@ export type Database = {
           },
         ]
       }
+      script_library_templates: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          psychology_note: string | null
+          situation_trigger: string | null
+          sort_order: number
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          id?: string
+          psychology_note?: string | null
+          situation_trigger?: string | null
+          sort_order?: number
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          psychology_note?: string | null
+          situation_trigger?: string | null
+          sort_order?: number
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: []
+      }
       scripts: {
         Row: {
           category: string
@@ -3029,6 +3074,7 @@ export type Database = {
         Args: { p_max?: number; p_year: number }
         Returns: Json
       }
+      seed_scripts_from_library: { Args: Record<string, never>; Returns: number }
       update_contact_with_address: { Args: { payload: Json }; Returns: Json }
     }
     Enums: {

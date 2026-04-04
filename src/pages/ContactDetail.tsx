@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -165,6 +166,7 @@ function normalizeContactClassificationCategory(
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const nurtureFocus = searchParams.get("nurtureFocus");
@@ -559,8 +561,9 @@ export default function ContactDetail() {
           open={emailComposeOpen}
           onOpenChange={setEmailComposeOpen}
           to={getPrimaryEmail(contact) ?? contact.email ?? ""}
+          contactId={id}
           contactName={displayName === "—" ? undefined : displayName}
-          onSent={() => id && createInteraction.mutate({ contact_id: id, type: "email", channel: "email", subject: "Email sent", body: null })}
+          onSent={() => id && queryClient.invalidateQueries({ queryKey: ["interactions", id] })}
         />
       )}
       {getAllPhones(contact).length > 0 && (

@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, FileText, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2, Search, Library } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   useCreateScript,
   useDeleteScript,
   useScriptSearch,
   useScripts,
+  useSeedScriptsFromLibrary,
   useUpdateScript,
   type ScriptCategory,
   type ScriptRecord,
@@ -40,6 +41,7 @@ function categoryLabel(category: string | null): string {
 
 export default function Scripts() {
   const { data: scripts = [] } = useScripts();
+  const seedLibrary = useSeedScriptsFromLibrary();
   const createScript = useCreateScript();
   const updateScript = useUpdateScript();
   const deleteScript = useDeleteScript();
@@ -148,7 +150,35 @@ export default function Scripts() {
         title="Scripts & Dialogues"
         description="Manage your call scripts and conversation templates"
         actions={
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={seedLibrary.isPending}
+              onClick={() =>
+                seedLibrary.mutate(undefined, {
+                  onSuccess: (n) =>
+                    toast({
+                      title: n > 0 ? "Starter scripts added" : "Nothing to add",
+                      description:
+                        n > 0
+                          ? `Imported ${n} script(s) from the library (skips titles you already have).`
+                          : "Every library title is already in your scripts.",
+                    }),
+                  onError: () =>
+                    toast({
+                      title: "Could not import",
+                      description: "Apply migration 20260404210000 and try again.",
+                      variant: "destructive",
+                    }),
+                })
+              }
+            >
+              <Library className="w-4 h-4" />
+              {seedLibrary.isPending ? "Importing…" : "Add starter scripts"}
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
               resetForm();
@@ -221,6 +251,7 @@ export default function Scripts() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 

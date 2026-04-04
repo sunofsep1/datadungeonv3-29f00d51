@@ -627,7 +627,7 @@ export default function ListingDetail() {
       <PageBreadcrumbs
         items={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: "Listings", href: "/listings-sales" },
+          { label: "Listings", href: "/listings" },
           { label: listing.address || "Listing" },
         ]}
         className="mb-3"

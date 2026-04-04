@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  digitsKey,
+  mobileMessageCredsFromEnv,
+  postMobileMessageBatch,
+  toE164Australia,
+} from "../_shared/smsCore.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,12 +27,100 @@ type StepRow = {
   action_type: string;
   action_config: Record<string, unknown>;
   delay_minutes: number;
+  branch_condition?: Record<string, unknown> | null;
+  next_step_order_if_true?: number | null;
+  next_step_order_if_false?: number | null;
 };
 
 function addMinutes(iso: string, minutes: number): string {
   const d = new Date(iso);
   d.setUTCMinutes(d.getUTCMinutes() + Math.min(525600, Math.max(0, Math.floor(minutes))));
   return d.toISOString();
+}
+
+function sanitizeEmailHtml(h: string): string {
+  return h
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/\bon\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
+    .replace(/javascript\s*:/gi, "");
+}
+
+function getContactPhone(contact: {
+  contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean | null }>;
+  mobile?: string | null;
+  phone?: string | null;
+} | null): string | null {
+  if (!contact) return null;
+  const channels = contact.contact_channels ?? [];
+  const primary = channels.find((c) => c.channel_type === "phone" && c.is_primary && c.value);
+  if (primary?.value) return String(primary.value);
+  const anyP = channels.find((c) => c.channel_type === "phone" && c.value);
+  if (anyP?.value) return String(anyP.value);
+  return contact.mobile ?? contact.phone ?? null;
+}
+
+function getContactEmail(contact: {
+  email?: string | null;
+  contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean | null }>;
+} | null): string | null {
+  if (!contact) return null;
+  const channels = contact.contact_channels ?? [];
+  const primary = channels.find((c) => c.channel_type === "email" && c.is_primary);
+  if (primary?.value) return String(primary.value);
+  const anyE = channels.find((c) => c.channel_type === "email" && c.value);
+  if (anyE?.value) return String(anyE.value);
+  return contact.email ?? null;
+}
+
+async function evalBranch(
+  supabase: ReturnType<typeof createClient>,
+  enrollment: EnrollmentRow,
+  condition: Record<string, unknown> | null | undefined,
+): Promise<boolean> {
+  const c = condition ?? {};
+  const kind = String(c.kind ?? "");
+
+  if (kind === "always_true") return true;
+
+  if (kind === "score_gte" && enrollment.contact_id) {
+    const min = Number(c.value) || 0;
+    const { data: cs } = await supabase
+      .from("contact_scores")
+      .select("total_score")
+      .eq("contact_id", enrollment.contact_id)
+      .maybeSingle();
+    return (typeof cs?.total_score === "number" ? cs.total_score : 0) >= min;
+  }
+
+  if (kind === "contact_field" && enrollment.contact_id) {
+    const field = String(c.field ?? "contact_category");
+    const expected = c.equals != null ? String(c.equals) : "";
+    if (!field || !expected) return false;
+    const allowed = new Set(["contact_category", "status", "source", "lifecycle_stage"]);
+    if (!allowed.has(field)) return false;
+    const { data: row } = await supabase.from("contacts").select(field).eq("id", enrollment.contact_id).maybeSingle();
+    if (!row || !(field in row)) return false;
+    return String((row as Record<string, unknown>)[field] ?? "") === expected;
+  }
+
+  if (kind === "listing_field" && enrollment.listing_id) {
+    const field = String(c.field ?? "pipeline_stage");
+    const expected = c.equals != null ? String(c.equals) : "";
+    if (!field || !expected) return false;
+    const allowed = new Set(["pipeline_stage", "lifecycle_stage", "journey_stage"]);
+    if (!allowed.has(field)) return false;
+    const { data: row } = await supabase.from("listings").select(field).eq("id", enrollment.listing_id).maybeSingle();
+    if (!row || !(field in row)) return false;
+    return String((row as Record<string, unknown>)[field] ?? "") === expected;
+  }
+
+  if (kind === "listing_has_contact" && enrollment.listing_id) {
+    const { data: row } = await supabase.from("listings").select("contact_id").eq("id", enrollment.listing_id).maybeSingle();
+    return Boolean(row?.contact_id);
+  }
+
+  return false;
 }
 
 async function executeStep(
@@ -41,6 +135,7 @@ async function executeStep(
     switch (step.action_type) {
       case "noop":
       case "wait_delay":
+      case "if_branch":
         return { ok: true };
 
       case "create_task": {
@@ -127,15 +222,121 @@ async function executeStep(
         return { ok: true };
       }
 
-      case "send_sms":
-      case "send_email": {
+      case "send_sms": {
+        const executeSend = cfg.execute_send === true;
+        const mmCreds = mobileMessageCredsFromEnv();
+        const message = cfg.body != null ? String(cfg.body) : "";
+
+        if (executeSend && enrollment.contact_id && mmCreds && message.trim()) {
+          const { data: contact } = await supabase
+            .from("contacts")
+            .select("id, sms_opt_out, mobile, phone, contact_channels ( channel_type, value, is_primary )")
+            .eq("id", enrollment.contact_id)
+            .maybeSingle();
+
+          if (contact && contact.sms_opt_out !== true) {
+            const raw = getContactPhone(contact);
+            if (raw?.trim()) {
+              let to = raw.trim().replace(/\s/g, "");
+              if (/^0?4\d{8}$/.test(to.replace(/\D/g, "")) || /^61\d{9}$/.test(to.replace(/\D/g, ""))) {
+                to = toE164Australia(to);
+              }
+              if (digitsKey(to).length >= 8) {
+                const batch = await postMobileMessageBatch(mmCreds, [{ to, message: message.trim() }]);
+                if (batch.ok) {
+                  const first = (batch.data?.results as Array<{ message_id?: string }> | undefined)?.[0];
+                  await supabase.from("sms_outbound").insert({
+                    user_id: uid,
+                    contact_id: enrollment.contact_id,
+                    to_phone: to,
+                    body_preview: message.length > 200 ? `${message.slice(0, 200)}…` : message,
+                    provider: "mobile_message",
+                    provider_message_id: first?.message_id ?? null,
+                    status: "sent",
+                    error: null,
+                  });
+                  return { ok: true };
+                }
+              }
+            }
+          }
+        }
+
         const { error } = await supabase.from("notifications").insert({
           user_id: uid,
           kind: "workflow_action",
-          title: String(cfg.title ?? (step.action_type === "send_sms" ? "Send SMS (workflow)" : "Send email (workflow)")),
-          body: cfg.body != null
-            ? String(cfg.body)
-            : "Automated send is not executed here — use listing automations, nurture, or send manually.",
+          title: String(cfg.title ?? "Send SMS (workflow)"),
+          body: executeSend
+            ? "SMS could not be sent automatically (missing Mobile Message config, phone, or opt-out). Compose manually from the contact."
+            : (cfg.body != null
+              ? String(cfg.body)
+              : "Set action_config.execute_send true to send via Mobile Message when configured."),
+          priority: "info",
+          related_contact_id: enrollment.contact_id,
+          related_listing_id: enrollment.listing_id,
+          entity_type: "workflow_enrollment",
+          entity_id: enrollment.id,
+        });
+        if (error) return { ok: false, error: error.message };
+        return { ok: true };
+      }
+
+      case "send_email": {
+        const executeSend = cfg.execute_send === true;
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        const emailFrom = Deno.env.get("EMAIL_FROM") || "onboarding@resend.dev";
+        const subject = String(cfg.subject ?? cfg.title ?? "Message from your agent");
+        const html = sanitizeEmailHtml(String(cfg.html ?? cfg.body ?? "<p></p>"));
+
+        if (executeSend && enrollment.contact_id && resendKey) {
+          const { data: contact } = await supabase
+            .from("contacts")
+            .select("id, email_opt_out, email, contact_channels ( channel_type, value, is_primary )")
+            .eq("id", enrollment.contact_id)
+            .maybeSingle();
+
+          if (contact && contact.email_opt_out !== true) {
+            const to = getContactEmail(contact);
+            if (to) {
+              const res = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${resendKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  from: emailFrom,
+                  to: [to],
+                  subject,
+                  html: html || "<p></p>",
+                }),
+              });
+              if (res.ok) {
+                const bodyPreview = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400);
+                await supabase.from("interactions").insert({
+                  contact_id: enrollment.contact_id,
+                  user_id: uid,
+                  type: "email",
+                  channel: "email",
+                  subject,
+                  body: bodyPreview || null,
+                  timestamp: new Date().toISOString(),
+                });
+                return { ok: true };
+              }
+            }
+          }
+        }
+
+        const { error } = await supabase.from("notifications").insert({
+          user_id: uid,
+          kind: "workflow_action",
+          title: String(cfg.title ?? "Send email (workflow)"),
+          body: executeSend
+            ? "Email could not be sent (Resend not configured, missing address, or opt-out)."
+            : (cfg.body != null
+              ? String(cfg.body)
+              : "Set action_config.execute_send true and html/subject to send via Resend."),
           priority: "info",
           related_contact_id: enrollment.contact_id,
           related_listing_id: enrollment.listing_id,
@@ -152,6 +353,33 @@ async function executeStep(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+function advanceEnrollment(
+  ordered: StepRow[],
+  enr: EnrollmentRow,
+  nextStepOrder: number,
+  now: string,
+): { completed: boolean; updates: { current_step_order: number; next_action_at: string; status?: string; completed_at?: string } } {
+  const nextStep = ordered.find((s) => s.step_order === nextStepOrder);
+  if (!nextStep) {
+    return {
+      completed: true,
+      updates: {
+        current_step_order: nextStepOrder,
+        next_action_at: now,
+        status: "completed",
+        completed_at: now,
+      },
+    };
+  }
+  return {
+    completed: false,
+    updates: {
+      current_step_order: nextStepOrder,
+      next_action_at: addMinutes(now, nextStep.delay_minutes),
+    },
+  };
 }
 
 Deno.serve(async (req) => {
@@ -209,7 +437,9 @@ Deno.serve(async (req) => {
 
       const { data: steps, error: stErr } = await supabase
         .from("crm_workflow_steps")
-        .select("step_order, action_type, action_config, delay_minutes")
+        .select(
+          "step_order, action_type, action_config, delay_minutes, branch_condition, next_step_order_if_true, next_step_order_if_false",
+        )
         .eq("workflow_id", enr.workflow_id)
         .order("step_order", { ascending: true });
 
@@ -230,30 +460,37 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const result = await executeStep(supabase, enr, step);
-      if (!result.ok) {
-        errors.push(`${enr.id} step ${step.step_order}: ${result.error ?? "unknown"}`);
-        continue;
-      }
+      let nextStepOrder: number;
 
-      const nextIdx = enr.current_step_order + 1;
-      const nextStep = ordered.find((s) => s.step_order === nextIdx);
-
-      if (!nextStep) {
-        await supabase
-          .from("crm_workflow_enrollments")
-          .update({ status: "completed", completed_at: now, next_action_at: now, current_step_order: nextIdx })
-          .eq("id", enr.id);
+      if (step.action_type === "if_branch") {
+        const branchOk = await evalBranch(supabase, enr, step.branch_condition as Record<string, unknown> | null);
+        nextStepOrder = branchOk
+          ? (typeof step.next_step_order_if_true === "number"
+            ? step.next_step_order_if_true
+            : enr.current_step_order + 1)
+          : (typeof step.next_step_order_if_false === "number"
+            ? step.next_step_order_if_false
+            : enr.current_step_order + 1);
       } else {
-        await supabase
-          .from("crm_workflow_enrollments")
-          .update({
-            current_step_order: nextIdx,
-            next_action_at: addMinutes(now, nextStep.delay_minutes),
-          })
-          .eq("id", enr.id);
+        const result = await executeStep(supabase, enr, step);
+        if (!result.ok) {
+          errors.push(`${enr.id} step ${step.step_order}: ${result.error ?? "unknown"}`);
+          continue;
+        }
+        nextStepOrder = enr.current_step_order + 1;
       }
 
+      const { completed, updates } = advanceEnrollment(ordered, enr, nextStepOrder, now);
+      const patch: Record<string, unknown> = {
+        current_step_order: updates.current_step_order,
+        next_action_at: updates.next_action_at,
+      };
+      if (completed) {
+        patch.status = "completed";
+        patch.completed_at = updates.completed_at;
+      }
+
+      await supabase.from("crm_workflow_enrollments").update(patch).eq("id", enr.id);
       await supabase.from("crm_workflows").update({ last_executed_at: now }).eq("id", enr.workflow_id);
       processed++;
     }

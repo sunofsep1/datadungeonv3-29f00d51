@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Code2, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink } from "lucide-react";
+import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Code2, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink, Workflow } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import type { Theme, Density } from "@/contexts/ThemeContext";
@@ -19,8 +19,7 @@ import { toast } from "sonner";
 import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
 import { InboundLeadWebhookHelp } from "@/components/settings/InboundLeadWebhookHelp";
 import { LeadCsvImportBlock } from "@/components/settings/LeadCsvImportBlock";
-import { CrmWorkflowEngineCard } from "@/components/settings/CrmWorkflowEngineCard";
-
+import { IN_APP_NOTIFICATION_SOURCES } from "@/lib/notificationRules";
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
   { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
   { value: "light", label: "Light", icon: Sun, desc: "Light theme for better visibility." },
@@ -61,6 +60,7 @@ const DENSITY_OPTIONS: { value: Density; label: string }[] = [
 ];
 
 export default function Settings() {
+  const location = useLocation();
   const { user } = useAuth();
   const { theme, setTheme, density, setDensity } = useTheme();
   const { commissionRate, setCommissionRate } = useCommissionRate();
@@ -80,6 +80,12 @@ export default function Settings() {
     reminderPrefsSeeded.current = true;
     upsertReminder.mutate({ digest_enabled: true, digest_frequency: "daily" });
   }, [user, reminderPrefsLoaded, reminderPrefs]);
+
+  React.useEffect(() => {
+    if (location.hash !== "#settings-notifications") return;
+    const el = document.getElementById("settings-notifications");
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [location.pathname, location.hash]);
 
   return (
     <div className="animate-fade-in">
@@ -304,14 +310,46 @@ export default function Settings() {
 
         <ListingStageAutomationCard />
 
-        <CrmWorkflowEngineCard />
+        <Card className="zoho-card p-6 border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Workflow className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">CRM workflows</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create workflows, enroll contacts, and manage listing triggers from the Automations hub.
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/automations">Open Automations</Link>
+            </Button>
+          </div>
+        </Card>
 
         {/* Notifications */}
-        <Card className="zoho-card p-6 border-border">
-          <div className="flex items-center gap-3 mb-6">
+        <Card id="settings-notifications" className="zoho-card p-6 border-border scroll-mt-20">
+          <div className="flex items-center gap-3 mb-4">
             <Bell className="w-5 h-5 text-primary" />
             <h3 className="font-semibold text-foreground">Notifications</h3>
           </div>
+          <div className="rounded-md border border-border/70 bg-muted/15 p-3 space-y-2 mb-6">
+            <p className="text-xs font-medium text-foreground">In-app (header bell)</p>
+            <p className="text-[11px] text-muted-foreground">
+              These appear in the drawer next to your avatar. New rows can arrive in real time; the badge counts unread items.
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-1.5 list-disc pl-4 marker:text-muted-foreground/70">
+              {IN_APP_NOTIFICATION_SOURCES.map((r) => (
+                <li key={r.headline}>
+                  <span className="text-foreground/90 font-medium">{r.headline}</span>
+                  <span className="text-muted-foreground"> — {r.detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            <span className="text-foreground font-medium">Daily digest email</span> is separate: it is an outbound email summary (Resend + cron), not the same list as the bell. Use both if you want inbox backup for follow-ups.
+          </p>
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <div>

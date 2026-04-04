@@ -37,6 +37,22 @@ export function useScriptSearch(searchText: string, enabled: boolean) {
   });
 }
 
+export function useSeedScriptsFromLibrary() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc("seed_scripts_from_library");
+      if (error) throw error;
+      return typeof data === "number" ? data : 0;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scripts"] });
+      queryClient.invalidateQueries({ queryKey: ["scripts-search"] });
+    },
+  });
+}
+
 export function useScripts() {
   return useQuery({
     queryKey: ["scripts"],

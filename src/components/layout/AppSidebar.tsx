@@ -18,6 +18,14 @@ import {
   ClipboardCheck,
   ChevronDown,
   Search,
+  Building2,
+  CheckSquare,
+  Workflow,
+  Activity,
+  Flame,
+  Sparkles,
+  Clock,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,40 +57,54 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    label: "Home",
+    label: "Daily work",
     defaultOpen: true,
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: "Client Management",
-    defaultOpen: true,
-    items: [
+      { title: "Home", url: "/dashboard", icon: LayoutDashboard },
       { title: "Contacts", url: "/contacts", icon: Users },
-      { title: "Properties", url: "/properties", icon: Home },
-      { title: "Calendar", url: "/calendar", icon: Calendar },
+      { title: "Listings", url: "/listings", icon: Building2 },
+      { title: "Tasks", url: "/tasks", icon: CheckSquare },
     ],
   },
   {
-    label: "Business",
+    label: "Automation & content",
     defaultOpen: true,
     items: [
+      { title: "Automations", url: "/automations", icon: Workflow },
+      { title: "Scripts", url: "/scripts", icon: FileText },
       { title: "Marketing", url: "/marketing", icon: Megaphone },
+    ],
+  },
+  {
+    label: "Planning",
+    defaultOpen: true,
+    items: [
+      { title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck },
+      { title: "Calendar", url: "/calendar", icon: Calendar },
+      { title: "Properties", url: "/properties", icon: Home },
+    ],
+  },
+  {
+    label: "Insights",
+    defaultOpen: false,
+    items: [
+      { title: "Data health", url: "/data-health", icon: Activity },
       { title: "Performance", url: "/performance", icon: BarChart3 },
       { title: "Research", url: "/research", icon: Search },
-      { title: "Annual reviews", url: "/annual-reviews", icon: ClipboardCheck },
+      { title: "Hot leads", url: "/hot-leads", icon: Flame },
+      { title: "Nurture", url: "/nurture", icon: Sparkles },
+      { title: "Recent", url: "/recent", icon: Clock },
     ],
   },
 ];
 
-// Flat list for mobile
 const allNavItems: NavItem[] = navGroups.flatMap((g) => g.items);
 
 const mobileNavItems = [
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Listings", url: "/listings", icon: Building2 },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare },
   { title: "More", url: "#more", icon: MoreHorizontal },
 ];
 
@@ -91,7 +113,7 @@ export function AppSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { signOut, user } = useAuth();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
-    Object.fromEntries(navGroups.map((g) => [g.label, g.defaultOpen ?? true]))
+    Object.fromEntries(navGroups.map((g) => [g.label, g.defaultOpen ?? true])),
   );
 
   const toggleGroup = (label: string) => {
@@ -100,14 +122,15 @@ export function AppSidebar() {
 
   const isActive = (url: string) => {
     if (url === "/dashboard") return location.pathname === "/dashboard";
+    if (url === "/listings") return location.pathname === "/listings" || location.pathname.startsWith("/listings/");
     if (url === "/calendar") return location.pathname.startsWith("/calendar") || location.pathname.startsWith("/appointments");
     if (url === "/properties") return location.pathname.startsWith("/properties");
-    return location.pathname === url || location.pathname.startsWith(url + "/");
+    if (url === "/contacts") return location.pathname.startsWith("/contacts");
+    return location.pathname === url || location.pathname.startsWith(`${url}/`);
   };
 
   return (
     <>
-      {/* Mobile Menu Button */}
       <Button
         variant="ghost"
         size="icon"
@@ -117,7 +140,6 @@ export function AppSidebar() {
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </Button>
 
-      {/* Mobile Overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden print:hidden"
@@ -125,13 +147,11 @@ export function AppSidebar() {
         />
       )}
 
-      {/* Desktop Sidebar */}
       <aside
         className={cn(
-          "fixed md:relative z-50 w-[220px] min-h-screen bg-sidebar border-r border-sidebar-border flex-col transition-transform duration-300 print:hidden hidden md:flex"
+          "fixed md:relative z-50 w-[220px] min-h-screen bg-sidebar border-r border-sidebar-border flex-col transition-transform duration-300 print:hidden hidden md:flex",
         )}
       >
-        {/* Logo — teal/green to match main page (dashboard clock, KPIs, etc.) */}
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
@@ -144,7 +164,6 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
           {navGroups.map((group) => (
             <Collapsible
@@ -155,10 +174,7 @@ export function AppSidebar() {
               <CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                 <span>{group.label}</span>
                 <ChevronDown
-                  className={cn(
-                    "w-3 h-3 transition-transform",
-                    openGroups[group.label] ? "" : "-rotate-90"
-                  )}
+                  className={cn("w-3 h-3 transition-transform", openGroups[group.label] ? "" : "-rotate-90")}
                 />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-0.5 mt-1">
@@ -175,7 +191,7 @@ export function AppSidebar() {
                         "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                         active
                           ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                       )}
                     >
                       <item.icon className={cn("w-4 h-4", active && "text-sidebar-primary")} />
@@ -188,32 +204,42 @@ export function AppSidebar() {
           ))}
         </nav>
 
-        {/* User & Logout */}
         <div className="p-3 border-t border-sidebar-border">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50"
+              >
                 <Settings className="w-4 h-4" />
                 Settings
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuItem asChild>
-                <NavLink to="/scripts" onMouseEnter={() => prefetchRoute("/scripts")} onFocus={() => prefetchRoute("/scripts")} className="flex items-center gap-2">
+                <NavLink
+                  to="/communications/sms"
+                  onMouseEnter={() => prefetchRoute("/communications/sms")}
+                  className="flex items-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  SMS suite
+                </NavLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NavLink to="/scripts" onMouseEnter={() => prefetchRoute("/scripts")} className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Scripts
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <NavLink to="/settings" onMouseEnter={() => prefetchRoute("/settings")} onFocus={() => prefetchRoute("/settings")} className="flex items-center gap-2">
+                <NavLink to="/settings" onMouseEnter={() => prefetchRoute("/settings")} className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
                   Settings
                 </NavLink>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">
-                {user?.email}
-              </div>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">{user?.email}</div>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
@@ -227,11 +253,10 @@ export function AppSidebar() {
         </div>
       </aside>
 
-      {/* Mobile Slide-out Menu */}
       <aside
         className={cn(
           "fixed z-50 w-[280px] h-full bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 print:hidden md:hidden",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="p-4 border-b border-sidebar-border mt-12">
@@ -256,7 +281,7 @@ export function AppSidebar() {
                   "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50",
                 )}
               >
                 <item.icon className={cn("w-5 h-5", active && "text-sidebar-primary")} />
@@ -265,20 +290,19 @@ export function AppSidebar() {
             );
           })}
           <div className="pt-4 border-t border-sidebar-border mt-4">
-            <NavLink to="/scripts" onMouseEnter={() => prefetchRoute("/scripts")} onFocus={() => prefetchRoute("/scripts")} onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
-              <FileText className="w-5 h-5" />
-              <span>Scripts</span>
-            </NavLink>
-            <NavLink to="/settings" onMouseEnter={() => prefetchRoute("/settings")} onFocus={() => prefetchRoute("/settings")} onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
+            <NavLink
+              to="/settings"
+              onMouseEnter={() => prefetchRoute("/settings")}
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
+            >
               <Settings className="w-5 h-5" />
               <span>Settings</span>
             </NavLink>
           </div>
         </nav>
         <div className="p-3 border-t border-sidebar-border">
-          <div className="px-3 py-2 text-xs text-muted-foreground truncate mb-2">
-            {user?.email}
-          </div>
+          <div className="px-3 py-2 text-xs text-muted-foreground truncate mb-2">{user?.email}</div>
           <Button variant="ghost" className="w-full justify-start gap-3" onClick={signOut}>
             <LogOut className="w-4 h-4" />
             Sign Out
@@ -286,7 +310,6 @@ export function AppSidebar() {
         </div>
       </aside>
 
-      {/* Mobile Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-sidebar border-t border-sidebar-border md:hidden print:hidden safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {mobileNavItems.map((item) => {
@@ -294,12 +317,46 @@ export function AppSidebar() {
               return (
                 <DropdownMenu key={item.title}>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex flex-col items-center justify-center gap-1 px-3 py-2 text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex flex-col items-center justify-center gap-1 px-2 py-2 text-muted-foreground"
+                    >
                       <item.icon className="w-5 h-5" />
                       <span className="text-[10px] font-medium">{item.title}</span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className="w-48 mb-2">
+                  <DropdownMenuContent align="end" side="top" className="w-52 mb-2 max-h-[70vh] overflow-y-auto">
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/automations" className="flex items-center gap-2">
+                        <Workflow className="w-4 h-4" />
+                        Automations
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/data-health" className="flex items-center gap-2">
+                        <Activity className="w-4 h-4" />
+                        Data health
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/annual-reviews" className="flex items-center gap-2">
+                        <ClipboardCheck className="w-4 h-4" />
+                        Reviews & events
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/calendar" className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        Calendar
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/properties" className="flex items-center gap-2">
+                        <Home className="w-4 h-4" />
+                        Properties
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <NavLink to="/marketing" className="flex items-center gap-2">
                         <Megaphone className="w-4 h-4" />
@@ -313,15 +370,9 @@ export function AppSidebar() {
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <NavLink to="/annual-reviews" className="flex items-center gap-2">
-                        <ClipboardCheck className="w-4 h-4" />
-                        Annual reviews
-                      </NavLink>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/properties" className="flex items-center gap-2">
-                        <Home className="w-4 h-4" />
-                        Properties
+                      <NavLink to="/nurture" className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Nurture
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -341,19 +392,24 @@ export function AppSidebar() {
                 </DropdownMenu>
               );
             }
-            
-            const isActive = location.pathname === item.url;
+
+            const pathActive =
+              item.url === "/dashboard"
+                ? location.pathname === "/dashboard"
+                : item.url === "/listings"
+                  ? location.pathname.startsWith("/listings")
+                  : location.pathname === item.url || location.pathname.startsWith(`${item.url}/`);
             return (
               <NavLink
                 key={item.title}
                 to={item.url}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[64px]",
-                  isActive ? "text-sidebar-primary" : "text-muted-foreground"
+                  "flex flex-col items-center justify-center gap-1 px-2 py-2 min-w-[56px]",
+                  pathActive ? "text-sidebar-primary" : "text-muted-foreground",
                 )}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.title}</span>
+                <span className="text-[10px] font-medium leading-tight text-center">{item.title}</span>
               </NavLink>
             );
           })}
