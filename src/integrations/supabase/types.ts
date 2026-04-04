@@ -1059,6 +1059,7 @@ export type Database = {
           created_at: string | null
           coming_to_market: string | null
           current_situation_notes: string | null
+          date_of_birth: string | null
           do_not_contact: boolean | null
           email: string | null
           email_opt_out: boolean | null
@@ -1115,6 +1116,7 @@ export type Database = {
           created_at?: string | null
           coming_to_market?: string | null
           current_situation_notes?: string | null
+          date_of_birth?: string | null
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
@@ -1171,6 +1173,7 @@ export type Database = {
           created_at?: string | null
           coming_to_market?: string | null
           current_situation_notes?: string | null
+          date_of_birth?: string | null
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
