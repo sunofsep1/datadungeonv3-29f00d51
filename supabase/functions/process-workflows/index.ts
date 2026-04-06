@@ -355,6 +355,35 @@ async function executeStep(
   }
 }
 
+async function insertStepRun(
+  supabase: ReturnType<typeof createClient>,
+  row: {
+    enrollment_id: string;
+    workflow_id: string;
+    user_id: string;
+    step_order: number;
+    action_type: string;
+    status: "success" | "failed" | "branch" | "skipped";
+    detail?: string | null;
+    branch_taken?: boolean | null;
+  },
+): Promise<void> {
+  const { error } = await supabase.from("crm_workflow_step_runs").insert({
+    enrollment_id: row.enrollment_id,
+    workflow_id: row.workflow_id,
+    user_id: row.user_id,
+    step_order: row.step_order,
+    action_type: row.action_type,
+    status: row.status,
+    detail: row.detail ?? null,
+    branch_taken: row.branch_taken ?? null,
+    executed_at: new Date().toISOString(),
+  });
+  if (error) {
+    console.error("crm_workflow_step_runs insert failed", error.message);
+  }
+}
+
 function advanceEnrollment(
   ordered: StepRow[],
   enr: EnrollmentRow,
@@ -428,6 +457,15 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!wf?.is_active) {
+        await insertStepRun(supabase, {
+          enrollment_id: enr.id,
+          workflow_id: enr.workflow_id,
+          user_id: enr.user_id,
+          step_order: enr.current_step_order,
+          action_type: "workflow",
+          status: "skipped",
+          detail: "Workflow is inactive; enrollment cancelled",
+        });
         await supabase
           .from("crm_workflow_enrollments")
           .update({ status: "cancelled", completed_at: now })
@@ -451,6 +489,15 @@ Deno.serve(async (req) => {
       const ordered = steps as StepRow[];
       const step = ordered.find((s) => s.step_order === enr.current_step_order);
       if (!step) {
+        await insertStepRun(supabase, {
+          enrollment_id: enr.id,
+          workflow_id: enr.workflow_id,
+          user_id: enr.user_id,
+          step_order: enr.current_step_order,
+          action_type: "workflow",
+          status: "success",
+          detail: "No step at current order; enrollment marked completed",
+        });
         await supabase
           .from("crm_workflow_enrollments")
           .update({ status: "completed", completed_at: now, next_action_at: now })
@@ -471,12 +518,40 @@ Deno.serve(async (req) => {
           : (typeof step.next_step_order_if_false === "number"
             ? step.next_step_order_if_false
             : enr.current_step_order + 1);
+        await insertStepRun(supabase, {
+          enrollment_id: enr.id,
+          workflow_id: enr.workflow_id,
+          user_id: enr.user_id,
+          step_order: step.step_order,
+          action_type: "if_branch",
+          status: "branch",
+          branch_taken: branchOk,
+          detail: `Next step order ${nextStepOrder}`,
+        });
       } else {
         const result = await executeStep(supabase, enr, step);
         if (!result.ok) {
+          await insertStepRun(supabase, {
+            enrollment_id: enr.id,
+            workflow_id: enr.workflow_id,
+            user_id: enr.user_id,
+            step_order: step.step_order,
+            action_type: step.action_type,
+            status: "failed",
+            detail: result.error ?? "unknown",
+          });
           errors.push(`${enr.id} step ${step.step_order}: ${result.error ?? "unknown"}`);
           continue;
         }
+        await insertStepRun(supabase, {
+          enrollment_id: enr.id,
+          workflow_id: enr.workflow_id,
+          user_id: enr.user_id,
+          step_order: step.step_order,
+          action_type: step.action_type,
+          status: "success",
+          detail: null,
+        });
         nextStepOrder = enr.current_step_order + 1;
       }
 

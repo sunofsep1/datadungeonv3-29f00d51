@@ -32,6 +32,7 @@ const HotLeads = lazy(() => import("./pages/HotLeads"));
 const Nurture = lazy(() => import("./pages/Nurture"));
 const TodoList = lazy(() => import("./pages/TodoList"));
 const AttentionHub = lazy(() => import("./pages/AttentionHub"));
+const WorkWorkspace = lazy(() => import("./pages/WorkWorkspace"));
 const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
@@ -63,6 +64,7 @@ const App = () => (
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/attention-hub" element={<ProtectedRoute><MainLayout><AttentionHub /></MainLayout></ProtectedRoute>} />
+                <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />
                 <Route path="/hot-leads" element={<ProtectedRoute><MainLayout><HotLeads /></MainLayout></ProtectedRoute>} />
                 <Route path="/recent" element={<ProtectedRoute><MainLayout><Recent /></MainLayout></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />

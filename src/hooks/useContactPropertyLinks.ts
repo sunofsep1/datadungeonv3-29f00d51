@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
+import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 
 // Manual types for contact_property_links (spec: owner, seller, buyer, tenant, investor, agent, interested, other)
 export interface ContactPropertyLink {
@@ -74,6 +75,7 @@ export function useCreateContactPropertyLink() {
       qc.refetchQueries({ queryKey: ["contact", d.contact_id] });
       qc.refetchQueries({ queryKey: ["property", d.property_id] });
       invalidateContactInteractions(qc, d.contact_id);
+      invalidateContactScoreQueries(qc);
     },
   });
 }
@@ -126,6 +128,7 @@ export function useDeleteContactPropertyLink() {
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       invalidateContactInteractions(qc, v.contact_id);
+      invalidateContactScoreQueries(qc);
     },
   });
 }

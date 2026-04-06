@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  FileText,
+  Handshake,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useContact } from "@/hooks/useContact";
@@ -62,6 +64,7 @@ import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
+import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
 import {
   DropdownMenu,
@@ -70,6 +73,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow } from "date-fns";
+import { openLogTouch } from "@/lib/openLogTouch";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
 const CHANNELS = ["phone", "email", "in-person", "video", "sms", "social"];
@@ -521,6 +525,19 @@ export default function ContactDetail() {
           <h1 className="text-2xl font-bold text-foreground">{displayNameLabel}</h1>
           <p className="text-muted-foreground">Contact Details</p>
         </div>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => id && openLogTouch({ contactId: id })}
+          disabled={!id}
+        >
+          <Handshake className="w-4 h-4" /> Log touch
+        </Button>
+        <Button variant="outline" className="gap-2" asChild>
+          <Link to="/scripts" className="inline-flex items-center gap-2">
+            <FileText className="w-4 h-4" /> Scripts
+          </Link>
+        </Button>
         <Button variant="outline" onClick={handlePrint} className="gap-2">
           <Printer className="w-4 h-4" /> Print
         </Button>
@@ -681,6 +698,90 @@ export default function ContactDetail() {
               </div>
             </div>
           </Card>
+
+          {id && (
+            <>
+              {/* Timeline-first: running story before profile depth */}
+              <Card className="zoho-card p-6 border-border print:hidden print-activity-card">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4 print:hidden">
+                  <div>
+                    <h3 className="font-semibold text-foreground">Activity timeline</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Calls, messages, and meetings — log touches from the workspace rail or header.
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => setAddInteractionOpen(true)} className="gap-1 shrink-0">
+                    <Plus className="w-4 h-4" /> Log
+                  </Button>
+                </div>
+                <h3 className="font-semibold hidden print:block mb-4">Activity Timeline</h3>
+
+                <div className="space-y-4 max-h-[min(520px,55vh)] sm:max-h-[600px] overflow-y-auto print:max-h-none">
+                  {contactAppointments.map((apt) => (
+                    <div key={apt.id} className="flex gap-3 pb-4 border-b border-border last:border-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{apt.title}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(apt.date), "PPp")}</p>
+                        {apt.location && <p className="text-xs text-muted-foreground">{apt.location}</p>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {interactions.map((interaction: Interaction) => (
+                    <div key={interaction.id} className="flex gap-3 pb-4 border-b border-border last:border-0 group">
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm capitalize">{interaction.type}</p>
+                          <span className="print:hidden">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                              onClick={() => handleDeleteInteraction(interaction.id)}
+                            >
+                              <Trash2 className="w-3 h-3 text-destructive" />
+                            </Button>
+                          </span>
+                        </div>
+                        {interaction.subject && <p className="text-sm text-foreground">{interaction.subject}</p>}
+                        {interaction.body && <p className="text-xs text-muted-foreground mt-1">{interaction.body}</p>}
+                        <div className="flex items-center gap-2 mt-1">
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            <span className="print:hidden">
+                              {formatDistanceToNow(new Date(interaction.timestamp), { addSuffix: true })}
+                            </span>
+                            <span className="hidden print:inline">{format(new Date(interaction.timestamp), "d MMM yyyy, h:mm a")}</span>
+                          </span>
+                          {interaction.channel && (
+                            <span className="text-xs bg-secondary px-1.5 py-0.5 rounded capitalize print:bg-gray-100 print:border print:border-gray-400 print:text-black">
+                              {interaction.channel}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {interactions.length === 0 && contactAppointments.length === 0 && (
+                    <p className="text-muted-foreground text-sm text-center py-4">No activity yet. Log your first interaction!</p>
+                  )}
+                </div>
+              </Card>
+
+              <ContactSuiteCard
+                contactId={id}
+                interactions={interactions}
+                linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
+              />
+            </>
+          )}
 
           {id && <ContactNurturePanel contact={contact} contactId={id} />}
 
@@ -880,98 +981,10 @@ export default function ContactDetail() {
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+          {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
           {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
-
-        {/* Activity Timeline — hidden when printing (use /contacts/:id/print for briefing PDF) */}
-        <Card className="zoho-card p-6 border-border print:hidden print-activity-card">
-          <div className="flex items-center justify-between mb-4 print:hidden">
-            <h3 className="font-semibold text-foreground">Activity Timeline</h3>
-            <Button size="sm" onClick={() => setAddInteractionOpen(true)} className="gap-1">
-              <Plus className="w-4 h-4" /> Log
-            </Button>
-          </div>
-          <h3 className="font-semibold hidden print:block mb-4">Activity Timeline</h3>
-
-          <div className="space-y-4 max-h-[600px] overflow-y-auto print:max-h-none">
-            {/* Appointments */}
-            {contactAppointments.map((apt) => (
-              <div key={apt.id} className="flex gap-3 pb-4 border-b border-border last:border-0">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{apt.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(apt.date), "PPp")}
-                  </p>
-                  {apt.location && (
-                    <p className="text-xs text-muted-foreground">{apt.location}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Interactions */}
-            {interactions.map((interaction: Interaction) => (
-              <div key={interaction.id} className="flex gap-3 pb-4 border-b border-border last:border-0 group">
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm capitalize">{interaction.type}</p>
-                    <span className="print:hidden">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={() => handleDeleteInteraction(interaction.id)}
-                      >
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </Button>
-                    </span>
-                  </div>
-                  {interaction.subject && (
-                    <p className="text-sm text-foreground">{interaction.subject}</p>
-                  )}
-                  {interaction.body && (
-                    <p className="text-xs text-muted-foreground mt-1">{interaction.body}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      <span className="print:hidden">{formatDistanceToNow(new Date(interaction.timestamp), { addSuffix: true })}</span>
-                      <span className="hidden print:inline">{format(new Date(interaction.timestamp), "d MMM yyyy, h:mm a")}</span>
-                    </span>
-                    {interaction.channel && (
-                      <span className="text-xs bg-secondary px-1.5 py-0.5 rounded capitalize print:bg-gray-100 print:border print:border-gray-400 print:text-black">
-                        {interaction.channel}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {interactions.length === 0 && contactAppointments.length === 0 && (
-              <p className="text-muted-foreground text-sm text-center py-4">
-                No activity yet. Log your first interaction!
-              </p>
-            )}
-          </div>
-        </Card>
         </div>
-
-        {id && (
-          <div className="lg:col-span-3 print:break-before-page">
-            <ContactSuiteCard
-              contactId={id}
-              interactions={interactions}
-              linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
-            />
-          </div>
-        )}
       </div>
 
       {/* Print footer */}
@@ -1236,8 +1249,11 @@ export default function ContactDetail() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Subject *</Label>
+              <Label htmlFor="log-interaction-subject">Subject *</Label>
               <Input
+                id="log-interaction-subject"
+                required
+                aria-required
                 placeholder="Brief summary..."
                 className="bg-input"
                 value={newInteraction.subject}

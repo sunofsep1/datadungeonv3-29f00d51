@@ -955,6 +955,38 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_scores: {
+        Row: {
+          contact_id: string
+          last_calculated: string
+          score_breakdown: Json
+          total_score: number
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          last_calculated?: string
+          score_breakdown?: Json
+          total_score?: number
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          last_calculated?: string
+          score_breakdown?: Json
+          total_score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_scores_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_tasks: {
         Row: {
           id: string
@@ -1057,6 +1089,45 @@ export type Database = {
           listing_id?: string | null
           next_action_at?: string
           status?: string
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      crm_workflow_step_runs: {
+        Row: {
+          action_type: string
+          branch_taken: boolean | null
+          detail: string | null
+          enrollment_id: string
+          executed_at: string
+          id: string
+          status: string
+          step_order: number
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          action_type: string
+          branch_taken?: boolean | null
+          detail?: string | null
+          enrollment_id: string
+          executed_at?: string
+          id?: string
+          status: string
+          step_order: number
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          action_type?: string
+          branch_taken?: boolean | null
+          detail?: string | null
+          enrollment_id?: string
+          executed_at?: string
+          id?: string
+          status?: string
+          step_order?: number
           user_id?: string
           workflow_id?: string
         }

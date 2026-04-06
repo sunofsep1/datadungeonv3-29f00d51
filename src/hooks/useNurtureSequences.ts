@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
+import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY } from "@/hooks/useActiveNurtureEnrollments";
@@ -184,6 +185,7 @@ export function useCompleteNurtureStepAndAdvance() {
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ACTIVE_NURTURE_ENROLLMENTS_QUERY_KEY });
       invalidateContactInteractions(queryClient, v.contact_id);
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }

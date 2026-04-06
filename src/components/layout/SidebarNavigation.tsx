@@ -176,8 +176,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Desktop sidebar — theme-aware, collapsible */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 hidden md:flex flex-col print:hidden transition-[width] duration-250 ease-in-out",
-          "bg-sidebar border-r border-sidebar-border min-h-screen"
+          "fixed left-0 top-0 z-40 hidden md:flex flex-col overflow-hidden print:hidden transition-[width] duration-250 ease-in-out",
+          "bg-sidebar border-r border-sidebar-border h-dvh max-h-dvh"
         )}
         style={{ width: desktopWidth }}
       >
@@ -228,8 +228,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           </div>
         )}
 
-        {/* Nav links: grouped when expanded, flat when collapsed */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]">
+          <nav className="space-y-0.5 p-2 pr-1" aria-label="Main navigation">
           {collapsed ? (
             navItems.map((item) => {
               const active = isNavActive(item, location.pathname);
@@ -329,7 +329,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
               </Collapsible>
             </>
           )}
-        </nav>
+          </nav>
+        </div>
 
         {/* Footer: Settings + Sign out */}
         <div className="shrink-0 border-t border-sidebar-border p-2 space-y-0.5">
@@ -380,7 +381,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Mobile slide-out */}
       <aside
         className={cn(
-          "fixed z-50 w-[280px] h-full bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-250 print:hidden md:hidden",
+          "fixed z-50 w-[280px] h-dvh max-h-dvh flex flex-col overflow-hidden bg-sidebar border-r border-sidebar-border transition-transform duration-250 print:hidden md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -390,7 +391,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           </div>
           <span className="text-sm font-semibold text-teal">Data Dungeon</span>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]">
+          <nav className="space-y-1 p-3" aria-label="Main navigation">
           {navItems.map((item) => {
             const active = isNavActive(item, location.pathname);
             return (
@@ -418,7 +420,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
               Settings
             </NavLink>
           </div>
-        </nav>
+          </nav>
+        </div>
         <div className="p-3 border-t border-sidebar-border">
           <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate mb-2">{user?.email}</div>
           <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent/50" onClick={signOut}>

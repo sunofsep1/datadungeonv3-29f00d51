@@ -222,8 +222,11 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Subject *</Label>
+              <Label htmlFor="panel-log-interaction-subject">Subject *</Label>
               <Input
+                id="panel-log-interaction-subject"
+                required
+                aria-required
                 placeholder="Brief summary..."
                 className="bg-input"
                 value={newInteraction.subject}

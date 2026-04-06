@@ -1,11 +1,24 @@
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { CrmWorkflowEngineCard } from "@/components/settings/CrmWorkflowEngineCard";
+import { WorkflowDirectoryCard } from "@/components/automations/WorkflowDirectoryCard";
+import { WorkflowInspectorCard } from "@/components/automations/WorkflowInspectorCard";
+import { useCrmWorkflowsList } from "@/hooks/useCrmWorkflows";
 import { Workflow, Settings, ListTodo } from "lucide-react";
 
 export default function Automations() {
+  const [focusedWorkflowId, setFocusedWorkflowId] = useState("");
+  const { data: workflows = [] } = useCrmWorkflowsList();
+
+  useEffect(() => {
+    if (focusedWorkflowId) return;
+    const pick = workflows.find((w) => w.is_active)?.id ?? workflows[0]?.id;
+    if (pick) setFocusedWorkflowId(pick);
+  }, [workflows, focusedWorkflowId]);
+
   return (
     <div className="animate-fade-in space-y-6 pb-8">
       <PageHeader
@@ -43,6 +56,10 @@ export default function Automations() {
         </Button>
       </Card>
 
+      <WorkflowDirectoryCard selectedWorkflowId={focusedWorkflowId} onSelectWorkflow={setFocusedWorkflowId} />
+
+      <WorkflowInspectorCard workflowId={focusedWorkflowId} onWorkflowIdChange={setFocusedWorkflowId} />
+
       <div className="flex items-center gap-2 text-muted-foreground text-xs">
         <Workflow className="w-4 h-4" />
         <span>
@@ -51,7 +68,10 @@ export default function Automations() {
         </span>
       </div>
 
-      <CrmWorkflowEngineCard />
+      <CrmWorkflowEngineCard
+        selectedWorkflowId={focusedWorkflowId}
+        onSelectedWorkflowIdChange={setFocusedWorkflowId}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 import { DashboardWelcomeHeader } from "@/components/dashboard/DashboardWelcomeHeader";
+import { DashboardCommandCenter } from "@/components/dashboard/DashboardCommandCenter";
 import { SortableWidget } from "@/components/dashboard/SortableWidget";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,10 +44,6 @@ import { useActiveNurtureEnrollments } from "@/hooks/useActiveNurtureEnrollments
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
-import { useDataHealth } from "@/hooks/useDataHealth";
-import { useWeeklyTouchSummary } from "@/hooks/useTouches";
-import { useNotificationDigest } from "@/hooks/useNotificationDigest";
-import { useDailyTouchSummary } from "@/hooks/useTouches";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, isPast, isToday } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
@@ -166,11 +163,6 @@ export default function Dashboard() {
     dueSoon24h: 0,
   };
   const { data: posts = [] } = usePosts();
-  const { data: dataHealth } = useDataHealth();
-  const { data: dailyTouches = [] } = useDailyTouchSummary();
-  const { data: weeklyTouches = [] } = useWeeklyTouchSummary();
-  useNotificationDigest();
-
   const createContact = useCreateContact();
   const createAppointmentWithGcal = useCreateAppointmentWithGcal();
   const createLead = useCreateLead();
@@ -182,18 +174,6 @@ export default function Dashboard() {
     { label: "Appointments", value: appointments.length, icon: Calendar, path: "/appointments" },
     { label: "Posts", value: posts.length, icon: TrendingUp, path: "/marketing" },
   ];
-  const healthScore = Math.max(0, Math.min(100, Math.round(Number(dataHealth?.health_score ?? 0))));
-  const todayTouchCount = dailyTouches.reduce((sum, row) => sum + Number(row.completed ?? 0), 0);
-  const touchRows = [...dailyTouches].slice(0, 3);
-  const breakBreadWeek = weeklyTouches.find((row) => row.touch_type === "break_bread");
-  const cardsWeek = weeklyTouches.find((row) => row.touch_type === "handwritten_card");
-
-  const formatTouchLabel = (touchType: string) =>
-    touchType
-      .split("_")
-      .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
-      .join(" ");
-
   const recentContacts = useMemo(
     () => [...contacts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5),
     [contacts]
@@ -621,55 +601,10 @@ export default function Dashboard() {
 
       <p className="text-[11px] text-muted-foreground/85 flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1">
         <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] text-foreground/85">
-          Timeline hub on top, widgets below. Drag widgets to reorder; layout is saved for this account.
+          Command center first, then draggable widgets. Layout is saved for this account.
         </span>
       </p>
-      <Card className="zoho-card p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Data health</p>
-            <p className="text-lg font-semibold text-foreground">{healthScore}%</p>
-          </div>
-          <div className="text-right text-xs text-muted-foreground space-y-0.5">
-            <p>Missing contact category: {dataHealth?.contacts_missing_category ?? 0}</p>
-            <p>Missing touch date: {dataHealth?.contacts_missing_touch_date ?? 0}</p>
-            <p>Properties missing details: {dataHealth?.properties_missing_details ?? 0}</p>
-            {dataHealth?.checks_mode ? (
-              <p className="text-[10px] opacity-80">Score model: {dataHealth.checks_mode}</p>
-            ) : null}
-          </div>
-        </div>
-      </Card>
-      <Card className="zoho-card p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Touches today</p>
-            <p className="text-lg font-semibold text-foreground">{todayTouchCount}</p>
-          </div>
-          <div className="text-right text-xs text-muted-foreground space-y-0.5 sm:min-w-[10rem]">
-            {touchRows.length === 0 ? (
-              <p>No touch activity logged yet</p>
-            ) : (
-              touchRows.map((row) => (
-                <p key={row.touch_type}>
-                  {formatTouchLabel(row.touch_type)}: {row.completed}
-                  {row.daily_target ? ` / ${row.daily_target}` : ""}
-                </p>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="mt-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground space-y-0.5">
-          <p>
-            <span className="font-medium text-foreground/80">This week — </span>
-            Break-bread: {breakBreadWeek?.completed ?? 0}
-            {breakBreadWeek?.weekly_target != null ? ` / ${breakBreadWeek.weekly_target}` : ""}
-            {" · "}
-            Thank-you cards: {cardsWeek?.completed ?? 0}
-            {cardsWeek?.weekly_target != null ? ` / ${cardsWeek.weekly_target}` : ""}
-          </p>
-        </div>
-      </Card>
+      <DashboardCommandCenter />
 
       {widgetOrder.length === 0 ? (
         <Card className="zoho-card p-8 md:p-10 border-dashed border-border max-w-lg">

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, ListTodo, CheckSquare, Users, Plus, Trash2, Loader2 } from "lucide-react";
+import { Calendar, ListTodo, CheckSquare, Users, Plus, Trash2, Loader2, FileText } from "lucide-react";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useContacts } from "@/hooks/useContacts";
 import { useOpenContactTasksForUser, useUpdateContactTask } from "@/hooks/useContactTasks";
@@ -16,6 +16,7 @@ import { format, isPast, isToday } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
 
 function PersonalTodoRow({
   todo,
@@ -120,6 +121,15 @@ export default function Tasks() {
   const [newPersonalRecurrence, setNewPersonalRecurrence] = useState<Todo["recurrence"]>("none");
 
   const contactNameById = useMemo(() => new Map(contacts.map((c) => [c.id, c.name ?? "Contact"])), [contacts]);
+  const contactCategoryById = useMemo(
+    () =>
+      new Map(
+        contacts.map((c) => [c.id, (c as { contact_category?: string | null }).contact_category ?? null]),
+      ),
+    [contacts],
+  );
+
+  const [scriptTaskContactId, setScriptTaskContactId] = useState<string | null>(null);
 
   const sortedContactTasks = useMemo(() => {
     const name = (id: string) => contactNameById.get(id) ?? "Contact";
@@ -523,31 +533,47 @@ export default function Tasks() {
                               </p>
                             </button>
                           </div>
-                          {t.sequence_enrollment_id && pendingRunByTaskId.get(t.id) ? (
+                          <div className="flex items-center gap-1 shrink-0">
                             <Button
-                              size="sm"
-                              variant="secondary"
-                              className="shrink-0"
-                              onClick={() => {
-                                const run = pendingRunByTaskId.get(t.id);
-                                if (!run || !t.sequence_enrollment_id) return;
-                                completeStep.mutate(
-                                  {
-                                    enrollment_id: t.sequence_enrollment_id,
-                                    step_run_id: run.id,
-                                    contact_id: t.contact_id,
-                                    outcome: "completed",
-                                  },
-                                  {
-                                    onSuccess: () => toast.success("Step completed. Next step scheduled."),
-                                    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-                                  }
-                                );
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Scripts for this contact"
+                              aria-label="Open scripts for contact"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setScriptTaskContactId(t.contact_id);
                               }}
                             >
-                              Complete & next
+                              <FileText className="h-4 w-4" />
                             </Button>
-                          ) : null}
+                            {t.sequence_enrollment_id && pendingRunByTaskId.get(t.id) ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="shrink-0"
+                                onClick={() => {
+                                  const run = pendingRunByTaskId.get(t.id);
+                                  if (!run || !t.sequence_enrollment_id) return;
+                                  completeStep.mutate(
+                                    {
+                                      enrollment_id: t.sequence_enrollment_id,
+                                      step_run_id: run.id,
+                                      contact_id: t.contact_id,
+                                      outcome: "completed",
+                                    },
+                                    {
+                                      onSuccess: () => toast.success("Step completed. Next step scheduled."),
+                                      onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+                                    }
+                                  );
+                                }}
+                              >
+                                Complete & next
+                              </Button>
+                            ) : null}
+                          </div>
                         </div>
                       </Card>
                     );
@@ -558,6 +584,15 @@ export default function Tasks() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ContactScriptQuickSheet
+        key={scriptTaskContactId ?? "closed"}
+        open={scriptTaskContactId != null}
+        onOpenChange={(open) => {
+          if (!open) setScriptTaskContactId(null);
+        }}
+        contactCategory={scriptTaskContactId ? contactCategoryById.get(scriptTaskContactId) ?? null : null}
+      />
     </div>
   );
 }

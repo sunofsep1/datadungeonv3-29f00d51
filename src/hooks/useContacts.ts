@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import {
@@ -449,6 +450,7 @@ export function useCreateContact() {
       if (data && (data as { id?: string }).id && !variables.skipActivityLog) {
         invalidateContactInteractions(queryClient, (data as { id: string }).id);
       }
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }
@@ -561,6 +563,7 @@ export function useUpdateContact() {
       if (!variables.skipActivityLog) {
         invalidateContactInteractions(queryClient, variables.id);
       }
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }
@@ -575,6 +578,7 @@ export function useDeleteContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }

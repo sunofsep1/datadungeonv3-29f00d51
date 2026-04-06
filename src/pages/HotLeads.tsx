@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { leadScoreBand } from "@/lib/contactScoreQuery";
+import { useContactScoresByContactIds } from "@/hooks/useContactScore";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge, type BadgeVariant } from "@/components/ui/status-badge";
@@ -33,6 +35,33 @@ function getStatusVariant(status: string | null): BadgeVariant {
   }
 }
 
+function HotLeadScorePill({ loading, total }: { loading: boolean; total: number | undefined }) {
+  if (loading) return <Skeleton className="h-5 w-10 rounded-md" />;
+  if (total === undefined) {
+    return (
+      <span className="text-[10px] text-muted-foreground tabular-nums" title="No score row yet">
+        —
+      </span>
+    );
+  }
+  const band = leadScoreBand(total);
+  return (
+    <Badge
+      variant="outline"
+      className={
+        band === "hot"
+          ? "text-[10px] tabular-nums border-red-400/40 bg-red-500/15 text-red-100"
+          : band === "warm"
+            ? "text-[10px] tabular-nums border-amber-400/40 bg-amber-500/15 text-amber-100"
+            : "text-[10px] tabular-nums"
+      }
+      title="Lead score (contact_scores.total_score)"
+    >
+      {total}
+    </Badge>
+  );
+}
+
 export default function HotLeads() {
   const navigate = useNavigate();
   const { data: contacts, isLoading } = useContacts();
@@ -58,6 +87,9 @@ export default function HotLeads() {
     }
     return list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }, [contacts, debouncedSearch]);
+
+  const hotLeadIds = useMemo(() => hotLeads.map((c) => c.id), [hotLeads]);
+  const { data: scoreByContactId, isLoading: scoresLoading } = useContactScoresByContactIds(hotLeadIds);
 
   if (isLoading) {
     return (
@@ -125,6 +157,10 @@ export default function HotLeads() {
                       <StatusBadge variant={getStatusVariant(contact.status)}>
                         {contact.status ?? "lead"}
                       </StatusBadge>
+                      <HotLeadScorePill
+                        loading={scoresLoading}
+                        total={scoresLoading ? undefined : scoreByContactId?.get(contact.id)}
+                      />
                       {tagNames.length > 0 && (
                         <span className="flex flex-wrap gap-1">
                           {tagNames.slice(0, 3).map((t) => (

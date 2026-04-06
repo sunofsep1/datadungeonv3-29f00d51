@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
 export interface Interaction {
@@ -56,10 +57,15 @@ export function useCreateInteraction() {
   return useMutation({
     mutationFn: async (interaction: InteractionInsert) => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      let userId = user?.id ?? null;
+      if (!userId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        userId = session?.user?.id ?? null;
+      }
+      if (!userId) throw new Error("Not authenticated");
 
       const now = new Date().toISOString();
-      const payload = { ...interaction, user_id: user.id, timestamp: interaction.timestamp ?? now };
+      const payload = { ...interaction, user_id: userId, timestamp: interaction.timestamp ?? now };
 
       const { data, error } = await (supabase
         .from("interactions" as any) as any)
@@ -80,6 +86,7 @@ export function useCreateInteraction() {
       queryClient.invalidateQueries({ queryKey: ["interactions", variables.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", variables.contact_id] });
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }
@@ -99,6 +106,9 @@ export function useDeleteInteraction() {
     },
     onSuccess: (contactId) => {
       queryClient.invalidateQueries({ queryKey: ["interactions", contactId] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contact", contactId] });
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }

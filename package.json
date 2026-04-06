@@ -26,7 +26,11 @@
     "supabase:deploy:process-workflows": "npx supabase functions deploy process-workflows --no-verify-jwt",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "verify": "npm run build && npx vitest run",
+    "verify:lint": "npm run lint",
+    "deploy:supabase": "npx supabase db push --linked --yes && npx supabase functions deploy --use-api",
+    "deploy:all": "npm run verify && npm run deploy:supabase"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -106,6 +110,7 @@
     "globals": "^17.4.0",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
+    "supabase": "^2.84.10",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.0",

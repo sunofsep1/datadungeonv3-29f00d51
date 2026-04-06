@@ -68,6 +68,7 @@ import {
 } from "@/components/listings/ListingStickyActionBar";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
+import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNextCard";
 import { useActivityLogByListing, useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useCreateAppointment } from "@/hooks/useAppointments";
 import { useLogListingStageMove } from "@/hooks/useEvents";
@@ -806,6 +807,19 @@ export default function ListingDetail() {
         createdAt={listing.created_at}
       />
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2 min-w-0">
+          <ListingPricingPanel
+            listingId={listing.id}
+            listingPrice={listing.price != null ? Number(listing.price) : null}
+            onListingUpdated={() => void refetch()}
+          />
+        </div>
+        <div className="lg:col-span-1 min-w-0">
+          <ListingPipelineNextCard pipelineStage={listing.pipeline_stage} />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card className="zoho-card p-4 border-border md:col-span-1">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Agent</h3>
@@ -908,12 +922,6 @@ export default function ListingDetail() {
           )}
         </Card>
       </div>
-
-      <ListingPricingPanel
-        listingId={listing.id}
-        listingPrice={listing.price != null ? Number(listing.price) : null}
-        onListingUpdated={() => void refetch()}
-      />
 
       <Card className="zoho-card p-6 border-border">
         <ActivityTimeline entityType="listing" entityId={id} showAddNote={true} />

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { addDays, format, startOfDay } from "date-fns";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -222,6 +224,28 @@ export default function AnnualReviews() {
     [currentYear]
   );
 
+  const reviewStatusSummary = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of reviews) {
+      m.set(r.status, (m.get(r.status) ?? 0) + 1);
+    }
+    return m;
+  }, [reviews]);
+
+  const upcomingReviews = useMemo(() => {
+    const start = startOfDay(new Date());
+    const end = addDays(start, 30);
+    return reviews
+      .filter((r) => r.scheduled_date)
+      .map((r) => {
+        const d = new Date(`${r.scheduled_date}T12:00:00`);
+        return { r, d };
+      })
+      .filter(({ d }) => !Number.isNaN(d.getTime()) && d >= start && d <= end)
+      .sort((a, b) => a.d.getTime() - b.d.getTime())
+      .slice(0, 14);
+  }, [reviews]);
+
   const handleSeed = async () => {
     try {
       const result = await seedJanuary.mutateAsync({ year: reviewYear, max: 20 });
@@ -324,6 +348,52 @@ export default function AnnualReviews() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-lg border border-border/70 bg-muted/15 p-4 space-y-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Planner snapshot
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {REVIEW_STATUSES.map((s) => {
+                  const n = reviewStatusSummary.get(s.value) ?? 0;
+                  if (n === 0) return null;
+                  return (
+                    <Badge key={s.value} variant="secondary" className="font-normal text-xs">
+                      {s.label}: {n}
+                    </Badge>
+                  );
+                })}
+                {reviews.length === 0 && !isLoading ? (
+                  <span className="text-sm text-muted-foreground">No rows for this year yet.</span>
+                ) : null}
+              </div>
+            </div>
+            {upcomingReviews.length > 0 ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Scheduled in the next 30 days
+                </p>
+                <ul className="space-y-1.5 text-sm">
+                  {upcomingReviews.map(({ r, d }) => (
+                    <li key={r.id} className="flex items-center justify-between gap-2">
+                      <Link
+                        to={`/contacts/${r.contact_id}`}
+                        className="text-primary hover:underline truncate min-w-0"
+                      >
+                        {contactLabel(r)}
+                      </Link>
+                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                        {format(d, "EEE d MMM")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : reviews.length > 0 && !isLoading ? (
+              <p className="text-xs text-muted-foreground">No reviews scheduled in the next 30 days.</p>
+            ) : null}
+          </div>
+
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />

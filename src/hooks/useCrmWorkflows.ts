@@ -44,6 +44,54 @@ export function useCrmWorkflowSteps(workflowId: string | undefined) {
   });
 }
 
+export function useCrmWorkflowEnrollmentsForWorkflow(workflowId: string | undefined) {
+  return useQuery({
+    queryKey: [...KEYS, "enrollments", workflowId],
+    enabled: Boolean(workflowId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("crm_workflow_enrollments")
+        .select("*")
+        .eq("workflow_id", workflowId!)
+        .order("enrolled_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as CrmWorkflowEnrollment[];
+    },
+  });
+}
+
+export type CrmWorkflowStepRunRow = {
+  id: string;
+  enrollment_id: string;
+  workflow_id: string;
+  user_id: string;
+  step_order: number;
+  action_type: string;
+  status: string;
+  detail: string | null;
+  branch_taken: boolean | null;
+  executed_at: string;
+};
+
+export function useCrmWorkflowStepRunsForWorkflow(workflowId: string | undefined) {
+  return useQuery({
+    queryKey: [...KEYS, "step-runs", workflowId],
+    enabled: Boolean(workflowId),
+    queryFn: async (): Promise<CrmWorkflowStepRunRow[]> => {
+      const { data, error } = await supabase
+        .from("crm_workflow_step_runs")
+        .select("id, enrollment_id, workflow_id, user_id, step_order, action_type, status, detail, branch_taken, executed_at")
+        .eq("workflow_id", workflowId!)
+        .order("executed_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as CrmWorkflowStepRunRow[];
+    },
+    staleTime: 15_000,
+  });
+}
+
 export function useCreateSampleCrmWorkflow() {
   const qc = useQueryClient();
   return useMutation({
@@ -99,6 +147,106 @@ export function useCreateSampleCrmWorkflow() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEYS });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "step-runs"] });
+    },
+  });
+}
+
+/** Safe action types for the in-app form step builder (no branching / SMS / email here). */
+export const CRM_WORKFLOW_STEP_ACTIONS_FORM = [
+  "wait_delay",
+  "noop",
+  "notify_user",
+  "create_task",
+] as const;
+
+function defaultActionConfig(actionType: string): TablesInsert<"crm_workflow_steps">["action_config"] {
+  switch (actionType) {
+    case "wait_delay":
+      return {};
+    case "noop":
+      return {};
+    case "notify_user":
+      return {
+        title: "Workflow step",
+        body: "Automated notification from your CRM workflow.",
+        priority: "info",
+      };
+    case "create_task":
+      return {
+        title: "Follow-up task",
+        notes: "Created from the workflow step editor.",
+        due_days: 1,
+      };
+    default:
+      return {};
+  }
+}
+
+export function useAppendCrmWorkflowStep() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      workflowId,
+      actionType,
+      delayMinutes,
+    }: {
+      workflowId: string;
+      actionType: string;
+      delayMinutes: number;
+    }) => {
+      const { data: maxRow, error: maxErr } = await supabase
+        .from("crm_workflow_steps")
+        .select("step_order")
+        .eq("workflow_id", workflowId)
+        .order("step_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (maxErr) throw maxErr;
+      const nextOrder = typeof maxRow?.step_order === "number" ? maxRow.step_order + 1 : 0;
+
+      const row: TablesInsert<"crm_workflow_steps"> = {
+        workflow_id: workflowId,
+        step_order: nextOrder,
+        action_type: actionType,
+        delay_minutes: Math.min(525600, Math.max(0, Math.floor(delayMinutes))),
+        action_config: defaultActionConfig(actionType),
+        branch_condition: {},
+      };
+      const { error } = await supabase.from("crm_workflow_steps").insert(row);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      void qc.invalidateQueries({ queryKey: KEYS });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "steps", variables.workflowId] });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "step-runs", variables.workflowId] });
+    },
+  });
+}
+
+export function useUpdateCrmWorkflowStepDelay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      stepId,
+      workflowId,
+      delayMinutes,
+    }: {
+      stepId: string;
+      workflowId: string;
+      delayMinutes: number;
+    }) => {
+      const bounded = Math.min(525600, Math.max(0, Math.floor(delayMinutes)));
+      const { error } = await supabase
+        .from("crm_workflow_steps")
+        .update({ delay_minutes: bounded })
+        .eq("id", stepId);
+      if (error) throw error;
+      return { workflowId };
+    },
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: KEYS });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "steps", data.workflowId] });
     },
   });
 }
@@ -136,8 +284,10 @@ export function useStartCrmWorkflowEnrollment() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void qc.invalidateQueries({ queryKey: KEYS });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "enrollments", variables.workflowId] });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "step-runs", variables.workflowId] });
     },
   });
 }

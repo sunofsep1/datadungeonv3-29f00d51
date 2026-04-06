@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { differenceInCalendarDays, format } from "date-fns";
+import { format } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ import {
   Building2,
   Clock,
   MessageSquare,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -94,6 +95,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
+import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
+import { getDaysSinceLastTouch, getLastTouchDate } from "@/lib/contactLastTouch";
 import {
   CONTACT_SMART_LISTS,
   parseSmartListParam,
@@ -291,23 +294,6 @@ function getEffectiveCategory(contact: ContactWithMeta): ContactCategory | null 
   return deriveCategoryFromClassification(contact);
 }
 
-function getLastTouchDate(contact: ContactWithMeta): Date | null {
-  const values = [contact.updated_at, contact.created_at].filter(Boolean) as string[];
-  let latest: Date | null = null;
-  for (const value of values) {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) continue;
-    if (!latest || parsed.getTime() > latest.getTime()) latest = parsed;
-  }
-  return latest;
-}
-
-function getDaysSinceLastTouch(contact: ContactWithMeta): number | null {
-  const lastTouch = getLastTouchDate(contact);
-  if (!lastTouch) return null;
-  return Math.max(0, differenceInCalendarDays(new Date(), lastTouch));
-}
-
 function getTouchBadgeClasses(daysSinceTouch: number | null): string {
   if (daysSinceTouch == null) return "bg-muted text-muted-foreground";
   if (daysSinceTouch >= 30) return "bg-destructive/15 text-destructive border border-destructive/30";
@@ -430,6 +416,7 @@ export default function Contacts() {
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
+  const [scriptQuickContact, setScriptQuickContact] = useState<{ id: string; category: string | null } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
   const [filterPanelOpen, setFilterPanelOpen] = useState(initialPrefs.filterPanelOpen);
@@ -1120,6 +1107,22 @@ export default function Contacts() {
 
   const listActionButtons = (contact: ContactWithMeta) => (
     <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        title="Scripts"
+        aria-label="Open scripts for contact"
+        onClick={(e) => {
+          e.stopPropagation();
+          setScriptQuickContact({
+            id: contact.id,
+            category: (contact as { contact_category?: string | null }).contact_category ?? null,
+          });
+        }}
+      >
+        <FileText className="w-4 h-4" />
+      </Button>
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
         <Pencil className="w-4 h-4" />
       </Button>
@@ -1448,8 +1451,10 @@ export default function Contacts() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Source</Label>
+                      <Label>Source *</Label>
                       <Input
+                        required
+                        aria-required
                         placeholder="How did you meet?"
                         className="bg-input"
                         value={formData.source}
@@ -2139,6 +2144,15 @@ export default function Contacts() {
         onOpenChange={setBulkSmsOpen}
         contactIds={[...selectedContactIds]}
         onComplete={() => setSelectedContactIds(new Set())}
+      />
+
+      <ContactScriptQuickSheet
+        key={scriptQuickContact?.id ?? "closed"}
+        open={scriptQuickContact != null}
+        onOpenChange={(open) => {
+          if (!open) setScriptQuickContact(null);
+        }}
+        contactCategory={scriptQuickContact?.category}
       />
     </div>
   );

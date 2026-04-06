@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
+import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 import type { Database } from "@/integrations/supabase/types";
 
 export type ContactTask = Database["public"]["Tables"]["contact_tasks"]["Row"];
@@ -112,6 +113,7 @@ export function useCreateContactTask() {
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       invalidateContactInteractions(queryClient, v.contact_id);
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }
@@ -157,6 +159,7 @@ export function useUpdateContactTask() {
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       invalidateContactInteractions(queryClient, v.contact_id);
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }
@@ -179,6 +182,7 @@ export function useDeleteContactTask() {
       queryClient.invalidateQueries({ queryKey: baseKey });
       queryClient.invalidateQueries({ queryKey: ["contact", v.contact_id] });
       invalidateContactInteractions(queryClient, v.contact_id);
+      invalidateContactScoreQueries(queryClient);
     },
   });
 }

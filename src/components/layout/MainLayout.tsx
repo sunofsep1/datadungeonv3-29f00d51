@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { HeaderBar } from "./HeaderBar";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { GlobalSearch } from "./GlobalSearch";
+import { LogTouchDialog } from "./LogTouchDialog";
 import { layout } from "@/lib/designTokens";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       />
       <div className="flex flex-1 flex-col min-w-0">
         <GlobalSearch />
+        <LogTouchDialog />
         <HeaderBar
           sidebarCollapsed={sidebarCollapsed}
           onMenuClick={() => setSidebarCollapsed((c) => !c)}

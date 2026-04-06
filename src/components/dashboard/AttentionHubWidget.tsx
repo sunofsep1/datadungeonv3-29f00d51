@@ -29,6 +29,7 @@ import {
 } from "@/hooks/useContactTasks";
 import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
 import { useTodos, useUpdateTodo, useAddTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
+import { hrefForWorkWorkspace } from "@/lib/attentionWorkWorkspace";
 import { cn } from "@/lib/utils";
 import type { ContactUrgencyTier } from "@/lib/contactUrgency";
 
@@ -646,6 +647,7 @@ export function AttentionHubWidget() {
             const canEdit = item.kind === "todoTask" || item.kind === "contactTask";
             const canDelete = item.kind === "todoTask" || item.kind === "contactTask";
             const isEditing = editingItemId === item.id;
+            const workHref = hrefForWorkWorkspace(item);
             return (
               <li key={item.id}>
                 <div className="rounded-md border border-border/70 bg-background/55 px-2.5 py-2">
@@ -667,10 +669,20 @@ export function AttentionHubWidget() {
                       </p>
                       <p className="truncate text-[11px] text-primary/90">{item.reason}</p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 max-w-[min(100%,220px)] sm:max-w-none">
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => handleOpenItem(item)}>
                         Open
                       </Button>
+                      {workHref ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => navigate(workHref)}
+                        >
+                          Work
+                        </Button>
+                      ) : null}
                       {canEdit ? (
                         <Button
                           size="sm"
@@ -971,11 +983,11 @@ export function AttentionHubWidget() {
                       <Button
                         size="sm"
                         className="h-8"
-                        disabled={completingItemId !== null && completingItemId !== focusItem.id}
                         onClick={(event) => {
                           event.stopPropagation();
-                          setNoteItemId(focusItem.id);
-                          setQuickNote("");
+                          const href = hrefForWorkWorkspace(focusItem);
+                          if (href) navigate(href);
+                          else handleOpenItem(focusItem);
                         }}
                       >
                         Work now
@@ -986,7 +998,13 @@ export function AttentionHubWidget() {
                         className="h-8"
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate("/appointments");
+                          const href = hrefForWorkWorkspace({
+                            kind: "appointment",
+                            appointmentId: focusItem.appointmentId,
+                            contactId: focusItem.contactId,
+                          });
+                          if (href) navigate(href);
+                          else navigate("/appointments");
                         }}
                       >
                         Prep now

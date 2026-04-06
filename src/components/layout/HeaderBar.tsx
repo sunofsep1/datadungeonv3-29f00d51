@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Plus,
+  Handshake,
   Bell,
   Calendar,
   Mail,
@@ -29,6 +31,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { openGlobalSearch } from "./GlobalSearch";
+import { openLogTouch } from "@/lib/openLogTouch";
 import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { NavHeadingButtons } from "./NavHeadingButtons";
 import { useNavCounts } from "@/hooks/useNavCounts";
@@ -40,6 +43,7 @@ import {
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from "@/hooks/useNotifications";
+import { groupNotificationsForDrawer, notificationKindIcon } from "@/lib/notificationPresentation";
 
 const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Home",
@@ -84,7 +88,8 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { user } = useAuth();
   const { nurtureDueCount, recentCount, tasksCount } = useNavCounts();
-  const { data: notifications = [] } = useNotifications();
+  const { data: notifications = [] } = useNotifications(48);
+  const notificationGroups = groupNotificationsForDrawer(notifications);
   const { data: unreadCount = 0 } = useUnreadNotificationsCount();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
@@ -158,6 +163,16 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         >
           <Search className="h-5 w-5" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
+          title="Log touch"
+          aria-label="Log touch"
+          onClick={() => openLogTouch()}
+        >
+          <Handshake className="h-5 w-5" />
+        </Button>
         <AskAIAssistant />
         <Button
           variant="default"
@@ -222,37 +237,73 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
                   </div>
                 </div>
               ) : (
-                <ul className="divide-y divide-border">
-                  {notifications.map((n) => (
-                    <li key={n.id}>
-                      <button
-                        type="button"
-                        className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors"
-                        onClick={() => {
-                          if (!n.read_at) markRead.mutate(n.id);
-                          if (n.action_url) {
-                            navigate(n.action_url);
-                            setNotificationsOpen(false);
-                          }
-                        }}
-                      >
-                        <div className="flex w-full items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={cn("h-2 w-2 rounded-full shrink-0", priorityDotClass(n.priority))} />
-                            <span className={cn("text-sm truncate", !n.read_at && "font-semibold text-foreground")}>
-                              {n.title}
-                            </span>
-                          </div>
-                          {!n.read_at ? <span className="h-2 w-2 rounded-full bg-primary shrink-0" /> : null}
-                        </div>
-                        {n.body ? <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{n.body}</p> : null}
-                        {n.action_label ? (
-                          <span className="text-[11px] text-primary mt-1 inline-block">{n.action_label}</span>
-                        ) : null}
-                      </button>
-                    </li>
+                <div className="divide-y divide-border">
+                  {notificationGroups.map((group) => (
+                    <div key={group.heading}>
+                      <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.heading}
+                      </p>
+                      <ul>
+                        {group.items.map((n) => {
+                          const KindIcon = notificationKindIcon(n.kind);
+                          return (
+                            <li key={n.id}>
+                              <button
+                                type="button"
+                                className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors border-t border-border/60 first:border-t-0"
+                                onClick={() => {
+                                  if (!n.read_at) markRead.mutate(n.id);
+                                  if (n.action_url) {
+                                    navigate(n.action_url);
+                                    setNotificationsOpen(false);
+                                  }
+                                }}
+                              >
+                                <div className="flex w-full items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
+                                      <KindIcon className="h-3.5 w-3.5" />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            "h-2 w-2 rounded-full shrink-0",
+                                            priorityDotClass(n.priority),
+                                          )}
+                                        />
+                                        <span
+                                          className={cn(
+                                            "text-sm leading-snug line-clamp-2",
+                                            !n.read_at && "font-semibold text-foreground",
+                                          )}
+                                        >
+                                          {n.title}
+                                        </span>
+                                      </div>
+                                      {n.body ? (
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 pl-4">{n.body}</p>
+                                      ) : null}
+                                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-4">
+                                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                                        </span>
+                                        {n.action_label ? (
+                                          <span className="text-[11px] text-primary">{n.action_label}</span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {!n.read_at ? <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-2" /> : null}
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
             <div className="shrink-0 border-t border-border px-4 py-3 space-y-2 bg-muted/10">

@@ -18,13 +18,26 @@ import { useContacts } from "@/hooks/useContacts";
 import { toast } from "sonner";
 import { Workflow } from "lucide-react";
 
-export function CrmWorkflowEngineCard() {
+type CrmWorkflowEngineCardProps = {
+  /** When set with onSelectedWorkflowIdChange, workflow dropdown is controlled (e.g. Automations page). */
+  selectedWorkflowId?: string;
+  onSelectedWorkflowIdChange?: (id: string) => void;
+};
+
+export function CrmWorkflowEngineCard({
+  selectedWorkflowId: controlledWorkflowId,
+  onSelectedWorkflowIdChange,
+}: CrmWorkflowEngineCardProps = {}) {
   const { data: workflows = [], isLoading: wfLoading } = useCrmWorkflowsList();
   const { data: contacts = [], isLoading: cLoading } = useContacts();
   const createSample = useCreateSampleCrmWorkflow();
   const startEnroll = useStartCrmWorkflowEnrollment();
-  const [workflowId, setWorkflowId] = React.useState<string>("");
+  const [internalWorkflowId, setInternalWorkflowId] = React.useState<string>("");
   const [contactId, setContactId] = React.useState<string>("");
+
+  const workflowId =
+    controlledWorkflowId !== undefined ? controlledWorkflowId : internalWorkflowId;
+  const setWorkflowId = onSelectedWorkflowIdChange ?? setInternalWorkflowId;
 
   const activeWorkflows = workflows.filter((w) => w.is_active);
 
