@@ -180,6 +180,97 @@ export default function ListingsSalesBoard() {
         }
       />
 
+      {listings.length > 0 && (
+        <section className="mb-6" aria-label="Pipeline KPIs">
+          <h2 className="text-sm font-semibold text-foreground mb-3">Performance</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <Layers className="w-3.5 h-3.5" />
+                Active pipeline
+              </div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.pipelineCount}</p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <TrendingUp className="w-3.5 h-3.5" />
+                On market
+              </div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.onMarketCount}</p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                Under contract
+              </div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.inContractCount}</p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <DollarSign className="w-3.5 h-3.5" />
+                Pipeline value
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
+                {formatCompactCurrency(kpi.pipelineValue)}
+              </p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <Percent className="w-3.5 h-3.5" />
+                Projected GCI ({commissionRate.toFixed(1)}%)
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
+                {formatCompactCurrency(kpi.projectedGci)}
+              </p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Settled
+              </div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.closedCount}</p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <CircleDollarSign className="w-3.5 h-3.5" />
+                Sales volume
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
+                {formatCompactCurrency(kpi.closedValue)}
+              </p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <Percent className="w-3.5 h-3.5" />
+                Settled rate
+              </div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {kpi.totalDeals ? `${Math.round(kpi.settlementRate)}%` : "—"}
+              </p>
+            </Card>
+            <Card className="zoho-card p-4 border-border">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <Home className="w-3.5 h-3.5" />
+                Total deals
+              </div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.totalDeals}</p>
+            </Card>
+            <Card className="zoho-card p-4 border-border col-span-2 sm:col-span-2 lg:col-span-2">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
+                <DollarSign className="w-3.5 h-3.5" />
+                Portfolio value
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
+                {formatCurrency(kpi.totalValue)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+                Avg guide {kpi.avgGuide ? formatCurrency(Math.round(kpi.avgGuide)) : "—"}
+              </p>
+            </Card>
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 overflow-x-auto pb-4">
         {SALES_KANBAN_STAGES.map((stage) => {
           const stageListings = getListingsByColumn(stage.id);
@@ -295,97 +386,6 @@ export default function ListingsSalesBoard() {
             Add listing
           </Button>
         </div>
-      )}
-
-      {listings.length > 0 && (
-        <section className="mt-8 pt-6 border-t border-border" aria-label="Pipeline KPIs">
-          <h2 className="text-sm font-semibold text-foreground mb-3">Performance</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <Layers className="w-3.5 h-3.5" />
-                Active pipeline
-              </div>
-              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.pipelineCount}</p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <TrendingUp className="w-3.5 h-3.5" />
-                On market
-              </div>
-              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.onMarketCount}</p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                Under contract
-              </div>
-              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.inContractCount}</p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <DollarSign className="w-3.5 h-3.5" />
-                Pipeline value
-              </div>
-              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
-                {formatCompactCurrency(kpi.pipelineValue)}
-              </p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <Percent className="w-3.5 h-3.5" />
-                Projected GCI ({commissionRate.toFixed(1)}%)
-              </div>
-              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
-                {formatCompactCurrency(kpi.projectedGci)}
-              </p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Settled
-              </div>
-              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.closedCount}</p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <CircleDollarSign className="w-3.5 h-3.5" />
-                Sales volume
-              </div>
-              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
-                {formatCompactCurrency(kpi.closedValue)}
-              </p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <Percent className="w-3.5 h-3.5" />
-                Settled rate
-              </div>
-              <p className="text-2xl font-bold text-foreground tabular-nums">
-                {kpi.totalDeals ? `${Math.round(kpi.settlementRate)}%` : "—"}
-              </p>
-            </Card>
-            <Card className="zoho-card p-4 border-border">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <Home className="w-3.5 h-3.5" />
-                Total deals
-              </div>
-              <p className="text-2xl font-bold text-foreground tabular-nums">{kpi.totalDeals}</p>
-            </Card>
-            <Card className="zoho-card p-4 border-border col-span-2 sm:col-span-2 lg:col-span-2">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <DollarSign className="w-3.5 h-3.5" />
-                Portfolio value
-              </div>
-              <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums leading-tight">
-                {formatCurrency(kpi.totalValue)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-                Avg guide {kpi.avgGuide ? formatCurrency(Math.round(kpi.avgGuide)) : "—"}
-              </p>
-            </Card>
-          </div>
-        </section>
       )}
 
       <AddListingDialog open={dialogOpen} onOpenChange={setDialogOpen} stages={SALES_KANBAN_STAGES} />
