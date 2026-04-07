@@ -11,17 +11,15 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PageFallbackSkeleton } from "@/components/PageFallbackSkeleton";
 
-// Core workflow chunk (Dashboard, Contacts, Properties + details) — one download for main nav
-const Dashboard = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.Dashboard })));
-const Contacts = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.Contacts })));
-const ContactDetail = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.ContactDetail })));
-const Properties = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.Properties })));
-const PropertyDetail = lazy(() => import("./pages/CorePages").then((m) => ({ default: m.PropertyDetail })));
-
-// Calendar/scheduling chunk
-const Appointments = lazy(() => import("./pages/CalendarPages").then((m) => ({ default: m.Appointments })));
-const Calendar = lazy(() => import("./pages/CalendarPages").then((m) => ({ default: m.Calendar })));
-const Tasks = lazy(() => import("./pages/CalendarPages").then((m) => ({ default: m.Tasks })));
+// Route-level splits to avoid one oversized "core pages" bundle.
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Contacts = lazy(() => import("./pages/Contacts"));
+const ContactDetail = lazy(() => import("./pages/ContactDetail"));
+const Properties = lazy(() => import("./pages/Properties"));
+const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const Appointments = lazy(() => import("./pages/Appointments"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const Tasks = lazy(() => import("./pages/Tasks"));
 
 // Other routes (individual chunks)
 const Marketing = lazy(() => import("./pages/Marketing"));

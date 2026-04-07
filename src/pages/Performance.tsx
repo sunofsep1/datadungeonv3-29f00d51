@@ -1,19 +1,13 @@
-import * as React from "react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { NumbersKPIGrid } from "@/components/agent-ops/NumbersKPIGrid";
-import { NumbersCharts } from "@/components/agent-ops/NumbersCharts";
-import { LogActivityForm } from "@/components/agent-ops/LogActivityForm";
-import { GoalsSection } from "@/components/agent-ops/GoalsSection";
-import { CallsTracker } from "@/components/performance/CallsTracker";
-import { GoalsManager } from "@/components/performance/GoalsManager";
 import { PerformanceMetricCard } from "@/components/performance/PerformanceMetricCard";
-import { PerformanceChart, type PerformanceChartDataPoint } from "@/components/performance/PerformanceChart";
+import type { PerformanceChartDataPoint } from "@/components/performance/PerformanceChart";
 import { DateRangePicker, getDefaultDateRange, type DateRange } from "@/components/performance/DateRangePicker";
 import { ExportReportButton, type ExportRow } from "@/components/performance/ExportReportButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useActivities } from "@/hooks/useActivities";
 import { useContacts } from "@/hooks/useContacts";
 import { useAppointments } from "@/hooks/useAppointments";
@@ -22,7 +16,33 @@ import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { format, subDays, parseISO, startOfWeek } from "date-fns";
 
+const PerformanceChart = lazy(() =>
+  import("@/components/performance/PerformanceChart").then((m) => ({ default: m.PerformanceChart }))
+);
+const PerformanceNumbersTab = lazy(() => import("./performance/PerformanceNumbersTab"));
+const PerformanceGoalsTab = lazy(() => import("./performance/PerformanceGoalsTab"));
+const PerformanceAnalyticsTab = lazy(() => import("./performance/PerformanceAnalyticsTab"));
+
+type PerformanceTab = "overview" | "numbers" | "goals" | "analytics";
+
+function PerformanceTabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-full max-w-md" />
+      <Skeleton className="h-32 w-full rounded-lg" />
+      <Skeleton className="h-32 w-full rounded-lg" />
+    </div>
+  );
+}
+
 export default function Performance() {
+  const [tab, setTab] = useState<PerformanceTab>("overview");
+  const [panelsMounted, setPanelsMounted] = useState<Record<PerformanceTab, boolean>>({
+    overview: true,
+    numbers: false,
+    goals: false,
+    analytics: false,
+  });
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange);
   const { data: activities = [], isLoading: activitiesLoading } = useActivities();
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
@@ -147,6 +167,12 @@ export default function Performance() {
 
   const isLoadingOverview = activitiesLoading || contactsLoading || appointmentsLoading || listingsLoading;
 
+  const onTabChange = (value: string) => {
+    const v = value as PerformanceTab;
+    setTab(v);
+    setPanelsMounted((m) => ({ ...m, [v]: true }));
+  };
+
   return (
     <div className="animate-fade-in">
       <PageHeader
@@ -154,7 +180,7 @@ export default function Performance() {
         description="Track your KPIs, log activities, and manage your goals"
       />
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={tab} onValueChange={onTabChange} className="space-y-6">
         <TabsList className="bg-white/10 border border-white/10">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="numbers">Daily Numbers</TabsTrigger>
@@ -231,32 +257,45 @@ export default function Performance() {
             <PerformanceMetricCard title="Cold" value={contactTotals.cold} isLoading={isLoadingOverview} />
             <PerformanceMetricCard title="Lead" value={contactTotals.lead} isLoading={isLoadingOverview} />
           </div>
-          <PerformanceChart
-            title="Closings & GCI by week"
-            data={chartData}
-            dataKeys={[
-              { key: "closings", color: "hsl(var(--chart-1))", name: "Closings" },
-              { key: "gci", color: "hsl(var(--chart-2))", name: "GCI" },
-            ]}
-            isLoading={isLoadingOverview}
-          />
+          <Suspense
+            fallback={
+              <Skeleton className="h-[280px] w-full rounded-lg border border-border bg-card" aria-hidden />
+            }
+          >
+            <PerformanceChart
+              title="Closings & GCI by week"
+              data={chartData}
+              dataKeys={[
+                { key: "closings", color: "hsl(var(--chart-1))", name: "Closings" },
+                { key: "gci", color: "hsl(var(--chart-2))", name: "GCI" },
+              ]}
+              isLoading={isLoadingOverview}
+            />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="numbers" className="space-y-6">
-          <LogActivityForm />
-          <NumbersKPIGrid />
+          {panelsMounted.numbers ? (
+            <Suspense fallback={<PerformanceTabSkeleton />}>
+              <PerformanceNumbersTab />
+            </Suspense>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="goals" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GoalsManager />
-            <CallsTracker />
-          </div>
-          <GoalsSection />
+          {panelsMounted.goals ? (
+            <Suspense fallback={<PerformanceTabSkeleton />}>
+              <PerformanceGoalsTab />
+            </Suspense>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="analytics">
-          <NumbersCharts />
+          {panelsMounted.analytics ? (
+            <Suspense fallback={<PerformanceTabSkeleton />}>
+              <PerformanceAnalyticsTab />
+            </Suspense>
+          ) : null}
         </TabsContent>
       </Tabs>
     </div>

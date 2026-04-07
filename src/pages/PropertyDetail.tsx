@@ -55,7 +55,8 @@ import { PropertySuiteCard } from "@/components/properties/PropertySuiteCard";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { supabase } from "@/integrations/supabase/client";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
-import { parsePropertyReportPdf, normalizePropertyType, PROPERTY_TYPE_VALUES, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
+import type { ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
+import { normalizePropertyType, PROPERTY_TYPE_VALUES } from "@/lib/propertyType";
 
 const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
 
@@ -474,6 +475,7 @@ export default function PropertyDetail() {
     setUploadReportLoading(true);
     setParsedReportData(null);
     try {
+      const { parsePropertyReportPdf } = await import("@/lib/parsePropertyReportPdf");
       const parsed = await parsePropertyReportPdf(file);
       setParsedReportData(parsed);
       toast({ title: "Success", description: "Property report parsed. Review and apply to property." });

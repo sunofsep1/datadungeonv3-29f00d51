@@ -34,7 +34,7 @@ import { PropertyList } from "@/components/PropertyManagement/PropertyList";
 import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
-import { parsePropertyReportPdf, type ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
+import type { ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
 
 type PropertyType = "house" | "apartment" | "townhouse" | "land";
 
@@ -210,6 +210,7 @@ export default function Properties() {
     }
     setUploadReportLoading(true);
     try {
+      const { parsePropertyReportPdf } = await import("@/lib/parsePropertyReportPdf");
       const parsed: ParsedPropertyReport = await parsePropertyReportPdf(file);
       setFormData((prev) => ({
         ...prev,

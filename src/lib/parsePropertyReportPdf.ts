@@ -4,6 +4,7 @@
  */
 
 import * as pdfjsLib from "pdfjs-dist";
+import { normalizePropertyType } from "@/lib/propertyType";
 
 // Configure worker for pdfjs (required for browser) - use unpkg for Vite compatibility
 if (typeof window !== "undefined") {
@@ -141,19 +142,6 @@ function parseAddressParts(fullAddress: string | undefined | null): {
     };
   }
   return { address_line1: fullAddress || undefined };
-}
-
-/** Allowed DB values for properties_property_type_check; use when saving. */
-export const PROPERTY_TYPE_VALUES = ["house", "apartment", "townhouse", "land"] as const;
-
-export function normalizePropertyType(s: string | undefined | null): string {
-  if (s == null || typeof s !== "string") return "house";
-  const lower = s.toLowerCase().trim();
-  if (/house|freehold/i.test(lower)) return "house";
-  if (/apartment|unit|flat/i.test(lower)) return "apartment";
-  if (/townhouse|town house/i.test(lower)) return "townhouse";
-  if (/land|vacant/i.test(lower)) return "land";
-  return "house";
 }
 
 /**
