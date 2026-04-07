@@ -438,7 +438,7 @@ export function AttentionHubWidget() {
           if (item.sequenceEnrollmentId && run) {
             try {
               await completeNurtureStep.mutateAsync({
-                enrollment_id: item.sequenceEnrollmentId,
+                enrollment_id: run.enrollment_id,
                 step_run_id: run.id,
                 contact_id: item.contactId,
                 outcome: "completed",

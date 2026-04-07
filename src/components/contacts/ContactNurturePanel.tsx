@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import {
   useCompleteNurtureStepAndAdvance,
   useSetNurtureEnrollmentCadencePaused,
   useAdvanceNurtureEnrollmentStep,
+  NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY,
 } from "@/hooks/useNurtureSequences";
 import type { ContactWithMeta } from "@/hooks/useContacts";
 import { errorMessageFromUnknown, cn } from "@/lib/utils";
@@ -63,6 +65,7 @@ interface ContactNurturePanelProps {
 }
 
 export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelProps) {
+  const queryClient = useQueryClient();
   const { data: tasks = [], isLoading: tasksLoading } = useContactTasks(contactId);
   const createTask = useCreateContactTask();
   const updateTask = useUpdateContactTask();
@@ -225,7 +228,31 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
       setEngagementTarget(null);
       setEngagementNotes("");
     } catch (err) {
-      toast.error(errorMessageFromUnknown(err));
+      const msg = errorMessageFromUnknown(err);
+      const enrollmentAlreadyClosed = /enrollment not found or already completed/i.test(msg);
+      if (enrollmentAlreadyClosed && engagementTarget) {
+        try {
+          await updateTask.mutateAsync({
+            id: engagementTarget.task_id,
+            contact_id: contactId,
+            completed_at: new Date().toISOString(),
+          });
+          await queryClient.invalidateQueries({ queryKey: NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY });
+          await queryClient.invalidateQueries({ queryKey: ["nurture_sequence_enrollments"] });
+          await queryClient.invalidateQueries({ queryKey: ["contact_tasks", contactId] });
+          await queryClient.invalidateQueries({ queryKey: ["contact", contactId] });
+          toast.success(
+            "That sequence step was already closed on the server. Your task is marked done and the list is refreshed.",
+          );
+          setEngagementDialogOpen(false);
+          setEngagementTarget(null);
+          setEngagementNotes("");
+        } catch (e2) {
+          toast.error(errorMessageFromUnknown(e2));
+        }
+        return;
+      }
+      toast.error(msg);
     }
   };
 
@@ -280,7 +307,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                       setEngagementOutcome("completed");
                       setEngagementTarget({
                         task_id: t.id,
-                        enrollment_id: t.sequence_enrollment_id,
+                        enrollment_id: run.enrollment_id,
                         step_run_id: run.id,
                         existing_notes: t.notes ?? null,
                       });
@@ -321,7 +348,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                         setEngagementOutcome("completed");
                         setEngagementTarget({
                           task_id: t.id,
-                          enrollment_id: t.sequence_enrollment_id,
+                          enrollment_id: run.enrollment_id,
                           step_run_id: run.id,
                           existing_notes: t.notes ?? null,
                         });
@@ -342,7 +369,7 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                         setEngagementOutcome("skipped");
                         setEngagementTarget({
                           task_id: t.id,
-                          enrollment_id: t.sequence_enrollment_id,
+                          enrollment_id: run.enrollment_id,
                           step_run_id: run.id,
                           existing_notes: t.notes ?? null,
                         });

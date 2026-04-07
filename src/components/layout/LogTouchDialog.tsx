@@ -27,7 +27,7 @@ import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
 import { useLogTouch } from "@/hooks/useLogTouch";
 import { TOUCH_TYPE_OPTIONS } from "@/lib/touchTypes";
 import { getLogTouchEventName, type OpenLogTouchDetail } from "@/lib/openLogTouch";
-import { cn } from "@/lib/utils";
+import { cn, errorMessageFromUnknown } from "@/lib/utils";
 
 export function LogTouchDialog() {
   const { toast } = useToast();
@@ -117,9 +117,16 @@ export function LogTouchDialog() {
       toast({ title: "Touch logged", description: "Last touch date updated on the contact." });
       handleOpenChange(false);
     } catch (err) {
+      const description = errorMessageFromUnknown(err);
+      const looksLikeMissingTouches =
+        /touches/i.test(description) &&
+        (/does not exist|42P01|schema cache|could not find the table/i.test(description) ||
+          /relation.*touches/i.test(description));
       toast({
         title: "Could not log touch",
-        description: err instanceof Error ? err.message : "Check migrations and try again.",
+        description: looksLikeMissingTouches
+          ? `${description} If this is a fresh project, apply Supabase migrations (e.g. supabase db push).`
+          : description,
         variant: "destructive",
       });
     }

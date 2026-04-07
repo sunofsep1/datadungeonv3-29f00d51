@@ -483,7 +483,7 @@ export default function Tasks() {
                               if (t.sequence_enrollment_id && run) {
                                 completeStep.mutate(
                                   {
-                                    enrollment_id: t.sequence_enrollment_id,
+                                    enrollment_id: run.enrollment_id,
                                     step_run_id: run.id,
                                     contact_id: t.contact_id,
                                     outcome: "completed",
@@ -558,7 +558,7 @@ export default function Tasks() {
                                   if (!run || !t.sequence_enrollment_id) return;
                                   completeStep.mutate(
                                     {
-                                      enrollment_id: t.sequence_enrollment_id,
+                                      enrollment_id: run.enrollment_id,
                                       step_run_id: run.id,
                                       contact_id: t.contact_id,
                                       outcome: "completed",

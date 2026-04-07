@@ -25,7 +25,9 @@ export interface NurtureStepRun {
 
 const seqKey = ["nurture_sequences"] as const;
 const enrollKey = ["nurture_sequence_enrollments"] as const;
-const stepRunsKey = ["nurture_sequence_step_runs"] as const;
+/** Invalidate with this prefix after step-run / task sync issues. */
+export const NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY = ["nurture_sequence_step_runs"] as const;
+const stepRunsKey = NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY;
 
 function addDays(d: Date, days: number): Date {
   const x = new Date(d);

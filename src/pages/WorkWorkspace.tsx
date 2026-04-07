@@ -139,7 +139,7 @@ export default function WorkWorkspace() {
           if (task.sequence_enrollment_id && run) {
             try {
               await completeNurtureStep.mutateAsync({
-                enrollment_id: task.sequence_enrollment_id,
+                enrollment_id: run.enrollment_id,
                 step_run_id: run.id,
                 contact_id: contactId,
                 outcome: "completed",

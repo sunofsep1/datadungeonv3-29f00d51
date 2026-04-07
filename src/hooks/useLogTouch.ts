@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
+import { errorMessageFromUnknown } from "@/lib/utils";
 
 export type LogTouchInput = {
   contact_id: string;
@@ -23,15 +24,39 @@ export function useLogTouch() {
       }
       if (!userId) throw new Error("Not authenticated");
 
-      const row = {
+      const touchDate = input.touch_date ?? new Date().toISOString();
+      const notes = input.notes?.trim() ? input.notes.trim() : null;
+
+      const { error: rpcError } = await supabase.rpc("log_touch_manual" as never, {
+        p_contact_id: input.contact_id,
+        p_touch_type: input.touch_type,
+        p_notes: notes,
+        p_touch_date: touchDate,
+      } as never);
+
+      if (!rpcError) return;
+
+      const err = rpcError as { code?: string; message?: string };
+      const msg = (err.message ?? "").toLowerCase();
+      const fnMissing =
+        err.code === "PGRST202" ||
+        msg.includes("could not find the function") ||
+        msg.includes("function public.log_touch_manual") ||
+        /schema cache/i.test(msg);
+
+      if (!fnMissing) {
+        throw new Error(errorMessageFromUnknown(rpcError));
+      }
+
+      const { error } = await (supabase as any).from("touches").insert({
         contact_id: input.contact_id,
         touch_type: input.touch_type,
-        notes: input.notes?.trim() ? input.notes.trim() : null,
-        touch_date: input.touch_date ?? new Date().toISOString(),
+        notes,
+        touch_date: touchDate,
         logged_by: userId,
-      };
-      const { error } = await (supabase as any).from("touches").insert(row);
-      if (error) throw error;
+        user_id: userId,
+      });
+      if (error) throw new Error(errorMessageFromUnknown(error));
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });

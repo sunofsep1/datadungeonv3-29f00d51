@@ -250,7 +250,7 @@ export default function TodoList() {
                               onClick={() =>
                                 completeAndAdvance.mutate(
                                   {
-                                    enrollment_id: task.sequence_enrollment_id!,
+                                    enrollment_id: run.enrollment_id,
                                     step_run_id: run.id,
                                     contact_id: task.contact_id,
                                     outcome: "completed",
@@ -271,7 +271,7 @@ export default function TodoList() {
                               onClick={() =>
                                 completeAndAdvance.mutate(
                                   {
-                                    enrollment_id: task.sequence_enrollment_id!,
+                                    enrollment_id: run.enrollment_id,
                                     step_run_id: run.id,
                                     contact_id: task.contact_id,
                                     outcome: "skipped",
