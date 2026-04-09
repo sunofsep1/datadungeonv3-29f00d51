@@ -9,6 +9,7 @@ import {
   Sparkles,
   Users,
   Workflow,
+  LineChart,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const LINKS: Array<{ to: string; label: string; hint?: string; icon: typeof User
   { to: "/contacts", label: "Contacts", hint: "Full list", icon: Users },
   { to: "/hot-leads", label: "Hot leads", icon: Flame },
   { to: "/listings", label: "Listings", hint: "Pipeline", icon: Home },
+  { to: "/pricing", label: "Pricing", hint: "TAM & brackets", icon: LineChart },
   { to: "/automations", label: "Automations", hint: "Workflows", icon: Workflow },
   { to: "/data-health", label: "Data health", icon: Activity },
   { to: "/calendar", label: "Calendar", icon: Calendar },

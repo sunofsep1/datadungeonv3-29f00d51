@@ -1,8 +1,10 @@
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { useCrmWorkflowsList } from "@/hooks/useCrmWorkflows";
-import { Workflow } from "lucide-react";
+import { Search, Workflow } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +13,29 @@ type DirectoryProps = {
   onSelectWorkflow?: (id: string) => void;
 };
 
+type StatusFilter = "all" | "active" | "paused";
+
 export function WorkflowDirectoryCard({ selectedWorkflowId, onSelectWorkflow }: DirectoryProps) {
   const { data: workflows = [], isLoading } = useCrmWorkflowsList();
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredWorkflows = useMemo(() => {
+    return workflows.filter((w) => {
+      if (statusFilter === "active" && !w.is_active) return false;
+      if (statusFilter === "paused" && w.is_active) return false;
+      if (!normalizedQuery) return true;
+      const haystack = [
+        w.name ?? "",
+        w.trigger_type ?? "",
+        w.trigger_object ?? "",
+        w.is_active ? "active" : "paused",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [workflows, normalizedQuery, statusFilter]);
 
   return (
     <Card className="zoho-card p-4 sm:p-5 border-border">
@@ -25,6 +48,38 @@ export function WorkflowDirectoryCard({ selectedWorkflowId, onSelectWorkflow }: 
         {onSelectWorkflow ? <span className="text-foreground/90">Click a row to load it in the inspector.</span> : null}{" "}
         Enroll a contact from the engine card below.
       </p>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search workflows, triggers, status…"
+            className="h-8 bg-input pl-8 text-xs"
+            aria-label="Search workflows"
+          />
+        </div>
+        <div className="inline-flex h-8 items-center rounded-md border border-border bg-muted/30 p-0.5">
+          {(["all", "active", "paused"] as const).map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={cn(
+                "rounded px-2.5 py-1 text-[11px] font-medium capitalize transition-colors",
+                statusFilter === status
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setStatusFilter(status)}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground tabular-nums">
+          {filteredWorkflows.length} shown · {workflows.length} total
+        </p>
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -32,15 +87,15 @@ export function WorkflowDirectoryCard({ selectedWorkflowId, onSelectWorkflow }: 
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
-      ) : workflows.length === 0 ? (
+      ) : filteredWorkflows.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center border border-dashed border-border rounded-lg">
-          No workflows yet. Create a sample workflow below, or add one from your database / future builder.
+          No workflows match this search.
         </p>
       ) : (
         <div className="rounded-lg border border-border overflow-x-auto">
           <table className="w-full text-sm border-collapse min-w-[520px]">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 <th className="py-2.5 px-3 font-medium">Name</th>
                 <th className="py-2.5 px-3 font-medium">Trigger</th>
                 <th className="py-2.5 px-3 font-medium">Object</th>
@@ -50,7 +105,7 @@ export function WorkflowDirectoryCard({ selectedWorkflowId, onSelectWorkflow }: 
               </tr>
             </thead>
             <tbody>
-              {workflows.map((w) => (
+              {filteredWorkflows.map((w) => (
                 <tr
                   key={w.id}
                   className={cn(

@@ -39,6 +39,7 @@ const Research = lazy(() => import("./pages/Research"));
 const AnnualReviews = lazy(() => import("./pages/AnnualReviews"));
 const Automations = lazy(() => import("./pages/Automations"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
+const PricingIntelligence = lazy(() => import("./pages/PricingIntelligence"));
 const SmsSuitePage = lazy(() => import("./pages/sms/SmsSuitePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
@@ -75,6 +76,7 @@ const App = () => (
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
+                <Route path="/pricing" element={<ProtectedRoute><MainLayout><PricingIntelligence /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings-sales" element={<Navigate to="/listings" replace />} />
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/properties/:id" element={<ProtectedRoute><MainLayout><PropertyDetail /></MainLayout></ProtectedRoute>} />

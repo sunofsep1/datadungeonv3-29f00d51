@@ -134,6 +134,8 @@ function pickHubSpotContactInsert(payload: Record<string, unknown>): Record<stri
   if (rest.phone != null && String(rest.phone).trim()) out.phone = String(rest.phone).trim();
   if (rest.source != null && String(rest.source).trim()) out.source = String(rest.source).trim();
   if (rest.notes != null && String(rest.notes).trim()) out.notes = String(rest.notes).trim();
+  const cat = rest.contact_category != null ? String(rest.contact_category).trim() : "";
+  out.contact_category = cat || "warm_lead";
   return out;
 }
 
@@ -364,7 +366,11 @@ export function useCreateContact() {
     mutationFn: async (
       contact: Omit<ContactInsert, "user_id"> & ContactAddressFields & { skipActivityLog?: boolean },
     ) => {
-      const { skipActivityLog, ...contactData } = contact;
+      const { skipActivityLog, ...rawContact } = contact;
+      const ccRaw = (rawContact as { contact_category?: string | null }).contact_category;
+      const contact_category =
+        typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim() : "warm_lead";
+      const contactData = { ...rawContact, contact_category };
       const {
         data: { user },
       } = await supabase.auth.getUser();

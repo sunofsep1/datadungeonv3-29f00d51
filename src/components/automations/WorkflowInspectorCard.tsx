@@ -18,6 +18,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -32,11 +42,14 @@ import {
   useCrmWorkflowEnrollmentsForWorkflow,
   useCrmWorkflowStepRunsForWorkflow,
   useUpdateCrmWorkflowStepDelay,
+  useDuplicateCrmWorkflowStep,
   type CrmWorkflowStep,
 } from "@/hooks/useCrmWorkflows";
 import { useContacts } from "@/hooks/useContacts";
-import { GitBranch, History, ListTree, Plus, Users } from "lucide-react";
+import { Copy, GitBranch, History, ListTree, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const INSPECTOR_TAB_STORAGE_KEY = "datadungeon_automations_inspector_tab_v1";
 
 function summarizeStepConfig(actionType: string, config: unknown): string {
   if (config === null || typeof config !== "object" || Array.isArray(config)) {
@@ -225,6 +238,26 @@ export function WorkflowInspectorCard({ workflowId, onWorkflowIdChange }: Props)
   }, [enrollments]);
 
   const selectedMeta = workflows.find((w) => w.id === workflowId);
+  const duplicateStep = useDuplicateCrmWorkflowStep();
+  const [pendingDuplicateStep, setPendingDuplicateStep] = useState<CrmWorkflowStep | null>(null);
+  const stepOrderSet = useMemo(() => new Set(steps.map((s) => s.step_order)), [steps]);
+  const [activeTab, setActiveTab] = useState<"steps" | "enrollments" | "step-log">(() => {
+    if (typeof window === "undefined") return "steps";
+    const saved = localStorage.getItem(INSPECTOR_TAB_STORAGE_KEY);
+    if (saved === "steps" || saved === "enrollments" || saved === "step-log") return saved;
+    return "steps";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(INSPECTOR_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
+
+  const jumpToStep = (stepOrder: number) => {
+    const el = document.getElementById(`wf-step-${workflowId}-${stepOrder}`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
 
   return (
     <Card className="zoho-card p-4 sm:p-5 border-border">
@@ -265,8 +298,24 @@ export function WorkflowInspectorCard({ workflowId, onWorkflowIdChange }: Props)
           {selectedMeta?.description ? (
             <p className="text-xs text-muted-foreground mb-4 border-l-2 border-primary/40 pl-3">{selectedMeta.description}</p>
           ) : null}
+          {selectedMeta ? (
+            <div className="mb-4 flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary" className="text-[10px] font-normal">
+                trigger: {selectedMeta.trigger_type?.replace(/_/g, " ") ?? "—"}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] font-normal capitalize">
+                object: {selectedMeta.trigger_object ?? "—"}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] font-normal">
+                {selectedMeta.is_active ? "active" : "paused"}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] font-normal tabular-nums">
+                {selectedMeta.enrollment_count ?? 0} enrolled
+              </Badge>
+            </div>
+          ) : null}
 
-          <Tabs defaultValue="steps" className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "steps" | "enrollments" | "step-log")} className="w-full">
             <TabsList className="mb-3 h-auto min-h-9 flex flex-wrap gap-1 py-1">
               <TabsTrigger value="steps" className="gap-1.5 text-xs">
                 <GitBranch className="h-3.5 w-3.5" />
@@ -309,42 +358,100 @@ export function WorkflowInspectorCard({ workflowId, onWorkflowIdChange }: Props)
                   No steps on this workflow.
                 </p>
               ) : (
-                <div className="rounded-lg border border-border overflow-x-auto">
-                  <table className="w-full text-sm border-collapse min-w-[480px]">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/40 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        <th className="py-2.5 px-3 font-medium tabular-nums">#</th>
-                        <th className="py-2.5 px-3 font-medium">Action</th>
-                        <th className="py-2.5 px-3 font-medium tabular-nums">Delay (min)</th>
-                        <th className="py-2.5 px-3 font-medium">Summary</th>
-                        <th className="py-2.5 px-3 font-medium">Branch</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {steps.map((s) => {
-                        const bh = branchHint(s);
-                        return (
-                          <tr key={s.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20">
-                            <td className="py-2.5 px-3 tabular-nums text-muted-foreground">{s.step_order}</td>
-                            <td className="py-2.5 px-3">
-                              <Badge variant="outline" className="font-normal text-[10px]">
-                                {s.action_type?.replace(/_/g, " ") ?? "—"}
-                              </Badge>
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <StepDelayEditor step={s} workflowId={workflowId} />
-                            </td>
-                            <td className="py-2.5 px-3 text-xs text-foreground max-w-[220px]">
-                              <span className="line-clamp-2">{summarizeStepConfig(s.action_type, s.action_config)}</span>
-                            </td>
-                            <td className="py-2.5 px-3 text-xs text-muted-foreground max-w-[140px]">
-                              {bh ? <span className="line-clamp-2">{bh}</span> : "—"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-border overflow-x-auto">
+                    <table className="w-full text-sm border-collapse min-w-[480px]">
+                      <thead>
+                        <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <th className="py-2.5 px-3 font-medium tabular-nums">#</th>
+                          <th className="py-2.5 px-3 font-medium">Action</th>
+                          <th className="py-2.5 px-3 font-medium tabular-nums">Delay (min)</th>
+                          <th className="py-2.5 px-3 font-medium">Summary</th>
+                          <th className="py-2.5 px-3 font-medium">Branch</th>
+                          <th className="py-2.5 px-3 font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {steps.map((s) => {
+                          const bh = branchHint(s);
+                          return (
+                            <tr
+                              key={s.id}
+                              id={`wf-step-${workflowId}-${s.step_order}`}
+                              className="border-b border-border/60 last:border-0 hover:bg-muted/20"
+                            >
+                              <td className="py-2.5 px-3 tabular-nums text-muted-foreground">{s.step_order}</td>
+                              <td className="py-2.5 px-3">
+                                <Badge variant="outline" className="font-normal text-[10px]">
+                                  {s.action_type?.replace(/_/g, " ") ?? "—"}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <StepDelayEditor step={s} workflowId={workflowId} />
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-foreground max-w-[220px]">
+                                <span className="line-clamp-2">{summarizeStepConfig(s.action_type, s.action_config)}</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-muted-foreground max-w-[140px]">
+                                {bh ? (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {typeof s.next_step_order_if_true === "number" ? (
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          "rounded border px-1.5 py-0.5 text-[10px]",
+                                          stepOrderSet.has(s.next_step_order_if_true)
+                                            ? "border-border text-foreground hover:bg-muted"
+                                            : "border-border/60 text-muted-foreground",
+                                        )}
+                                        disabled={!stepOrderSet.has(s.next_step_order_if_true)}
+                                        onClick={() => jumpToStep(s.next_step_order_if_true as number)}
+                                      >
+                                        true → {s.next_step_order_if_true}
+                                      </button>
+                                    ) : null}
+                                    {typeof s.next_step_order_if_false === "number" ? (
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          "rounded border px-1.5 py-0.5 text-[10px]",
+                                          stepOrderSet.has(s.next_step_order_if_false)
+                                            ? "border-border text-foreground hover:bg-muted"
+                                            : "border-border/60 text-muted-foreground",
+                                        )}
+                                        disabled={!stepOrderSet.has(s.next_step_order_if_false)}
+                                        onClick={() => jumpToStep(s.next_step_order_if_false as number)}
+                                      >
+                                        false → {s.next_step_order_if_false}
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1 text-xs"
+                                  disabled={duplicateStep.isPending}
+                                  onClick={() => setPendingDuplicateStep(s)}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  Duplicate
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: edit delay inline; press Enter to commit quickly.
+                  </p>
                 </div>
               )}
               <WorkflowStepFormBuilder workflowId={workflowId} />
@@ -365,7 +472,7 @@ export function WorkflowInspectorCard({ workflowId, onWorkflowIdChange }: Props)
                 <div className="rounded-lg border border-border overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-[560px]">
                     <thead>
-                      <tr className="border-b border-border bg-muted/40 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         <th className="py-2.5 px-3 font-medium">Record</th>
                         <th className="py-2.5 px-3 font-medium">Status</th>
                         <th className="py-2.5 px-3 font-medium tabular-nums">Step</th>
@@ -453,7 +560,7 @@ export function WorkflowInspectorCard({ workflowId, onWorkflowIdChange }: Props)
                 <div className="rounded-lg border border-border overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-[640px]">
                     <thead>
-                      <tr className="border-b border-border bg-muted/40 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         <th className="py-2.5 px-3 font-medium whitespace-nowrap">When</th>
                         <th className="py-2.5 px-3 font-medium">Contact</th>
                         <th className="py-2.5 px-3 font-medium tabular-nums">Step</th>
@@ -519,6 +626,48 @@ export function WorkflowInspectorCard({ workflowId, onWorkflowIdChange }: Props)
               )}
             </TabsContent>
           </Tabs>
+          <AlertDialog
+            open={pendingDuplicateStep != null}
+            onOpenChange={(open) => {
+              if (!open) setPendingDuplicateStep(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Duplicate this step?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will append a copy of step{" "}
+                  <span className="font-medium text-foreground tabular-nums">
+                    #{pendingDuplicateStep?.step_order ?? "—"}
+                  </span>{" "}
+                  to the end of the workflow chain.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={duplicateStep.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={duplicateStep.isPending || pendingDuplicateStep == null}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!pendingDuplicateStep) return;
+                    duplicateStep.mutate(
+                      { workflowId, sourceStep: pendingDuplicateStep },
+                      {
+                        onSuccess: () => {
+                          toast.success(`Duplicated step ${pendingDuplicateStep.step_order} to end of chain`);
+                          setPendingDuplicateStep(null);
+                        },
+                        onError: (err) =>
+                          toast.error(err instanceof Error ? err.message : "Could not duplicate step"),
+                      },
+                    );
+                  }}
+                >
+                  {duplicateStep.isPending ? "Duplicating…" : "Duplicate step"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </Card>

@@ -66,7 +66,12 @@ const createEmptyListing = () => ({
   special_conditions: "",
 });
 
-export default function Listings() {
+export type ListingsProps = {
+  /** When true, omit the page header — the host route (e.g. listings hub) supplies title and primary actions. */
+  embedded?: boolean;
+};
+
+export default function Listings({ embedded = false }: ListingsProps) {
   const { data: listings, isLoading } = useListings();
   const { data: contacts = [] } = useContacts();
   const createListing = useCreateListing();
@@ -358,8 +363,10 @@ export default function Listings() {
 
   if (isLoading) {
     return (
-      <div className="animate-fade-in">
-        <PageHeader title="Listings & Deals" description="Manage your property listings and link property owners" />
+      <div className={cn("animate-fade-in", embedded && "pt-0")}>
+        {!embedded && (
+          <PageHeader title="Listings & Deals" description="Manage your property listings and link property owners" />
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48" />)}
         </div>
@@ -368,7 +375,8 @@ export default function Listings() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className={cn("animate-fade-in", embedded && "pt-0")}>
+      {!embedded && (
       <PageHeader
         title="Listings & Deals"
         description="Manage your property listings and link property owners"
@@ -773,6 +781,7 @@ export default function Listings() {
           </Dialog>
         }
       />
+      )}
 
       {/* Listings: same paginated table layout as Contacts */}
       {listings && listings.length > 0 ? (

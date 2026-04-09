@@ -64,6 +64,7 @@ import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
+import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
 import {
@@ -983,6 +984,7 @@ export default function ContactDetail() {
 
         <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
           {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
+          {id && <ContactScorePanel contactId={id} />}
           {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
         </div>
       </div>

@@ -14,6 +14,7 @@ Living notes for the navigation and “daily work” emphasis. Update as phases 
 | `/attention-hub` | Daily Hub |
 | `/contacts` | Contacts; `?smart=` presets (see `src/lib/contactSmartLists.ts`) |
 | `/listings` | Listings sales board (`/listings-sales` redirects here) |
+| `/pricing` | **Pricing intelligence** hub — active listings → open detail pricing panel (TAM, brackets) |
 | `/tasks` | Tasks |
 | `/automations` | CRM workflows hub (`CrmWorkflowEngineCard` + links to Settings / Tasks) |
 | `/data-health` | Data health score and deep links |
@@ -40,5 +41,13 @@ Living notes for the navigation and “daily work” emphasis. Update as phases 
 - [x] Data health: gap breakdown bars (`pctComplete` per check) + smart-list deep links (Top 100, hot/warm, past client, no next touch, stale).
 - [x] Global search: **Quick navigation** grid (Daily Hub, Home, Tasks, Contacts, Listings, Hot leads, Automations, Data health, Scripts, Settings); same block when search has no record matches.
 - [x] **Listings + pricing (Phase 3 slice):** listing detail places **Pricing intelligence** next to **`ListingPipelineNextCard`** — current stage, copy on `listing_stage_change` / `process-workflows`, links to Automations and Settings.
-- [x] **Annual reviews depth (Phase 5 slice):** `/annual-reviews` **Planner snapshot** (counts per status) + **Scheduled in the next 30 days** (contact links + dates) above the review list.
+- [x] **Annual reviews depth (Phase 5 slice):** `/annual-reviews` **Planner snapshot** (counts per status) + **January board** (chips by scheduled date for the selected year) + **Scheduled in the next 30 days** (contact links + dates) above the review list.
+- [x] **Daily Hub touch scorecard:** `/attention-hub` embeds the same **Touch scorecard** as Home (today / week targets, log touch, unread link).
+- [x] **Pricing workspace (Phase 3):** `/pricing` lists active listings with links into listing detail pricing; sidebar **Pricing** + global search + Daily Hub quick link.
+- [x] **Contacts workspace polish (Phase 2):** top-bar-first layout with no persistent desktop filter rail; quick **Refine** row (source/property/last touched), right-side Filters sheet for deep fields, stronger full-width list table surface, and mobile two-row controls with horizontal-scroll fade hints.
+- [x] **Automations operator polish (Phase 4):** workflow directory search + status chips, sticky table headers, persisted selected workflow + inspector tab, richer inspector meta badges, and step quick actions (branch target jumps + duplicate with confirmation).
+- [x] **Pricing triage polish (Phase 3):** `/pricing` adds KPI strip, search/filter/sort controls, model-ready/recommended cues, **Needs attention** quick toggle, and clickable backlog badge in list header.
+- [x] **Classification on create:** `useCreateContact` always sends `contact_category` (default `warm_lead`); `applyClassificationDefaultsForNewContact` backfills empty category after insert.
+- [x] **Automations trigger catalog:** `/automations` documents `crm_workflows.trigger_type` values (manual, listing stage, score, etc.).
+- [x] **Integrations index:** Settings → Integrations includes **Edge functions index** (deploy list + checklist pointer).
 - [x] **Notifications polish (Phase 1 slice):** header bell loads more items, **Today / Yesterday / Earlier** groups, **kind icons**, body + relative time; Home **Recent alerts** matches icon + timestamp treatment (`src/lib/notificationPresentation.ts`).

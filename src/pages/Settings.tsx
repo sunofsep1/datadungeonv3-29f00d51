@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
 import { InboundLeadWebhookHelp } from "@/components/settings/InboundLeadWebhookHelp";
 import { LeadCsvImportBlock } from "@/components/settings/LeadCsvImportBlock";
+import { OperationsEdgeIndex } from "@/components/settings/OperationsEdgeIndex";
 import { IN_APP_NOTIFICATION_SOURCES } from "@/lib/notificationRules";
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
   { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
@@ -274,6 +275,7 @@ export default function Settings() {
             </div>
             <InboundLeadWebhookHelp />
             <LeadCsvImportBlock />
+            <OperationsEdgeIndex />
             <div className="flex items-start gap-3 pt-2 border-t border-border">
               <MessageSquare className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
               <div>

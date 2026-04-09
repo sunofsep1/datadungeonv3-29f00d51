@@ -1,19 +1,65 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useDataHealth } from "@/hooks/useDataHealth";
-import { Activity, Users, Home, ArrowRight, PieChart } from "lucide-react";
+import { useContacts, type ContactWithMeta } from "@/hooks/useContacts";
+import { useListings } from "@/hooks/useListings";
+import { findContactDuplicateClusters } from "@/lib/contactDuplicateClusters";
+import {
+  contactHasSmsDestination,
+  contactHasUsableEmail,
+  isContactUnreachableForAutomation,
+} from "@/lib/contactAutomationReachability";
+import { formatPhoneDisplay } from "@/lib/formatPhone";
+import { Activity, Users, Home, ArrowRight, PieChart, Copy, LayoutGrid, Workflow } from "lucide-react";
 
 function pctComplete(total: number, missing: number): number {
   if (total <= 0) return 100;
   return Math.min(100, Math.max(0, ((total - missing) / total) * 100));
 }
 
+const MAX_DUPLICATE_CLUSTERS = 6;
+const MAX_AUTOMATION_SAMPLE = 6;
+
 export default function DataHealth() {
   const { data, isLoading, isError, refetch } = useDataHealth();
+  const { data: contacts = [], isLoading: contactsLoading } = useContacts();
+  const { data: listings = [], isLoading: listingsLoading } = useListings();
+
+  const duplicateClusters = useMemo(
+    () =>
+      findContactDuplicateClusters(
+        contacts.map((c) => ({
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          mobile: c.mobile,
+        }))
+      ),
+    [contacts]
+  );
+
+  const listingsHygiene = useMemo(() => {
+    const active = listings.filter((l) => String(l.status ?? "active").toLowerCase() !== "withdrawn");
+    const missingVendor = active.filter((l) => !l.contact_id).length;
+    const missingPrice = active.filter((l) => !l.price || Number(l.price) <= 0).length;
+    return { activeCount: active.length, missingVendor, missingPrice };
+  }, [listings]);
+
+  const automationReach = useMemo(() => {
+    const list = contacts as ContactWithMeta[];
+    const unreachable = list.filter((c) => isContactUnreachableForAutomation(c));
+    const missingEmail = list.filter((c) => !contactHasUsableEmail(c)).length;
+    const missingSms = list.filter((c) => !contactHasSmsDestination(c)).length;
+    return { unreachable, missingEmail, missingSms };
+  }, [contacts]);
+
   const score = data?.health_score ?? 0;
   const totalC = data?.total_contacts ?? 0;
   const totalP = data?.total_properties ?? 0;
@@ -88,6 +134,150 @@ export default function DataHealth() {
                 <Progress value={propPct} className="h-1.5" />
               </div>
             </div>
+          </Card>
+
+          <Card className="zoho-card p-5 border-border space-y-4">
+            <div className="flex items-center gap-2">
+              <Copy className="w-4 h-4 text-primary" />
+              <h3 className="font-medium text-foreground">Possible duplicate contacts</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Same email, or same phone / mobile (normalised). Review and merge or archive extras — this runs in your browser from your loaded contacts.
+            </p>
+            {contactsLoading ? (
+              <Skeleton className="h-24 w-full rounded-lg" />
+            ) : duplicateClusters.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No duplicate email or phone groups detected.</p>
+            ) : (
+              <ul className="space-y-3">
+                {duplicateClusters.slice(0, MAX_DUPLICATE_CLUSTERS).map((cl) => (
+                  <li
+                    key={cl.clusterKey}
+                    className="rounded-lg border border-border/80 bg-muted/20 p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="text-[10px] uppercase">
+                        {cl.matchOn === "email" ? "Email" : "Phone"}
+                      </Badge>
+                      <span className="text-foreground font-medium break-all">
+                        {cl.matchOn === "phone" ? formatPhoneDisplay(cl.displayLabel) : cl.displayLabel}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {cl.contacts.length} records
+                      </span>
+                    </div>
+                    <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                      {cl.contacts.map((p) => (
+                        <li key={p.id}>
+                          <Link
+                            to={`/contacts/${p.id}`}
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                          >
+                            {p.name?.trim() || "Unnamed"}
+                            <ArrowRight className="w-3 h-3 opacity-70" />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!contactsLoading && duplicateClusters.length > MAX_DUPLICATE_CLUSTERS ? (
+              <p className="text-xs text-muted-foreground">
+                Showing first {MAX_DUPLICATE_CLUSTERS} of {duplicateClusters.length} groups.
+              </p>
+            ) : null}
+          </Card>
+
+          <Card className="zoho-card p-5 border-border space-y-4">
+            <div className="flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-primary" />
+              <h3 className="font-medium text-foreground">Automation reachability</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Email and SMS workflow steps need a contact email or a mobile/phone number. People with neither cannot be reached by those automations.
+            </p>
+            {contactsLoading ? (
+              <Skeleton className="h-24 w-full rounded-lg" />
+            ) : (
+              <>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex justify-between gap-2">
+                    <span>No email &amp; no SMS number</span>
+                    <span className="text-foreground tabular-nums">{automationReach.unreachable.length}</span>
+                  </li>
+                  <li className="flex justify-between gap-2">
+                    <span>Missing email (any)</span>
+                    <span className="text-foreground tabular-nums">{automationReach.missingEmail}</span>
+                  </li>
+                  <li className="flex justify-between gap-2">
+                    <span>Missing SMS number (any)</span>
+                    <span className="text-foreground tabular-nums">{automationReach.missingSms}</span>
+                  </li>
+                </ul>
+                {automationReach.unreachable.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {automationReach.unreachable.slice(0, MAX_AUTOMATION_SAMPLE).map((c) => (
+                      <li key={c.id}>
+                        <Link
+                          to={`/contacts/${c.id}`}
+                          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          {c.name?.trim() || "Unnamed"}
+                          <ArrowRight className="w-3 h-3 opacity-70" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Every contact has at least email or a phone number.</p>
+                )}
+                {automationReach.unreachable.length > MAX_AUTOMATION_SAMPLE ? (
+                  <p className="text-xs text-muted-foreground">
+                    Showing first {MAX_AUTOMATION_SAMPLE} of {automationReach.unreachable.length}.
+                  </p>
+                ) : null}
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/contacts?smart=automation_blocked" className="inline-flex items-center gap-1">
+                    Open full queue <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </Button>
+              </>
+            )}
+          </Card>
+
+          <Card className="zoho-card p-5 border-border space-y-3">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4 text-primary" />
+              <h3 className="font-medium text-foreground">Listings hygiene</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Active listings (not withdrawn) missing a linked vendor or a guide price — fix these for cleaner pipeline and GCI math.
+            </p>
+            {listingsLoading ? (
+              <Skeleton className="h-16 w-full rounded-lg" />
+            ) : (
+              <ul className="text-sm text-muted-foreground space-y-2">
+                <li className="flex justify-between gap-2">
+                  <span>Active listings</span>
+                  <span className="text-foreground tabular-nums">{listingsHygiene.activeCount}</span>
+                </li>
+                <li className="flex justify-between gap-2">
+                  <span>Missing vendor link</span>
+                  <span className="text-foreground tabular-nums">{listingsHygiene.missingVendor}</span>
+                </li>
+                <li className="flex justify-between gap-2">
+                  <span>Missing guide price</span>
+                  <span className="text-foreground tabular-nums">{listingsHygiene.missingPrice}</span>
+                </li>
+              </ul>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/listings?view=table" className="inline-flex items-center gap-1">
+                Open listings table <ArrowRight className="w-3 h-3" />
+              </Link>
+            </Button>
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2">

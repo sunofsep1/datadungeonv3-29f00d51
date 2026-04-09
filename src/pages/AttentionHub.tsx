@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { AttentionHubWidget } from "@/components/dashboard/AttentionHubWidget";
 import { DailyHubQuickLinks } from "@/components/dashboard/DailyHubQuickLinks";
+import { DailyHubTouchScorecard } from "@/components/dashboard/DailyHubTouchScorecard";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -21,6 +22,9 @@ export default function AttentionHub() {
         </p>
       </Card>
       <DailyHubQuickLinks />
+      <div className="rounded-lg border border-border/70 bg-card/30 p-3">
+        <DailyHubTouchScorecard />
+      </div>
       <AttentionHubWidget />
     </div>
   );

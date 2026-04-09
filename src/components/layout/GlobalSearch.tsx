@@ -17,6 +17,7 @@ import {
   FileText,
   Settings,
   LayoutDashboard,
+  LineChart,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
@@ -29,6 +30,7 @@ const NAV_SHORTCUTS: Array<{ path: string; label: string; icon: typeof Users }> 
   { path: "/tasks", label: "Tasks", icon: ListTodo },
   { path: "/contacts", label: "Contacts", icon: Users },
   { path: "/listings", label: "Listings", icon: Home },
+  { path: "/pricing", label: "Pricing intelligence", icon: LineChart },
   { path: "/hot-leads", label: "Hot leads", icon: Flame },
   { path: "/automations", label: "Automations", icon: Workflow },
   { path: "/data-health", label: "Data health", icon: Activity },

@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import {
   TrendingUp,
   Percent,
   ClipboardList,
+  LayoutGrid,
+  LayoutList,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useListings, useUpdateListing, type Listing, type ListingWithContact } from "@/hooks/useListings";
@@ -28,6 +30,9 @@ import { cn } from "@/lib/utils";
 import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 import { AddListingDialog } from "@/components/listings/AddListingDialog";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const ListingsTable = lazy(() => import("./Listings"));
 
 /**
  * Kanban columns for your listings / sales pipeline.
@@ -60,6 +65,20 @@ export default function ListingsSalesBoard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<Listing | null>(null);
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showTable = searchParams.get("view") === "table";
+
+  const setShowTable = (table: boolean) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (table) next.set("view", "table");
+        else next.delete("view");
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   const contactMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -172,15 +191,62 @@ export default function ListingsSalesBoard() {
     <div className="animate-fade-in min-h-[60vh]">
       <PageHeader
         title="Listings & Sales"
+        description="Pipeline board for stages, or table view for filters, export, and bulk actions."
         actions={
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Add listing
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div
+              className="flex rounded-lg border border-border bg-muted/50 p-0.5"
+              role="group"
+              aria-label="Listings view"
+            >
+              <button
+                type="button"
+                aria-label="Pipeline board"
+                aria-pressed={!showTable}
+                onClick={() => setShowTable(false)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 transition-colors",
+                  !showTable ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Table view"
+                aria-pressed={showTable}
+                onClick={() => setShowTable(true)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 transition-colors",
+                  showTable ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+            </div>
+            <Button onClick={() => setDialogOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add listing
+            </Button>
+          </div>
         }
       />
 
-      {listings.length > 0 && (
+      {showTable ? (
+        <Suspense
+          fallback={
+            <div className="space-y-4" aria-busy="true">
+              <Skeleton className="h-10 w-full max-w-md rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="h-48 w-full rounded-lg" />
+            </div>
+          }
+        >
+          <ListingsTable embedded />
+        </Suspense>
+      ) : null}
+
+      {!showTable && listings.length > 0 && (
         <section className="mb-6" aria-label="Pipeline KPIs">
           <h2 className="text-sm font-semibold text-foreground mb-3">Performance</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
@@ -271,6 +337,7 @@ export default function ListingsSalesBoard() {
         </section>
       )}
 
+      {!showTable ? (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 overflow-x-auto pb-4">
         {SALES_KANBAN_STAGES.map((stage) => {
           const stageListings = getListingsByColumn(stage.id);
@@ -377,8 +444,9 @@ export default function ListingsSalesBoard() {
           );
         })}
       </div>
+      ) : null}
 
-      {listings.length === 0 && !isLoading && (
+      {!showTable && listings.length === 0 && !isLoading && (
         <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-lg mt-6">
           <Home className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="font-medium text-foreground mb-1">No listings yet</p>

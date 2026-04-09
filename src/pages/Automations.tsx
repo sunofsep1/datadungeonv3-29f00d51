@@ -6,15 +6,26 @@ import { Link } from "react-router-dom";
 import { CrmWorkflowEngineCard } from "@/components/settings/CrmWorkflowEngineCard";
 import { WorkflowDirectoryCard } from "@/components/automations/WorkflowDirectoryCard";
 import { WorkflowInspectorCard } from "@/components/automations/WorkflowInspectorCard";
+import { WorkflowTriggersReference } from "@/components/automations/WorkflowTriggersReference";
 import { useCrmWorkflowsList } from "@/hooks/useCrmWorkflows";
 import { Workflow, Settings, ListTodo } from "lucide-react";
 
+const AUTOMATIONS_WORKFLOW_STORAGE_KEY = "datadungeon_automations_focused_workflow_v1";
+
 export default function Automations() {
-  const [focusedWorkflowId, setFocusedWorkflowId] = useState("");
+  const [focusedWorkflowId, setFocusedWorkflowId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem(AUTOMATIONS_WORKFLOW_STORAGE_KEY) ?? "";
+  });
   const { data: workflows = [] } = useCrmWorkflowsList();
 
   useEffect(() => {
-    if (focusedWorkflowId) return;
+    if (typeof window === "undefined") return;
+    if (focusedWorkflowId) localStorage.setItem(AUTOMATIONS_WORKFLOW_STORAGE_KEY, focusedWorkflowId);
+  }, [focusedWorkflowId]);
+
+  useEffect(() => {
+    if (focusedWorkflowId && workflows.some((w) => w.id === focusedWorkflowId)) return;
     const pick = workflows.find((w) => w.is_active)?.id ?? workflows[0]?.id;
     if (pick) setFocusedWorkflowId(pick);
   }, [workflows, focusedWorkflowId]);
@@ -55,6 +66,8 @@ export default function Automations() {
           <Link to="/tasks">Go to Tasks</Link>
         </Button>
       </Card>
+
+      <WorkflowTriggersReference />
 
       <WorkflowDirectoryCard selectedWorkflowId={focusedWorkflowId} onSelectWorkflow={setFocusedWorkflowId} />
 

@@ -88,6 +88,11 @@ export async function applyClassificationDefaultsForNewContact(
     lead_temperature: derivedTemp,
   };
 
+  const existingCat = typeof row.contact_category === "string" ? row.contact_category.trim() : "";
+  if (!existingCat) {
+    updates.contact_category = "warm_lead";
+  }
+
   if (rel && !row.relationship_category) {
     updates.relationship_category = rel;
     nextMeta = mergeMeta(nextMeta, { relationship_category: { source: "derived" } });

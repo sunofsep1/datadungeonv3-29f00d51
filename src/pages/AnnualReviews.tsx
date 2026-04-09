@@ -246,6 +246,18 @@ export default function AnnualReviews() {
       .slice(0, 14);
   }, [reviews]);
 
+  const januaryBoard = useMemo(() => {
+    const prefix = `${reviewYear}-01-`;
+    return reviews
+      .filter((r) => r.scheduled_date?.startsWith(prefix))
+      .map((r) => {
+        const d = new Date(`${r.scheduled_date}T12:00:00`);
+        return { r, d };
+      })
+      .filter(({ d }) => !Number.isNaN(d.getTime()))
+      .sort((a, b) => a.d.getTime() - b.d.getTime());
+  }, [reviews, reviewYear]);
+
   const handleSeed = async () => {
     try {
       const result = await seedJanuary.mutateAsync({ year: reviewYear, max: 20 });
@@ -368,6 +380,33 @@ export default function AnnualReviews() {
                 ) : null}
               </div>
             </div>
+            {januaryBoard.length > 0 ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  January {reviewYear} board
+                </p>
+                <ul className="flex flex-wrap gap-2">
+                  {januaryBoard.map(({ r, d }) => (
+                    <li key={r.id}>
+                      <Link
+                        to={`/contacts/${r.contact_id}`}
+                        className="inline-flex flex-col gap-0.5 rounded-md border border-border/80 bg-card/60 px-2.5 py-1.5 text-left hover:bg-accent/40 transition-colors min-w-[7.5rem]"
+                      >
+                        <span className="text-xs font-medium text-foreground truncate max-w-[10rem]">
+                          {contactLabel(r)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          {format(d, "EEE d MMM")}
+                        </span>
+                        <Badge variant="outline" className="text-[9px] h-5 w-fit font-normal">
+                          {REVIEW_STATUSES.find((s) => s.value === r.status)?.label ?? r.status}
+                        </Badge>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {upcomingReviews.length > 0 ? (
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">

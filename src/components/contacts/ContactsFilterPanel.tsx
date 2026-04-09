@@ -57,6 +57,10 @@ export interface ContactsFilterPanelProps {
   onFilterContactClassificationChange: (v: string) => void;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
+  /** When "filtersOnly", search + sort are omitted (render those in the page toolbar). */
+  variant?: "full" | "filtersOnly";
+  /** When true, Source / Property / Last touched are omitted (e.g. shown in page quick strip). */
+  omitQuickFilters?: boolean;
 }
 
 export function ContactsFilterPanel({
@@ -84,74 +88,82 @@ export function ContactsFilterPanel({
   onFilterContactClassificationChange,
   hasActiveFilters,
   onClearFilters,
+  variant = "full",
+  omitQuickFilters = false,
 }: ContactsFilterPanelProps) {
+  const showSearchSort = variant === "full";
+
   return (
     <div className="space-y-6">
-      <div>
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
-          Search
-        </Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Name, email, phone..."
-            className="pl-9 bg-input border-border text-foreground placeholder:text-muted-foreground"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+      {showSearchSort ? (
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+            Search
+          </Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Name, email, phone..."
+              className="pl-9 bg-input border-border text-foreground placeholder:text-muted-foreground"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <div>
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
-          Quick filters
-        </Label>
-        <div className="space-y-2">
-          <Select value={filterSource} onValueChange={onFilterSourceChange}>
-            <SelectTrigger className="w-full bg-input border-border text-foreground">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              {distinctSources.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={filterHasProperty === null ? "all" : filterHasProperty ? "has" : "none"}
-            onValueChange={(v) => {
-              if (v === "all") onFilterHasPropertyChange(null);
-              else onFilterHasPropertyChange(v === "has");
-            }}
-          >
-            <SelectTrigger className="w-full bg-input border-border text-foreground">
-              <Building2 className="w-4 h-4 mr-1 text-muted-foreground" />
-              <SelectValue placeholder="Property" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All contacts</SelectItem>
-              <SelectItem value="has">Has property</SelectItem>
-              <SelectItem value="none">No property</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterLastTouched} onValueChange={onFilterLastTouchedChange}>
-            <SelectTrigger className="w-full bg-input border-border text-foreground">
-              <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
-              <SelectValue placeholder="Last touched" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All time</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="stale">Not touched 30+ days</SelectItem>
-            </SelectContent>
-          </Select>
+      {!omitQuickFilters ? (
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+            Quick filters
+          </Label>
+          <div className="space-y-2">
+            <Select value={filterSource} onValueChange={onFilterSourceChange}>
+              <SelectTrigger className="w-full bg-input border-border text-foreground">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sources</SelectItem>
+                {distinctSources.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filterHasProperty === null ? "all" : filterHasProperty ? "has" : "none"}
+              onValueChange={(v) => {
+                if (v === "all") onFilterHasPropertyChange(null);
+                else onFilterHasPropertyChange(v === "has");
+              }}
+            >
+              <SelectTrigger className="w-full bg-input border-border text-foreground">
+                <Building2 className="w-4 h-4 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="Property" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All contacts</SelectItem>
+                <SelectItem value="has">Has property</SelectItem>
+                <SelectItem value="none">No property</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterLastTouched} onValueChange={onFilterLastTouchedChange}>
+              <SelectTrigger className="w-full bg-input border-border text-foreground">
+                <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="Last touched" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="7days">Last 7 days</SelectItem>
+                <SelectItem value="30days">Last 30 days</SelectItem>
+                <SelectItem value="stale">Not touched 30+ days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div>
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
@@ -255,25 +267,27 @@ export function ContactsFilterPanel({
         </DropdownMenu>
       </div>
 
-      <div>
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
-          Sort
-        </Label>
-        <Select value={sortBy} onValueChange={(v) => onSortChange(v as SortOption)}>
-          <SelectTrigger className="w-full bg-input border-border text-foreground">
-            <ArrowUpDown className="w-4 h-4 mr-1 text-muted-foreground" />
-            <SelectValue placeholder="Sort" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name-asc">Last name A–Z</SelectItem>
-            <SelectItem value="name-desc">Last name Z–A</SelectItem>
-            <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
-            <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
-            <SelectItem value="property-count-desc">Properties (most)</SelectItem>
-            <SelectItem value="property-count-asc">Properties (least)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {showSearchSort ? (
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+            Sort
+          </Label>
+          <Select value={sortBy} onValueChange={(v) => onSortChange(v as SortOption)}>
+            <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <ArrowUpDown className="w-4 h-4 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">Last name A–Z</SelectItem>
+              <SelectItem value="name-desc">Last name Z–A</SelectItem>
+              <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
+              <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
+              <SelectItem value="property-count-desc">Properties (most)</SelectItem>
+              <SelectItem value="property-count-asc">Properties (least)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       {hasActiveFilters && (
         <Button

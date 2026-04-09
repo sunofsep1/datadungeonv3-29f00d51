@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -90,9 +90,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ChevronDown, SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
+import { SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
@@ -103,6 +102,7 @@ import {
   isClassificationSmartList,
   type ContactClassificationKey,
 } from "@/lib/contactSmartLists";
+import { isContactUnreachableForAutomation } from "@/lib/contactAutomationReachability";
 
 type SortOption =
   | "name-asc"
@@ -132,7 +132,6 @@ type ContactsListPersistedPrefs = {
   filterLastTouched: string;
   contactView: "list" | "grid";
   itemsPerPage: number;
-  filterPanelOpen: boolean;
 };
 
 function defaultContactsPrefs(): ContactsListPersistedPrefs {
@@ -145,7 +144,6 @@ function defaultContactsPrefs(): ContactsListPersistedPrefs {
     filterLastTouched: "all",
     contactView: "list",
     itemsPerPage: 25,
-    filterPanelOpen: true,
   };
 }
 
@@ -176,7 +174,6 @@ function loadContactsListPrefs(): ContactsListPersistedPrefs {
       filterLastTouched: typeof p.filterLastTouched === "string" ? p.filterLastTouched : defaults.filterLastTouched,
       contactView,
       itemsPerPage,
-      filterPanelOpen: typeof p.filterPanelOpen === "boolean" ? p.filterPanelOpen : defaults.filterPanelOpen,
     };
   } catch {
     return defaults;
@@ -411,6 +408,7 @@ export default function Contacts() {
   const [filterLastTouched, setFilterLastTouched] = useState<string>(initialPrefs.filterLastTouched);
   const [filterContactClassification, setFilterContactClassification] = useState<"all" | ContactClassificationKey>("all");
   const [filterNoNextTouch, setFilterNoNextTouch] = useState(false);
+  const [filterAutomationBlocked, setFilterAutomationBlocked] = useState(false);
   const [filterLeadTemperature, setFilterLeadTemperature] = useState("all");
   const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
@@ -419,7 +417,6 @@ export default function Contacts() {
   const [scriptQuickContact, setScriptQuickContact] = useState<{ id: string; category: string | null } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
-  const [filterPanelOpen, setFilterPanelOpen] = useState(initialPrefs.filterPanelOpen);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
   const [contactView, setContactView] = useState<"list" | "grid">(
@@ -427,34 +424,107 @@ export default function Contacts() {
   );
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const prevSmartUrlRef = useRef<string | null | undefined>(undefined);
+  const toolbarControlsRef = useRef<HTMLDivElement | null>(null);
+  const [showToolbarLeftFade, setShowToolbarLeftFade] = useState(false);
+  const [showToolbarRightFade, setShowToolbarRightFade] = useState(false);
 
   useEffect(() => {
+    const prev = prevSmartUrlRef.current;
     const s = parseSmartListParam(smartParam);
-    if (s == null) return;
+
+    if (s == null) {
+      // Leaving ?smart=… for plain /contacts (or clearing the param) must drop URL-driven smart filters,
+      // without clobbering list prefs on first paint when the URL never had smart=.
+      if (prev !== undefined && prev !== null && smartParam == null) {
+        setFilterContactClassification("all");
+        setFilterNoNextTouch(false);
+        setFilterLastTouched("all");
+        setFilterAutomationBlocked(false);
+      }
+      prevSmartUrlRef.current = smartParam ?? null;
+      return;
+    }
+
+    prevSmartUrlRef.current = smartParam;
+
     if (s === "all") {
       setFilterContactClassification("all");
       setFilterNoNextTouch(false);
       setFilterLastTouched("all");
+      setFilterAutomationBlocked(false);
       return;
     }
     if (isClassificationSmartList(s)) {
       setFilterContactClassification(s);
       setFilterNoNextTouch(false);
       setFilterLastTouched("all");
+      setFilterAutomationBlocked(false);
       return;
     }
     if (s === "stale") {
       setFilterContactClassification("all");
       setFilterNoNextTouch(false);
       setFilterLastTouched("stale");
+      setFilterAutomationBlocked(false);
       return;
     }
     if (s === "no_next_touch") {
       setFilterContactClassification("all");
       setFilterNoNextTouch(true);
       setFilterLastTouched("all");
+      setFilterAutomationBlocked(false);
+      return;
+    }
+    if (s === "automation_blocked") {
+      setFilterContactClassification("all");
+      setFilterNoNextTouch(false);
+      setFilterLastTouched("all");
+      setFilterAutomationBlocked(true);
     }
   }, [smartParam]);
+
+  useEffect(() => {
+    const el = toolbarControlsRef.current;
+    if (!el) return;
+
+    const updateFadeVisibility = () => {
+      const maxScrollLeft = el.scrollWidth - el.clientWidth;
+      const isScrollable = maxScrollLeft > 2;
+      setShowToolbarLeftFade(isScrollable && el.scrollLeft > 2);
+      setShowToolbarRightFade(isScrollable && el.scrollLeft < maxScrollLeft - 2);
+    };
+
+    updateFadeVisibility();
+
+    el.addEventListener("scroll", updateFadeVisibility, { passive: true });
+    window.addEventListener("resize", updateFadeVisibility);
+
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(updateFadeVisibility)
+      : null;
+    resizeObserver?.observe(el);
+
+    return () => {
+      el.removeEventListener("scroll", updateFadeVisibility);
+      window.removeEventListener("resize", updateFadeVisibility);
+      resizeObserver?.disconnect();
+    };
+  }, [
+    itemsPerPage,
+    contactView,
+    debouncedSearch,
+    filterTagIds.length,
+    filterSource,
+    filterHasProperty,
+    filterLastTouched,
+    filterLeadTemperature,
+    filterTimeframeCategory,
+    filterRoleCategory,
+    filterContactClassification,
+    filterNoNextTouch,
+    filterAutomationBlocked,
+  ]);
 
   useEffect(() => {
     const prefs: ContactsListPersistedPrefs = {
@@ -466,7 +536,6 @@ export default function Contacts() {
       filterLastTouched,
       contactView,
       itemsPerPage,
-      filterPanelOpen,
     };
     try {
       localStorage.setItem(CONTACTS_LIST_PREFS_KEY, JSON.stringify(prefs));
@@ -482,7 +551,6 @@ export default function Contacts() {
     filterLastTouched,
     contactView,
     itemsPerPage,
-    filterPanelOpen,
   ]);
 
   const filteredAndSortedContacts = useMemo(() => {
@@ -570,6 +638,10 @@ export default function Contacts() {
       list = list.filter((c) => !(c as { next_touch_date?: string | null }).next_touch_date);
     }
 
+    if (filterAutomationBlocked) {
+      list = list.filter((c) => isContactUnreachableForAutomation(c));
+    }
+
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
       const name = (c.name || "").trim();
@@ -615,6 +687,7 @@ export default function Contacts() {
     filterRoleCategory,
     filterContactClassification,
     filterNoNextTouch,
+    filterAutomationBlocked,
     sortBy,
   ]);
 
@@ -640,6 +713,7 @@ export default function Contacts() {
     filterRoleCategory,
     filterContactClassification,
     filterNoNextTouch,
+    filterAutomationBlocked,
     sortBy,
   ]);
 
@@ -653,7 +727,8 @@ export default function Contacts() {
     filterTimeframeCategory !== "all" ||
     filterRoleCategory !== "all" ||
     filterContactClassification !== "all" ||
-    filterNoNextTouch;
+    filterNoNextTouch ||
+    filterAutomationBlocked;
 
   const clearSmartListParam = () => setSearchParams({}, { replace: true });
 
@@ -668,6 +743,7 @@ export default function Contacts() {
     setFilterRoleCategory("all");
     setFilterContactClassification("all");
     setFilterNoNextTouch(false);
+    setFilterAutomationBlocked(false);
     clearSmartListParam();
     setCurrentPage(1);
   };
@@ -1305,7 +1381,16 @@ export default function Contacts() {
     <div className="animate-fade-in">
       <PageHeader
         title="Contacts"
-        description="Smart lists and filters for your playbook categories and touch hygiene."
+        description="Smart lists for segments; refine source, property, and last touched inline; open Filters for category, classification, and tags. The list below is the main workspace."
+        actions={
+          <Button
+            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+            onClick={() => handleOpenDialog()}
+          >
+            <Plus className="h-4 w-4" />
+            Create contact
+          </Button>
+        }
       />
 
       <div className="flex flex-wrap gap-2 mb-6 -mt-1">
@@ -1325,6 +1410,7 @@ export default function Contacts() {
                   setFilterContactClassification("all");
                   setFilterNoNextTouch(false);
                   setFilterLastTouched("all");
+                  setFilterAutomationBlocked(false);
                 } else {
                   setSearchParams({ smart: sl.id }, { replace: true });
                 }
@@ -1334,6 +1420,71 @@ export default function Contacts() {
             </Button>
           );
         })}
+      </div>
+
+      <div className="mb-5 rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Refine</p>
+          <p className="text-[11px] text-muted-foreground hidden sm:block">Source, property link, and recency—without opening Filters</p>
+        </div>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
+          <Select
+            value={filterSource}
+            onValueChange={(v) => {
+              setFilterSource(v);
+              clearSmartListParam();
+            }}
+          >
+            <SelectTrigger className="h-8 w-[min(46vw,11rem)] shrink-0 bg-popover text-xs border-border">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {distinctSources.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filterHasProperty === null ? "all" : filterHasProperty ? "has" : "none"}
+            onValueChange={(v) => {
+              if (v === "all") setFilterHasProperty(null);
+              else setFilterHasProperty(v === "has");
+              clearSmartListParam();
+            }}
+          >
+            <SelectTrigger className="h-8 w-[min(46vw,10.5rem)] shrink-0 bg-popover text-xs border-border">
+              <Building2 className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder="Property" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any property</SelectItem>
+              <SelectItem value="has">Has property</SelectItem>
+              <SelectItem value="none">No property</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filterLastTouched}
+            onValueChange={(v) => {
+              setFilterLastTouched(v);
+              clearSmartListParam();
+            }}
+          >
+            <SelectTrigger className="h-8 w-[min(52vw,12rem)] shrink-0 bg-popover text-xs border-border">
+              <Clock className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder="Last touched" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any time</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="7days">Last 7 days</SelectItem>
+              <SelectItem value="30days">Last 30 days</SelectItem>
+              <SelectItem value="stale">30+ days stale</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Dialog
@@ -1703,144 +1854,209 @@ export default function Contacts() {
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-md mb-8">
-        <div className="zoho-card w-full rounded-lg border p-6 text-center border-l-4 border-l-primary/60">
-          <div className="text-3xl font-bold text-foreground">{stats.total}</div>
-          <div className="text-sm text-muted-foreground mt-1">Total contacts</div>
+      <div className="mb-5 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+          <div className="relative min-w-0 flex-1 xl:max-w-2xl">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search name, email, phone, source, tags…"
+              className="border-border bg-input pl-9 text-foreground placeholder:text-muted-foreground"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                clearSmartListParam();
+              }}
+              aria-label="Search contacts"
+            />
+          </div>
+          <div className="relative xl:shrink-0">
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-background to-transparent transition-opacity sm:hidden",
+                showToolbarLeftFade ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-y-0 right-0 w-5 bg-gradient-to-l from-background to-transparent transition-opacity sm:hidden",
+                showToolbarRightFade ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <div
+              ref={toolbarControlsRef}
+              className="flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+            >
+            <span className="hidden whitespace-nowrap text-sm tabular-nums text-muted-foreground md:inline">
+              {filteredAndSortedContacts.length} shown
+              <span className="text-muted-foreground/70"> · {stats.total} total</span>
+            </span>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="h-9 w-[9.5rem] bg-popover border-border text-foreground hover:bg-muted sm:w-[11rem]">
+                <ArrowUpDown className="mr-2 h-4 w-4 shrink-0" />
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Last name A→Z</SelectItem>
+                <SelectItem value="name-desc">Last name Z→A</SelectItem>
+                <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
+                <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
+                <SelectItem value="property-count-desc">Properties (most)</SelectItem>
+                <SelectItem value="property-count-asc">Properties (least)</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+              <button
+                type="button"
+                aria-label="List view"
+                onClick={() => setContactView("list")}
+                className={`rounded-md px-3 py-1.5 ${contactView === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Grid view"
+                onClick={() => setContactView("grid")}
+                className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+            <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 border-border text-foreground hover:bg-muted">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters
+                  {hasActiveFilters ? (
+                    <span className="rounded-full bg-primary/15 px-1.5 text-[10px] font-medium text-primary">On</span>
+                  ) : null}
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="w-[min(100vw-1rem,380px)] overflow-y-auto border-border bg-card text-foreground sm:max-w-lg"
+              >
+                <SheetHeader className="text-left">
+                  <SheetTitle className="text-foreground">Filters</SheetTitle>
+                </SheetHeader>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Category, lead fields, and tags. Source, property, and last touched stay in the Refine row above.
+                </p>
+                <div className="mt-5 pr-1">
+                  <ContactsFilterPanel {...filterPanelProps} variant="filtersOnly" omitQuickFilters />
+                </div>
+              </SheetContent>
+            </Sheet>
+            {hasActiveFilters ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
+                onClick={clearAllFilters}
+              >
+                Clear filters
+              </Button>
+            ) : null}
+            <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 border-border text-foreground hover:bg-muted"
+                  aria-label="More contact actions"
+                >
+                  <Upload className="h-3.5 w-3.5 opacity-70" />
+                  <span className="hidden sm:inline">Import & tools</span>
+                  <span className="sm:hidden">Tools</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-52 p-1 bg-popover border-border text-foreground">
+                <button
+                  type="button"
+                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
+                  onClick={() => {
+                    setIsImportOpen(true);
+                    setActionsPopoverOpen(false);
+                  }}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import CSV
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
+                  onClick={() => {
+                    handleExportCSV();
+                    setActionsPopoverOpen(false);
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
+                  onClick={async () => {
+                    await autoCategoriseContacts(filteredAndSortedContacts);
+                    setActionsPopoverOpen(false);
+                  }}
+                >
+                  <Tag className="w-4 h-4 mr-2" />
+                  Auto-categorise filtered
+                </button>
+                <div className="my-1 border-t border-border" />
+                <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">Rows per page</p>
+                <button
+                  type="button"
+                  className={`flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-muted focus:bg-muted focus:outline-none ${itemsPerPage === 25 ? "text-foreground" : "text-muted-foreground"}`}
+                  onClick={() => {
+                    setItemsPerPage(25);
+                    setCurrentPage(1);
+                    setActionsPopoverOpen(false);
+                  }}
+                >
+                  <span>25 rows</span>
+                  {itemsPerPage === 25 ? <CheckSquare className="h-4 w-4" /> : null}
+                </button>
+                <button
+                  type="button"
+                  className={`flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-muted focus:bg-muted focus:outline-none ${itemsPerPage === 50 ? "text-foreground" : "text-muted-foreground"}`}
+                  onClick={() => {
+                    setItemsPerPage(50);
+                    setCurrentPage(1);
+                    setActionsPopoverOpen(false);
+                  }}
+                >
+                  <span>50 rows</span>
+                  {itemsPerPage === 50 ? <CheckSquare className="h-4 w-4" /> : null}
+                </button>
+              </PopoverContent>
+            </Popover>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(v) => {
+                setItemsPerPage(Number(v));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger
+                className="hidden h-9 w-[4.25rem] bg-popover border-border text-foreground tabular-nums md:flex"
+                aria-label="Rows per page"
+                title="Rows per page"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-8 mt-8">
-        {/* Filter panel: collapsible on desktop, sheet on mobile */}
-        <div className="hidden lg:block w-[260px] shrink-0">
-          <Collapsible open={filterPanelOpen} onOpenChange={setFilterPanelOpen}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-between text-foreground/80 hover:text-foreground hover:bg-muted mb-3"
-              >
-                <span className="font-medium">Filter contacts by</span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", filterPanelOpen && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="rounded-lg border border-border bg-card p-4">
-                <ContactsFilterPanel {...filterPanelProps} />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {/* List toolbar: view name, total, view toggle, Create, Actions, Records per page */}
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4 min-w-0">
-              <span className="font-semibold text-foreground truncate">My Contacts</span>
-              <span className="text-sm text-muted-foreground shrink-0">
-                Total records {filteredAndSortedContacts.length}
-              </span>
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                <SelectTrigger className="w-[180px] bg-popover border-border text-foreground hover:bg-muted">
-                  <ArrowUpDown className="w-4 h-4 mr-2 shrink-0" />
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name-asc">Last name A→Z</SelectItem>
-                  <SelectItem value="name-desc">Last name Z→A</SelectItem>
-                  <SelectItem value="date-added-desc">Date added (newest)</SelectItem>
-                  <SelectItem value="date-added-asc">Date added (oldest)</SelectItem>
-                  <SelectItem value="property-count-desc">Properties (most)</SelectItem>
-                  <SelectItem value="property-count-asc">Properties (least)</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
-                <button
-                  type="button"
-                  aria-label="List view"
-                  onClick={() => setContactView("list")}
-                  className={`rounded-md px-3 py-1.5 ${contactView === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  <LayoutList className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Grid view"
-                  onClick={() => setContactView("grid")}
-                  className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </button>
-              </div>
-              <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden gap-1.5 text-foreground border-border hover:bg-muted">
-                    <SlidersHorizontal className="w-4 h-4" />
-                    Filters
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] bg-card border-border text-foreground overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle className="text-foreground">Filter contacts by</SheetTitle>
-                  </SheetHeader>
-                  <div className="pt-6">
-                    <ContactsFilterPanel {...filterPanelProps} />
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => handleOpenDialog()}>
-                <Plus className="w-4 h-4" />
-                Create Contact
-              </Button>
-              <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-foreground border-border hover:bg-muted">
-                    Actions
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-1 bg-popover border-border text-foreground">
-                  <button
-                    type="button"
-                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
-                    onClick={() => { setIsImportOpen(true); setActionsPopoverOpen(false); }}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Import CSV
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
-                    onClick={() => { handleExportCSV(); setActionsPopoverOpen(false); }}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none"
-                    onClick={async () => {
-                      await autoCategoriseContacts(filteredAndSortedContacts);
-                      setActionsPopoverOpen(false);
-                    }}
-                  >
-                    <Tag className="w-4 h-4 mr-2" />
-                    Auto-categorise filtered
-                  </button>
-                </PopoverContent>
-              </Popover>
-              <Select value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[100px] bg-popover border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="25">25 per page</SelectItem>
-                  <SelectItem value="50">50 per page</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
+      <div className="min-w-0 w-full">
       {/* Bulk Actions */}
       {selectedContactIds.size > 0 && (
         <div className="mb-4 p-3 zoho-card rounded-lg flex items-center justify-between">
@@ -2032,8 +2248,9 @@ export default function Contacts() {
               {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="overflow-hidden rounded-xl border-2 border-border bg-card shadow-sm">
+              <div className="max-h-[min(72vh,calc(100vh-13rem))] min-h-[min(48vh,420px)] overflow-auto">
+                <div className="min-w-0 overflow-x-auto">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -2085,6 +2302,7 @@ export default function Contacts() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
@@ -2135,7 +2353,6 @@ export default function Contacts() {
         </>
       )}
 
-        </div>
       </div>
 
       <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />

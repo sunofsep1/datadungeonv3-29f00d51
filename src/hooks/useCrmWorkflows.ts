@@ -251,6 +251,48 @@ export function useUpdateCrmWorkflowStepDelay() {
   });
 }
 
+export function useDuplicateCrmWorkflowStep() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      workflowId,
+      sourceStep,
+    }: {
+      workflowId: string;
+      sourceStep: CrmWorkflowStep;
+    }) => {
+      const { data: maxRow, error: maxErr } = await supabase
+        .from("crm_workflow_steps")
+        .select("step_order")
+        .eq("workflow_id", workflowId)
+        .order("step_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (maxErr) throw maxErr;
+      const nextOrder = typeof maxRow?.step_order === "number" ? maxRow.step_order + 1 : 0;
+
+      const row: TablesInsert<"crm_workflow_steps"> = {
+        workflow_id: workflowId,
+        step_order: nextOrder,
+        action_type: sourceStep.action_type,
+        delay_minutes: Math.min(525600, Math.max(0, Math.floor(sourceStep.delay_minutes ?? 0))),
+        action_config: sourceStep.action_config ?? {},
+        branch_condition: sourceStep.branch_condition ?? {},
+        next_step_order_if_true: sourceStep.next_step_order_if_true ?? null,
+        next_step_order_if_false: sourceStep.next_step_order_if_false ?? null,
+      };
+      const { error } = await supabase.from("crm_workflow_steps").insert(row);
+      if (error) throw error;
+      return { workflowId, nextOrder };
+    },
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: KEYS });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "steps", data.workflowId] });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "step-runs", data.workflowId] });
+    },
+  });
+}
+
 export function useStartCrmWorkflowEnrollment() {
   const qc = useQueryClient();
   return useMutation({
