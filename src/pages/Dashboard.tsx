@@ -60,9 +60,15 @@ import {
   loadDashboardWidgetOrder,
   saveDashboardWidgetOrder,
   resetDashboardWidgetsToDefault,
+  DASHBOARD_WIDGET_IDS,
   DASHBOARD_WIDGET_LABELS,
 } from "@/lib/dashboardWidgetOrder";
 import { cn } from "@/lib/utils";
+
+function ensureCommandCenterWidget(order: string[]): string[] {
+  const withoutCommandCenter = order.filter((id) => id !== "commandCenter");
+  return ["commandCenter", ...withoutCommandCenter];
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -85,7 +91,9 @@ export default function Dashboard() {
     }
   }, [searchParams, setSearchParams, toast]);
 
-  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => loadDashboardWidgetOrder(undefined));
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() =>
+    ensureCommandCenterWidget(loadDashboardWidgetOrder(undefined))
+  );
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -95,7 +103,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user?.id) {
-      setWidgetOrder(loadDashboardWidgetOrder(user.id));
+      const loaded = ensureCommandCenterWidget(loadDashboardWidgetOrder(user.id));
+      setWidgetOrder(loaded);
+      saveDashboardWidgetOrder(user.id, loaded);
     }
   }, [user?.id]);
 
@@ -114,11 +124,12 @@ export default function Dashboard() {
           if (oldIndex === -1 || newIndex === -1) return prev;
           const next = arrayMove(prev, oldIndex, newIndex);
           saveDashboardWidgetOrder(user?.id, next);
+          toast({ title: "Layout saved", description: "Widget order updated." });
           return next;
         });
       }
     },
-    [user?.id]
+    [user?.id, toast]
   );
 
   const handleDragCancel = useCallback(() => {
@@ -127,8 +138,12 @@ export default function Dashboard() {
 
   const handleRemoveWidget = useCallback(
     (id: string) => {
+      if (id === "commandCenter") {
+        toast({ title: "Command center is always shown", description: "You can move it, but not remove it." });
+        return;
+      }
       setWidgetOrder((prev) => {
-        const next = prev.filter((w) => w !== id);
+        const next = ensureCommandCenterWidget(prev.filter((w) => w !== id));
         saveDashboardWidgetOrder(user?.id, next);
         return next;
       });
@@ -146,6 +161,7 @@ export default function Dashboard() {
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const [manageWidgetsOpen, setManageWidgetsOpen] = useState(false);
 
   const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
   const [newAppointment, setNewAppointment] = useState({ title: "", date: "", time: "", location: "" });
@@ -287,8 +303,32 @@ export default function Dashboard() {
     }
   };
 
+  const handleToggleWidgetVisibility = useCallback(
+    (id: string) => {
+      if (id === "commandCenter") {
+        toast({ title: "Command center is always shown", description: "This section is required on Home." });
+        return;
+      }
+      setWidgetOrder((prev) => {
+        const isVisible = prev.includes(id);
+        const next = ensureCommandCenterWidget(
+          isVisible ? prev.filter((widgetId) => widgetId !== id) : [...prev, id]
+        );
+        saveDashboardWidgetOrder(user?.id, next);
+        toast({
+          title: "Layout saved",
+          description: isVisible ? "Widget hidden from Home." : "Widget added to Home.",
+        });
+        return next;
+      });
+    },
+    [user?.id, toast]
+  );
+
   const renderWidget = (id: string) => {
     switch (id) {
+      case "commandCenter":
+        return <DashboardCommandCenter />;
       case "visionBoard":
         return <VisionBoard />;
       case "affirmations":
@@ -601,10 +641,12 @@ export default function Dashboard() {
 
       <p className="text-[11px] text-muted-foreground/85 flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1">
         <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] text-foreground/85">
-          Command center first, then draggable widgets. Layout is saved for this account.
+          Widgets are draggable. Layout is saved for this account.
         </span>
+        <Button type="button" variant="outline" size="sm" className="h-6 text-[11px]" onClick={() => setManageWidgetsOpen(true)}>
+          Manage widgets
+        </Button>
       </p>
-      <DashboardCommandCenter />
 
       {widgetOrder.length === 0 ? (
         <Card className="zoho-card p-8 md:p-10 border-dashed border-border max-w-lg">
@@ -766,6 +808,47 @@ export default function Dashboard() {
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setPostDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleAddPost} disabled={createPost.isPending}>{createPost.isPending ? "Creating..." : "Create Post"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={manageWidgetsOpen} onOpenChange={setManageWidgetsOpen}>
+        <DialogContent className="sm:max-w-[520px] bg-popover border-border" aria-describedby="manage-widgets-desc">
+          <DialogHeader>
+            <DialogTitle>Manage Home widgets</DialogTitle>
+            <DialogDescription id="manage-widgets-desc">
+              Choose which widgets appear on your Home dashboard. You can still drag widgets to reorder them.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 max-h-[60vh] overflow-y-auto space-y-2 pr-1">
+            {DASHBOARD_WIDGET_IDS.map((id) => {
+              const visible = widgetOrder.includes(id);
+              const locked = id === "commandCenter";
+              return (
+                <div key={id} className="flex items-center justify-between rounded-md border border-border/70 bg-card/40 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{DASHBOARD_WIDGET_LABELS[id] ?? id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locked ? "Always shown" : visible ? "Currently visible" : "Currently hidden"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={visible ? "secondary" : "outline"}
+                    disabled={locked}
+                    onClick={() => handleToggleWidgetVisibility(id)}
+                  >
+                    {locked ? "Locked" : visible ? "Hide" : "Show"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button type="button" onClick={() => setManageWidgetsOpen(false)}>
+              Done
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

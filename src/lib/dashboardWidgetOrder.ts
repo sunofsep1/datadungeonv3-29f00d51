@@ -1,5 +1,6 @@
 /** Widget ids used by Dashboard grid — keep in sync with `renderWidget` switch in Dashboard.tsx */
 export const DASHBOARD_WIDGET_IDS = [
+  "commandCenter",
   "visionBoard",
   "affirmations",
   "stats",
@@ -23,12 +24,14 @@ const LEGACY_STORAGE_KEY = "dashboard-widget-order";
  * Bump when adding new widget types so existing users get them appended once (see WIDGETS_INTRODUCED_IN_SCHEMA).
  * Removing widgets from the saved order is respected and does not re-append deleted ids.
  */
-export const CURRENT_DASHBOARD_SCHEMA = 3;
+export const CURRENT_DASHBOARD_SCHEMA = 4;
 
 /** For each schema version, widget ids to append to the end of the user's order if missing (new features). */
 export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
   /** Nurture live enrollments widget (was missing from saved layouts created before this id existed). */
   3: ["activeSequences"],
+  /** Dashboard command center was made movable as a regular widget. */
+  4: ["commandCenter"],
 };
 
 const LEGACY_SCHEMA_KEY = `${LEGACY_STORAGE_KEY}:schema`;
@@ -142,6 +145,7 @@ export function resetDashboardWidgetsToDefault(userId: string | undefined): stri
 }
 
 export const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
+  commandCenter: "Command center",
   visionBoard: "Vision board",
   affirmations: "Affirmations",
   stats: "Stats",

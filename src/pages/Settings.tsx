@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSepa
 import { User, Bell, Palette, Sun, Moon, Droplets, Ghost, Code2, Atom, Sunset, Calendar, Mail, MessageSquare, Snowflake, Coffee, Contrast, Sparkles, Leaf, Waves, Flame, Mountain, Wind, Flower2, ExternalLink, Workflow } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import type { Theme, Density } from "@/contexts/ThemeContext";
+import type { Theme, Density, FontSize } from "@/contexts/ThemeContext";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/hooks/useUserReminderPreferences";
 import { useUserCommunicationSettings, useUpsertUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
@@ -22,8 +22,16 @@ import { LeadCsvImportBlock } from "@/components/settings/LeadCsvImportBlock";
 import { OperationsEdgeIndex } from "@/components/settings/OperationsEdgeIndex";
 import { IN_APP_NOTIFICATION_SOURCES } from "@/lib/notificationRules";
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; desc?: string }[] = [
-  { value: "dark", label: "Dark", icon: Moon, desc: "Default dark theme." },
-  { value: "light", label: "Light", icon: Sun, desc: "Light theme for better visibility." },
+  { value: "dark", label: "Dark (Classic)", icon: Moon, desc: "Original dark theme." },
+  { value: "darkPlus", label: "Dark+", icon: Moon, desc: "Readable dark theme with brighter surfaces." },
+  { value: "light", label: "Light (Classic)", icon: Sun, desc: "Original light theme." },
+  { value: "lightPlus", label: "Light+", icon: Sun, desc: "Softer light theme with stronger hierarchy." },
+  { value: "midday", label: "Midday", icon: Sun, desc: "Balanced neutral mode between dark and light." },
+  { value: "middayCool", label: "Midday Cool", icon: Droplets, desc: "Cool grey-blue midday blend." },
+  { value: "middayNeutral", label: "Midday Neutral", icon: Sun, desc: "Balanced neutral gray midday blend." },
+  { value: "middayWarm", label: "Midday Warm", icon: Sunset, desc: "Warm stone midday blend." },
+  { value: "middayGregSoft", label: "Greg Pick: Soft Midday", icon: Coffee, desc: "Low-glare warm midday for long sessions." },
+  { value: "middayGregCrisp", label: "Greg Pick: Crisp Midday", icon: Contrast, desc: "Sharper midday contrast for dense data screens." },
   { value: "latte", label: "Latte", icon: Coffee, desc: "Warm light beige with soft brown accents." },
   { value: "dawn", label: "Dawn", icon: SunriseIcon, desc: "Rosy morning light with gentle contrast." },
   { value: "mint", label: "Mint", icon: Leaf, desc: "Fresh mint light theme with green accents." },
@@ -50,20 +58,33 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; des
   { value: "everforest", label: "Everforest", icon: Leaf, desc: "Soft green forest theme." },
 ];
 
-const LIGHT_THEME_VALUES: Theme[] = ["light", "latte", "dawn", "mint", "sky", "sand"];
+const MIDDAY_THEME_VALUES: Theme[] = [
+  "midday",
+  "middayCool",
+  "middayNeutral",
+  "middayWarm",
+  "middayGregSoft",
+  "middayGregCrisp",
+];
+const LIGHT_THEME_VALUES: Theme[] = ["light", "lightPlus", "latte", "dawn", "mint", "sky", "sand"];
 const DARK_THEME_VALUES: Theme[] = THEME_OPTIONS
   .map((opt) => opt.value)
-  .filter((value) => !LIGHT_THEME_VALUES.includes(value));
+  .filter((value) => !LIGHT_THEME_VALUES.includes(value) && !MIDDAY_THEME_VALUES.includes(value));
 
 const DENSITY_OPTIONS: { value: Density; label: string }[] = [
   { value: "comfortable", label: "Comfortable" },
   { value: "compact", label: "Compact" },
 ];
 
+const FONT_SIZE_OPTIONS: { value: FontSize; label: string }[] = [
+  { value: "standard", label: "Standard" },
+  { value: "large", label: "Large" },
+];
+
 export default function Settings() {
   const location = useLocation();
   const { user } = useAuth();
-  const { theme, setTheme, density, setDensity } = useTheme();
+  const { theme, setTheme, density, setDensity, fontSize, setFontSize } = useTheme();
   const { commissionRate, setCommissionRate } = useCommissionRate();
   const { data: reminderPrefs, isSuccess: reminderPrefsLoaded } = useUserReminderPreferences();
   const upsertReminder = useUpsertUserReminderPreferences();
@@ -141,6 +162,18 @@ export default function Settings() {
                   </SelectGroup>
                   <SelectSeparator />
                   <SelectGroup>
+                    <SelectLabel>Midday Themes</SelectLabel>
+                    {THEME_OPTIONS.filter((opt) => MIDDAY_THEME_VALUES.includes(opt.value)).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <span className="flex items-center gap-2">
+                          <opt.icon className="w-4 h-4" />
+                          {opt.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
                     <SelectLabel>Dark Themes</SelectLabel>
                     {THEME_OPTIONS.filter((opt) => DARK_THEME_VALUES.includes(opt.value)).map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
@@ -175,9 +208,27 @@ export default function Settings() {
                 Compact reduces spacing and list row height for more content on screen.
               </p>
             </div>
+            <div className="space-y-2">
+              <Label>Font size</Label>
+              <Select value={fontSize} onValueChange={(v) => setFontSize(v as FontSize)}>
+                <SelectTrigger className="bg-input w-full max-w-[240px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONT_SIZE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Large increases app text size for easier readability.
+              </p>
+            </div>
             <div className="p-4 bg-secondary rounded-lg">
               <p className="text-sm text-muted-foreground">
-                Your theme and density preferences are saved automatically and will persist across sessions.
+                Your appearance preferences are saved automatically and will persist across sessions.
               </p>
             </div>
           </div>

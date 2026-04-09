@@ -5,6 +5,14 @@ import { createContext, useContext, useEffect, useState } from "react";
 export const THEME_HTML_CLASSES = [
   "dark",
   "light",
+  "theme-dark-plus",
+  "theme-light-plus",
+  "theme-midday",
+  "theme-midday-cool",
+  "theme-midday-neutral",
+  "theme-midday-warm",
+  "theme-midday-greg-soft",
+  "theme-midday-greg-crisp",
   "theme-latte",
   "theme-dawn",
   "theme-mint",
@@ -34,6 +42,14 @@ export const THEME_HTML_CLASSES = [
 export type Theme =
   | "dark"
   | "light"
+  | "darkPlus"
+  | "lightPlus"
+  | "midday"
+  | "middayCool"
+  | "middayNeutral"
+  | "middayWarm"
+  | "middayGregSoft"
+  | "middayGregCrisp"
   | "latte"
   | "dawn"
   | "mint"
@@ -62,6 +78,14 @@ export type Theme =
 const VALID_THEMES: Theme[] = [
   "dark",
   "light",
+  "darkPlus",
+  "lightPlus",
+  "midday",
+  "middayCool",
+  "middayNeutral",
+  "middayWarm",
+  "middayGregSoft",
+  "middayGregCrisp",
   "latte",
   "dawn",
   "mint",
@@ -94,22 +118,34 @@ interface ThemeContextType {
   toggleTheme: () => void;
   density: Density;
   setDensity: (density: Density) => void;
+  fontSize: FontSize;
+  setFontSize: (fontSize: FontSize) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = "theme";
 const DENSITY_STORAGE_KEY = "density";
+const FONT_SIZE_STORAGE_KEY = "font-size";
 
 /** Default theme when none is saved (used on first visit / new devices). */
 export const DEFAULT_THEME: Theme = "dark";
 
 export type Density = "comfortable" | "compact";
+export type FontSize = "standard" | "large";
 
 function themeToClass(theme: Theme): string {
   const map: Record<Theme, string> = {
     dark: "dark",
     light: "light",
+    darkPlus: "theme-dark-plus",
+    lightPlus: "theme-light-plus",
+    midday: "theme-midday",
+    middayCool: "theme-midday-cool",
+    middayNeutral: "theme-midday-neutral",
+    middayWarm: "theme-midday-warm",
+    middayGregSoft: "theme-midday-greg-soft",
+    middayGregCrisp: "theme-midday-greg-crisp",
     latte: "theme-latte",
     dawn: "theme-dawn",
     mint: "theme-mint",
@@ -155,6 +191,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return "comfortable";
   });
 
+  const [fontSize, setFontSizeState] = useState<FontSize>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(FONT_SIZE_STORAGE_KEY) as FontSize;
+      if (stored === "standard" || stored === "large") return stored;
+    }
+    return "standard";
+  });
+
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove(...([...THEME_HTML_CLASSES] as string[]));
@@ -169,6 +213,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(DENSITY_STORAGE_KEY, density);
   }, [density]);
 
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove("font-standard", "font-large");
+    root.classList.add(`font-${fontSize}`);
+    localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSize);
+  }, [fontSize]);
+
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
   };
@@ -181,8 +232,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setDensityState(d);
   };
 
+  const setFontSize = (size: FontSize) => {
+    setFontSizeState(size);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, density, setDensity }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, density, setDensity, fontSize, setFontSize }}>
       {children}
     </ThemeContext.Provider>
   );
