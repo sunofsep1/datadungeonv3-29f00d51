@@ -65,9 +65,10 @@ import {
 } from "@/lib/dashboardWidgetOrder";
 import { cn } from "@/lib/utils";
 
+/** Keep command center on the board if something removed it; do not force it to first (that broke persisted drag order). */
 function ensureCommandCenterWidget(order: string[]): string[] {
-  const withoutCommandCenter = order.filter((id) => id !== "commandCenter");
-  return ["commandCenter", ...withoutCommandCenter];
+  if (order.includes("commandCenter")) return [...order];
+  return ["commandCenter", ...order];
 }
 
 export default function Dashboard() {
@@ -92,7 +93,7 @@ export default function Dashboard() {
   }, [searchParams, setSearchParams, toast]);
 
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() =>
-    ensureCommandCenterWidget(loadDashboardWidgetOrder(undefined))
+    ensureCommandCenterWidget(loadDashboardWidgetOrder(user?.id))
   );
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
@@ -100,14 +101,6 @@ export default function Dashboard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  useEffect(() => {
-    if (user?.id) {
-      const loaded = ensureCommandCenterWidget(loadDashboardWidgetOrder(user.id));
-      setWidgetOrder(loaded);
-      saveDashboardWidgetOrder(user.id, loaded);
-    }
-  }, [user?.id]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveDragId(String(event.active.id));
