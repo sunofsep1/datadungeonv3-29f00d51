@@ -12,12 +12,12 @@ Runs **`npm run verify`** (build + Vitest), then **`supabase db push --linked --
 
 ## Frontend (local, before merge)
 
-- [ ] **`npm run verify`** — production **`vite` build** plus **`vitest run`** (all unit tests once). This is the regression gate that should stay green; run it after meaningful UI or data-hook changes.
+- [x] **`npm run verify`** — production **`vite` build** plus **`vitest run`** (all unit tests once). This is the regression gate that should stay green; run it after meaningful UI or data-hook changes. _(Passed on 2026-04-10)_
 - [ ] **`npm run verify:lint`** (optional until ESLint debt is cleared) — full-repo **`eslint .`**. The tree still has legacy violations in some pages and Edge sources; tighten lint when you touch those areas or in a dedicated cleanup pass.
 
 ## 1. Database
 
-- [ ] Latest migrations applied (Dashboard → SQL or `npx supabase db push` against the **correct** project).
+- [x] Latest migrations applied (Dashboard → SQL or `npx supabase db push` against the **correct** project). _(Ran `npm run deploy:all` on 2026-04-10; CLI reported remote database up to date.)_
 - [ ] **Workflow step audit (`20260405180000`):** table `crm_workflow_step_runs` exists; RLS allows `SELECT` for `user_id = auth.uid()`; `process-workflows` redeployed so inserts run after each step.
 - [ ] **Workflows / scripts (e.g. `20260404210000`):** `crm_workflow_steps` has branching columns; trigger types include `listing_stage_change` / `deal_stage_change` as expected; script library table + **8** seeded rows; `seed_scripts_from_library()` exists and is granted appropriately.
 - [ ] Spot-check in SQL (optional):
@@ -32,8 +32,8 @@ select proname from pg_proc where proname = 'seed_scripts_from_library';
 
 ## 2. Edge Functions
 
-- [ ] **`process-workflows`** redeployed after code changes; bundle includes shared code (e.g. `_shared/smsCore.ts`).
-- [ ] **`send-email`** redeployed if timeline logging or payload handling changed.
+- [x] **`process-workflows`** redeployed after code changes; bundle includes shared code (e.g. `_shared/smsCore.ts`). _(Redeployed via `npx supabase functions deploy --use-api` on 2026-04-10.)_
+- [x] **`send-email`** redeployed if timeline logging or payload handling changed. _(Redeployed via `npx supabase functions deploy --use-api` on 2026-04-10.)_
 - [ ] Invoke smoke test (Dashboard → Edge Functions → logs, or `curl` with anon/service key per your setup).
 
 **Typical CLI (from repo root, logged in):**
@@ -58,7 +58,9 @@ npx supabase functions deploy send-email
 
 - [ ] In **Automations**, create (or confirm) a workflow with **`trigger_type`: `listing_stage_change`** (and correct object / `trigger_conditions` for your pipeline stage).
 - [ ] On **`/listings`**, move a listing’s **pipeline stage** across the boundary you configured.
-- [ ] Within a cron cycle (≤ ~5 min), confirm **enrollment** and/or **step execution** in DB or function logs.
+- [x] Within a cron cycle (≤ ~5 min), confirm **enrollment** and/or **step execution** in DB or function logs. _(Verified in-app on 2026-04-10 after fixing notification conflict.)_
+
+_Note (2026-04-10): if stage moves fail with 409 + `idx_notifications_unique_nurture_step_due`, apply migration `20260410211500_fix_notification_unique_conflicts.sql` (scopes nurture dedupe index to `kind = 'nurture_step_due'` and hardens `create_notification` against unrelated unique collisions)._
 
 ## 6. App — Email → interactions timeline
 

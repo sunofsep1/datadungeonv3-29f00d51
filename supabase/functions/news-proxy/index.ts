@@ -52,25 +52,47 @@ Deno.serve(async (req) => {
     const q = url.searchParams.get("q") ?? "real estate OR property OR housing Australia";
     const pageSize = Math.min(Number(url.searchParams.get("pageSize")) || 10, 20);
 
-    const apiUrl =
+    const sourceDomain = (url.searchParams.get("domain") ?? "realestate.com.au").trim();
+
+    const buildUrl = (opts: { query: string; domain?: string }) =>
       `https://newsapi.org/v2/everything?` +
-      `q=${encodeURIComponent(q)}` +
+      `q=${encodeURIComponent(opts.query)}` +
+      (opts.domain ? `&domains=${encodeURIComponent(opts.domain)}` : "") +
       `&language=en` +
       `&sortBy=publishedAt` +
       `&pageSize=${pageSize}` +
       `&apiKey=${NEWS_API_KEY}`;
 
-    const res = await fetch(apiUrl);
-    const resData = await res.json();
+    // Try a specific property-news source first (realestate.com.au), then fallback.
+    const primaryRes = await fetch(buildUrl({ query: q, domain: sourceDomain }));
+    const primaryData = await primaryRes.json();
 
-    if (resData.status === "error") {
+    if (primaryData.status === "error") {
       return new Response(
-        JSON.stringify({ status: "error", articles: [], message: resData.message }),
+        JSON.stringify({ status: "error", articles: [], message: primaryData.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    return new Response(JSON.stringify(resData), {
+    const primaryArticles = Array.isArray(primaryData.articles) ? primaryData.articles : [];
+    if (primaryArticles.length > 0) {
+      return new Response(JSON.stringify(primaryData), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fallback to broader AU property coverage if source-specific search is empty.
+    const fallbackRes = await fetch(buildUrl({ query: q }));
+    const fallbackData = await fallbackRes.json();
+
+    if (fallbackData.status === "error") {
+      return new Response(
+        JSON.stringify({ status: "error", articles: [], message: fallbackData.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(JSON.stringify(fallbackData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

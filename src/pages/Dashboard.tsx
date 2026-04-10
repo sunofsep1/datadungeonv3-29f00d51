@@ -97,6 +97,11 @@ export default function Dashboard() {
   );
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Auth can resolve after initial render; reload from the correct user-scoped key.
+    setWidgetOrder(ensureCommandCenterWidget(loadDashboardWidgetOrder(user?.id)));
+  }, [user?.id]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })

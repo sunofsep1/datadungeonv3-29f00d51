@@ -31,6 +31,7 @@ import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 import { AddListingDialog } from "@/components/listings/AddListingDialog";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabaseErrorMessage } from "@/lib/supabaseErrorMessage";
 
 const ListingsTable = lazy(() => import("./Listings"));
 
@@ -119,8 +120,12 @@ export default function ListingsSalesBoard() {
         /* activity optional */
       }
       toast({ title: "Stage updated", description: `Moved to ${label}` });
-    } catch {
-      toast({ title: "Error", description: "Failed to update stage", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to update stage: ${supabaseErrorMessage(error)}`,
+        variant: "destructive",
+      });
     }
     setDraggedItem(null);
   };

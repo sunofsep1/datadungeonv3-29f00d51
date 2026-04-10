@@ -158,15 +158,33 @@ export function useUpdateListing() {
   
   return useMutation({
     mutationFn: async ({ id, previous_pipeline_stage: _prev, ...updates }: ListingUpdateVariables) => {
-      const { data, error } = await supabase
-        .from("listings")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      let payload: ListingUpdate = { ...updates };
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const { data, error } = await supabase
+          .from("listings")
+          .update(payload)
+          .eq("id", id)
+          .select()
+          .single();
+
+        if (!error) return data;
+
+        if (
+          isListingsPipelineStageCheckError(error) &&
+          typeof payload.pipeline_stage === "string"
+        ) {
+          const fallback = LISTING_PIPELINE_STAGE_LEGACY_FALLBACK[payload.pipeline_stage];
+          if (fallback && fallback !== payload.pipeline_stage) {
+            payload = { ...payload, pipeline_stage: fallback };
+            continue;
+          }
+        }
+
+        throw error;
+      }
+
+      throw new Error("Could not update listing: incompatible pipeline_stage constraint");
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["listings"] });
