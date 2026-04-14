@@ -29,6 +29,7 @@ dist-ssr
 *.sln
 *.sw?
 supabase/.temp/
+supabase/.branches/
 
 # Local Netlify folder
 .netlify
