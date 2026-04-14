@@ -95,12 +95,12 @@ export default function Dashboard() {
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() =>
     ensureCommandCenterWidget(loadDashboardWidgetOrder(user?.id))
   );
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-
+  /** Auth resolves after first paint; reload order from the per-user key so drag/save matches persistence. */
   useEffect(() => {
-    // Auth can resolve after initial render; reload from the correct user-scoped key.
-    setWidgetOrder(ensureCommandCenterWidget(loadDashboardWidgetOrder(user?.id)));
+    if (!user?.id) return;
+    setWidgetOrder(ensureCommandCenterWidget(loadDashboardWidgetOrder(user.id)));
   }, [user?.id]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),

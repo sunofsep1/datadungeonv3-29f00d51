@@ -475,7 +475,7 @@ export default function Properties() {
                       className="bg-input"
                       value={formData.address_line1}
                       onChange={(value) =>
-                        setFormData({ ...formData, address_line1: value })
+                        setFormData((prev) => ({ ...prev, address_line1: value }))
                       }
                       onPlaceSelected={(parts) =>
                         setFormData((prev) => ({

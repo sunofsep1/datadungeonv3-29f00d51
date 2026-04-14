@@ -52,6 +52,7 @@ import {
   Clock,
   MessageSquare,
   FileText,
+  GitMerge,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -95,6 +96,7 @@ import { SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
+import { MergeContactsDialog } from "@/components/contacts/MergeContactsDialog";
 import { getDaysSinceLastTouch, getLastTouchDate } from "@/lib/contactLastTouch";
 import {
   CONTACT_SMART_LISTS,
@@ -400,6 +402,7 @@ export default function Contacts() {
   const [sortBy, setSortBy] = useState<SortOption>(initialPrefs.sortBy);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactWithMeta | null>(null);
   const [formData, setFormData] = useState(createEmptyContact());
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -1957,6 +1960,27 @@ export default function Contacts() {
                 Clear filters
               </Button>
             ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 border-border text-foreground hover:bg-muted"
+              disabled={selectedContactIds.size < 2}
+              title={selectedContactIds.size < 2 ? "Select two or more contacts" : "Merge into one contact card"}
+              onClick={() => {
+                if (selectedContactIds.size < 2) {
+                  toast({
+                    title: "Select contacts to merge",
+                    description: "Choose at least two rows using the checkboxes, then click Merge.",
+                  });
+                  return;
+                }
+                setMergeDialogOpen(true);
+              }}
+            >
+              <GitMerge className="h-3.5 w-3.5 opacity-70" />
+              <span className="hidden sm:inline">Merge</span>
+            </Button>
             <Popover open={actionsPopoverOpen} onOpenChange={setActionsPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -2064,6 +2088,12 @@ export default function Contacts() {
             {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""} selected
           </span>
           <div className="flex gap-2 flex-wrap justify-end">
+            {selectedContactIds.size >= 2 ? (
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => setMergeDialogOpen(true)}>
+                <GitMerge className="w-4 h-4" />
+                Merge duplicates
+              </Button>
+            ) : null}
             <Button variant="outline" size="sm" className="gap-1" onClick={() => setBulkSmsOpen(true)}>
               <MessageSquare className="w-4 h-4" />
               Bulk SMS
@@ -2355,6 +2385,15 @@ export default function Contacts() {
 
       </div>
 
+      <MergeContactsDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        contacts={filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id))}
+        onMerged={(primaryId) => {
+          setSelectedContactIds(new Set());
+          navigate(`/contacts/${primaryId}`);
+        }}
+      />
       <CSVImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
       <BulkSmsCampaignDialog
         open={bulkSmsOpen}
