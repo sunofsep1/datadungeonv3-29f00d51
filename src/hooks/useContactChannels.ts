@@ -59,7 +59,7 @@ export function useCreateContactChannel() {
       const insertRow = {
         contact_id: ch.contact_id,
         channel_type: ch.channel_type,
-        channel_value: ch.value,
+        value: ch.value,
         is_primary: ch.is_primary ?? false,
         ...(ch.label != null && { label: ch.label }),
       };
@@ -96,7 +96,7 @@ export function useUpdateContactChannel() {
       value,
       ...rest
     }: ContactChannelUpdate & { id: string; contact_id: string }) => {
-      const payload = value !== undefined ? { ...rest, channel_value: value } : rest;
+      const payload = value !== undefined ? { ...rest, value } : rest;
       const { data, error } = await (supabase as any)
         .from("contact_channels")
         .update(payload)
@@ -134,7 +134,7 @@ export function useDeleteContactChannel() {
     }) => {
       const { data: prev } = await (supabase as any)
         .from("contact_channels")
-        .select("channel_type, channel_value, value")
+        .select("channel_type, value")
         .eq("id", id)
         .maybeSingle();
       const { error } = await (supabase as any)
