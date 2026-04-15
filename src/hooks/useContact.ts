@@ -2,22 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Contact, ContactWithMeta, ContactAddressRow } from "./useContacts";
 import { mapContactAddressToDisplay } from "./useContacts";
+import type { ContactChannel } from "./useContactChannels";
 
 /** No `properties(*)` embed: nested resource can trigger PostgREST 400 if FK/view/columns differ; properties are hydrated below. */
 const CONTACT_SELECT =
   "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes), contact_addresses(*)";
-
-function isRelationError(msg: string): boolean {
-  const m = msg.toLowerCase();
-  return (
-    (m.includes("relation") && m.includes("does not exist")) ||
-    m.includes("contact_channels") ||
-    m.includes("contact_tags") ||
-    m.includes("contact_property_links") ||
-    m.includes("contact_addresses") ||
-    m.includes("properties")
-  );
-}
 
 export function useContact(id: string | undefined) {
   return useQuery({
@@ -26,6 +15,7 @@ export function useContact(id: string | undefined) {
     queryFn: async () => {
       if (!id) throw new Error("No contact ID provided");
       let contact: ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
+      let usedSimpleContactsRow = false;
       // Try simple select first (HubSpot schema)
       const { data: simpleData, error: simpleErr } = await supabase
         .from("contacts")
@@ -45,6 +35,7 @@ export function useContact(id: string | undefined) {
           throw new Error("Contact not found");
         }
       } else {
+        usedSimpleContactsRow = true;
         let addrs: ContactAddressRow[] = [];
         try {
           const { data: addrRows, error: addrErr } = await supabase
@@ -63,6 +54,25 @@ export function useContact(id: string | undefined) {
           contact_addresses: addrs,
         } as ContactWithMeta & { contact_addresses?: ContactAddressRow[] };
       }
+
+      if (usedSimpleContactsRow) {
+        try {
+          const { data: chRows, error: chErr } = await (supabase as any)
+            .from("contact_channels")
+            .select("*")
+            .eq("contact_id", id)
+            .order("is_primary", { ascending: false });
+          if (!chErr && Array.isArray(chRows)) {
+            contact.contact_channels = (chRows as any[]).map((row) => ({
+              ...row,
+              value: row.value ?? row.channel_value ?? "",
+            })) as ContactChannel[];
+          }
+        } catch {
+          /* table missing or RLS — leave [] */
+        }
+      }
+
       try {
         // Try simple select first - nested properties() can fail with 400 if schema uses different column names (e.g. HubSpot: address/suburb)
         const { data: links, error: linksErr } = await (supabase as any)

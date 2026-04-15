@@ -35,7 +35,28 @@ export function useListing(id: string | undefined) {
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as Listing;
+      const row = data as Listing;
+      const contactId = (row as { contact_id?: string | null }).contact_id;
+      if (!contactId) {
+        return { ...row, contacts: null } as ListingWithContact;
+      }
+      const embedded = await supabase
+        .from("listings")
+        .select("*, contacts(id, name)")
+        .eq("id", id)
+        .single();
+      if (!embedded.error && embedded.data) {
+        return embedded.data as ListingWithContact;
+      }
+      const { data: contactRow, error: contactErr } = await supabase
+        .from("contacts")
+        .select("id, name")
+        .eq("id", contactId)
+        .maybeSingle();
+      if (!contactErr && contactRow) {
+        return { ...row, contacts: contactRow } as ListingWithContact;
+      }
+      return { ...row, contacts: null } as ListingWithContact;
     },
     enabled: !!id,
   });

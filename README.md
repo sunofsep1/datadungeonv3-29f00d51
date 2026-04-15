@@ -5,6 +5,13 @@ Real estate CRM with **Dashboard**, **Contacts**, **Listings & Deals**, **Pipeli
 - **Live app**: [https://datadungeonv3.lovable.app](https://datadungeonv3.lovable.app)
 - **Stack**: Vite, TypeScript, React, shadcn-ui, Tailwind CSS, **Supabase** (Postgres + Auth)
 
+### CRM documentation
+
+- **Mid-stage report** (product surface, list-vs-detail audit, assessment): [docs/CRM_MIDSTAGE_REPORT.md](docs/CRM_MIDSTAGE_REPORT.md)
+- **Operator quick reference**: [docs/CRM_QUICKSTART.md](docs/CRM_QUICKSTART.md)
+- **Supabase migrations workflow**: [docs/SUPABASE_WORKFLOW.md](docs/SUPABASE_WORKFLOW.md)
+- **Next-stage backlog tickets**: [docs/CRM_NEXT_TICKETS.md](docs/CRM_NEXT_TICKETS.md)
+
 ---
 
 ## 1. Local setup and running
@@ -36,6 +43,8 @@ Open **http://localhost:8080**. Log in (or sign up) to use the app.
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
 | `npm run lint` | Run ESLint |
+| `npm run verify` | Production build + Vitest (default merge / deploy gate) |
+| `npm run verify:lint` | ESLint only (use when tightening lint policy or clearing debt incrementally) |
 | `npm run health` | Check Supabase connection, contact count, and schema (contacts, tags, contact_tags, contact_channels, properties, contact_property_links). Confirms DB connectivity and core tables. |
 | `npm run export:contacts` | Export contacts to CSV (requires service-role key) |
 | `npm run supabase:sync` | Sync project ref from `supabase/project-ref` to config and package.json |
@@ -44,6 +53,8 @@ Open **http://localhost:8080**. Log in (or sign up) to use the app.
 | `npm run build:safe` | Build using `vite.config.cjs` (use if TS config hits EPERM) |
 
 If `npm run build` fails with `EPERM` writing config cache, use `npm run build:safe`. Dev already uses `vite.config.cjs`.
+
+**Quality gates:** `npm run deploy:all` runs **`verify`** (production build + Vitest), not ESLint. GitHub Actions workflow **CI** (`.github/workflows/ci.yml`) runs the same **`npm run verify`** on pushes and PRs to `main`. Keep team expectations aligned with that unless you add `verify:lint` after clearing legacy ESLint debt. See [docs/crm-deploy-verify-checklist.md](docs/crm-deploy-verify-checklist.md).
 
 ---
 

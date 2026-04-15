@@ -1,11 +1,91 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Contact } from "@/hooks/useContacts";
-import { buildMergedContactUpdate, contactsShareSameDisplayName } from "@/lib/mergeContactFields";
+import {
+  buildMergedContactUpdate,
+  contactsShareSameDisplayName,
+  getMergeEmailPhoneExtras,
+} from "@/lib/mergeContactFields";
 import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 
 type Supabase = typeof supabase;
+
+function normMergeEmail(v: string) {
+  return v.trim().toLowerCase();
+}
+
+function normMergePhone(v: string) {
+  return v.replace(/\s+/g, "");
+}
+
+function guessMergePhoneChannelType(value: string): "phone" | "mobile" {
+  const d = normMergePhone(value).replace(/^\+61/, "0");
+  if (/^04\d{8,9}$/.test(d)) return "mobile";
+  return "phone";
+}
+
+/** Persist extra legacy emails/numbers as `contact_channels` so they show on the contact card. */
+async function upsertMergeExtraChannels(
+  client: Supabase,
+  primaryId: string,
+  emailExtras: string[],
+  phoneExtras: string[],
+): Promise<void> {
+  try {
+    const { data: existing, error: selErr } = await (client as any)
+      .from("contact_channels")
+      .select("channel_type, value")
+      .eq("contact_id", primaryId);
+    if (selErr) {
+      if (String(selErr.message ?? "").includes("does not exist")) return;
+      throw selErr;
+    }
+    const seenE = new Set<string>();
+    const seenP = new Set<string>();
+    for (const r of existing ?? []) {
+      if (r.channel_type === "email" && r.value) seenE.add(normMergeEmail(String(r.value)));
+      if (["phone", "mobile", "other"].includes(r.channel_type) && r.value) {
+        seenP.add(normMergePhone(String(r.value)));
+      }
+    }
+    const { data: row } = await client.from("contacts").select("email, phone, mobile").eq("id", primaryId).maybeSingle();
+    const crow = row as { email?: string | null; phone?: string | null; mobile?: string | null } | null;
+    if (crow?.email) seenE.add(normMergeEmail(crow.email));
+    if (crow?.phone) seenP.add(normMergePhone(crow.phone));
+    if (crow?.mobile) seenP.add(normMergePhone(crow.mobile));
+
+    for (const em of emailExtras) {
+      const v = em.trim();
+      if (!v) continue;
+      if (seenE.has(normMergeEmail(v))) continue;
+      seenE.add(normMergeEmail(v));
+      const { error } = await (client as any).from("contact_channels").insert({
+        contact_id: primaryId,
+        channel_type: "email",
+        value: v,
+        is_primary: false,
+      });
+      if (error) console.warn("merge: contact_channels email extra", error.message);
+    }
+    for (const ph of phoneExtras) {
+      const v = ph.trim();
+      if (!v) continue;
+      if (seenP.has(normMergePhone(v))) continue;
+      seenP.add(normMergePhone(v));
+      const channel_type = guessMergePhoneChannelType(v);
+      const { error } = await (client as any).from("contact_channels").insert({
+        contact_id: primaryId,
+        channel_type,
+        value: v,
+        is_primary: false,
+      });
+      if (error) console.warn("merge: contact_channels phone extra", error.message);
+    }
+  } catch (e) {
+    console.warn("merge: upsertMergeExtraChannels", e);
+  }
+}
 
 async function safeUpdateContactId(
   client: Supabase,
@@ -356,6 +436,9 @@ export function useMergeContacts() {
       const { error: upErr } = await supabase.from("contacts").update(mergedPayload).eq("id", primaryContactId);
       if (upErr) throw upErr;
 
+      const { emailExtras, phoneExtras } = getMergeEmailPhoneExtras(primary, secondaries);
+      await upsertMergeExtraChannels(supabase, primaryContactId, emailExtras, phoneExtras);
+
       const { error: delErr } = await supabase.from("contacts").delete().in("id", secondaryIds);
       if (delErr) throw delErr;
 
@@ -371,6 +454,7 @@ export function useMergeContacts() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["contact", data.primaryContactId] });
+      queryClient.invalidateQueries({ queryKey: ["contact_channels", data.primaryContactId] });
       invalidateContactInteractions(queryClient, data.primaryContactId);
       invalidateContactScoreQueries(queryClient);
     },

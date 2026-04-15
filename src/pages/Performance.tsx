@@ -15,6 +15,7 @@ import { useListings } from "@/hooks/useListings";
 import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { format, subDays, parseISO, startOfWeek } from "date-fns";
+import { Link } from "react-router-dom";
 
 const PerformanceChart = lazy(() =>
   import("@/components/performance/PerformanceChart").then((m) => ({ default: m.PerformanceChart }))
@@ -177,7 +178,16 @@ export default function Performance() {
     <div className="animate-fade-in">
       <PageHeader
         title="Performance & Goals"
-        description="Track your KPIs, log activities, and manage your goals"
+        description={
+          <>
+            Track KPIs, log activities, goals, and exports for a chosen date range. For your at-a-glance tiles and
+            widgets, use{" "}
+            <Link to="/dashboard" className="text-primary underline underline-offset-2 hover:text-primary/90">
+              Home (Dashboard)
+            </Link>
+            .
+          </>
+        }
       />
 
       <Tabs value={tab} onValueChange={onTabChange} className="space-y-6">

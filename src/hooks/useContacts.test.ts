@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { useContacts, getPrimaryEmail, getPrimaryPhone, getTagNames } from "./useContacts";
+import { useContacts, getPrimaryEmail, getPrimaryPhone, getTagNames, getAllEmails, getAllPhones } from "./useContacts";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -73,5 +73,50 @@ describe("getTagNames", () => {
       ],
     } as Parameters<typeof getTagNames>[0];
     expect(getTagNames(c)).toEqual(["VIP", "Lead"]);
+  });
+});
+
+describe("getAllEmails", () => {
+  it("dedupes legacy email when same value exists on a channel", () => {
+    const c = {
+      email: "Same@Example.com",
+      contact_channels: [
+        { id: "ch1", channel_type: "email", value: "same@example.com", is_primary: true },
+      ],
+    } as Parameters<typeof getAllEmails>[0];
+    const rows = getAllEmails(c);
+    expect(rows.map((r) => r.value)).toEqual(["same@example.com"]);
+  });
+
+  it("lists distinct channel and legacy emails", () => {
+    const c = {
+      email: "legacy@example.com",
+      contact_channels: [{ id: "ch1", channel_type: "email", value: "channel@example.com", is_primary: true }],
+    } as Parameters<typeof getAllEmails>[0];
+    const values = getAllEmails(c).map((r) => r.value).sort();
+    expect(values).toEqual(["channel@example.com", "legacy@example.com"]);
+  });
+});
+
+describe("getAllPhones", () => {
+  it("dedupes +61 and 0-prefixed Australian forms", () => {
+    const c = {
+      phone: "+61 400 111 222",
+      contact_channels: [
+        { id: "ch1", channel_type: "phone", value: "0400111222", is_primary: true },
+      ],
+    } as Parameters<typeof getAllPhones>[0];
+    expect(getAllPhones(c).map((r) => r.value)).toEqual(["0400111222"]);
+  });
+
+  it("includes legacy phone and mobile when distinct from channels", () => {
+    const c = {
+      phone: "0290000000",
+      mobile: "0411999888",
+      contact_channels: [],
+    } as Parameters<typeof getAllPhones>[0];
+    const values = getAllPhones(c).map((r) => r.value);
+    expect(values).toContain("0290000000");
+    expect(values).toContain("0411999888");
   });
 });

@@ -15,6 +15,17 @@ Runs **`npm run verify`** (build + Vitest), then **`supabase db push --linked --
 - [x] **`npm run verify`** — production **`vite` build** plus **`vitest run`** (all unit tests once). This is the regression gate that should stay green; run it after meaningful UI or data-hook changes. _(Passed on 2026-04-10)_
 - [ ] **`npm run verify:lint`** (optional until ESLint debt is cleared) — full-repo **`eslint .`**. The tree still has legacy violations in some pages and Edge sources; tighten lint when you touch those areas or in a dedicated cleanup pass.
 
+- [ ] **GitHub Actions:** on `main` / PRs, workflow **CI** runs **`npm run verify`** (see `.github/workflows/ci.yml`). Optional: add branch protection requiring this check.
+
+## CRM smoke after migrations (~5 min)
+
+Run in staging (or production after deploy) with a real login. Goal: catch list-vs-detail drift and broken core paths.
+
+- [ ] **Contacts** — List loads; open one contact; edit and save a field; confirm timeline and linked contact data look right.
+- [ ] **Properties** — List loads; open one property; confirm linked contacts / addresses if you use them.
+- [ ] **Listings** — List loads; open one listing; confirm linked contact (or “no contact”) and stage actions if applicable.
+- [ ] **Nurture** — Open a contact with an active sequence; confirm enrollment dates and next step; try enroll only if safe (duplicate enroll should no-op when already active on that sequence).
+
 ## 1. Database
 
 - [x] Latest migrations applied (Dashboard → SQL or `npx supabase db push` against the **correct** project). _(Ran `npm run deploy:all` on 2026-04-10; CLI reported remote database up to date.)_

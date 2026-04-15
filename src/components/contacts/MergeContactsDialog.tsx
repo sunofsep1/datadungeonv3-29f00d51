@@ -14,7 +14,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, GitMerge, TriangleAlert } from "lucide-react";
 import type { ContactWithMeta } from "@/hooks/useContacts";
-import { getContactDisplayName, getPrimaryEmail, getPrimaryPhone, getLinkedPropertyAddress } from "@/hooks/useContacts";
+import {
+  getContactDisplayName,
+  getPrimaryEmail,
+  getPrimaryPhone,
+  getLinkedPropertyAddress,
+  getAllEmails,
+  getAllPhones,
+} from "@/hooks/useContacts";
 import { useMergeContacts, contactsShareSameDisplayName } from "@/hooks/useMergeContacts";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { errorMessageFromUnknown } from "@/lib/utils";
@@ -46,10 +53,8 @@ export function MergeContactsDialog({ open, onOpenChange, contacts, onMerged }: 
     const emails = new Set<string>();
     const phones = new Set<string>();
     for (const c of contacts) {
-      const e = getPrimaryEmail(c);
-      if (e) emails.add(e);
-      const p = getPrimaryPhone(c);
-      if (p) phones.add(formatPhoneDisplay(p));
+      for (const e of getAllEmails(c)) emails.add(e.value);
+      for (const p of getAllPhones(c)) phones.add(p.value);
     }
     return {
       primary,
@@ -92,7 +97,8 @@ export function MergeContactsDialog({ open, onOpenChange, contacts, onMerged }: 
           </DialogTitle>
           <DialogDescription>
             Combine {contacts.length} records into one card. The contact you keep stays in your list; the others are
-            removed after their tasks, properties, and history are moved across.
+            removed after their tasks, properties, and history are moved across. Extra emails and numbers from merged
+            cards are kept on the primary (including as separate channel rows where applicable).
           </DialogDescription>
         </DialogHeader>
 
@@ -145,14 +151,15 @@ export function MergeContactsDialog({ open, onOpenChange, contacts, onMerged }: 
             </p>
             {preview.emails.length > 0 ? (
               <p>
-                <span className="text-muted-foreground">Email:</span> {preview.emails[0]}
-                {preview.emails.length > 1 ? ` (+${preview.emails.length - 1} more in notes)` : ""}
+                <span className="text-muted-foreground">Emails:</span> {preview.emails.slice(0, 3).join(" · ")}
+                {preview.emails.length > 3 ? ` (+${preview.emails.length - 3} more)` : ""}
               </p>
             ) : null}
             {preview.phones.length > 0 ? (
               <p>
-                <span className="text-muted-foreground">Numbers:</span> {preview.phones.slice(0, 2).join(" · ")}
-                {preview.phones.length > 2 ? ` (+${preview.phones.length - 2} in notes)` : ""}
+                <span className="text-muted-foreground">Numbers:</span>{" "}
+                {preview.phones.slice(0, 3).map((n) => formatPhoneDisplay(n)).join(" · ")}
+                {preview.phones.length > 3 ? ` (+${preview.phones.length - 3} more)` : ""}
               </p>
             ) : null}
             {preview.propertyLines.length > 0 ? (

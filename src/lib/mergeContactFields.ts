@@ -89,6 +89,32 @@ function mergeStringArrayField(
   return [...acc];
 }
 
+/** Distinct emails / phone slots from legacy `contacts` columns across primary + duplicates. */
+function mergedLegacyEmailPhoneParts(primary: Contact, others: Contact[]) {
+  const all = [primary, ...others];
+  const emails = distinctNonEmptyStrings(...all.map((c) => c.email));
+  const phones = distinctNonEmptyStrings(...all.map((c) => c.phone), ...all.map((c) => c.mobile));
+  return {
+    email: emails[0] ?? null,
+    emailExtras: emails.slice(1),
+    phone: phones[0] ?? null,
+    mobile: phones[1] ?? null,
+    phoneExtras: phones.slice(2),
+  };
+}
+
+/**
+ * Extra emails and phone numbers that should be written to `contact_channels` after merge
+ * (so they appear as separate lines on the contact card, not only in notes).
+ */
+export function getMergeEmailPhoneExtras(primary: Contact, others: Contact[]): {
+  emailExtras: string[];
+  phoneExtras: string[];
+} {
+  const { emailExtras, phoneExtras } = mergedLegacyEmailPhoneParts(primary, others);
+  return { emailExtras, phoneExtras };
+}
+
 /**
  * Build contacts row update for `primary` after absorbing `others`.
  * Keeps primary display name; merges phones, emails, notes, addresses, tags array, dates, etc.
@@ -97,23 +123,9 @@ export function buildMergedContactUpdate(primary: Contact, others: Contact[]): R
   const all = [primary, ...others];
   const displayName = getContactDisplayName(primary);
 
-  const emails = distinctNonEmptyStrings(...all.map((c) => c.email));
-  const email = emails[0] ?? null;
-  const emailExtras = emails.slice(1);
+  const { email, phone, mobile } = mergedLegacyEmailPhoneParts(primary, others);
 
-  const phones = distinctNonEmptyStrings(...all.map((c) => c.phone), ...all.map((c) => c.mobile));
-  const phone = phones[0] ?? null;
-  const mobile = phones[1] ?? null;
-  const phoneExtras = phones.slice(2);
-
-  const notesBase = mergeNotes(primary, others);
-  const extraLines: string[] = [];
-  if (emailExtras.length) extraLines.push(`Other emails: ${emailExtras.join(", ")}`);
-  if (phoneExtras.length) extraLines.push(`Other numbers: ${phoneExtras.join(", ")}`);
-  const notes =
-    extraLines.length > 0
-      ? [notesBase, ...extraLines].filter(Boolean).join("\n\n")
-      : notesBase;
+  const notes = mergeNotes(primary, others);
 
   const out: Record<string, unknown> = {
     name: displayName || primary.name,

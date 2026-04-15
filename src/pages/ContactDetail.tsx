@@ -16,7 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, 
   Printer, 
-  Phone, 
   Mail, 
   Calendar, 
   MessageSquare, 
@@ -61,6 +60,7 @@ import { useAppointments } from "@/hooks/useAppointments";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
+import { ContactCardChannelRows } from "@/components/contacts/ContactCardChannelRows";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
@@ -657,34 +657,7 @@ export default function ContactDetail() {
                     {urgencyLabel(contactUrgency)}
                   </Badge>
                 </div>
-                <div className="flex flex-col gap-3 text-sm">
-                  {getAllPhones(contact).flatMap((p) =>
-                    p.value.split(/[;,]/).map((part, i) => {
-                      const num = part.trim();
-                      if (!num) return null;
-                      return (
-                        <div key={`phone-${p.value}-${i}`} className="flex items-center gap-2 rounded-lg py-2.5 px-3 border border-border bg-muted/50 shadow-sm">
-                          <Phone className="w-4 h-4 shrink-0 text-muted-foreground" />
-                          <span className="text-foreground">{formatPhoneDisplay(num)}</span>
-                          {p.label !== "Phone" && <span className="text-muted-foreground text-xs">({p.label})</span>}
-                        </div>
-                      );
-                    })
-                  ).filter(Boolean)}
-                  {getAllEmails(contact).flatMap((e) =>
-                    e.value.split(/[;,]/).map((part, i) => {
-                      const addr = part.trim();
-                      if (!addr) return null;
-                      return (
-                        <div key={`email-${e.value}-${i}`} className="flex items-center gap-2 rounded-lg py-2.5 px-3 border border-border bg-muted/50 shadow-sm">
-                          <Mail className="w-4 h-4 shrink-0 text-muted-foreground" />
-                          <span className="text-foreground truncate">{addr}</span>
-                          {e.label !== "Email" && <span className="text-muted-foreground text-xs shrink-0">({e.label})</span>}
-                        </div>
-                      );
-                    })
-                  ).filter(Boolean)}
-                </div>
+                {id ? <ContactCardChannelRows contactId={id} contact={contact} /> : null}
                 {contact.source && (
                   <p className="text-sm text-muted-foreground mt-1">Source: {contact.source}</p>
                 )}
@@ -1039,7 +1012,9 @@ export default function ContactDetail() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Urgency category</Label>
+              <Label title="How soon to follow up—not the same as Contact category (Top 100, Hot lead, etc.).">
+                Urgency category
+              </Label>
               <Select
                 value={editFormData.category || "none"}
                 onValueChange={(value) => setEditFormData({ ...editFormData, category: value === "none" ? "" : value })}
@@ -1058,7 +1033,9 @@ export default function ContactDetail() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Contact category</Label>
+              <Label title="Used by smart list chips (Top 100, Past client, Hot lead, …). This is not the same as urgency or saved views like Stale.">
+                Contact category
+              </Label>
               <Select
                 value={editFormData.contact_category || "warm_lead"}
                 onValueChange={(value) =>

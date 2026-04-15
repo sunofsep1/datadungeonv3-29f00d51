@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 
@@ -78,7 +79,11 @@ export function DashboardWelcomeHeader() {
           )}
         </p>
         <p className="mt-1.5 text-xs text-muted-foreground max-w-md" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-          Daily command center: follow-ups, tasks, and what needs attention next.
+          Daily command center: follow-ups, tasks, and what needs attention next. For dated KPIs, closings, and exports,{" "}
+          <Link to="/performance" className="text-primary underline underline-offset-2 hover:text-primary/90">
+            open Performance
+          </Link>
+          .
         </p>
       </div>
     </div>

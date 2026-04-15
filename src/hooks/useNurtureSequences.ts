@@ -322,6 +322,18 @@ export function useEnrollNurtureSequence() {
       pause_followup_cadence?: boolean;
     }) => {
       if (!user) throw new Error("Not authenticated");
+      const { data: existing, error: exErr } = await supabase
+        .from("nurture_sequence_enrollments")
+        .select("*")
+        .eq("contact_id", input.contact_id)
+        .eq("sequence_id", input.sequence_id)
+        .is("completed_at", null)
+        .maybeSingle();
+      if (exErr) throw exErr;
+      if (existing) {
+        return existing as NurtureSequenceEnrollment;
+      }
+
       const { data: steps, error: se } = await supabase
         .from("nurture_sequence_steps")
         .select("*")

@@ -500,6 +500,12 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium">{seq?.name ?? "Sequence"}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Enrolled {format(new Date(e.started_at), "d MMM yyyy, h:mm a")}
+                        {" · "}
+                        Manual enrollments usually add a &quot;Nurture sequence started&quot; line on the contact
+                        timeline above.
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Next: {e.next_step_at ? format(new Date(e.next_step_at), "d MMM yyyy, h:mm a") : "—"}
                         {e.pause_followup_cadence && " · Cadence paused"}

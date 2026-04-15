@@ -53,6 +53,7 @@ import {
   MessageSquare,
   FileText,
   GitMerge,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -1096,7 +1097,10 @@ export default function Contacts() {
   if (isLoading) {
     return (
       <div className="animate-fade-in">
-        <PageHeader title="Contacts" description="Manage your contacts" />
+        <PageHeader
+          title="Contacts"
+          description="Smart lists filter mostly by contact category; urgency is separate (edit contact). Saved views like Stale filter by recency, not category."
+        />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-24" />
@@ -1114,7 +1118,10 @@ export default function Contacts() {
   if (isError) {
     return (
       <div className="animate-fade-in">
-        <PageHeader title="Contacts" description="Manage your contacts" />
+        <PageHeader
+          title="Contacts"
+          description="Smart lists filter mostly by contact category; urgency is separate (edit contact). Saved views like Stale filter by recency, not category."
+        />
         <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="font-medium text-foreground mb-2">Couldn&apos;t load contacts</p>
@@ -1384,7 +1391,7 @@ export default function Contacts() {
     <div className="animate-fade-in">
       <PageHeader
         title="Contacts"
-        description="Smart lists for segments; refine source, property, and last touched inline; open Filters for category, classification, and tags. The list below is the main workspace."
+        description="Smart list chips (Top 100, Hot, Past, …) mostly match Contact category on the person—set that in Edit contact. Urgency is a different field. Chips like Stale or No next touch are saved views (filters), not a category you assign. Refine source, property, and last touched inline; open Filters for classification and tags."
         actions={
           <Button
             className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
@@ -1863,7 +1870,10 @@ export default function Contacts() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search name, email, phone, source, tags…"
-              className="border-border bg-input pl-9 text-foreground placeholder:text-muted-foreground"
+              className={cn(
+                "border-border bg-input pl-9 text-foreground placeholder:text-muted-foreground",
+                searchQuery ? "pr-9" : "",
+              )}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -1871,6 +1881,19 @@ export default function Contacts() {
               }}
               aria-label="Search contacts"
             />
+            {searchQuery ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => {
+                  setSearchQuery("");
+                  clearSmartListParam();
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
           <div className="relative xl:shrink-0">
             <div
