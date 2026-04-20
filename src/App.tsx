@@ -45,6 +45,10 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ContactPrintPage = lazy(() => import("./pages/ContactPrintPage"));
+const Pipeline = lazy(() => import("./pages/Pipeline"));
+const AIOps = lazy(() => import("./pages/AIOps"));
+const TouchReport = lazy(() => import("./pages/TouchReport"));
+const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
 
 const queryClient = new QueryClient();
 
@@ -58,7 +62,7 @@ const App = () => (
           <AuthProvider>
             <Suspense fallback={<PageFallbackSkeleton />}>
               <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<Navigate to="/attention-hub" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
@@ -70,10 +74,11 @@ const App = () => (
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
-                <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ContactDetail /></MainLayout></ProtectedRoute>} />
+                <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactDetail /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/:id/print" element={<ProtectedRoute><ContactPrintPage /></ProtectedRoute>} />
-                <Route path="/appointments" element={<ProtectedRoute><MainLayout><Appointments /></MainLayout></ProtectedRoute>} />
-                <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
+                <Route path="/touch-report/print" element={<ProtectedRoute><TouchReportPrint /></ProtectedRoute>} />
+                <Route path="/appointments" element={<ProtectedRoute><MainLayout><ErrorBoundary><Appointments /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/calendar" element={<ProtectedRoute><MainLayout><ErrorBoundary><Calendar /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
                 <Route path="/pricing" element={<ProtectedRoute><MainLayout><PricingIntelligence /></MainLayout></ProtectedRoute>} />
@@ -81,7 +86,7 @@ const App = () => (
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/properties/:id" element={<ProtectedRoute><MainLayout><PropertyDetail /></MainLayout></ProtectedRoute>} />
                 <Route path="/vision/:id" element={<ProtectedRoute><MainLayout><VisionCardDetail /></MainLayout></ProtectedRoute>} />
-                <Route path="/pipeline" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/pipeline" element={<ProtectedRoute><MainLayout><Pipeline /></MainLayout></ProtectedRoute>} />
                 <Route path="/marketing" element={<ProtectedRoute><MainLayout><Marketing /></MainLayout></ProtectedRoute>} />
                 <Route path="/performance" element={<ProtectedRoute><MainLayout><ErrorBoundary><Performance /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/scripts" element={<ProtectedRoute><MainLayout><Scripts /></MainLayout></ProtectedRoute>} />
@@ -89,6 +94,8 @@ const App = () => (
                 <Route path="/data-health" element={<ProtectedRoute><MainLayout><DataHealth /></MainLayout></ProtectedRoute>} />
                 <Route path="/research" element={<ProtectedRoute><MainLayout><Research /></MainLayout></ProtectedRoute>} />
                 <Route path="/annual-reviews" element={<ProtectedRoute><MainLayout><AnnualReviews /></MainLayout></ProtectedRoute>} />
+                <Route path="/ai-ops" element={<ProtectedRoute><MainLayout><AIOps /></MainLayout></ProtectedRoute>} />
+                <Route path="/touch-report" element={<ProtectedRoute><MainLayout><TouchReport /></MainLayout></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />

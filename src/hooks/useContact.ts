@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Contact, ContactWithMeta, ContactAddressRow } from "./useContacts";
-import { mapContactAddressToDisplay } from "./useContacts";
 import type { ContactChannel } from "./useContactChannels";
+import { mapContactAddressToDisplay, attachLeadScoresToContacts } from "./useContacts";
 
 /** No `properties(*)` embed: nested resource can trigger PostgREST 400 if FK/view/columns differ; properties are hydrated below. */
 const CONTACT_SELECT =
@@ -108,7 +108,9 @@ export function useContact(id: string | undefined) {
       } catch {
         contact.contact_property_links = [];
       }
-      return mapContactAddressToDisplay(contact) as ContactWithMeta;
+      const displayed = mapContactAddressToDisplay(contact) as ContactWithMeta;
+      const [withScore] = await attachLeadScoresToContacts([displayed]);
+      return withScore ?? displayed;
     },
     enabled: !!id,
   });

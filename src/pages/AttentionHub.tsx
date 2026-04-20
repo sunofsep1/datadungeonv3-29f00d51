@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react";
 import { AttentionHubWidget } from "@/components/dashboard/AttentionHubWidget";
 import { DailyHubQuickLinks } from "@/components/dashboard/DailyHubQuickLinks";
 import { DailyHubTouchScorecard } from "@/components/dashboard/DailyHubTouchScorecard";
+import { DailyHubPriorityAndSmartLists } from "@/components/dashboard/DailyHubPriorityAndSmartLists";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -21,11 +22,14 @@ export default function AttentionHub() {
           Overdue, today, and upcoming — sequences, contact tasks, todos, and appointments in one stack.
         </p>
       </Card>
+      <AttentionHubWidget />
       <DailyHubQuickLinks />
+      <Card className="zoho-card p-4 border-border">
+        <DailyHubPriorityAndSmartLists />
+      </Card>
       <div className="rounded-lg border border-border/70 bg-card/30 p-3">
         <DailyHubTouchScorecard />
       </div>
-      <AttentionHubWidget />
     </div>
   );
 }

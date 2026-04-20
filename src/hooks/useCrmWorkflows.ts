@@ -293,6 +293,35 @@ export function useDuplicateCrmWorkflowStep() {
   });
 }
 
+export type ContactCrmWorkflowEnrollment = CrmWorkflowEnrollment & {
+  workflow_name: string | null;
+};
+
+export function useCrmWorkflowEnrollmentsForContact(contactId: string | undefined) {
+  return useQuery({
+    queryKey: [...KEYS, "enrollments-by-contact", contactId],
+    enabled: Boolean(contactId),
+    queryFn: async (): Promise<ContactCrmWorkflowEnrollment[]> => {
+      const { data: rows, error } = await supabase
+        .from("crm_workflow_enrollments")
+        .select("*")
+        .eq("contact_id", contactId!)
+        .order("enrolled_at", { ascending: false })
+        .limit(40);
+      if (error) throw error;
+      const enrollments = (rows ?? []) as CrmWorkflowEnrollment[];
+      const wfIds = [...new Set(enrollments.map((e) => e.workflow_id))];
+      if (wfIds.length === 0) {
+        return enrollments.map((e) => ({ ...e, workflow_name: null }));
+      }
+      const { data: wfs, error: wErr } = await supabase.from("crm_workflows").select("id, name").in("id", wfIds);
+      if (wErr) throw wErr;
+      const map = new Map((wfs ?? []).map((w) => [w.id, w.name as string]));
+      return enrollments.map((e) => ({ ...e, workflow_name: map.get(e.workflow_id) ?? null }));
+    },
+  });
+}
+
 export function useStartCrmWorkflowEnrollment() {
   const qc = useQueryClient();
   return useMutation({
@@ -330,6 +359,8 @@ export function useStartCrmWorkflowEnrollment() {
       void qc.invalidateQueries({ queryKey: KEYS });
       void qc.invalidateQueries({ queryKey: [...KEYS, "enrollments", variables.workflowId] });
       void qc.invalidateQueries({ queryKey: [...KEYS, "step-runs", variables.workflowId] });
+      void qc.invalidateQueries({ queryKey: [...KEYS, "enrollments-by-contact", variables.contactId] });
+      void qc.invalidateQueries({ queryKey: ["contact", variables.contactId] });
     },
   });
 }

@@ -626,8 +626,15 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: unknown) {
-    console.error("Edge function error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(
+      JSON.stringify({
+        level: "error",
+        function: "google-calendar",
+        message,
+        name: error instanceof Error ? error.name : "unknown",
+      }),
+    );
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

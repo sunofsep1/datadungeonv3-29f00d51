@@ -26,7 +26,7 @@ export function useScriptSearch(searchText: string, enabled: boolean) {
     queryKey: ["scripts-search", q],
     enabled: enabled && q.length >= 2,
     queryFn: async (): Promise<ScriptRecord[]> => {
-      const { data, error } = await (supabase as any).rpc("search_scripts", {
+      const { data, error } = await supabase.rpc("search_scripts", {
         p_query: q,
         p_limit: 30,
       });

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import {
   Activity,
   Calendar,
+  ClipboardCheck,
   FileText,
   Flame,
   Home,
@@ -22,6 +23,7 @@ const LINKS: Array<{ to: string; label: string; hint?: string; icon: typeof User
   { to: "/pricing", label: "Pricing", hint: "TAM & brackets", icon: LineChart },
   { to: "/automations", label: "Automations", hint: "Workflows", icon: Workflow },
   { to: "/data-health", label: "Data health", icon: Activity },
+  { to: "/annual-reviews", label: "Reviews & events", hint: "Annual reviews", icon: ClipboardCheck },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/scripts", label: "Scripts", icon: FileText },
 ];

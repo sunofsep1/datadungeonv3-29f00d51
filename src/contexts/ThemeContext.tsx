@@ -37,6 +37,21 @@ export const THEME_HTML_CLASSES = [
   "theme-oceanic-next",
   "theme-horizon",
   "theme-everforest",
+  "theme-neon-arcade-84",
+  "theme-miami-vice-89",
+  "theme-vhs-afterglow",
+  "theme-mallsoft-95",
+  "theme-cyber-teal-96",
+  "theme-floppy-disk-blue",
+  "theme-y2k-ice",
+  "theme-cyber-grape-2000",
+  "theme-matrix-pastel",
+  "theme-sunset-drive",
+  "theme-dotcom-slate",
+  "theme-gameboy-night",
+  "theme-dreamcast-blue",
+  "theme-millennium-purple",
+  "theme-retro-wave-dusk",
 ] as const;
 
 export type Theme =
@@ -73,7 +88,22 @@ export type Theme =
   | "kanagawa"
   | "oceanicNext"
   | "horizon"
-  | "everforest";
+  | "everforest"
+  | "neonArcade84"
+  | "miamiVice89"
+  | "vhsAfterglow"
+  | "mallsoft95"
+  | "cyberTeal96"
+  | "floppyDiskBlue"
+  | "y2kIce"
+  | "cyberGrape2000"
+  | "matrixPastel"
+  | "sunsetDrive"
+  | "dotcomSlate"
+  | "gameboyNight"
+  | "dreamcastBlue"
+  | "millenniumPurple"
+  | "retroWaveDusk";
 
 const VALID_THEMES: Theme[] = [
   "dark",
@@ -110,6 +140,21 @@ const VALID_THEMES: Theme[] = [
   "oceanicNext",
   "horizon",
   "everforest",
+  "neonArcade84",
+  "miamiVice89",
+  "vhsAfterglow",
+  "mallsoft95",
+  "cyberTeal96",
+  "floppyDiskBlue",
+  "y2kIce",
+  "cyberGrape2000",
+  "matrixPastel",
+  "sunsetDrive",
+  "dotcomSlate",
+  "gameboyNight",
+  "dreamcastBlue",
+  "millenniumPurple",
+  "retroWaveDusk",
 ];
 
 interface ThemeContextType {
@@ -170,6 +215,21 @@ function themeToClass(theme: Theme): string {
     oceanicNext: "theme-oceanic-next",
     horizon: "theme-horizon",
     everforest: "theme-everforest",
+    neonArcade84: "theme-neon-arcade-84",
+    miamiVice89: "theme-miami-vice-89",
+    vhsAfterglow: "theme-vhs-afterglow",
+    mallsoft95: "theme-mallsoft-95",
+    cyberTeal96: "theme-cyber-teal-96",
+    floppyDiskBlue: "theme-floppy-disk-blue",
+    y2kIce: "theme-y2k-ice",
+    cyberGrape2000: "theme-cyber-grape-2000",
+    matrixPastel: "theme-matrix-pastel",
+    sunsetDrive: "theme-sunset-drive",
+    dotcomSlate: "theme-dotcom-slate",
+    gameboyNight: "theme-gameboy-night",
+    dreamcastBlue: "theme-dreamcast-blue",
+    millenniumPurple: "theme-millennium-purple",
+    retroWaveDusk: "theme-retro-wave-dusk",
   };
   return map[theme] ?? DEFAULT_THEME;
 }

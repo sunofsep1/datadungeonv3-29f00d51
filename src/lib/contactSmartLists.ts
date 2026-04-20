@@ -11,7 +11,9 @@ export type ContactSmartListId =
   | ContactClassificationKey
   | "stale"
   | "no_next_touch"
-  | "automation_blocked";
+  | "automation_blocked"
+  | "birthdays_upcoming"
+  | "annual_review_candidates";
 
 export const CONTACT_SMART_LISTS: Array<{
   id: ContactSmartListId;
@@ -32,6 +34,16 @@ export const CONTACT_SMART_LISTS: Array<{
     label: "Unreachable for automation (no email & no SMS number)",
     short: "Auto block",
   },
+  {
+    id: "birthdays_upcoming",
+    label: "Birthdays in the next 30 days",
+    short: "Birthdays",
+  },
+  {
+    id: "annual_review_candidates",
+    label: "Annual review candidates (Top 100 & past clients needing a January slot)",
+    short: "Review pool",
+  },
 ];
 
 const CLASSIFICATION_SET = new Set<ContactClassificationKey>([
@@ -46,7 +58,15 @@ const CLASSIFICATION_SET = new Set<ContactClassificationKey>([
 export function parseSmartListParam(raw: string | null): ContactSmartListId | null {
   if (raw === "all") return "all";
   if (!raw) return null;
-  if (raw === "stale" || raw === "no_next_touch" || raw === "automation_blocked") return raw;
+  if (
+    raw === "stale" ||
+    raw === "no_next_touch" ||
+    raw === "automation_blocked" ||
+    raw === "birthdays_upcoming" ||
+    raw === "annual_review_candidates"
+  ) {
+    return raw;
+  }
   if (CLASSIFICATION_SET.has(raw as ContactClassificationKey)) return raw as ContactClassificationKey;
   return null;
 }

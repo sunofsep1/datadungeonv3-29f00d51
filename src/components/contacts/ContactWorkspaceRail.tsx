@@ -2,11 +2,18 @@ import { useState } from "react";
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { ChevronDown, FileText, Handshake, ListTodo, Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { ChevronDown, ClipboardList, FileText, GitBranch, Handshake, ListTodo, Loader2, Sparkles, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { CONTACT_SMART_LISTS } from "@/lib/contactSmartLists";
@@ -15,6 +22,13 @@ import { LEAD_TEMPERATURES, LEAD_TEMPERATURE_LABELS, type LeadTemperature } from
 import { openLogTouch } from "@/lib/openLogTouch";
 import { useContactScore } from "@/hooks/useContactScore";
 import { useContactTasks } from "@/hooks/useContactTasks";
+import {
+  useCrmWorkflowEnrollmentsForContact,
+  useCrmWorkflowsList,
+  useStartCrmWorkflowEnrollment,
+} from "@/hooks/useCrmWorkflows";
+import { useToast } from "@/hooks/use-toast";
+import { useAnnualReviewContactStatusMap } from "@/hooks/useAnnualReviews";
 import { leadScoreBand } from "@/lib/contactScoreQuery";
 import { cn } from "@/lib/utils";
 import type { Json, Tables } from "@/integrations/supabase/types";
@@ -73,11 +87,26 @@ type Props = {
   contactId: string;
 };
 
+function humanizeAnnualReviewStatus(raw: string): string {
+  return raw
+    .split("_")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""))
+    .join(" ");
+}
+
 export function ContactWorkspaceRail({ contact, contactId }: Props) {
+  const { toast } = useToast();
   const [scriptsOpen, setScriptsOpen] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [workflowPick, setWorkflowPick] = useState<string>("");
   const { data: tasks = [] } = useContactTasks(contactId);
   const { data: scoreRow, isLoading: scoreLoading } = useContactScore(contactId);
+  const { data: crmEnrollments = [] } = useCrmWorkflowEnrollmentsForContact(contactId);
+  const { data: crmWorkflows = [] } = useCrmWorkflowsList();
+  const startEnrollment = useStartCrmWorkflowEnrollment();
+  const reviewYear = new Date().getFullYear();
+  const { data: reviewStatusByContact = new Map<string, string>() } = useAnnualReviewContactStatusMap(reviewYear);
+  const annualReviewStatus = reviewStatusByContact.get(contactId);
   const openTaskCount = tasks.filter((t) => !t.completed_at).length;
   const daysSince = getDaysSinceLastTouch(contact);
 
@@ -86,6 +115,34 @@ export function ContactWorkspaceRail({ contact, contactId }: Props) {
 
   const breakdownLines = scoreRow ? formatScoreBreakdownLines(scoreRow.score_breakdown) : [];
   const scoreBand = scoreRow != null ? leadScoreBand(scoreRow.total_score) : null;
+
+  const activeCrmIds = new Set(crmEnrollments.filter((e) => e.status === "active").map((e) => e.workflow_id));
+  const manualContactWorkflows = crmWorkflows.filter(
+    (w) => w.is_active && w.trigger_object === "contact" && w.trigger_type === "manual"
+  );
+  const nextOpenTask = tasks.find((t) => !t.completed_at);
+
+  const handleEnrollWorkflow = () => {
+    if (!workflowPick) {
+      toast({ title: "Choose a workflow", variant: "destructive" });
+      return;
+    }
+    startEnrollment.mutate(
+      { workflowId: workflowPick, contactId },
+      {
+        onSuccess: () => {
+          toast({ title: "Enrolled", description: "This contact is now in the workflow queue." });
+          setWorkflowPick("");
+        },
+        onError: (e) =>
+          toast({
+            title: "Could not enroll",
+            description: e instanceof Error ? e.message : "Try again.",
+            variant: "destructive",
+          }),
+      }
+    );
+  };
 
   return (
     <Card className="zoho-card p-4 border-border print:hidden space-y-4">
@@ -178,6 +235,102 @@ export function ContactWorkspaceRail({ contact, contactId }: Props) {
         {daysSince != null ? (
           <p className="text-xs text-muted-foreground">{daysSince} days since last touch</p>
         ) : null}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-1.5 text-sm">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <ClipboardList className="h-3 w-3" />
+          Annual review ({reviewYear})
+        </p>
+        {annualReviewStatus ? (
+          <p className="text-sm text-foreground">{humanizeAnnualReviewStatus(annualReviewStatus)}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">No review record for this calendar year.</p>
+        )}
+        <Button variant="link" className="h-auto p-0 text-xs" asChild>
+          <Link to="/annual-reviews">Annual reviews hub</Link>
+        </Button>
+      </div>
+
+      <Separator />
+
+      {nextOpenTask ? (
+        <>
+          <div className="space-y-1.5">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Recommended next</p>
+            <p className="text-sm text-foreground font-medium leading-snug">{nextOpenTask.title}</p>
+            {nextOpenTask.due_at ? (
+              <p className="text-xs text-muted-foreground">Due {format(new Date(nextOpenTask.due_at), "d MMM yyyy")}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">No due date</p>
+            )}
+          </div>
+          <Separator />
+        </>
+      ) : null}
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <GitBranch className="h-3 w-3" />
+            CRM workflows
+          </p>
+          <Button variant="link" className="h-auto p-0 text-[11px]" asChild>
+            <Link to="/automations">Directory</Link>
+          </Button>
+        </div>
+        {crmEnrollments.filter((e) => e.status === "active").length > 0 ? (
+          <ul className="space-y-1.5 text-xs">
+            {crmEnrollments
+              .filter((e) => e.status === "active")
+              .slice(0, 5)
+              .map((e) => (
+                <li key={e.id} className="flex justify-between gap-2 text-foreground">
+                  <span className="truncate font-medium">{e.workflow_name ?? "Workflow"}</span>
+                  <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
+                    step {e.current_step_order}
+                  </Badge>
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">No active CRM workflow enrollments.</p>
+        )}
+        {manualContactWorkflows.length > 0 ? (
+          <div className="flex flex-col gap-2 pt-1">
+            <Select value={workflowPick || undefined} onValueChange={setWorkflowPick}>
+              <SelectTrigger className="h-9 bg-background text-xs">
+                <SelectValue placeholder="Add to workflow…" />
+              </SelectTrigger>
+              <SelectContent>
+                {manualContactWorkflows.map((w) => (
+                  <SelectItem key={w.id} value={w.id} disabled={activeCrmIds.has(w.id)}>
+                    {w.name}
+                    {activeCrmIds.has(w.id) ? " (active)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8"
+              disabled={!workflowPick || startEnrollment.isPending}
+              onClick={handleEnrollWorkflow}
+            >
+              {startEnrollment.isPending ? "Enrolling…" : "Enroll"}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground pt-1">
+            No manual contact workflows yet.{" "}
+            <Link to="/automations" className="text-primary underline-offset-2 hover:underline">
+              Automations
+            </Link>
+          </p>
+        )}
       </div>
 
       <Separator />

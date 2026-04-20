@@ -26,23 +26,7 @@ export function GoalsManager() {
     refetchCalls();
   };
 
-  if (isError) {
-    return (
-      <Card className="p-6 bg-card border-border">
-        <div className="flex items-center justify-between mb-4">
-          <Target className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Goals Progress</h3>
-        </div>
-        <p className="text-sm text-muted-foreground mb-2">Couldn&apos;t load goals data.</p>
-        <p className="text-xs text-muted-foreground mb-4">
-          Run database migrations: <code className="bg-secondary px-1 rounded">npm run db:push</code>. See README for setup.
-        </p>
-        <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
-      </Card>
-    );
-  }
-
-  // Calculate totals from activities
+  // Calculate totals from activities (hooks before any early return)
   const totals = useMemo(() => {
     return activities.reduce((acc, activity) => ({
       gci: acc.gci + Number(activity.gci_earned || 0),
@@ -117,6 +101,22 @@ export function GoalsManager() {
   // Stats
   const onTrack = goals.filter(g => (g.current / g.target) >= 0.7).length;
   const offTrack = goals.length - onTrack;
+
+  if (isError) {
+    return (
+      <Card className="p-6 bg-card border-border">
+        <div className="flex items-center justify-between mb-4">
+          <Target className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold text-foreground">Goals Progress</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-2">Couldn&apos;t load goals data.</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Run database migrations: <code className="bg-secondary px-1 rounded">npm run db:push</code>. See README for setup.
+        </p>
+        <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
+      </Card>
+    );
+  }
 
   if (goalsLoading) {
     return (

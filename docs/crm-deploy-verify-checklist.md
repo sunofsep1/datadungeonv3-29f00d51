@@ -45,6 +45,7 @@ select proname from pg_proc where proname = 'seed_scripts_from_library';
 
 - [x] **`process-workflows`** redeployed after code changes; bundle includes shared code (e.g. `_shared/smsCore.ts`). _(Redeployed via `npx supabase functions deploy --use-api` on 2026-04-10.)_
 - [x] **`send-email`** redeployed if timeline logging or payload handling changed. _(Redeployed via `npx supabase functions deploy --use-api` on 2026-04-10.)_
+- [ ] **`sync-anthropic-usage`** deployed and tested with service-role auth if AI spend reporting is enabled.
 - [ ] Invoke smoke test (Dashboard → Edge Functions → logs, or `curl` with anon/service key per your setup).
 
 **Typical CLI (from repo root, logged in):**

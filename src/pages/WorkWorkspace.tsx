@@ -120,19 +120,19 @@ export default function WorkWorkspace() {
         if (todo && todoId) {
           if (todo.completed) {
             toast({ title: "Already done", description: "This task was already completed." });
-            navigate("/dashboard");
+            navigate("/attention-hub");
             return;
           }
           await updateTodo.mutateAsync({ id: todo.id, completed: true });
           toast({ title: "Completed", description: "Task marked as done." });
-          navigate("/dashboard");
+          navigate("/attention-hub");
           return;
         }
 
         if (task && contactId && contactTaskId) {
           if (task.completed_at) {
             toast({ title: "Already done", description: "This contact task is already completed." });
-            navigate("/dashboard");
+            navigate("/attention-hub");
             return;
           }
           const run = task.sequence_enrollment_id ? pendingRun : undefined;
@@ -167,7 +167,7 @@ export default function WorkWorkspace() {
             });
             toast({ title: "Completed", description: "Contact task marked as done." });
           }
-          navigate("/dashboard");
+          navigate("/attention-hub");
         }
       } catch (error) {
         toast({ title: "Could not complete", description: getErrorMessage(error), variant: "destructive" });
@@ -198,7 +198,7 @@ export default function WorkWorkspace() {
         <Card className="zoho-card p-6 border-border">
           <p className="text-sm text-muted-foreground mb-4">No task or appointment was specified.</p>
           <Button asChild variant="outline">
-            <Link to="/dashboard">Back to Daily Hub</Link>
+            <Link to="/attention-hub">Back to Daily Hub</Link>
           </Button>
         </Card>
       </div>
@@ -239,7 +239,7 @@ export default function WorkWorkspace() {
           </p>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
-              <Link to="/dashboard">Daily Hub</Link>
+              <Link to="/attention-hub">Daily Hub</Link>
             </Button>
             <Button asChild variant="outline">
               <Link to="/tasks">Tasks</Link>
@@ -316,7 +316,7 @@ export default function WorkWorkspace() {
     <div className="container max-w-6xl py-6 pb-12">
       <div className="mb-4">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground" asChild>
-          <Link to="/dashboard">
+          <Link to="/attention-hub">
             <ArrowLeft className="h-4 w-4" />
             Daily Hub
           </Link>

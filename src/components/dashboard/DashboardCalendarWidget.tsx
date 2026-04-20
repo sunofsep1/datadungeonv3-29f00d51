@@ -344,12 +344,13 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
           start: startOfWeek(currentDate, { weekStartsOn: 1 }),
           end: endOfWeek(currentDate, { weekStartsOn: 1 }),
         });
-      case "month":
+      case "month": {
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
         const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
         const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
         return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+      }
       default:
         return [];
     }
@@ -359,10 +360,11 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
     switch (viewMode) {
       case "day":
         return format(currentDate, "EEEE, MMMM d, yyyy");
-      case "week":
+      case "week": {
         const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
         const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
         return `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
+      }
       case "month":
         return format(currentDate, "MMMM yyyy");
     }
@@ -447,7 +449,9 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       setGcalEvents([]);
       setGcalNeedsAuth(true);
       setGcalError(null);
-    } catch {}
+    } catch {
+      /* ignore disconnect errors */
+    }
   };
 
   const handleCreateBooking = async () => {
@@ -945,7 +949,9 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
               let dateStr = "";
               try {
                 dateStr = format(parseISO(item.date), "EEEE, MMM d, h:mm a");
-              } catch {}
+              } catch {
+                /* invalid date */
+              }
               return (
                 <div key={item.id} className="flex items-center gap-3 text-sm group">
                   <div

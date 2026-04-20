@@ -115,7 +115,7 @@ export default function Appointments() {
     checkGcalConnection();
   }, [checkGcalConnection]);
 
-  const handleOpenDialog = (appointment?: Appointment) => {
+  const handleOpenDialog = useCallback((appointment?: Appointment) => {
     if (appointment) {
       const date = appointment.date ? new Date(appointment.date) : new Date();
       setEditingAppointment(appointment);
@@ -146,7 +146,7 @@ export default function Appointments() {
       checkGcalConnection(); // Check connection when opening new appointment
     }
     setIsDialogOpen(true);
-  };
+  }, [checkGcalConnection]);
 
   useEffect(() => {
     const editId = searchParams.get("edit");
@@ -157,7 +157,7 @@ export default function Appointments() {
         setSearchParams({}, { replace: true });
       }
     }
-  }, [searchParams, appointments]);
+  }, [searchParams, appointments, setSearchParams, handleOpenDialog]);
 
   const handleSaveAppointment = async () => {
     if (!formData.title.trim()) {
@@ -257,8 +257,9 @@ export default function Appointments() {
       setIsDialogOpen(false);
       setFormData(createEmptyAppointment());
       setEditingAppointment(null);
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to save appointment", variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to save appointment";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -287,8 +288,9 @@ export default function Appointments() {
       }
       await deleteAppointment.mutateAsync(id);
       toast({ title: "Deleted", description: "Appointment removed" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to delete appointment", variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to delete appointment";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 

@@ -176,8 +176,6 @@ export function LeadClassificationPanel({
     setRelationship(record.relationship_category ?? "");
   }, [record]);
 
-  if (!record && !entityId) return null;
-
   const suggestions = useMemo(() => {
     const st = journey ? (journey as JourneyStage) : null;
     const dnc = mode === "contact" ? record?.do_not_contact : linkedContactDoNotContact;
@@ -187,6 +185,8 @@ export function LeadClassificationPanel({
       roleCategory: role.trim() || null,
     });
   }, [journey, temperature, mode, record?.do_not_contact, linkedContactDoNotContact, role]);
+
+  if (!record && !entityId) return null;
 
   const table = mode === "contact" ? "contacts" : "listings";
 

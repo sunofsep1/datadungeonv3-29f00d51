@@ -176,7 +176,7 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
   }
 
   // Owner Name(s): names appear BEFORE "Owner Name(s):" on the same line
-  const ownerMatch = fullText.match(/([A-Za-z][A-Za-z\s&\.'-]+?)\s+Owner Name\(s\):/);
+  const ownerMatch = fullText.match(/([A-Za-z][A-Za-z\s&.'-]+?)\s+Owner Name\(s\):/);
   if (ownerMatch?.[1]) result.owner_names = safeTrim(ownerMatch[1]) || null;
 
   // Phone(s)
@@ -228,7 +228,7 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
   if (zoneMatch?.[1]) result.zoning = stripDisclaimerAndTruncate(zoneMatch[1], 60) || null;
 
   // Area: 1,077 m² (399 m²) - land (building)
-  const areaMatch = fullText.match(/Area:\s*([\d,\.]+)\s*m²\s*(?:\(([\d,\.]+)\s*m²\))?/i);
+  const areaMatch = fullText.match(/Area:\s*([\d,.]+)\s*m²\s*(?:\(([\d,.]+)\s*m²\))?/i);
   if (areaMatch?.[1]) {
     result.lot_size = parseFloat(String(areaMatch[1]).replace(/,/g, "")) || null;
     if (areaMatch[2]) {

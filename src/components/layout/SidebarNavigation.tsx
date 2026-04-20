@@ -27,6 +27,7 @@ import {
   Flame,
   Clock,
   LineChart,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ const relationshipItems: NavItem[] = [
 const automationItems: NavItem[] = [
   { title: "Automations", url: "/automations", icon: Workflow },
   { title: "Scripts", url: "/scripts", icon: FileText },
+  { title: "AI Ops", url: "/ai-ops", icon: Bot },
 ];
 
 const planningItems: NavItem[] = [{ title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck }];
@@ -122,6 +124,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/pricing" && pathname.startsWith("/pricing")) return true;
   if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;
   if (item.url === "/automations" && pathname.startsWith("/automations")) return true;
+  if (item.url === "/ai-ops" && pathname.startsWith("/ai-ops")) return true;
   if (item.url === "/data-health" && pathname.startsWith("/data-health")) return true;
   if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
   return false;

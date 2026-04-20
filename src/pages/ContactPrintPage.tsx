@@ -4,7 +4,7 @@
  * No sidebar or app chrome.
  */
 import { useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { THEME_HTML_CLASSES } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { useContact } from "@/hooks/useContact";
@@ -24,6 +24,8 @@ import { X } from "lucide-react";
 export default function ContactPrintPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const includeDateOfBirth = searchParams.get("dob") === "1";
 
   /**
    * Always use light theme tokens for this route so the iframe / new-tab preview looks like paper,
@@ -132,6 +134,7 @@ export default function ContactPrintPage() {
         contact={contact}
         linkedProperties={linkedProperties}
         nurtureJourneys={nurtureJourneys}
+        includeDateOfBirth={includeDateOfBirth}
       />
     </div>
   );

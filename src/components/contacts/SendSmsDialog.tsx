@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -202,13 +203,22 @@ export function SendSmsDialog({
               ...custom,
             }}
           />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSend} disabled={sending}>
-              {sending ? "Sending..." : "Send SMS"}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60 mt-2">
+            {contactId ? (
+              <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                <Link to={`/contacts/${contactId}`}>Open contact profile</Link>
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-3 ml-auto">
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSend} disabled={sending}>
+                {sending ? "Sending..." : "Send SMS"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

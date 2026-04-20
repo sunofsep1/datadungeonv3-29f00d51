@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,19 @@ import { useContacts } from "@/hooks/useContacts";
 import { useOpenContactTasksForUser, useUpdateContactTask } from "@/hooks/useContactTasks";
 import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
 import { useTodos, useAddTodo, useUpdateTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
-import { format, isPast, isToday } from "date-fns";
+import { endOfWeek, format, isPast, isToday, isWithinInterval, startOfWeek } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
+import { SavedViewsMenu } from "@/components/saved-views/SavedViewsMenus";
+import {
+  TASKS_SAVED_VIEW_V,
+  parseTasksSavedViewPayload,
+  type TasksSavedViewPayloadV1,
+} from "@/lib/savedViewPayloads";
+import { useSavedViews } from "@/hooks/useSavedViews";
+import { getTasksOpenDefaultSavedView } from "@/lib/savedViewsClientPrefs";
 
 function PersonalTodoRow({
   todo,
@@ -102,7 +110,8 @@ export default function Tasks() {
   const deleteTodo = useDeleteTodo();
   const updateContactTask = useUpdateContactTask();
   const completeStep = useCompleteNurtureStepAndAdvance();
-  const [filter, setFilter] = useState<"all" | "today" | "upcoming">("all");
+  const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "overdue" | "this_week">("all");
+  const [mainTab, setMainTab] = useState<"appointments" | "todos">("appointments");
   const sequenceTaskIds = useMemo(
     () => contactTasks.filter((t) => t.sequence_enrollment_id).map((t) => t.id),
     [contactTasks]
@@ -174,6 +183,17 @@ export default function Tasks() {
     if (filter === "upcoming") {
       return sorted.filter((a) => !isPast(new Date(a.date)));
     }
+    if (filter === "overdue") {
+      return sorted.filter((a) => {
+        const d = new Date(a.date);
+        return isPast(d) && !isToday(d);
+      });
+    }
+    if (filter === "this_week") {
+      const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+      const end = endOfWeek(new Date(), { weekStartsOn: 1 });
+      return sorted.filter((a) => isWithinInterval(new Date(a.date), { start, end }));
+    }
     return sorted;
   }, [appointments, filter]);
 
@@ -185,6 +205,33 @@ export default function Tasks() {
       }).length,
     [appointments]
   );
+
+  const buildTasksSavedViewPayload = useCallback((): TasksSavedViewPayloadV1 => {
+    return {
+      v: TASKS_SAVED_VIEW_V,
+      mainTab,
+      appointmentsFilter: filter,
+    };
+  }, [mainTab, filter]);
+
+  const applyTasksSavedViewPayload = useCallback((p: TasksSavedViewPayloadV1) => {
+    setMainTab(p.mainTab);
+    setFilter(p.appointmentsFilter);
+  }, []);
+
+  const { data: tasksSavedViews = [], isSuccess: tasksViewsReady } = useSavedViews("tasks");
+  const defaultTasksViewAppliedRef = useRef(false);
+
+  useEffect(() => {
+    if (!tasksViewsReady || defaultTasksViewAppliedRef.current) return;
+    if (!getTasksOpenDefaultSavedView()) return;
+    const row = tasksSavedViews.find((v) => v.is_default);
+    if (!row) return;
+    const p = parseTasksSavedViewPayload(row.filters);
+    if (!p) return;
+    defaultTasksViewAppliedRef.current = true;
+    applyTasksSavedViewPayload(p);
+  }, [tasksViewsReady, tasksSavedViews, applyTasksSavedViewPayload]);
 
   const handleAddPersonal = () => {
     const title = newPersonalTitle.trim();
@@ -214,8 +261,15 @@ export default function Tasks() {
       <PageHeader
         title="Tasks"
         description="Appointments, your general to-dos, and open tasks on contacts."
+        actions={
+          <SavedViewsMenu
+            objectType="tasks"
+            buildPayload={buildTasksSavedViewPayload}
+            applyPayload={applyTasksSavedViewPayload}
+          />
+        }
       />
-      <Tabs defaultValue="appointments" className="mt-4">
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "appointments" | "todos")} className="mt-4">
         <TabsList className="mb-4 flex-wrap h-auto gap-1 py-1">
           <TabsTrigger value="appointments" className="gap-1.5">
             <Calendar className="w-4 h-4" /> Appointments
@@ -259,7 +313,21 @@ export default function Tasks() {
                 >
                   Upcoming
                 </Button>
-                {overdueCount > 0 && (
+                <Button
+                  variant={filter === "overdue" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter("overdue")}
+                >
+                  Overdue
+                </Button>
+                <Button
+                  variant={filter === "this_week" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter("this_week")}
+                >
+                  This week
+                </Button>
+                {overdueCount > 0 && filter !== "overdue" && (
                   <span className="text-sm text-muted-foreground self-center">{overdueCount} overdue</span>
                 )}
               </div>

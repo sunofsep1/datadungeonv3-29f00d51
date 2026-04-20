@@ -87,7 +87,7 @@ export function useUpdateVisionCard() {
       if (title !== undefined) updates.title = title;
       if (color !== undefined) updates.color = color;
 
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from("vision_board_items")
         .update(updates)
         .eq("id", id)

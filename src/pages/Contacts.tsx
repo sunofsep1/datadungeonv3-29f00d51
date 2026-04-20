@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,6 @@ import {
   Phone,
   Mail,
   Trash2,
-  Pencil,
   Users,
   Download,
   ChevronRight,
@@ -54,6 +53,7 @@ import {
   FileText,
   GitMerge,
   X,
+  Tags,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -69,6 +69,9 @@ import {
   getLinkedPropertyAddress,
   getContactDisplayName,
 } from "@/hooks/useContacts";
+import { useAnnualReviewContactStatusMap } from "@/hooks/useAnnualReviews";
+import { isBirthdayWithinDays } from "@/lib/contactBirthday";
+import { isAnnualReviewSchedulingCandidate } from "@/lib/annualReviewCandidates";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag, useRemoveContactTag } from "@/hooks/useContactTags";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
@@ -98,14 +101,24 @@ import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
 import { MergeContactsDialog } from "@/components/contacts/MergeContactsDialog";
+import { ContactRowQuickActions } from "@/components/contacts/ContactRowQuickActions";
 import { getDaysSinceLastTouch, getLastTouchDate } from "@/lib/contactLastTouch";
 import {
   CONTACT_SMART_LISTS,
   parseSmartListParam,
   isClassificationSmartList,
   type ContactClassificationKey,
+  type ContactSmartListId,
 } from "@/lib/contactSmartLists";
 import { isContactUnreachableForAutomation } from "@/lib/contactAutomationReachability";
+import { SavedViewsMenu } from "@/components/saved-views/SavedViewsMenus";
+import {
+  CONTACTS_SAVED_VIEW_V,
+  parseContactsSavedViewPayload,
+  type ContactsSavedViewPayloadV1,
+} from "@/lib/savedViewPayloads";
+import { useSavedViews } from "@/hooks/useSavedViews";
+import { getContactsOpenDefaultSavedView } from "@/lib/savedViewsClientPrefs";
 
 type SortOption =
   | "name-asc"
@@ -123,6 +136,22 @@ const SORT_OPTIONS: SortOption[] = [
   "property-count-asc",
   "property-count-desc",
 ];
+
+function coerceSortOption(raw: string): SortOption {
+  return (SORT_OPTIONS as readonly string[]).includes(raw) ? (raw as SortOption) : "name-asc";
+}
+
+function formatOptionalIsoDate(value: string | null | undefined): string {
+  if (!value?.trim()) return "—";
+  const d = parseISO(`${String(value).trim().slice(0, 10)}T12:00:00`);
+  return isValid(d) ? format(d, "d MMM yyyy") : "—";
+}
+
+function coerceContactClassificationFilter(raw: string): "all" | ContactClassificationKey {
+  if (raw === "all") return "all";
+  if (isClassificationSmartList(raw as ContactSmartListId)) return raw as ContactClassificationKey;
+  return "all";
+}
 
 const CONTACTS_LIST_PREFS_KEY = "datadungeon_contacts_list_prefs_v1";
 
@@ -307,6 +336,7 @@ const createEmptyContact = () => ({
   email: "",
   source: "",
   notes: "",
+  date_of_birth: "",
   contact_category: "warm_lead" as ContactClassificationCategory,
   category: "",
   story: "",
@@ -352,6 +382,7 @@ function buildNormalizedFormData(formData: ContactFormState): Record<string, str
     state: normalizeOptionalText(formData.state),
     postcode: normalizeOptionalText(formData.postcode),
     country: normalizeOptionalText(formData.country) ?? "Australia",
+    date_of_birth: normalizeOptionalText((formData as { date_of_birth?: string }).date_of_birth),
   };
 }
 
@@ -378,6 +409,7 @@ function buildNormalizedExistingContact(contact: ContactWithMeta): Record<string
     state: normalizeOptionalText((contact as { state?: string | null }).state),
     postcode: normalizeOptionalText((contact as { postcode?: string | null }).postcode),
     country: normalizeOptionalText((contact as { country?: string | null }).country) ?? "Australia",
+    date_of_birth: normalizeOptionalText((contact as { date_of_birth?: string | null }).date_of_birth),
   };
 }
 
@@ -386,6 +418,9 @@ export default function Contacts() {
   const [searchParams, setSearchParams] = useSearchParams();
   const smartParam = searchParams.get("smart");
   const { data: contacts, isLoading, isError, refetch } = useContacts();
+  const reviewYear = new Date().getFullYear();
+  const { data: reviewStatusByContact = new Map<string, string>() } =
+    useAnnualReviewContactStatusMap(reviewYear);
   const { data: tags } = useTags();
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
@@ -413,6 +448,8 @@ export default function Contacts() {
   const [filterContactClassification, setFilterContactClassification] = useState<"all" | ContactClassificationKey>("all");
   const [filterNoNextTouch, setFilterNoNextTouch] = useState(false);
   const [filterAutomationBlocked, setFilterAutomationBlocked] = useState(false);
+  const [filterBirthdaysUpcoming, setFilterBirthdaysUpcoming] = useState(false);
+  const [filterAnnualReviewCandidates, setFilterAnnualReviewCandidates] = useState(false);
   const [filterLeadTemperature, setFilterLeadTemperature] = useState("all");
   const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
@@ -429,11 +466,84 @@ export default function Contacts() {
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const prevSmartUrlRef = useRef<string | null | undefined>(undefined);
+  const suppressSmartSyncRef = useRef(false);
   const toolbarControlsRef = useRef<HTMLDivElement | null>(null);
   const [showToolbarLeftFade, setShowToolbarLeftFade] = useState(false);
   const [showToolbarRightFade, setShowToolbarRightFade] = useState(false);
 
+  const buildContactsSavedViewPayload = useCallback((): ContactsSavedViewPayloadV1 => {
+    return {
+      v: CONTACTS_SAVED_VIEW_V,
+      smart: searchParams.get("smart"),
+      searchQuery,
+      filterTagIds: [...filterTagIds],
+      filterSource,
+      sortBy,
+      filterHasProperty,
+      filterLastTouched,
+      filterLeadTemperature,
+      filterTimeframeCategory,
+      filterRoleCategory,
+      filterContactClassification,
+      filterNoNextTouch,
+      filterAutomationBlocked,
+      filterBirthdaysUpcoming,
+      filterAnnualReviewCandidates,
+      contactView,
+      itemsPerPage,
+    };
+  }, [
+    searchParams,
+    searchQuery,
+    filterTagIds,
+    filterSource,
+    sortBy,
+    filterHasProperty,
+    filterLastTouched,
+    filterLeadTemperature,
+    filterTimeframeCategory,
+    filterRoleCategory,
+    filterContactClassification,
+    filterNoNextTouch,
+    filterAutomationBlocked,
+    filterBirthdaysUpcoming,
+    filterAnnualReviewCandidates,
+    contactView,
+    itemsPerPage,
+  ]);
+
+  const applyContactsSavedViewPayload = useCallback(
+    (p: ContactsSavedViewPayloadV1) => {
+      suppressSmartSyncRef.current = true;
+      if (p.smart) setSearchParams({ smart: p.smart }, { replace: true });
+      else setSearchParams({}, { replace: true });
+      setSearchQuery(p.searchQuery);
+      setFilterTagIds([...p.filterTagIds]);
+      setFilterSource(p.filterSource);
+      setSortBy(coerceSortOption(p.sortBy));
+      setFilterHasProperty(p.filterHasProperty);
+      setFilterLastTouched(p.filterLastTouched);
+      setFilterLeadTemperature(p.filterLeadTemperature);
+      setFilterTimeframeCategory(p.filterTimeframeCategory);
+      setFilterRoleCategory(p.filterRoleCategory);
+      setFilterContactClassification(coerceContactClassificationFilter(p.filterContactClassification));
+      setFilterNoNextTouch(p.filterNoNextTouch);
+      setFilterAutomationBlocked(p.filterAutomationBlocked);
+      setFilterBirthdaysUpcoming(p.filterBirthdaysUpcoming);
+      setFilterAnnualReviewCandidates(p.filterAnnualReviewCandidates);
+      setContactView(p.contactView);
+      setItemsPerPage(p.itemsPerPage);
+    },
+    [setSearchParams],
+  );
+
   useEffect(() => {
+    if (suppressSmartSyncRef.current) {
+      suppressSmartSyncRef.current = false;
+      prevSmartUrlRef.current = smartParam ?? null;
+      return;
+    }
+
     const prev = prevSmartUrlRef.current;
     const s = parseSmartListParam(smartParam);
 
@@ -445,6 +555,8 @@ export default function Contacts() {
         setFilterNoNextTouch(false);
         setFilterLastTouched("all");
         setFilterAutomationBlocked(false);
+        setFilterBirthdaysUpcoming(false);
+        setFilterAnnualReviewCandidates(false);
       }
       prevSmartUrlRef.current = smartParam ?? null;
       return;
@@ -457,6 +569,8 @@ export default function Contacts() {
       setFilterNoNextTouch(false);
       setFilterLastTouched("all");
       setFilterAutomationBlocked(false);
+      setFilterBirthdaysUpcoming(false);
+      setFilterAnnualReviewCandidates(false);
       return;
     }
     if (isClassificationSmartList(s)) {
@@ -464,6 +578,8 @@ export default function Contacts() {
       setFilterNoNextTouch(false);
       setFilterLastTouched("all");
       setFilterAutomationBlocked(false);
+      setFilterBirthdaysUpcoming(false);
+      setFilterAnnualReviewCandidates(false);
       return;
     }
     if (s === "stale") {
@@ -471,6 +587,8 @@ export default function Contacts() {
       setFilterNoNextTouch(false);
       setFilterLastTouched("stale");
       setFilterAutomationBlocked(false);
+      setFilterBirthdaysUpcoming(false);
+      setFilterAnnualReviewCandidates(false);
       return;
     }
     if (s === "no_next_touch") {
@@ -478,6 +596,8 @@ export default function Contacts() {
       setFilterNoNextTouch(true);
       setFilterLastTouched("all");
       setFilterAutomationBlocked(false);
+      setFilterBirthdaysUpcoming(false);
+      setFilterAnnualReviewCandidates(false);
       return;
     }
     if (s === "automation_blocked") {
@@ -485,8 +605,43 @@ export default function Contacts() {
       setFilterNoNextTouch(false);
       setFilterLastTouched("all");
       setFilterAutomationBlocked(true);
+      setFilterBirthdaysUpcoming(false);
+      setFilterAnnualReviewCandidates(false);
+      return;
+    }
+    if (s === "birthdays_upcoming") {
+      setFilterContactClassification("all");
+      setFilterNoNextTouch(false);
+      setFilterLastTouched("all");
+      setFilterAutomationBlocked(false);
+      setFilterBirthdaysUpcoming(true);
+      setFilterAnnualReviewCandidates(false);
+      return;
+    }
+    if (s === "annual_review_candidates") {
+      setFilterContactClassification("all");
+      setFilterNoNextTouch(false);
+      setFilterLastTouched("all");
+      setFilterAutomationBlocked(false);
+      setFilterBirthdaysUpcoming(false);
+      setFilterAnnualReviewCandidates(true);
     }
   }, [smartParam]);
+
+  const { data: savedViewsList = [], isSuccess: savedViewsReady } = useSavedViews("contacts");
+  const defaultSavedViewAppliedRef = useRef(false);
+
+  useEffect(() => {
+    if (!savedViewsReady || defaultSavedViewAppliedRef.current) return;
+    if (!getContactsOpenDefaultSavedView()) return;
+    if (searchParams.get("smart")) return;
+    const row = savedViewsList.find((v) => v.is_default);
+    if (!row) return;
+    const p = parseContactsSavedViewPayload(row.filters);
+    if (!p) return;
+    defaultSavedViewAppliedRef.current = true;
+    applyContactsSavedViewPayload(p);
+  }, [savedViewsReady, savedViewsList, searchParams, applyContactsSavedViewPayload]);
 
   useEffect(() => {
     const el = toolbarControlsRef.current;
@@ -528,6 +683,8 @@ export default function Contacts() {
     filterContactClassification,
     filterNoNextTouch,
     filterAutomationBlocked,
+    filterBirthdaysUpcoming,
+    filterAnnualReviewCandidates,
   ]);
 
   useEffect(() => {
@@ -559,7 +716,6 @@ export default function Contacts() {
 
   const filteredAndSortedContacts = useMemo(() => {
     let list = (contacts ?? []) as ContactWithMeta[];
-    const now = new Date();
 
     // Debounced search
     if (debouncedSearch.trim()) {
@@ -646,6 +802,19 @@ export default function Contacts() {
       list = list.filter((c) => isContactUnreachableForAutomation(c));
     }
 
+    if (filterBirthdaysUpcoming) {
+      list = list.filter((c) => isBirthdayWithinDays(c as { date_of_birth?: string | null }, 30));
+    }
+
+    if (filterAnnualReviewCandidates) {
+      list = list.filter((c) =>
+        isAnnualReviewSchedulingCandidate(
+          (c as { contact_category?: string | null }).contact_category,
+          reviewStatusByContact.get(c.id),
+        ),
+      );
+    }
+
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
       const name = (c.name || "").trim();
@@ -692,6 +861,9 @@ export default function Contacts() {
     filterContactClassification,
     filterNoNextTouch,
     filterAutomationBlocked,
+    filterBirthdaysUpcoming,
+    filterAnnualReviewCandidates,
+    reviewStatusByContact,
     sortBy,
   ]);
 
@@ -718,6 +890,8 @@ export default function Contacts() {
     filterContactClassification,
     filterNoNextTouch,
     filterAutomationBlocked,
+    filterBirthdaysUpcoming,
+    filterAnnualReviewCandidates,
     sortBy,
   ]);
 
@@ -732,7 +906,9 @@ export default function Contacts() {
     filterRoleCategory !== "all" ||
     filterContactClassification !== "all" ||
     filterNoNextTouch ||
-    filterAutomationBlocked;
+    filterAutomationBlocked ||
+    filterBirthdaysUpcoming ||
+    filterAnnualReviewCandidates;
 
   const clearSmartListParam = () => setSearchParams({}, { replace: true });
 
@@ -852,6 +1028,7 @@ export default function Contacts() {
         state: (contact as any).state ?? "",
         postcode: (contact as any).postcode ?? "",
         country: (contact as any).country ?? "Australia",
+        date_of_birth: String((contact as { date_of_birth?: string | null }).date_of_birth ?? "").slice(0, 10),
       });
       const tagIds = (contact.contact_tags ?? []).map((ct) => ct.tag_id);
       setSelectedTagIds(tagIds);
@@ -937,6 +1114,9 @@ export default function Contacts() {
           state: formData.state || null,
           postcode: formData.postcode?.trim() || null,
           country: formData.country || "Australia",
+          date_of_birth: (formData as { date_of_birth?: string }).date_of_birth?.trim()
+            ? (formData as { date_of_birth: string }).date_of_birth.trim()
+            : null,
         });
         contactId = created.id;
         toast({ title: "Success", description: "Contact added!" });
@@ -1193,42 +1373,17 @@ export default function Contacts() {
 
   const listActionButtons = (contact: ContactWithMeta) => (
     <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        title="Scripts"
-        aria-label="Open scripts for contact"
-        onClick={(e) => {
-          e.stopPropagation();
+      <ContactRowQuickActions
+        contact={contact}
+        onEdit={() => handleOpenDialog(contact)}
+        onScripts={() =>
           setScriptQuickContact({
             id: contact.id,
             category: (contact as { contact_category?: string | null }).contact_category ?? null,
-          });
-        }}
-      >
-        <FileText className="w-4 h-4" />
-      </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpenDialog(contact); }}>
-        <Pencil className="w-4 h-4" />
-      </Button>
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0">
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete {getContactDisplayName(contact)}? This action cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDeleteContact(contact.id)}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          })
+        }
+        onDelete={() => handleDeleteContact(contact.id)}
+      />
       <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
     </div>
   );
@@ -1242,6 +1397,7 @@ export default function Contacts() {
     const effectiveCategory = getEffectiveCategory(contact);
     const lastTouch = getLastTouchDate(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
+    const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
     const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
     return (
       <>
@@ -1316,6 +1472,15 @@ export default function Contacts() {
             {daysSinceTouch == null ? "—" : `${daysSinceTouch}d`}
           </span>
         </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden xl:table-cell tabular-nums w-[72px]">
+          {contact.lead_score != null ? contact.lead_score : "—"}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden xl:table-cell whitespace-nowrap" title={nextTouchRaw ?? ""}>
+          {formatOptionalIsoDate(nextTouchRaw)}
+        </td>
+        <td className="py-2 px-3 md:py-2 md:px-4 align-middle text-muted-foreground text-sm hidden xl:table-cell tabular-nums w-[56px]" title="Active CRM workflow enrollments">
+          {(contact.active_crm_workflow_count ?? 0) > 0 ? contact.active_crm_workflow_count : "—"}
+        </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle w-[1%] whitespace-nowrap">
           {listActionButtons(contact)}
         </td>
@@ -1379,6 +1544,19 @@ export default function Contacts() {
                 {daysSinceTouch == null ? "No touch yet" : `${daysSinceTouch}d since touch`}
               </span>
               <span className="text-xs">{lastTouch ? format(lastTouch, "d MMM") : "—"}</span>
+              {contact.lead_score != null && (
+                <span className="text-xs tabular-nums text-muted-foreground">Score {contact.lead_score}</span>
+              )}
+              {(contact as { next_touch_date?: string | null }).next_touch_date ? (
+                <span className="text-xs text-muted-foreground">
+                  Next {formatOptionalIsoDate((contact as { next_touch_date?: string | null }).next_touch_date)}
+                </span>
+              ) : null}
+              {(contact.active_crm_workflow_count ?? 0) > 0 ? (
+                <span className="text-xs tabular-nums text-muted-foreground" title="Active CRM workflows">
+                  CRM {contact.active_crm_workflow_count}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1393,13 +1571,20 @@ export default function Contacts() {
         title="Contacts"
         description="Smart list chips (Top 100, Hot, Past, …) mostly match Contact category on the person—set that in Edit contact. Urgency is a different field. Chips like Stale or No next touch are saved views (filters), not a category you assign. Refine source, property, and last touched inline; open Filters for classification and tags."
         actions={
-          <Button
-            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-            onClick={() => handleOpenDialog()}
-          >
-            <Plus className="h-4 w-4" />
-            Create contact
-          </Button>
+          <>
+            <SavedViewsMenu
+              objectType="contacts"
+              buildPayload={buildContactsSavedViewPayload}
+              applyPayload={applyContactsSavedViewPayload}
+            />
+            <Button
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+              onClick={() => handleOpenDialog()}
+            >
+              <Plus className="h-4 w-4" />
+              Create contact
+            </Button>
+          </>
         }
       />
 
@@ -1421,6 +1606,8 @@ export default function Contacts() {
                   setFilterNoNextTouch(false);
                   setFilterLastTouched("all");
                   setFilterAutomationBlocked(false);
+                  setFilterBirthdaysUpcoming(false);
+                  setFilterAnnualReviewCandidates(false);
                 } else {
                   setSearchParams({ smart: sl.id }, { replace: true });
                 }
@@ -1609,6 +1796,16 @@ export default function Contacts() {
                             setFormData({ ...formData, email: e.target.value })
                           }
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date of birth</Label>
+                        <Input
+                          type="date"
+                          className="bg-input"
+                          value={(formData as { date_of_birth?: string }).date_of_birth ?? ""}
+                          onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                        />
+                        <p className="text-[11px] text-muted-foreground">Optional — powers birthday smart list & reminders.</p>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -2229,6 +2426,54 @@ export default function Contacts() {
                 </div>
               </PopoverContent>
             </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Tags className="w-4 h-4" />
+                  Set classification
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="end">
+                <p className="text-xs text-muted-foreground mb-2 px-1">
+                  Smart-list category for {selectedContactIds.size} contact{selectedContactIds.size !== 1 ? "s" : ""}
+                </p>
+                <div className="flex flex-col gap-0.5 max-h-64 overflow-y-auto">
+                  {CONTACT_CLASSIFICATION_CATEGORIES.map((cat) => (
+                    <Button
+                      key={cat.value}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start font-normal h-8"
+                      onClick={async () => {
+                        const toUpdate = filteredAndSortedContacts.filter((c) => selectedContactIds.has(c.id));
+                        try {
+                          for (const c of toUpdate) {
+                            await updateContact.mutateAsync({
+                              id: c.id,
+                              contact_category: normalizeContactClassificationCategory(cat.value),
+                              skipActivityLog: true,
+                            });
+                          }
+                          toast({
+                            title: "Classification set",
+                            description: `Updated ${toUpdate.length} contact(s) to ${cat.label}.`,
+                          });
+                          setSelectedContactIds(new Set());
+                        } catch (e: unknown) {
+                          toast({
+                            title: "Error",
+                            description: (e as Error).message || "Failed to update",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      {cat.label}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               size="sm"
@@ -2340,6 +2585,9 @@ export default function Contacts() {
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden md:table-cell">Property</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden lg:table-cell w-[120px]">Last Contacted</th>
                       <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden xl:table-cell w-[120px]">Since Touch</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden xl:table-cell w-[72px]">Score</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden xl:table-cell w-[120px]">Next touch</th>
+                      <th className="text-left py-2.5 px-3 md:py-2 md:px-4 font-medium hidden xl:table-cell w-[56px]">CRM</th>
                       <th className="w-[1%] py-2.5 px-3 md:py-2 md:px-4" aria-label="Actions" />
                     </tr>
                   </thead>

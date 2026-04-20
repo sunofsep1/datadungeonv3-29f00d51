@@ -51,6 +51,7 @@ Open **http://localhost:8080**. Log in (or sign up) to use the app.
 | `npm run db:push` | Apply migrations (Supabase CLI) |
 | `npm run db:migrate` | Run `supabase migration up` |
 | `npm run build:safe` | Build using `vite.config.cjs` (use if TS config hits EPERM) |
+| `npm run verify` | Production build + Vitest (`vitest run`) — same checks as GitHub Actions CI |
 
 If `npm run build` fails with `EPERM` writing config cache, use `npm run build:safe`. Dev already uses `vite.config.cjs`.
 
@@ -139,6 +140,21 @@ Other Supabase scripts: `npm run supabase:gen-types` regenerates TypeScript type
 **First-time setup (Performance & Marketing):** The **Performance** page (activity tracking, goals, calls) and **Marketing** page (posts) require the `activities`, `kpi_goals`, `calls`, and `posts` tables. Run `npm run db:push` before using these features. If you see errors like "Activities table is not set up" or "Posts table is not set up", run migrations: `npm run supabase:link` (once) then `npm run db:push`. See [Run migrations](#run-migrations) above.
 
 **Schema verification:** Run `npm run health` to confirm the six core tables exist and are queryable: `contacts`, `tags`, `contact_tags`, `contact_channels`, `properties`, `contact_property_links`. If any table is missing, run `db:push` to apply migrations.
+
+### Saved views, date of birth, and related jobs
+
+Apply these **before** using the matching UI features in production:
+
+| Feature | Migration(s) | Notes |
+|--------|----------------|-------|
+| **Date of birth** on contacts + birthday reminder plumbing | `20260404000001_backend_automation_birthday_reminders.sql` | Adds `date_of_birth` (DATE) and reminder-friendly structures where defined in that file. |
+| **Saved views** (Contacts / Tasks filters + RLS) | `20260411180000_saved_views_rls.sql` | Table `saved_views`, policies for `owner_id`. |
+
+**Staging / production:** link the Supabase project (`npm run supabase:link`), then `npm run db:push`. If the remote already has objects from manual SQL, use `npm run supabase:repair` for the migration version Supabase reports, then push again (see [Troubleshooting](#troubleshooting)).
+
+**Privacy:** contact **CSV export** does not include date of birth. **Print** hides DOB unless the print URL includes **`?dob=1`** (e.g. `/contacts/:id/print?dob=1`).
+
+Longer phased backend work (classification, scoring, workflows): [docs/BACKEND_ROADMAP.md](docs/BACKEND_ROADMAP.md).
 
 ### Contacts & Properties upgrade (new migrations)
 

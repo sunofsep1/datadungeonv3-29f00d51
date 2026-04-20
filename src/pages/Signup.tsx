@@ -53,7 +53,7 @@ export default function Signup() {
         title: "Account created!",
         description: "You can now sign in with your credentials.",
       });
-      navigate("/dashboard");
+      navigate("/attention-hub");
     }
 
     setLoading(false);

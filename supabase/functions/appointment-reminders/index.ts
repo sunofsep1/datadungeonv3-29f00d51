@@ -22,15 +22,25 @@ const wantSms =
 
 const mmCreds = mobileMessageCredsFromEnv();
 
+type ReminderContact = {
+  id: string;
+  name: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  phone?: string | null;
+  sms_opt_out?: boolean | null;
+  contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean | null }>;
+};
+
 function getContactEmail(contact: {
   email?: string | null;
-  contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean }>;
+  contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean | null }>;
 } | null): string | null {
   if (!contact) return null;
   const channels = contact.contact_channels ?? [];
-  const primary = channels.find((c: any) => c.channel_type === "email" && c.is_primary);
+  const primary = channels.find((c) => c.channel_type === "email" && c.is_primary);
   if (primary?.value) return String(primary.value);
-  const anyEmail = channels.find((c: any) => c.channel_type === "email" && c.value);
+  const anyEmail = channels.find((c) => c.channel_type === "email" && c.value);
   if (anyEmail?.value) return String(anyEmail.value);
   return contact.email ?? null;
 }
@@ -113,7 +123,7 @@ Deno.serve(async (req) => {
     const results: { id: string; sent: boolean; reason?: string; email?: boolean; sms?: boolean }[] = [];
 
     for (const apt of appointments || []) {
-      const contact = apt.contacts as any;
+      const contact = apt.contacts as ReminderContact | null;
       const aptDate = new Date(apt.date);
       const dateStr = `${aptDate.toLocaleDateString()} at ${aptDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
@@ -209,6 +219,14 @@ Deno.serve(async (req) => {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(
+      JSON.stringify({
+        level: "error",
+        function: "appointment-reminders",
+        message,
+        name: error instanceof Error ? error.name : "unknown",
+      }),
+    );
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

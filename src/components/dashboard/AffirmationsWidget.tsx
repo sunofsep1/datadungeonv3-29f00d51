@@ -87,7 +87,7 @@ export function AffirmationsWidget() {
       return shuffled;
     });
     setCurrentIndex(0);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   // Keep current index in bounds
   useEffect(() => {

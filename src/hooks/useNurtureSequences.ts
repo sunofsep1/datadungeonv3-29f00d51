@@ -430,13 +430,12 @@ export function useAdvanceNurtureEnrollmentStep() {
             current_step_index: list.length,
           })
           .eq("id", input.enrollment_id);
-        let seqName: string | undefined;
         const { data: seq } = await supabase
           .from("nurture_sequences")
           .select("name")
           .eq("id", en.sequence_id)
           .maybeSingle();
-        seqName = (seq as { name?: string } | null)?.name;
+        const seqName = (seq as { name?: string } | null)?.name;
         await logContactActivity({
           contactId: input.contact_id,
           subject: "Nurture sequence completed",
@@ -472,13 +471,12 @@ export function useAdvanceNurtureEnrollmentStep() {
         if (upErr) throw upErr;
       }
 
-      let seqName: string | undefined;
       const { data: seq } = await supabase
         .from("nurture_sequences")
         .select("name")
         .eq("id", en.sequence_id)
         .maybeSingle();
-      seqName = (seq as { name?: string } | null)?.name;
+      const seqName = (seq as { name?: string } | null)?.name;
 
       await logContactActivity({
         contactId: input.contact_id,

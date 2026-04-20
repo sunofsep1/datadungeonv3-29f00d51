@@ -46,3 +46,38 @@ export function useWeeklyTouchSummary() {
     staleTime: 60_000,
   });
 }
+
+export type TouchActivityRange = "today" | "week";
+
+export type TouchActivityRow = {
+  id: string;
+  source: "touches" | "interactions";
+  touch_type: string;
+  contact_id: string | null;
+  contact_name: string;
+  occurred_at: string;
+  notes: string | null;
+};
+
+export function useTouchActivityReport(range: TouchActivityRange) {
+  return useQuery({
+    queryKey: ["touch-activity-report", range],
+    queryFn: async (): Promise<TouchActivityRow[]> => {
+      const { data, error } = await (supabase as any).rpc("get_touch_activity_report", {
+        p_range: range,
+      });
+      if (error) throw error;
+      if (!Array.isArray(data)) return [];
+      return data.map((row: Record<string, unknown>) => ({
+        id: String(row.event_id ?? row.id ?? crypto.randomUUID()),
+        source: row.source === "interactions" ? "interactions" : "touches",
+        touch_type: String(row.touch_type ?? "other"),
+        contact_id: row.contact_id ? String(row.contact_id) : null,
+        contact_name: row.contact_name ? String(row.contact_name) : "Unknown contact",
+        occurred_at: String(row.occurred_at ?? new Date().toISOString()),
+        notes: row.notes ? String(row.notes) : null,
+      }));
+    },
+    staleTime: 30_000,
+  });
+}

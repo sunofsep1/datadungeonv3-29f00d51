@@ -37,6 +37,20 @@ export function NumbersKPIGrid() {
     refetchGoals();
   };
 
+  // Calculate totals from activities (must run before any early return — hooks rule)
+  const totals = React.useMemo(() => {
+    if (!activities) return {};
+    return activities.reduce((acc, activity) => {
+      kpiConfig.forEach(kpi => {
+        const value = activity[kpi.key as keyof typeof activity] as number | null;
+        acc[kpi.key] = (acc[kpi.key] || 0) + (value || 0);
+      });
+      return acc;
+    }, {} as Record<string, number>);
+  }, [activities]);
+
+  const hasAnyActivity = Object.values(totals).some((v) => v > 0);
+
   if (isError) {
     return (
       <Card className="bg-card border-border">
@@ -50,20 +64,6 @@ export function NumbersKPIGrid() {
       </Card>
     );
   }
-
-  // Calculate totals from activities
-  const totals = React.useMemo(() => {
-    if (!activities) return {};
-    return activities.reduce((acc, activity) => {
-      kpiConfig.forEach(kpi => {
-        const value = activity[kpi.key as keyof typeof activity] as number | null;
-        acc[kpi.key] = (acc[kpi.key] || 0) + (value || 0);
-      });
-      return acc;
-    }, {} as Record<string, number>);
-  }, [activities]);
-
-  const hasAnyActivity = Object.values(totals).some((v) => v > 0);
 
   const formatValue = (value: number, format?: "number" | "currency") => {
     if (format === "currency") {

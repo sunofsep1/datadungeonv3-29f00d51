@@ -73,7 +73,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { openLogTouch } from "@/lib/openLogTouch";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
@@ -242,7 +242,7 @@ export default function ContactDetail() {
         return property ? { ...link, property } : null;
       })
       .filter(Boolean) as Array<typeof contact.contact_property_links[0] & { property: typeof allProperties[0] }>;
-  }, [contact?.contact_property_links, allProperties]);
+  }, [contact, contact?.contact_property_links, allProperties]);
 
   const linkedPropertyIds = useMemo(
     () => new Set((contact?.contact_property_links ?? []).map((l) => l.property_id)),
@@ -280,6 +280,7 @@ export default function ContactDetail() {
         state: contact.state ?? "",
         postcode: contact.postcode ?? "",
         country: contact.country ?? "Australia",
+        date_of_birth: String((contact as { date_of_birth?: string | null }).date_of_birth ?? "").slice(0, 10),
       });
       setIsEditing(true);
     }
@@ -313,6 +314,9 @@ export default function ContactDetail() {
         state: editFormData.state || null,
         postcode: editFormData.postcode?.trim() || null,
         country: editFormData.country || "Australia",
+        date_of_birth: editFormData.date_of_birth?.trim()
+          ? editFormData.date_of_birth.trim()
+          : null,
       };
       await updateContact.mutateAsync(payload as any);
       if (categoryChanged) {
@@ -634,8 +638,14 @@ export default function ContactDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print-contact-grid">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] print-contact-grid">
+        <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+          {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
+          {id && <ContactScorePanel contactId={id} />}
+          {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
+        </div>
+
+        <div className="space-y-6 print-contact-main">
           {/* Overview */}
           <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-start gap-4">
@@ -648,7 +658,7 @@ export default function ContactDetail() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-semibold text-foreground">{displayNameLabel}</h2>
                 </div>
-                <div className="mt-2 mb-3 flex items-center gap-2">
+                <div className="mt-2 mb-3 flex flex-wrap items-center gap-2">
                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Urgency</span>
                   <Badge
                     variant="outline"
@@ -656,6 +666,22 @@ export default function ContactDetail() {
                   >
                     {urgencyLabel(contactUrgency)}
                   </Badge>
+                  {contact.lead_score != null && (
+                    <Badge variant="secondary" className="tabular-nums text-sm">
+                      Lead score {contact.lead_score}
+                    </Badge>
+                  )}
+                  {(() => {
+                    const raw = (contact as { next_touch_date?: string | null }).next_touch_date?.trim();
+                    if (!raw) return null;
+                    const d = parseISO(`${raw.slice(0, 10)}T12:00:00`);
+                    if (!isValid(d)) return null;
+                    return (
+                      <span className="text-xs text-muted-foreground">
+                        Next touch <span className="text-foreground font-medium">{format(d, "d MMM yyyy")}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
                 {id ? <ContactCardChannelRows contactId={id} contact={contact} /> : null}
                 {contact.source && (
@@ -954,12 +980,6 @@ export default function ContactDetail() {
             </Card>
           )}
         </div>
-
-        <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
-          {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
-          {id && <ContactScorePanel contactId={id} />}
-          {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
-        </div>
       </div>
 
       {/* Print footer */}
@@ -997,6 +1017,16 @@ export default function ContactDetail() {
                 value={editFormData.email || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of birth</Label>
+              <Input
+                type="date"
+                className="bg-input"
+                value={editFormData.date_of_birth || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, date_of_birth: e.target.value })}
+              />
+              <p className="text-[11px] text-muted-foreground">Optional — birthday list & reminders.</p>
             </div>
             {id && (
               <div className="col-span-2 border-t border-border pt-4 mt-2">

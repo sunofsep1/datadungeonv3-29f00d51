@@ -6,6 +6,7 @@ const EDGE_FUNCTIONS = [
   "send-sms — transactional SMS",
   "send-broadcast — bulk SMS campaigns",
   "appointment-reminders — email/SMS before appointments",
+  "sync-anthropic-usage — pull authoritative token/spend usage",
   "google-calendar — OAuth + sync",
   "news-proxy, pricefinder-proxy, perplexity-proxy — external APIs",
 ];

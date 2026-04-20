@@ -16,4 +16,6 @@ export function leadScoreBand(total: number): "hot" | "warm" | "cold" {
  */
 export function invalidateContactScoreQueries(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: [...CONTACT_SCORES_QUERY_ROOT] });
+  void queryClient.invalidateQueries({ queryKey: ["contacts"] });
+  void queryClient.invalidateQueries({ queryKey: ["contact"] });
 }

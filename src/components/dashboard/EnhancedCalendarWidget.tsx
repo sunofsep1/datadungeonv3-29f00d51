@@ -316,12 +316,13 @@ export function EnhancedCalendarWidget() {
           start: startOfWeek(currentDate, { weekStartsOn: 1 }),
           end: endOfWeek(currentDate, { weekStartsOn: 1 }),
         });
-      case "month":
+      case "month": {
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
         const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
         const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
         return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+      }
       default:
         return [];
     }
@@ -422,10 +423,11 @@ export function EnhancedCalendarWidget() {
     switch (viewMode) {
       case "day":
         return format(currentDate, "EEEE, MMMM d, yyyy");
-      case "week":
+      case "week": {
         const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
         const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
         return `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
+      }
       case "month":
         return format(currentDate, "MMMM yyyy");
     }

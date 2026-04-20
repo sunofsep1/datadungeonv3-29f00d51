@@ -1,6 +1,7 @@
 /** Widget ids used by Dashboard grid — keep in sync with `renderWidget` switch in Dashboard.tsx */
 export const DASHBOARD_WIDGET_IDS = [
   "commandCenter",
+  "claudeOps",
   "visionBoard",
   "affirmations",
   "stats",
@@ -24,7 +25,7 @@ const LEGACY_STORAGE_KEY = "dashboard-widget-order";
  * Bump when adding new widget types so existing users get them appended once (see WIDGETS_INTRODUCED_IN_SCHEMA).
  * Removing widgets from the saved order is respected and does not re-append deleted ids.
  */
-export const CURRENT_DASHBOARD_SCHEMA = 4;
+export const CURRENT_DASHBOARD_SCHEMA = 5;
 
 /** For each schema version, widget ids to append to the end of the user's order if missing (new features). */
 export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
@@ -32,6 +33,8 @@ export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
   3: ["activeSequences"],
   /** Dashboard command center was made movable as a regular widget. */
   4: ["commandCenter"],
+  /** Claude AI Ops dashboard widget. */
+  5: ["claudeOps"],
 };
 
 const LEGACY_SCHEMA_KEY = `${LEGACY_STORAGE_KEY}:schema`;
@@ -67,7 +70,7 @@ export function mergeDashboardWidgetOrder(stored: unknown): string[] {
 }
 
 function applySchemaMigrations(order: string[], userId: string | undefined): string[] {
-  let next = [...order];
+  const next = [...order];
   const saved = readSavedSchema(userId);
   if (saved < CURRENT_DASHBOARD_SCHEMA) {
     for (let s = saved + 1; s <= CURRENT_DASHBOARD_SCHEMA; s++) {
@@ -146,6 +149,7 @@ export function resetDashboardWidgetsToDefault(userId: string | undefined): stri
 
 export const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
   commandCenter: "Command center",
+  claudeOps: "Claude AI Ops",
   visionBoard: "Vision board",
   affirmations: "Affirmations",
   stats: "Stats",

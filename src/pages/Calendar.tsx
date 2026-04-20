@@ -277,7 +277,9 @@ export default function Calendar() {
       setGcalEvents([]);
       setGcalNeedsAuth(true);
       setGcalError(null);
-    } catch {}
+    } catch {
+      /* ignore disconnect errors */
+    }
   };
 
   const handleCreateAppointment = async () => {

@@ -1,7 +1,7 @@
 /**
  * Print-only layout for a contact. Professional document styling for PDF / physical print.
  */
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import {
   getAllEmails,
   getAllPhones,
@@ -10,7 +10,7 @@ import {
   type ContactWithMeta,
 } from "@/hooks/useContacts";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
-import { formatPropertyAddress } from "@/hooks/useProperties";
+import { formatPropertyAddress, type Property } from "@/hooks/useProperties";
 import { cn, getInitials } from "@/lib/utils";
 import { formatAddressForPrint } from "@/lib/formatPrintAddress";
 import { PrintWorksheetAreas } from "@/components/print/PrintWorksheetAreas";
@@ -60,6 +60,8 @@ interface ContactPrintLayoutProps {
   nurtureJourneys: NurtureJourneyForPrint[];
   /** Letterhead line under brand, e.g. "Listing briefing" for other print routes. */
   documentSubtitle?: string;
+  /** When true, include date of birth on the printout (off by default for privacy). Use `?dob=1` on the print URL. */
+  includeDateOfBirth?: boolean;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -124,6 +126,7 @@ export function ContactPrintLayout({
   linkedProperties,
   nurtureJourneys,
   documentSubtitle = "Contact briefing",
+  includeDateOfBirth = false,
 }: ContactPrintLayoutProps) {
   const printedAt = format(new Date(), "d MMMM yyyy");
   const phones = getAllPhones(contact).flatMap((p) =>
@@ -135,6 +138,12 @@ export function ContactPrintLayout({
   const rawAddress = contact.address_line1 || contact.city ? formatContactAddress(contact) : null;
   const addressLine = rawAddress && rawAddress !== "—" ? formatAddressForPrint(rawAddress) : null;
   const tags = getTagNames(contact);
+  const dobRaw = (contact as { date_of_birth?: string | null }).date_of_birth?.trim();
+  let dobDisplay: string | null = null;
+  if (includeDateOfBirth && dobRaw) {
+    const d = parseISO(`${dobRaw}T12:00:00`);
+    dobDisplay = isValid(d) ? format(d, "d MMMM yyyy") : dobRaw;
+  }
   const category = (contact as { category?: string | null }).category?.trim();
   const leadTemp = contact.lead_temperature?.trim();
   const relCat = contact.relationship_category?.trim();
@@ -202,6 +211,12 @@ export function ContactPrintLayout({
                       </dd>
                     </div>
                   )}
+                  {dobDisplay && (
+                    <div className="print-dl-row">
+                      <dt>Date of birth</dt>
+                      <dd>{dobDisplay}</dd>
+                    </div>
+                  )}
                   {contact.source && (
                     <div className="print-dl-row">
                       <dt>Source</dt>
@@ -253,7 +268,7 @@ export function ContactPrintLayout({
           {linkedProperties.length > 0 ? (
             <ul className="print-property-list">
               {linkedProperties.map((link) => {
-                const addrRaw = formatPropertyAddress(link.property as any);
+                const addrRaw = formatPropertyAddress(link.property as Property);
                 const addr = formatAddressForPrint(addrRaw);
                 return (
                   <li key={link.id} className="print-property-card">

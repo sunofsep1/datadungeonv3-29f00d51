@@ -1396,6 +1396,7 @@ export type Database = {
           city: string | null
           contact_type: string | null
           contact_category: string
+          date_of_birth: string | null
           country: string | null
           created_at: string | null
           coming_to_market: string | null
@@ -1452,6 +1453,7 @@ export type Database = {
           city?: string | null
           contact_type?: string | null
           contact_category?: string
+          date_of_birth?: string | null
           country?: string | null
           created_at?: string | null
           coming_to_market?: string | null
@@ -1508,6 +1510,7 @@ export type Database = {
           city?: string | null
           contact_type?: string | null
           contact_category?: string
+          date_of_birth?: string | null
           country?: string | null
           created_at?: string | null
           coming_to_market?: string | null
@@ -3145,6 +3148,7 @@ export type Database = {
         Args: { p_max?: number; p_year: number }
         Returns: Json
       }
+      search_scripts: { Args: { p_query: string; p_limit?: number }; Returns: Json }
       seed_scripts_from_library: { Args: Record<string, never>; Returns: number }
       update_contact_with_address: { Args: { payload: Json }; Returns: Json }
     }

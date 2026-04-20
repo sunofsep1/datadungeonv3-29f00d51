@@ -119,7 +119,7 @@ export function TouchScorecard({ dailyTouches, weeklyTouches, todayTotalTouches,
       </div>
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-1 border-t border-border/50">
-        <span>
+        <Link to="/touch-report?range=today" className="hover:underline">
           <span className="text-foreground font-medium">{todayTotalTouches}</span> touches logged today
           {dailyTouches.length > 0 ? (
             <span className="hidden sm:inline">
@@ -133,10 +133,10 @@ export function TouchScorecard({ dailyTouches, weeklyTouches, todayTotalTouches,
               ))}
             </span>
           ) : null}
-        </span>
-        <Link to="/settings#settings-notifications" className="inline-flex items-center gap-1 text-primary hover:underline">
+        </Link>
+        <Link to="/touch-report?range=today" className="inline-flex items-center gap-1 text-primary hover:underline">
           <Bell className="h-3.5 w-3.5" />
-          {unreadCount} unread
+          Open touch report{unreadCount > 0 ? ` (${unreadCount} unread)` : ""}
         </Link>
       </div>
     </div>

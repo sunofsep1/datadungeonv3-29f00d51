@@ -28,6 +28,27 @@ export type AnnualReviewWithRelations = AnnualReviewRow & {
   review_prep_checklist: PrepRow[] | null;
 };
 
+/** contact_id → latest status for that calendar year (one row per contact per year in schema). */
+export function useAnnualReviewContactStatusMap(year: number) {
+  return useQuery({
+    queryKey: ["annual-reviews-contact-status", year],
+    queryFn: async (): Promise<Map<string, string>> => {
+      const { data, error } = await supabase
+        .from("annual_reviews")
+        .select("contact_id,status")
+        .eq("year", year);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of data ?? []) {
+        const id = row.contact_id as string | null | undefined;
+        if (id) map.set(id, String(row.status ?? "pending"));
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+}
+
 export function useAnnualReviews(year: number) {
   return useQuery({
     queryKey: ["annual-reviews", year],
@@ -69,6 +90,7 @@ export function useSeedJanuaryAnnualReviews() {
     },
     onSuccess: (_, { year }) => {
       queryClient.invalidateQueries({ queryKey: ["annual-reviews", year] });
+      queryClient.invalidateQueries({ queryKey: ["annual-reviews-contact-status", year] });
     },
   });
 }
@@ -89,6 +111,7 @@ export function useUpdateAnnualReview() {
     onSuccess: (row) => {
       if (row?.year != null) {
         queryClient.invalidateQueries({ queryKey: ["annual-reviews", row.year] });
+        queryClient.invalidateQueries({ queryKey: ["annual-reviews-contact-status", row.year] });
       }
     },
   });

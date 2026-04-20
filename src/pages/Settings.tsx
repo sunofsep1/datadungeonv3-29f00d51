@@ -56,6 +56,21 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: React.ElementType; des
   { value: "oceanicNext", label: "Oceanic Next", icon: Wind, desc: "Deep ocean blue-green." },
   { value: "horizon", label: "Horizon", icon: Flame, desc: "Warm pink & coral accents." },
   { value: "everforest", label: "Everforest", icon: Leaf, desc: "Soft green forest theme." },
+  { value: "neonArcade84", label: "Neon Arcade '84", icon: Sparkles, desc: "Retro arcade neon with readable mid-dark contrast." },
+  { value: "miamiVice89", label: "Miami Vice '89", icon: Waves, desc: "Teal-magenta evening glow, inspired by late-80s synth style." },
+  { value: "vhsAfterglow", label: "VHS Afterglow", icon: Moon, desc: "Dusty purple tape-era palette with soft highlights." },
+  { value: "mallsoft95", label: "Mallsoft '95", icon: Sunset, desc: "Muted mauve and teal for a nostalgic 90s desktop feel." },
+  { value: "cyberTeal96", label: "Cyber Teal '96", icon: Droplets, desc: "Blue-green cyber tones, crisp but not too dark." },
+  { value: "floppyDiskBlue", label: "Floppy Disk Blue", icon: Code2, desc: "Cool cobalt workstation look with gentle contrast." },
+  { value: "y2kIce", label: "Y2K Ice", icon: Snowflake, desc: "Frosted chrome-era blues for an early-2000s vibe." },
+  { value: "cyberGrape2000", label: "Cyber Grape 2000", icon: Atom, desc: "Purple-plum UI inspired by turn-of-millennium tech." },
+  { value: "matrixPastel", label: "Matrix Pastel", icon: Leaf, desc: "Soft green-on-slate that nods to late-90s terminals." },
+  { value: "sunsetDrive", label: "Sunset Drive", icon: Flame, desc: "Warm peach and violet twilight dashboard palette." },
+  { value: "dotcomSlate", label: "Dotcom Slate", icon: Contrast, desc: "Balanced slate neutrals with bright web-1.0 accents." },
+  { value: "gameboyNight", label: "Gameboy Night", icon: Moon, desc: "Retro handheld greens in a modern mid-dark UI." },
+  { value: "dreamcastBlue", label: "Dreamcast Blue", icon: Waves, desc: "Cool console-era cyan and orange contrast pops." },
+  { value: "millenniumPurple", label: "Millennium Purple", icon: Flower2, desc: "Y2K lavender and indigo with soft readability." },
+  { value: "retroWaveDusk", label: "Retrowave Dusk", icon: Sparkles, desc: "80s-inspired dusk gradient tones, mid-dark and vibrant." },
 ];
 
 const MIDDAY_THEME_VALUES: Theme[] = [
@@ -70,6 +85,14 @@ const LIGHT_THEME_VALUES: Theme[] = ["light", "lightPlus", "latte", "dawn", "min
 const DARK_THEME_VALUES: Theme[] = THEME_OPTIONS
   .map((opt) => opt.value)
   .filter((value) => !LIGHT_THEME_VALUES.includes(value) && !MIDDAY_THEME_VALUES.includes(value));
+
+const GREG_TOP_RETRO_DARK_THEMES: Theme[] = [
+  "neonArcade84",
+  "miamiVice89",
+  "y2kIce",
+  "millenniumPurple",
+  "retroWaveDusk",
+];
 
 const DENSITY_OPTIONS: { value: Density; label: string }[] = [
   { value: "comfortable", label: "Comfortable" },
@@ -175,7 +198,19 @@ export default function Settings() {
                   <SelectSeparator />
                   <SelectGroup>
                     <SelectLabel>Dark Themes</SelectLabel>
-                    {THEME_OPTIONS.filter((opt) => DARK_THEME_VALUES.includes(opt.value)).map((opt) => (
+                    {THEME_OPTIONS
+                      .filter((opt) => DARK_THEME_VALUES.includes(opt.value))
+                      .sort((a, b) => {
+                        const ai = GREG_TOP_RETRO_DARK_THEMES.indexOf(a.value);
+                        const bi = GREG_TOP_RETRO_DARK_THEMES.indexOf(b.value);
+                        const aPinned = ai !== -1;
+                        const bPinned = bi !== -1;
+                        if (aPinned && bPinned) return ai - bi;
+                        if (aPinned) return -1;
+                        if (bPinned) return 1;
+                        return 0;
+                      })
+                      .map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         <span className="flex items-center gap-2">
                           <opt.icon className="w-4 h-4" />
