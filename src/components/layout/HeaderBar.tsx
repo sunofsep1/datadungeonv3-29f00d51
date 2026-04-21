@@ -126,22 +126,21 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 z-30 flex flex-col border-b transition-[left] duration-250 print:hidden",
+        "fixed top-0 right-0 z-30 flex h-[60px] items-center justify-between border-b px-4 transition-[left] duration-250",
         "bg-card border-border text-foreground",
-        "left-0 pl-[env(safe-area-inset-left,0px)]",
+        "left-0",
         sidebarCollapsed ? "md:left-[80px]" : "md:left-[248px]",
-        "pt-[env(safe-area-inset-top,0px)]"
+        "print:hidden"
       )}
+      style={{ height: "60px" }}
     >
-      <div className="flex h-[60px] w-full min-w-0 items-center justify-between pl-3 pr-[calc(0.75rem+env(safe-area-inset-right,0px))] sm:pl-4 sm:pr-[calc(1rem+env(safe-area-inset-right,0px))]">
       {/* Left: Menu + Module title + Nav heading buttons */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 shrink-0 touch-manipulation text-foreground/80 hover:bg-accent hover:text-foreground md:h-9 md:w-9"
+          className="h-9 w-9 shrink-0 text-foreground/80 hover:bg-accent hover:text-foreground"
           onClick={onMenuClick}
-          aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -158,11 +157,11 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
       </div>
 
       {/* Right: Toolbar */}
-      <div className="flex min-w-0 shrink items-center gap-0.5 sm:gap-1">
+      <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary md:h-9 md:w-9"
+          className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
           title="Search (⌘K)"
           onClick={openGlobalSearch}
         >
@@ -171,7 +170,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary md:h-9 md:w-9"
+          className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
           title="Log touch"
           aria-label="Log touch"
           onClick={() => openLogTouch()}
@@ -192,7 +191,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary md:h-9 md:w-9"
+            className="relative h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
             title="Notifications"
             aria-label="Notifications"
             onClick={() => setNotificationsOpen(true)}
@@ -326,7 +325,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="hidden h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary min-[400px]:flex md:h-9 md:w-9"
+          className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
           onClick={() => navigate("/calendar")}
           title="Calendar"
         >
@@ -337,7 +336,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="hidden h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary min-[400px]:flex md:h-9 md:w-9"
+              className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
               title="Emails"
               aria-label="Emails"
             >
@@ -358,7 +357,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary md:h-9 md:w-9"
+              className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
               title="Apps"
               aria-label="App launcher"
             >
@@ -408,7 +407,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="hidden h-10 w-10 touch-manipulation text-muted-foreground hover:bg-accent hover:text-primary sm:flex md:h-9 md:w-9"
+          className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
           onClick={() => navigate("/settings")}
           title="Settings"
         >
@@ -420,7 +419,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 touch-manipulation rounded-full border border-border hover:bg-accent md:h-9 md:w-9"
+              className="h-9 w-9 rounded-full border border-border hover:bg-accent"
             >
               <Avatar className="h-8 w-8 bg-primary/20 text-primary">
                 <AvatarFallback className="text-xs font-medium">
@@ -448,7 +447,6 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
       </div>
     </header>
   );

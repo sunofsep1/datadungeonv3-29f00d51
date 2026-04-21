@@ -4,16 +4,12 @@
 /* Base: dark default so no white flash before theme loads */
 html {
   background-color: hsl(222 47% 6%);
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
 }
 body {
   background-color: hsl(222 47% 6%);
-  overflow-x: clip;
 }
 #root {
-  min-height: 100dvh;
-  min-height: 100vh; /* fallback */
+  min-height: 100vh;
   background-color: hsl(222 47% 6%) !important;
 }
 
