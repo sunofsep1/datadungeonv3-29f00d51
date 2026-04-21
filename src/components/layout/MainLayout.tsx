@@ -31,7 +31,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   };
 
   return (
-    <div className="zoho-layout flex min-h-dvh w-full max-w-[100vw] overflow-x-clip bg-background">
+    <div className="zoho-layout flex h-dvh min-h-dvh w-full max-w-[100vw] overflow-x-clip bg-background">
       <SidebarNavigation
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
@@ -43,7 +43,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         className={cn("hidden md:block shrink-0 transition-[width] duration-250 print:hidden")}
         style={{ width: sidebarWidth }}
       />
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0">
         <GlobalSearch />
         <LogTouchDialog />
         <HeaderBar
