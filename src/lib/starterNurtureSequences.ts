@@ -1,5 +1,5 @@
 /**
- * Starter nurture pack — 21 sequences (11 seller, 10 buyer).
+ * Starter nurture pack — 20 sequences (10 seller, 10 buyer).
  *
  * Cadence rationale (residential — adapt to your market):
  * - Speed-to-lead: same-day call + instant email/SMS pattern matches common high-converting lead handling.
@@ -165,58 +165,6 @@ export const STARTER_NURTURE_SEQUENCES: StarterNurtureSequence[] = [
       { offset_days: 77, step_type: "task", title: "Call: pre–day-90 positioning", body: "Prepare options document: renew, rest, tenant, lease, rent roll." },
       { offset_days: 84, step_type: "task", title: "Social: success story or sold-neighbour (tactful)", body: "Only if appropriate — social proof without undermining their campaign." },
       { offset_days: 90, step_type: "task", title: "Call: 90-day decision — renew, adjust, pause", body: "Clear next chapter; re-enroll past-client or long nurture as fits." },
-    ],
-  },
-  {
-    name: "Seller · OTM (other agent) — 60-day trust takeover",
-    description:
-      "Property is on market with another agent. Intense 60-day relationship cadence to build trust without poaching behavior: educate, empathize, and be consistently useful so you are the first call if the campaign stalls.",
-    steps: [
-      { offset_days: 0, step_type: "task", title: "Call: acknowledge current campaign, offer neutral second opinion", body: "Lead with respect for their current agent. Ask permission to be a sounding board only." },
-      { offset_days: 1, step_type: "task", title: "SMS: thank-you + no-pressure support line", body: "\"Thanks for the chat. Happy to share market feedback anytime while you're on market.\"" },
-      {
-        offset_days: 3,
-        step_type: "email",
-        title: "Email: 3 things to track weekly on any campaign",
-        body: "",
-        email_subject: "A quick framework while your home is on market",
-        email_html: `${P("Hi there,<br/><br/>As promised, here is a simple framework to monitor campaign health each week: enquiry quality, inspection-to-offer conversion, and buyer objection themes.")}${P("No pressure from me — I am happy to be a second set of eyes while you work with your current agent.")}`,
-      },
-      { offset_days: 5, step_type: "task", title: "Call: week-1 pulse check", body: "Ask what feedback they are hearing and how confident they feel about the strategy." },
-      { offset_days: 7, step_type: "task", title: "SMS: supportive check-in", body: "\"How did this week feel from your side? If helpful I can sanity-check the feedback with you.\"" },
-      { offset_days: 10, step_type: "task", title: "Call: objection map and buyer psychology", body: "Translate feedback into categories: price, presentation, positioning, access, competition." },
-      {
-        offset_days: 14,
-        step_type: "email",
-        title: "Email: vendor confidence reset (plain-English)",
-        body: "",
-        email_subject: "What usually changes outcomes mid-campaign",
-        email_html: `${P("Hi there,<br/><br/>Many campaigns improve when sellers focus on a few controllables: clarity of price signals, stronger first impression, and fast follow-up on serious buyers.")}${P("If you want, I can walk you through this in 10 minutes with no obligations.")}`,
-      },
-      { offset_days: 17, step_type: "task", title: "Call: fortnight checkpoint", body: "Assess whether communication cadence with current agent is giving enough transparency." },
-      { offset_days: 21, step_type: "task", title: "SMS: keep trust warm", body: "\"Still here if you want a straight read on what your campaign data is saying.\"" },
-      { offset_days: 24, step_type: "task", title: "Call: strategy options if momentum is flat", body: "Discuss non-dramatic adjustments: guide framing, copy/photos refresh, inspection flow, buyer follow-up speed." },
-      {
-        offset_days: 28,
-        step_type: "email",
-        title: "Email: one-page market pulse",
-        body: "",
-        email_subject: "A one-page market pulse for your area",
-        email_html: `${P("Hi there,<br/><br/>Here is a concise pulse on comparable stock, buyer depth, and days-on-market trends in your area.")}${P("Use this as context in your vendor reviews.")}`,
-      },
-      { offset_days: 32, step_type: "task", title: "Call: month-1 reset conversation", body: "Help them separate emotion from evidence and identify the most likely lever for progress." },
-      { offset_days: 38, step_type: "task", title: "SMS: quick reassurance", body: "\"Campaign fatigue is real. If useful, I can share how other vendors reset momentum around week 5-6.\"" },
-      { offset_days: 42, step_type: "task", title: "Call: trust deepening + contingency", body: "Ask what would make them feel fully supported if a relaunch or agency change became necessary." },
-      {
-        offset_days: 49,
-        step_type: "email",
-        title: "Email: if your campaign does not sell — next playbook",
-        body: "",
-        email_subject: "Your practical next-step playbook (if needed)",
-        email_html: `${P("Hi there,<br/><br/>If the current campaign does not get the result, there are still strong options: re-position and relaunch, pause and reset, or switch strategy entirely.")}${P("I can provide a calm, practical plan tailored to your home whenever you want it.")}`,
-      },
-      { offset_days: 54, step_type: "task", title: "Call: readiness to decide next chapter", body: "Gauge whether they want a formal second-opinion meeting and timeline for decision-making." },
-      { offset_days: 60, step_type: "task", title: "Call: 60-day decision touch", body: "Offer clear next step: continue support, book strategy meeting, or move to long nurture if timing changed." },
     ],
   },
   {

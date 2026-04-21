@@ -643,24 +643,23 @@ export function useDeleteContact() {
   });
 }
 
-/**
- * Best email for display and compose: primary channel, else legacy field, else any distinct channel email.
- * Uses the same ordering/deduping as `getAllEmails` (primary rows first).
- */
+/** Primary email from contact_channels or legacy contacts.email */
 export function getPrimaryEmail(c: ContactWithMeta): string | null {
-  const first = getAllEmails(c)[0];
-  const v = first?.value != null ? String(first.value).trim() : "";
-  return v || null;
+  const ch = (c.contact_channels ?? []).find(
+    (x) => x.channel_type === "email" && x.is_primary
+  );
+  if (ch) return ch.value;
+  return c.email ?? null;
 }
 
-/**
- * Best phone for display and compose: primary channel, else legacy phone/mobile, else any distinct channel line.
- * Uses the same ordering/deduping as `getAllPhones` (primary rows first).
- */
+/** Primary phone from contact_channels or legacy contacts.phone / mobile */
 export function getPrimaryPhone(c: ContactWithMeta): string | null {
-  const first = getAllPhones(c)[0];
-  const v = first?.value != null ? String(first.value).trim() : "";
-  return v || null;
+  const ch = (c.contact_channels ?? []).find(
+    (x) =>
+      (x.channel_type === "phone" || x.channel_type === "mobile") && x.is_primary
+  );
+  if (ch) return ch.value;
+  return c.phone ?? c.mobile ?? null;
 }
 
 const CHANNEL_LABELS: Record<string, string> = {

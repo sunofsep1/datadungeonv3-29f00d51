@@ -29,7 +29,7 @@ import {
 } from "@/hooks/useContactTasks";
 import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
 import { useTodos, useUpdateTodo, useAddTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
-import { hrefForWorkshop } from "@/lib/attentionWorkWorkspace";
+import { hrefForWorkWorkspace } from "@/lib/attentionWorkWorkspace";
 import { cn } from "@/lib/utils";
 import type { ContactUrgencyTier } from "@/lib/contactUrgency";
 
@@ -647,7 +647,7 @@ export function AttentionHubWidget() {
             const canEdit = item.kind === "todoTask" || item.kind === "contactTask";
             const canDelete = item.kind === "todoTask" || item.kind === "contactTask";
             const isEditing = editingItemId === item.id;
-            const workHref = hrefForWorkshop(item);
+            const workHref = hrefForWorkWorkspace(item);
             return (
               <li key={item.id}>
                 <div className="rounded-md border border-border/70 bg-background/55 px-2.5 py-2">
@@ -985,7 +985,7 @@ export function AttentionHubWidget() {
                         className="h-8"
                         onClick={(event) => {
                           event.stopPropagation();
-                          const href = hrefForWorkshop(focusItem);
+                          const href = hrefForWorkWorkspace(focusItem);
                           if (href) navigate(href);
                           else handleOpenItem(focusItem);
                         }}
@@ -998,7 +998,7 @@ export function AttentionHubWidget() {
                         className="h-8"
                         onClick={(event) => {
                           event.stopPropagation();
-                          const href = hrefForWorkshop({
+                          const href = hrefForWorkWorkspace({
                             kind: "appointment",
                             appointmentId: focusItem.appointmentId,
                             contactId: focusItem.contactId,

@@ -3,29 +3,16 @@ import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 interface ContactActivityTimelineProps {
   contactId: string | null;
   onAddNote?: () => void;
-  compact?: boolean;
-  limit?: number;
-  showAddNote?: boolean;
-  includeAppointments?: boolean;
 }
 
 /** Contact-scoped activity timeline (activity_log + appointments). */
-export function ContactActivityTimeline({
-  contactId,
-  onAddNote,
-  compact,
-  limit,
-  showAddNote = true,
-  includeAppointments = true,
-}: ContactActivityTimelineProps) {
+export function ContactActivityTimeline({ contactId, onAddNote }: ContactActivityTimelineProps) {
   return (
     <ActivityTimeline
       entityType="contact"
       entityId={contactId}
-      showAddNote={showAddNote}
-      includeAppointments={includeAppointments}
-      compact={compact}
-      limit={limit}
+      showAddNote={true}
+      includeAppointments={true}
     />
   );
 }
