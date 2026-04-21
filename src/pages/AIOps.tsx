@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { format, setHours, setMilliseconds, setMinutes, setSeconds } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,14 @@ import {
   type AIOpsActionItem,
 } from "@/hooks/useAIActions";
 import { useAIUsageSummary } from "@/hooks/useAIUsage";
+import { useAuth } from "@/contexts/AuthContext";
 import { useContacts, type ContactWithMeta, getContactDisplayName } from "@/hooks/useContacts";
+import {
+  CLAUDE_PROMPT_PACK,
+  applyClaudePromptPackTemplate,
+  type ClaudePromptPackEntry,
+} from "@/lib/aiOpsClaudePromptPack";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Bot,
   CheckCheck,
@@ -32,6 +39,8 @@ import {
   Sparkles,
   Wand2,
   XCircle,
+  Copy,
+  FileInput,
 } from "lucide-react";
 
 const STARTER_PROMPTS: string[] = [
@@ -166,8 +175,19 @@ function createDraftItems(prompt: string, contacts: ContactWithMeta[]): Array<{
   return out;
 }
 
+function groupPackByCategory(entries: ClaudePromptPackEntry[]): Map<string, ClaudePromptPackEntry[]> {
+  const m = new Map<string, ClaudePromptPackEntry[]>();
+  for (const e of entries) {
+    const list = m.get(e.category) ?? [];
+    list.push(e);
+    m.set(e.category, list);
+  }
+  return m;
+}
+
 export default function AIOps() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [selectedStarterPrompt, setSelectedStarterPrompt] = useState<string>("");
   const [selectedAdvancedPrompt, setSelectedAdvancedPrompt] = useState<string>("");
@@ -183,6 +203,35 @@ export default function AIOps() {
   const [syncingUsage, setSyncingUsage] = useState(false);
 
   const activeRun = useMemo(() => runs.find((r) => r.id === selectedRunId) ?? null, [runs, selectedRunId]);
+  const packByCategory = useMemo(() => groupPackByCategory(CLAUDE_PROMPT_PACK), []);
+  const categoryOrder = useMemo(
+    () => ["Daily", "Task automation", "Touch logging", "Contact updates", "Workflows", "Manager", "Safety"],
+    []
+  );
+
+  const insertPackPrompt = useCallback(
+    (entry: ClaudePromptPackEntry) => {
+      const text = applyClaudePromptPackTemplate(entry.template, user?.id);
+      setPrompt((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text));
+      setSelectedStarterPrompt("");
+      setSelectedAdvancedPrompt("");
+      toast({ title: "Inserted", description: entry.title });
+    },
+    [toast, user?.id]
+  );
+
+  const copyPackPrompt = useCallback(
+    async (entry: ClaudePromptPackEntry) => {
+      const text = applyClaudePromptPackTemplate(entry.template, user?.id);
+      try {
+        await navigator.clipboard.writeText(text);
+        toast({ title: "Copied", description: entry.title });
+      } catch {
+        toast({ title: "Could not copy", description: "Clipboard access was blocked.", variant: "destructive" });
+      }
+    },
+    [toast, user?.id]
+  );
 
   const handleGenerateDraft = async () => {
     const trimmed = prompt.trim();
@@ -261,13 +310,14 @@ export default function AIOps() {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="animate-fade-in">
       <PageHeader
         title="AI Ops"
         description="Claude-assisted planning, approvals, and spend reporting for CRM actions."
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="mt-6 flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="zoho-card p-4 border-border xl:col-span-2">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
@@ -392,9 +442,65 @@ export default function AIOps() {
             </Button>
           </div>
         </Card>
-      </div>
+        </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card className="zoho-card w-full border-border p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Library className="w-4 h-4 text-primary" />
+              Claude prompt pack
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-3xl">
+              Tidy presets for external Claude or tool-style commands.{" "}
+              <code className="text-[10px] text-foreground/90">{"{{USER_ID}}"}</code> is replaced with your signed-in
+              user id; <code className="text-[10px] text-foreground/90">{"{{THIS_FRIDAY}}"}</code> becomes the next
+              Friday (<code className="text-[10px]">yyyy-MM-dd</code>). Replace{" "}
+              <code className="text-[10px]">CONTACT_ID</code>, <code className="text-[10px]">WORKFLOW_ID</code>, and
+              bracketed id lists before running tools.
+            </p>
+          </div>
+        </div>
+        <ScrollArea className="mt-4 h-[min(420px,50vh)] pr-3">
+          <div className="space-y-5 pb-1">
+            {categoryOrder
+              .filter((cat) => (packByCategory.get(cat)?.length ?? 0) > 0)
+              .map((cat, idx) => {
+              const catItems = packByCategory.get(cat)!;
+              return (
+                <div key={cat} className={idx > 0 ? "border-t border-border/50 pt-5" : ""}>
+                  <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{cat}</p>
+                  <ul className="space-y-2.5">
+                    {catItems.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="flex flex-wrap items-start gap-2 gap-y-2 rounded-lg border border-border/80 bg-muted/15 px-3 py-3"
+                      >
+                        <div className="flex-1 min-w-[200px]">
+                          <p className="text-sm font-medium text-foreground">{entry.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{entry.template}</p>
+                        </div>
+                        <div className="flex gap-1.5 shrink-0">
+                          <Button type="button" size="sm" variant="secondary" className="h-8 gap-1" onClick={() => insertPackPrompt(entry)}>
+                            <FileInput className="w-3.5 h-3.5" />
+                            Insert
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => void copyPackPrompt(entry)}>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="zoho-card p-4 border-border xl:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
@@ -485,6 +591,7 @@ export default function AIOps() {
             </div>
           ) : null}
         </Card>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 /**
- * Deep-link from Attention Hub / Focus Box into the full-screen work session.
- * Query keys are read by `WorkWorkspace` page.
+ * Deep-link from Attention Hub / Focus Box into workspace screens.
+ * Query keys are read by `Workshop` and `WorkWorkspace` pages.
  */
 
 export type WorkWorkspaceSourceItem = {
@@ -11,9 +11,9 @@ export type WorkWorkspaceSourceItem = {
   appointmentId?: string;
 };
 
-export function hrefForWorkWorkspace(item: WorkWorkspaceSourceItem): string | null {
+function hrefForBaseWorkspace(item: WorkWorkspaceSourceItem, basePath: "/work" | "/workshop"): string | null {
   if (item.kind === "todoTask" && item.todoId) {
-    return `/work?todoId=${encodeURIComponent(item.todoId)}`;
+    return `${basePath}?todoId=${encodeURIComponent(item.todoId)}`;
   }
   if (
     (item.kind === "contactTask" || item.kind === "sequenceTask") &&
@@ -25,19 +25,27 @@ export function hrefForWorkWorkspace(item: WorkWorkspaceSourceItem): string | nu
       contactTaskId: item.contactTaskId,
     });
     if (item.kind === "sequenceTask") p.set("nurture", "1");
-    return `/work?${p.toString()}`;
+    return `${basePath}?${p.toString()}`;
   }
   if (item.kind === "appointment" && item.appointmentId) {
     const p = new URLSearchParams({ appointmentId: item.appointmentId });
     if (item.contactId) p.set("contactId", item.contactId);
-    return `/work?${p.toString()}`;
+    return `${basePath}?${p.toString()}`;
   }
   if (item.kind === "contactReminder" && item.contactId) {
     const p = new URLSearchParams({
       contactId: item.contactId,
       reminder: "1",
     });
-    return `/work?${p.toString()}`;
+    return `${basePath}?${p.toString()}`;
   }
   return null;
+}
+
+export function hrefForWorkWorkspace(item: WorkWorkspaceSourceItem): string | null {
+  return hrefForBaseWorkspace(item, "/work");
+}
+
+export function hrefForWorkshop(item: WorkWorkspaceSourceItem): string | null {
+  return hrefForBaseWorkspace(item, "/workshop");
 }

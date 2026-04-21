@@ -348,7 +348,7 @@ export function LeadClassificationPanel({
           <p className="font-medium text-destructive">{CLASSIFICATION_SETUP_HINT}</p>
         </div>
       )}
-      <div className="flex items-center justify-between gap-2 mb-1">
+      <div className="mb-1 flex items-center gap-2">
         <div className="flex items-center gap-2">
           <Tags className="w-5 h-5 text-primary" />
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Classification</h3>
@@ -359,17 +359,6 @@ export function LeadClassificationPanel({
             </span>
           )}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          disabled={recalcLoading}
-          onClick={() => void handleRecalculateTemperature()}
-        >
-          {recalcLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-          Recalculate temperature
-        </Button>
       </div>
       {sequenceAutoEnrollHint && (
         <div className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
@@ -522,6 +511,19 @@ export function LeadClassificationPanel({
           {suggestions.join(" · ")}
         </p>
       )}
+      <div className="mt-4 flex justify-end border-t border-border pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs whitespace-nowrap"
+          disabled={recalcLoading}
+          onClick={() => void handleRecalculateTemperature()}
+        >
+          {recalcLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          Recalculate temperature
+        </Button>
+      </div>
     </Card>
   );
 }

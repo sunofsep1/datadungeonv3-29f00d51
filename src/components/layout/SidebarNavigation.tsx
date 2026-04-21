@@ -1,12 +1,9 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
   Calendar,
   Megaphone,
-  Menu,
-  X,
   Database,
   FileText,
   Settings,
@@ -151,33 +148,26 @@ function renderNavItem(item: NavItem, pathname: string) {
 interface SidebarNavigationProps {
   collapsed: boolean;
   onToggle: () => void;
+  /** Controlled mobile drawer (header hamburger); must be used with onMobileOpenChange. */
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
 }
 
-export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProps) {
+export function SidebarNavigation({ collapsed, onToggle, mobileOpen, onMobileOpenChange }: SidebarNavigationProps) {
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { signOut, user } = useAuth();
 
   const desktopWidth = collapsed ? layout.sidebarCollapsed : layout.sidebarWidth;
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden print:hidden"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </Button>
-
-      {mobileOpen && (
+      {mobileOpen ? (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden print:hidden"
-          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 md:hidden print:hidden"
+          aria-hidden
+          onClick={() => onMobileOpenChange(false)}
         />
-      )}
+      ) : null}
 
       {/* Desktop sidebar — theme-aware, collapsible */}
       <aside
@@ -387,11 +377,12 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Mobile slide-out */}
       <aside
         className={cn(
-          "fixed z-50 w-[280px] h-dvh max-h-dvh flex flex-col overflow-hidden bg-sidebar border-r border-sidebar-border transition-transform duration-250 print:hidden md:hidden",
+          "fixed left-0 z-50 flex h-dvh max-h-dvh w-[min(280px,calc(100vw-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))] flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-transform duration-250 print:hidden md:hidden",
+          "pt-[env(safe-area-inset-top,0px)]",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-14 items-center gap-3 border-b border-sidebar-border px-4 mt-12">
+        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border px-4">
           <div className="h-9 w-9 rounded-lg bg-teal flex items-center justify-center">
             <Database className="h-5 w-5 text-teal-foreground" />
           </div>
@@ -405,7 +396,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
               <NavLink
                 key={item.title}
                 to={item.url}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => onMobileOpenChange(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium",
                   active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
@@ -417,11 +408,11 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
             );
           })}
           <div className="pt-4 mt-4 border-t border-sidebar-border space-y-1">
-            <NavLink to="/scripts" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
+            <NavLink to="/scripts" onClick={() => onMobileOpenChange(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
               <FileText className="h-5 w-5" />
               Scripts
             </NavLink>
-            <NavLink to="/settings" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
+            <NavLink to="/settings" onClick={() => onMobileOpenChange(false)} className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50">
               <Settings className="h-5 w-5" />
               Settings
             </NavLink>
@@ -438,8 +429,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       </aside>
 
       {/* Mobile bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-sidebar border-t border-sidebar-border md:hidden print:hidden safe-area-bottom">
-        <div className="flex items-center justify-around h-16">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-sidebar-border bg-sidebar pb-[env(safe-area-inset-bottom,0px)] md:hidden print:hidden">
+        <div className="flex h-16 touch-manipulation items-center justify-around">
           {mobileNavItems.map((item) => {
             if (item.url === "#more") {
               return (

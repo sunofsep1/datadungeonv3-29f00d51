@@ -26,7 +26,10 @@ const JOURNEY_SEQUENCE_NAMES: Record<JourneyStage, string[]> = {
     "Seller · Listed with me — vendor updates & campaign rhythm (90 days)",
     "Seller · OTM — on-market intensive (90 days)",
   ],
-  SELLER_ON_MARKET_OTHER_AGENT: ["Seller · Future seller — long nurture (24 months)"],
+  SELLER_ON_MARKET_OTHER_AGENT: [
+    "Seller · OTM (other agent) — 60-day trust takeover",
+    "Seller · Future seller — long nurture (24 months)",
+  ],
   SELLER_NEGOTIATION: ["Seller · OTM — on-market intensive (90 days)"],
   SELLER_UNDER_CONTRACT_CONDITIONAL: ["Seller · Under contract to settlement (seller)"],
   SELLER_UNDER_CONTRACT_UNCONDITIONAL: ["Seller · Under contract to settlement (seller)"],

@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square, Upload } from "lucide-react";
+import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square, Upload, GitMerge } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { PropertyViewMode } from "@/components/PropertyManagement/PropertyList";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty, formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
 import { PropertyList } from "@/components/PropertyManagement/PropertyList";
+import { MergePropertiesDialog } from "@/components/PropertyManagement/MergePropertiesDialog";
 import { useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
@@ -81,6 +82,7 @@ export default function Properties() {
   const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [uploadReportLoading, setUploadReportLoading] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return (properties ?? []).filter((p) => {
@@ -89,6 +91,11 @@ export default function Properties() {
       return !q || addr.includes(q);
     });
   }, [properties, debouncedSearch]);
+
+  const mergeDialogProperties = useMemo(
+    () => (properties ?? []).filter((p) => selectedPropertyIds.has(p.id)),
+    [properties, selectedPropertyIds],
+  );
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -825,6 +832,25 @@ export default function Properties() {
               <Download className="w-4 h-4 mr-2" />
               Export selected
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              title={selectedPropertyIds.size < 2 ? "Select two or more properties" : "Merge into one property row"}
+              onClick={() => {
+                if (selectedPropertyIds.size < 2) {
+                  toast({
+                    title: "Select properties to merge",
+                    description: "Choose at least two rows using the checkboxes, then click Merge.",
+                  });
+                  return;
+                }
+                setMergeDialogOpen(true);
+              }}
+            >
+              <GitMerge className="w-4 h-4 opacity-70" />
+              Merge
+            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
@@ -932,6 +958,15 @@ export default function Properties() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MergePropertiesDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        properties={mergeDialogProperties}
+        onMerged={(primaryId) => {
+          setSelectedPropertyIds(new Set());
+          navigate(`/properties/${primaryId}`);
+        }}
+      />
     </div>
   );
 }
