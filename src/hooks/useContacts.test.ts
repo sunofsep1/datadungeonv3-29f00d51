@@ -53,6 +53,14 @@ describe("getPrimaryEmail", () => {
     const c = { email: "legacy@b.com" } as Parameters<typeof getPrimaryEmail>[0];
     expect(getPrimaryEmail(c)).toBe("legacy@b.com");
   });
+
+  it("uses first channel email when none marked primary", () => {
+    const c = {
+      email: null,
+      contact_channels: [{ channel_type: "email", value: "only@b.com", is_primary: false }],
+    } as Parameters<typeof getPrimaryEmail>[0];
+    expect(getPrimaryEmail(c)).toBe("only@b.com");
+  });
 });
 
 describe("getPrimaryPhone", () => {
@@ -61,6 +69,15 @@ describe("getPrimaryPhone", () => {
       contact_channels: [{ channel_type: "phone", value: "555-1234", is_primary: true }],
     } as Parameters<typeof getPrimaryPhone>[0];
     expect(getPrimaryPhone(c)).toBe("555-1234");
+  });
+
+  it("uses first channel phone when none marked primary", () => {
+    const c = {
+      phone: null,
+      mobile: null,
+      contact_channels: [{ channel_type: "mobile", value: "0412 345 678", is_primary: false }],
+    } as Parameters<typeof getPrimaryPhone>[0];
+    expect(getPrimaryPhone(c)).toBe("0412 345 678");
   });
 });
 
