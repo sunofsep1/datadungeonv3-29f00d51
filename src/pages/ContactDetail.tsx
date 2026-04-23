@@ -13,16 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, 
-  Printer, 
-  Mail, 
-  Calendar, 
-  MessageSquare, 
+import {
+  ArrowLeft,
+  Printer,
+  Mail,
+  MessageSquare,
   Plus,
   Edit,
   Trash2,
-  Clock,
   MapPin,
   Tag,
   Building2,
@@ -55,14 +53,18 @@ import {
 import { useCreatePropertyFromContactAddress } from "@/hooks/useCreatePropertyFromContactAddress";
 import { getInitials } from "@/lib/utils";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
-import { useInteractions, useCreateInteraction, useDeleteInteraction, Interaction } from "@/hooks/useInteractions";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useInteractions, useCreateInteraction } from "@/hooks/useInteractions";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
 import { ContactCardChannelRows } from "@/components/contacts/ContactCardChannelRows";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
+import { ContactExpandableSection } from "@/components/contacts/ContactExpandableSection";
+import { ContactNurtureSummaryStrip } from "@/components/contacts/ContactNurtureSummaryStrip";
+import { ContactActivitySummaryStrip } from "@/components/contacts/ContactActivitySummaryStrip";
+import { ContactRelationshipBrief } from "@/components/contacts/ContactRelationshipBrief";
+import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
@@ -73,7 +75,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, isValid, parseISO } from "date-fns";
 import { openLogTouch } from "@/lib/openLogTouch";
 
 const INTERACTION_TYPES = ["call", "email", "meeting", "note", "sms", "other"];
@@ -182,6 +186,42 @@ export default function ContactDetail() {
   const displayNameLabel = displayName === "—" ? "Contact" : displayName;
   const contactUrgency = normalizeContactCategory((contact as { category?: string | null } | null)?.category);
 
+  const heroSubtitle = useMemo(() => {
+    if (!contact) return "";
+    const cc = (contact as { contact_category?: string | null }).contact_category?.trim();
+    const parts: string[] = [];
+    if (cc) {
+      const key = cc.toLowerCase();
+      const labels: Record<string, string> = {
+        top_100: "Top 100",
+        past_client: "Past client",
+        referral_partner: "Referral partner",
+        hot_lead: "Hot lead",
+        warm_lead: "Warm lead",
+        seller_nurture: "Seller nurture",
+      };
+      parts.push(labels[key] ?? cc.replace(/_/g, " "));
+    }
+    if (contact.source?.trim()) parts.push(`Source: ${contact.source.trim()}`);
+    return parts.join(" · ");
+  }, [contact]);
+
+  const birthdayChip = useMemo(() => {
+    const dob = (contact as { date_of_birth?: string | null } | null)?.date_of_birth?.trim();
+    if (!dob) return null;
+    const d = parseISO(`${dob.slice(0, 10)}T12:00:00`);
+    if (!isValid(d)) return null;
+    const today = new Date();
+    const thisYear = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+    const nextYear = new Date(today.getFullYear() + 1, d.getMonth(), d.getDate());
+    const target = thisYear >= today ? thisYear : nextYear;
+    const days = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (days < 0 || days > 30) return null;
+    if (days === 0) return "Birthday today!";
+    if (days === 1) return "Birthday tomorrow";
+    return `Birthday in ${days} days`;
+  }, [contact]);
+
   useEffect(() => {
     if (!contact || nurtureFocus !== "1") return;
     requestAnimationFrame(() => {
@@ -196,9 +236,20 @@ export default function ContactDetail() {
       { replace: true }
     );
   }, [contact, nurtureFocus, setSearchParams]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+      if (e.key === "Escape") setPaletteOpen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const { data: contactsList = [] } = useContacts();
   const { data: interactions = [] } = useInteractions(id);
-  const { data: appointments = [] } = useAppointments();
   const { data: allProperties = [] } = useProperties();
 
   const contactIndex = id ? contactsList.findIndex((c) => c.id === id) : -1;
@@ -206,7 +257,6 @@ export default function ContactDetail() {
   const nextContactId = contactIndex >= 0 && contactIndex < contactsList.length - 1 ? contactsList[contactIndex + 1]?.id : null;
   const updateContact = useUpdateContact();
   const createInteraction = useCreateInteraction();
-  const deleteInteraction = useDeleteInteraction();
   const createLink = useCreateContactPropertyLink();
   const deleteLink = useDeleteContactPropertyLink();
   const createFromAddress = useCreatePropertyFromContactAddress();
@@ -229,10 +279,8 @@ export default function ContactDetail() {
   });
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const printFrameRef = useRef<HTMLIFrameElement>(null);
-
-  const contactAppointments = appointments.filter(
-    (apt) => apt.contact_id === id
-  );
+  const [activitySectionOpen, setActivitySectionOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const linkedProperties = useMemo(() => {
     if (!contact?.contact_property_links) return [];
@@ -357,16 +405,6 @@ export default function ContactDetail() {
       toast({ title: "Success", description: "Interaction logged!" });
       setNewInteraction({ type: "call", channel: "phone", subject: "", body: "" });
       setAddInteractionOpen(false);
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const handleDeleteInteraction = async (interactionId: string) => {
-    if (!id) return;
-    try {
-      await deleteInteraction.mutateAsync({ id: interactionId, contactId: id });
-      toast({ title: "Deleted", description: "Interaction removed" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -506,12 +544,12 @@ export default function ContactDetail() {
         items={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Contacts", href: "/contacts" },
-          { label: displayNameLabel },
+          { label: "Profile" },
         ]}
         className="mb-4 print:hidden"
       />
-      <div className="flex items-center gap-4 mb-6 print:hidden">
-        <div className="flex items-center gap-1">
+      <div className="mb-5 flex flex-col gap-2.5 print:hidden sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" onClick={() => navigate("/contacts")} title="Back to list">
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -526,56 +564,80 @@ export default function ContactDetail() {
             </Button>
           )}
         </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">{displayNameLabel}</h1>
-          <p className="text-muted-foreground">Contact Details</p>
-        </div>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => id && openLogTouch({ contactId: id })}
-          disabled={!id}
-        >
-          <Handshake className="w-4 h-4" /> Log touch
-        </Button>
-        <Button variant="outline" className="gap-2" asChild>
-          <Link to="/scripts" className="inline-flex items-center gap-2">
-            <FileText className="w-4 h-4" /> Scripts
-          </Link>
-        </Button>
-        <Button variant="outline" onClick={handlePrint} className="gap-2">
-          <Printer className="w-4 h-4" /> Print
-        </Button>
-        {getAllEmails(contact).length > 0 && (
-          <Button variant="outline" onClick={() => setEmailComposeOpen(true)} className="gap-2">
-            <Mail className="w-4 h-4" /> Send Email
+        <div className="flex w-full flex-wrap items-center justify-start gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3"
+            onClick={() => id && openLogTouch({ contactId: id })}
+            disabled={!id}
+          >
+            <Handshake className="w-4 h-4" />
+            <span className="sm:hidden">Log</span>
+            <span className="hidden sm:inline">Log touch</span>
           </Button>
-        )}
-        {getAllPhones(contact).length > 0 && (
-          getAllPhones(contact).length === 1 ? (
-            <Button variant="outline" onClick={() => { setSmsToNumber(getAllPhones(contact)[0].value); setSmsDialogOpen(true); }} className="gap-2">
-              <MessageSquare className="w-4 h-4" /> Send SMS
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-muted-foreground sm:h-9 sm:px-3"
+            onClick={() => setPaletteOpen(true)}
+            title="Open command palette (⌘K)"
+          >
+            <kbd className="text-[10px] font-mono">⌘K</kbd>
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3" asChild>
+            <Link to="/scripts" className="inline-flex items-center gap-1.5">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Scripts</span>
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3">
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+          {getAllEmails(contact).length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setEmailComposeOpen(true)} className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3">
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Email</span>
             </Button>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <MessageSquare className="w-4 h-4" /> Send SMS
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {getAllPhones(contact).map((p) => (
-                  <DropdownMenuItem key={p.value} onClick={() => { setSmsToNumber(p.value); setSmsDialogOpen(true); }}>
-                    {p.label}: {formatPhoneDisplay(p.value)}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )
-        )}
-        <Button onClick={handleStartEdit} className="gap-2">
-          <Edit className="w-4 h-4" /> Edit
-        </Button>
+          )}
+          {getAllPhones(contact).length > 0 && (
+            getAllPhones(contact).length === 1 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSmsToNumber(getAllPhones(contact)[0].value);
+                  setSmsDialogOpen(true);
+                }}
+                className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">SMS</span>
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="hidden sm:inline">SMS</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {getAllPhones(contact).map((p) => (
+                    <DropdownMenuItem key={p.value} onClick={() => { setSmsToNumber(p.value); setSmsDialogOpen(true); }}>
+                      {p.label}: {formatPhoneDisplay(p.value)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          )}
+          <Button size="sm" onClick={handleStartEdit} className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3">
+            <Edit className="w-4 h-4" />
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+        </div>
       </div>
 
       {getAllEmails(contact).length > 0 && (
@@ -628,6 +690,118 @@ export default function ContactDetail() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={paletteOpen} onOpenChange={setPaletteOpen}>
+        <DialogContent className="sm:max-w-[420px] p-0 bg-card border-border overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Command palette</DialogTitle>
+          </DialogHeader>
+          <Command>
+            <CommandInput placeholder="Type a command…" autoFocus />
+            <CommandList className="max-h-[360px]">
+              <CommandGroup heading="Log">
+                <CommandItem
+                  onSelect={() => {
+                    if (id) openLogTouch({ contactId: id });
+                    setPaletteOpen(false);
+                  }}
+                >
+                  Log touch
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => {
+                    setNewInteraction({ type: "call", channel: "phone", subject: "", body: "" });
+                    setAddInteractionOpen(true);
+                    setPaletteOpen(false);
+                  }}
+                >
+                  Log call
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => {
+                    setNewInteraction({ type: "note", channel: "phone", subject: "", body: "" });
+                    setAddInteractionOpen(true);
+                    setPaletteOpen(false);
+                  }}
+                >
+                  Log note
+                </CommandItem>
+              </CommandGroup>
+              <CommandSeparator />
+              <CommandGroup heading="Contact">
+                {getAllPhones(contact).length > 0 && (
+                  <CommandItem
+                    onSelect={() => {
+                      setSmsToNumber(getAllPhones(contact)[0].value);
+                      setSmsDialogOpen(true);
+                      setPaletteOpen(false);
+                    }}
+                  >
+                    Send SMS
+                  </CommandItem>
+                )}
+                {getAllEmails(contact).length > 0 && (
+                  <CommandItem
+                    onSelect={() => {
+                      setEmailComposeOpen(true);
+                      setPaletteOpen(false);
+                    }}
+                  >
+                    Send email
+                  </CommandItem>
+                )}
+                <CommandItem
+                  onSelect={() => {
+                    handleStartEdit();
+                    setPaletteOpen(false);
+                  }}
+                >
+                  Edit contact
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => {
+                    handlePrint();
+                    setPaletteOpen(false);
+                  }}
+                >
+                  Print client brief
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => {
+                    setSearchParams({ nurtureFocus: "1" });
+                    setPaletteOpen(false);
+                  }}
+                >
+                  Open nurture panel
+                </CommandItem>
+              </CommandGroup>
+              <CommandSeparator />
+              <CommandGroup heading="Navigate">
+                {prevContactId && (
+                  <CommandItem
+                    onSelect={() => {
+                      navigate(`/contacts/${prevContactId}`);
+                      setPaletteOpen(false);
+                    }}
+                  >
+                    Previous contact
+                  </CommandItem>
+                )}
+                {nextContactId && (
+                  <CommandItem
+                    onSelect={() => {
+                      navigate(`/contacts/${nextContactId}`);
+                      setPaletteOpen(false);
+                    }}
+                  >
+                    Next contact
+                  </CommandItem>
+                )}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </DialogContent>
+      </Dialog>
+
       {/* Print-only document header */}
       <div className="hidden print:block print-doc-header">
         <div className="print-doc-brand">Data Dungeon</div>
@@ -638,16 +812,23 @@ export default function ContactDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] print-contact-grid">
-        <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+      <div className="grid grid-cols-1 gap-4 lg:gap-5 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] print-contact-grid">
+        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
           {id && <ContactScorePanel contactId={id} />}
           {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
         </div>
 
-        <div className="space-y-6 print-contact-main">
+        <div className="space-y-5 print-contact-main">
+          {id ? (
+            <ContactRelationshipBrief
+              contact={contact}
+              className="print:hidden"
+            />
+          ) : null}
+
           {/* Overview */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
+          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-start gap-4">
               <AvatarCircle
                 name={displayName === "—" ? undefined : displayName}
@@ -655,22 +836,41 @@ export default function ContactDetail() {
                 initials={getInitials(undefined, undefined, displayName === "—" ? undefined : displayName)}
               />
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold text-foreground">{displayNameLabel}</h2>
-                </div>
-                <div className="mt-2 mb-3 flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Urgency</span>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">{displayNameLabel}</h1>
+                {heroSubtitle ? (
+                  <p className="mt-1 text-sm text-muted-foreground">{heroSubtitle}</p>
+                ) : null}
+                <div className="mt-2.5 mb-2.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="hidden text-[11px] uppercase tracking-wide text-muted-foreground sm:inline">Urgency</span>
                   <Badge
                     variant="outline"
-                    className={`rounded-full border px-3 py-1 text-sm font-semibold ${urgencyBadgeClass(contactUrgency)}`}
+                    className={`rounded-full border px-2.5 py-1 text-xs sm:px-3 sm:text-sm font-semibold ${urgencyBadgeClass(contactUrgency)}`}
                   >
                     {urgencyLabel(contactUrgency)}
                   </Badge>
-                  {contact.lead_score != null && (
-                    <Badge variant="secondary" className="tabular-nums text-sm">
-                      Lead score {contact.lead_score}
+                  {(contact as { contact_category?: string | null }).contact_category && (
+                    <Badge variant="secondary" className="text-xs">
+                      {normalizeContactClassificationCategory(
+                        (contact as { contact_category?: string | null }).contact_category
+                      ).replace(/_/g, " ")}
                     </Badge>
                   )}
+                  {contact.lead_score != null && (
+                    <Badge variant="secondary" className="tabular-nums text-xs sm:text-sm">
+                      <span className="sm:hidden">Score {contact.lead_score}</span>
+                      <span className="hidden sm:inline">Lead score {contact.lead_score}</span>
+                    </Badge>
+                  )}
+                  {birthdayChip ? (
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/35">
+                      {birthdayChip}
+                    </span>
+                  ) : null}
+                  {(contact as { do_not_contact?: boolean | null }).do_not_contact ? (
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-destructive/15 text-destructive border border-destructive/35">
+                      Do not contact
+                    </span>
+                  ) : null}
                   {(() => {
                     const raw = (contact as { next_touch_date?: string | null }).next_touch_date?.trim();
                     if (!raw) return null;
@@ -684,15 +884,23 @@ export default function ContactDetail() {
                   })()}
                 </div>
                 {id ? <ContactCardChannelRows contactId={id} contact={contact} /> : null}
-                {contact.source && (
-                  <p className="text-sm text-muted-foreground mt-1">Source: {contact.source}</p>
-                )}
                 {getTagNames(contact).length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-3">
                     <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    {getTagNames(contact).map((t) => (
-                      <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
+                    {getTagNames(contact).map((t, index) => (
+                      <Badge
+                        key={t}
+                        variant="secondary"
+                        className={`font-normal ${index >= 3 ? "hidden sm:inline-flex" : ""}`}
+                      >
+                        {t}
+                      </Badge>
                     ))}
+                    {getTagNames(contact).length > 3 ? (
+                      <Badge variant="outline" className="font-normal sm:hidden">
+                        +{getTagNames(contact).length - 3}
+                      </Badge>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -701,92 +909,79 @@ export default function ContactDetail() {
 
           {id && (
             <>
-              {/* Timeline-first: running story before profile depth */}
-              <Card className="zoho-card p-6 border-border print:hidden print-activity-card">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4 print:hidden">
+              <ContactExpandableSection
+                title="Nurture & tasks"
+                defaultOpen={false}
+                className="print:hidden"
+                summary={
+                  <ContactNurtureSummaryStrip contactId={id} onLogTouch={() => setAddInteractionOpen(true)} />
+                }
+              >
+                <ContactNurturePanel contact={contact} contactId={id} chrome="flush" />
+              </ContactExpandableSection>
+
+              {/* Story & Intent */}
+              <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Story & intent</h3>
+                <div className="space-y-5">
                   <div>
-                    <h3 className="font-semibold text-foreground">Activity timeline</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Calls, messages, and meetings — log touches from the workspace rail or header.
+                    <Label className="text-muted-foreground text-xs uppercase">Story</Label>
+                    <p className="text-foreground mt-1 whitespace-pre-wrap min-h-[1.5rem]">
+                      {contact.story || "—"}
                     </p>
                   </div>
-                  <Button size="sm" onClick={() => setAddInteractionOpen(true)} className="gap-1 shrink-0">
-                    <Plus className="w-4 h-4" /> Log
-                  </Button>
-                </div>
-                <h3 className="font-semibold hidden print:block mb-4">Activity Timeline</h3>
-
-                <div className="space-y-4 max-h-[min(520px,55vh)] sm:max-h-[600px] overflow-y-auto print:max-h-none">
-                  {contactAppointments.map((apt) => (
-                    <div key={apt.id} className="flex gap-3 pb-4 border-b border-border last:border-0">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{apt.title}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(apt.date), "PPp")}</p>
-                        {apt.location && <p className="text-xs text-muted-foreground">{apt.location}</p>}
-                      </div>
+                  <Separator />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <Label className="text-muted-foreground text-xs uppercase">Pipeline stage</Label>
+                      <p className="text-foreground mt-1">{contact.pipeline_stage || "—"}</p>
                     </div>
-                  ))}
-
-                  {interactions.map((interaction: Interaction) => (
-                    <div key={interaction.id} className="flex gap-3 pb-4 border-b border-border last:border-0 group">
-                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                        <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm capitalize">{interaction.type}</p>
-                          <span className="print:hidden">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                              onClick={() => handleDeleteInteraction(interaction.id)}
-                            >
-                              <Trash2 className="w-3 h-3 text-destructive" />
-                            </Button>
-                          </span>
-                        </div>
-                        {interaction.subject && <p className="text-sm text-foreground">{interaction.subject}</p>}
-                        {interaction.body && <p className="text-xs text-muted-foreground mt-1">{interaction.body}</p>}
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            <span className="print:hidden">
-                              {formatDistanceToNow(new Date(interaction.timestamp), { addSuffix: true })}
-                            </span>
-                            <span className="hidden print:inline">{format(new Date(interaction.timestamp), "d MMM yyyy, h:mm a")}</span>
-                          </span>
-                          {interaction.channel && (
-                            <span className="text-xs bg-secondary px-1.5 py-0.5 rounded capitalize print:bg-gray-100 print:border print:border-gray-400 print:text-black">
-                              {interaction.channel}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs uppercase">Selling intentions</Label>
+                      <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.selling_intentions || "—"}</p>
                     </div>
-                  ))}
-
-                  {interactions.length === 0 && contactAppointments.length === 0 && (
-                    <p className="text-muted-foreground text-sm text-center py-4">No activity yet. Log your first interaction!</p>
-                  )}
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs uppercase">Current situation</Label>
+                    <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.current_situation_notes || "—"}</p>
+                  </div>
                 </div>
               </Card>
 
-              <ContactSuiteCard
-                contactId={id}
-                interactions={interactions}
-                linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
-              />
+              <ContactExpandableSection
+                title="Activity timeline"
+                defaultOpen={false}
+                className="print:hidden"
+                open={activitySectionOpen}
+                onOpenChange={setActivitySectionOpen}
+                summary={<ContactActivitySummaryStrip contactId={id} />}
+              >
+                <div className="print:hidden max-h-[min(560px,60vh)] overflow-y-auto pr-1">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {/* TODO: Legacy `interactions` vs `activity_log` — timeline reads activity_log; unify migrations later. */}
+                    Logged activity and notes. Use Log touch for calls and emails, or Add note.
+                  </p>
+                  <div className="flex flex-wrap justify-end gap-2 pb-2">
+                    <Button size="sm" variant="outline" onClick={() => setAddInteractionOpen(true)} className="gap-1">
+                      <Plus className="w-4 h-4" /> Log touch
+                    </Button>
+                  </div>
+                  <ActivityTimeline
+                    entityType="contact"
+                    entityId={id}
+                    includeAppointments
+                    compact
+                    embedded
+                    limit={activitySectionOpen ? undefined : 5}
+                    showAddNote
+                  />
+                </div>
+              </ContactExpandableSection>
             </>
           )}
 
-          {id && <ContactNurturePanel contact={contact} contactId={id} />}
-
           {/* Contact information (address) */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
+          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Contact information</h3>
             {(contact.address_line1 || contact.city) ? (
               <div className="flex items-start gap-2">
@@ -799,7 +994,7 @@ export default function ContactDetail() {
           </Card>
 
           {/* Linked properties */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
+          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-center justify-between mb-4 print:hidden">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Linked properties</h3>
               {(contact?.address_line1?.trim() || contact?.city?.trim()) ? (
@@ -924,36 +1119,8 @@ export default function ContactDetail() {
             )}
           </Card>
 
-          {/* Story & Intent */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Story & intent</h3>
-            <div className="space-y-5">
-              <div>
-                <Label className="text-muted-foreground text-xs uppercase">Story</Label>
-                <p className="text-foreground mt-1 whitespace-pre-wrap min-h-[1.5rem]">
-                  {contact.story || "—"}
-                </p>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <Label className="text-muted-foreground text-xs uppercase">Pipeline stage</Label>
-                  <p className="text-foreground mt-1">{contact.pipeline_stage || "—"}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs uppercase">Selling intentions</Label>
-                  <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.selling_intentions || "—"}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-xs uppercase">Current situation</Label>
-                <p className="text-foreground mt-1 whitespace-pre-wrap">{contact.current_situation_notes || "—"}</p>
-              </div>
-            </div>
-          </Card>
-
           {/* Pain & Pleasure */}
-          <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
+          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -972,12 +1139,23 @@ export default function ContactDetail() {
           </Card>
 
           {contact.notes && (
-            <Card className="zoho-card p-6 border-border print:border print:border-gray-300 print-section">
+            <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
               <div className="text-foreground text-sm">
                 <PrintNotesBody text={contact.notes} />
               </div>
             </Card>
+          )}
+
+          {id && (
+            <div className="print:hidden">
+              <ContactSuiteCard
+                variant="page"
+                contactId={id}
+                interactions={interactions}
+                linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -993,7 +1171,14 @@ export default function ContactDetail() {
           <DialogHeader>
             <DialogTitle>Edit Contact</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 mt-4">
+          <Tabs defaultValue="core" className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="core">Core</TabsTrigger>
+              <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="core" className="mt-4">
+              <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Name *</Label>
               <Input
@@ -1162,7 +1347,12 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, pipeline_stage: e.target.value })}
               />
             </div>
-            <div className="col-span-2 space-y-2">
+              </div>
+            </TabsContent>
+
+            <TabsContent value="intelligence" className="mt-4">
+              <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
               <Label>Story</Label>
               <Textarea
                 className="bg-input min-h-[60px]"
@@ -1170,7 +1360,7 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, story: e.target.value })}
               />
             </div>
-            <div className="col-span-2 space-y-2">
+            <div className="space-y-2">
               <Label>Selling Intentions</Label>
               <Textarea
                 className="bg-input min-h-[60px]"
@@ -1178,7 +1368,7 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, selling_intentions: e.target.value })}
               />
             </div>
-            <div className="col-span-2 space-y-2">
+            <div className="space-y-2">
               <Label>Current Situation Notes</Label>
               <Textarea
                 className="bg-input min-h-[60px]"
@@ -1186,7 +1376,8 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, current_situation_notes: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
               <Label>Pain Points</Label>
               <Textarea
                 className="bg-input min-h-[60px]"
@@ -1194,15 +1385,16 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, pain_points: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
+              <div className="space-y-2">
               <Label>Pleasure Points</Label>
               <Textarea
                 className="bg-input min-h-[60px]"
                 value={editFormData.pleasure_points || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, pleasure_points: e.target.value })}
               />
+              </div>
             </div>
-            <div className="col-span-2 space-y-2">
+            <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea
                 className="bg-input min-h-[80px]"
@@ -1210,7 +1402,9 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
               />
             </div>
-          </div>
+              </div>
+            </TabsContent>
+          </Tabs>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
             <Button onClick={handleSaveEdit} disabled={updateContact.isPending}>

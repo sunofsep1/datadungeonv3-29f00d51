@@ -20,6 +20,12 @@ import { SendSmsDialog } from "./SendSmsDialog";
 import { getAllPhones } from "@/hooks/useContacts";
 import { ContactAboutPanel } from "./ContactAboutPanel";
 import { ContactActivityTimeline } from "./ContactActivityTimeline";
+import { ContactNurturePanel } from "./ContactNurturePanel";
+import { ContactSuiteCard } from "./ContactSuiteCard";
+import { ContactExpandableSection } from "./ContactExpandableSection";
+import { ContactNurtureSummaryStrip } from "./ContactNurtureSummaryStrip";
+import { ContactActivitySummaryStrip } from "./ContactActivitySummaryStrip";
+import { ContactRelationshipBrief } from "./ContactRelationshipBrief";
 import { PropertiesTab } from "./tabs/PropertiesTab";
 import { AddressesTab } from "./tabs/AddressesTab";
 import { LinkPropertyModal } from "./modals/LinkPropertyModal";
@@ -47,6 +53,7 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
   const [smsToNumber, setSmsToNumber] = useState("");
   const [linkPropertyOpen, setLinkPropertyOpen] = useState(false);
+  const [activitySheetOpen, setActivitySheetOpen] = useState(false);
   const [newInteraction, setNewInteraction] = useState({
     type: "call",
     channel: "phone",
@@ -140,18 +147,51 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
               </div>
               {/* Center: single scrollable column with sections */}
               <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-4 py-5 pb-8 space-y-8">
+                <div className="flex-1 overflow-y-auto px-4 py-5 pb-8 space-y-8 min-w-0">
+                  <section>
+                    <ContactRelationshipBrief contact={contact} />
+                  </section>
                   <section>
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">About</h3>
                     <ContactAboutPanel contact={contact} />
                   </section>
-                  <section>
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Activity</h3>
-                    <ContactActivityTimeline
-                      contactId={contactId}
-                      onAddNote={() => setAddInteractionOpen(true)}
-                    />
-                  </section>
+                  {contactId ? (
+                    <section>
+                      <ContactExpandableSection
+                        title="Nurture & tasks"
+                        defaultOpen={false}
+                        summary={
+                          <ContactNurtureSummaryStrip
+                            contactId={contactId}
+                            onLogTouch={() => setAddInteractionOpen(true)}
+                          />
+                        }
+                      >
+                        <ContactNurturePanel contact={contact} contactId={contactId} chrome="flush" />
+                      </ContactExpandableSection>
+                    </section>
+                  ) : null}
+                  {contactId ? (
+                    <section>
+                      <ContactExpandableSection
+                        title="Activity timeline"
+                        defaultOpen={false}
+                        open={activitySheetOpen}
+                        onOpenChange={setActivitySheetOpen}
+                        summary={<ContactActivitySummaryStrip contactId={contactId} />}
+                      >
+                        <div className="max-h-[min(420px,50vh)] overflow-y-auto pr-1">
+                          <ContactActivityTimeline
+                            contactId={contactId}
+                            compact
+                            embedded
+                            limit={activitySheetOpen ? undefined : 5}
+                            showAddNote
+                          />
+                        </div>
+                      </ContactExpandableSection>
+                    </section>
+                  ) : null}
                   <section>
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Linked properties</h3>
                     <PropertiesTab
@@ -165,6 +205,16 @@ export function ContactDetailPanel({ contactId, open, onOpenChange }: ContactDet
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Addresses</h3>
                     <AddressesTab contactId={contactId} />
                   </section>
+                  {contactId ? (
+                    <section className="min-w-0">
+                      <ContactSuiteCard
+                        variant="sheet"
+                        contactId={contactId}
+                        interactions={interactions}
+                        linkedPropertyIds={[...linkedPropertyIds]}
+                      />
+                    </section>
+                  ) : null}
                 </div>
               </div>
             </div>

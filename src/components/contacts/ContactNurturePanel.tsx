@@ -62,9 +62,18 @@ function stepTypeShortLabel(t: string | null | undefined) {
 interface ContactNurturePanelProps {
   contact: ContactWithMeta;
   contactId: string;
+  /** When `flush`, omit outer Card (use inside ContactExpandableSection). */
+  chrome?: "card" | "flush";
+  /** "compact" renders a single summary line. */
+  variant?: "full" | "compact";
 }
 
-export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelProps) {
+export function ContactNurturePanel({
+  contact,
+  contactId,
+  chrome = "card",
+  variant = "full",
+}: ContactNurturePanelProps) {
   const queryClient = useQueryClient();
   const { data: tasks = [], isLoading: tasksLoading } = useContactTasks(contactId);
   const createTask = useCreateContactTask();
@@ -138,6 +147,31 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
     }
     return hints.slice(0, 3);
   }, [contact, enrollments.length]);
+
+  if (variant === "compact") {
+    const activeEnrollment = enrollments.find((e) => e.status === "active");
+    const activeSequenceName = activeEnrollment
+      ? sequences.find((s) => s.id === activeEnrollment.sequence_id)?.name ?? "Active sequence"
+      : null;
+    const openTaskCount = tasks.filter((t) => !t.completed_at).length;
+
+    return (
+      <div className="flex items-center gap-3 flex-wrap text-sm">
+        {activeSequenceName ? (
+          <>
+            <span className="font-medium text-foreground">{activeSequenceName}</span>
+            {openTaskCount > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/35 font-semibold">
+                {openTaskCount} task{openTaskCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-muted-foreground text-xs">No active sequence</span>
+        )}
+      </div>
+    );
+  }
 
   const handleAddTask = () => {
     const title = newTitle.trim();
@@ -256,19 +290,21 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
     }
   };
 
-  return (
-    <Card id="contact-nurture-panel" className="zoho-card scroll-mt-4 p-6 border-border print:hidden">
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Nurture & tasks</h3>
+  const inner = (
+    <>
+      {chrome !== "flush" ? (
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Nurture & tasks</h3>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground" asChild>
+            <Link to="/nurture">
+              Manage sequences <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground" asChild>
-          <Link to="/nurture">
-            Manage sequences <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
-        </Button>
-      </div>
+      ) : null}
 
       {nextTouchHints.length > 0 && (
         <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
@@ -842,6 +878,20 @@ export function ContactNurturePanel({ contact, contactId }: ContactNurturePanelP
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+
+  if (chrome === "flush") {
+    return (
+      <div id="contact-nurture-panel" className="scroll-mt-4 print:hidden px-0 py-1">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Card id="contact-nurture-panel" className="zoho-card scroll-mt-4 p-6 border-border print:hidden">
+      {inner}
     </Card>
   );
 }

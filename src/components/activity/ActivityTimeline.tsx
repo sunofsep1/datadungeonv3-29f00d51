@@ -46,6 +46,8 @@ interface ActivityTimelineProps {
   /** Max items to show; default unlimited */
   limit?: number;
   compact?: boolean;
+  /** Hide the built-in "Activity" title row (parent provides chrome, e.g. expandable section). */
+  embedded?: boolean;
 }
 
 type TimelineItem =
@@ -59,6 +61,7 @@ export function ActivityTimeline({
   includeAppointments = false,
   limit,
   compact = isFeatureEnabled("compactTimelineV1"),
+  embedded = false,
 }: ActivityTimelineProps) {
   const filters =
     entityType === "contact"
@@ -127,8 +130,8 @@ export function ActivityTimeline({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground">Activity</h3>
+      <div className={embedded ? "flex items-center justify-end mb-3" : "flex items-center justify-between mb-4"}>
+        {!embedded ? <h3 className="font-semibold text-foreground">Activity</h3> : <span className="sr-only">Activity</span>}
         {showAddNote && entityId && (
           <>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setNoteOpen(true)} disabled={createLog.isPending}>

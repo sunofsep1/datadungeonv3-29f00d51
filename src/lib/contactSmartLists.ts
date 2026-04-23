@@ -72,5 +72,5 @@ export function parseSmartListParam(raw: string | null): ContactSmartListId | nu
 }
 
 export function isClassificationSmartList(id: ContactSmartListId): id is ContactClassificationKey {
-  return id !== "all" && id !== "stale" && id !== "no_next_touch" && id !== "automation_blocked";
+  return CLASSIFICATION_SET.has(id as ContactClassificationKey);
 }

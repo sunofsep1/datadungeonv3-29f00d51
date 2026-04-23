@@ -1,8 +1,7 @@
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContactScore } from "@/hooks/useContactScore";
-import { leadScoreBand } from "@/lib/contactScoreQuery";
+import { leadScoreBand, bandColors } from "@/lib/contactScoreQuery";
 import { formatDistanceToNow } from "date-fns";
 import { TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,18 +17,6 @@ const POSITIVE_ROWS: { key: string; label: string }[] = [
 function num(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-function bandLabel(band: "hot" | "warm" | "cold"): string {
-  if (band === "hot") return "Hot band";
-  if (band === "warm") return "Warm band";
-  return "Cold band";
-}
-
-function bandVariant(band: "hot" | "warm" | "cold"): "default" | "secondary" | "destructive" | "outline" {
-  if (band === "hot") return "default";
-  if (band === "warm") return "secondary";
-  return "outline";
 }
 
 export function ContactScorePanel({ contactId }: { contactId: string }) {
@@ -72,64 +59,70 @@ export function ContactScorePanel({ contactId }: { contactId: string }) {
     : {}) as Record<string, unknown>;
 
   const band = leadScoreBand(row.total_score);
+  const colors = bandColors(band);
   const penalty = num(breakdown.inactivity_penalty_points);
-  const inactiveDays = num(breakdown.inactive_days);
-  const penaltyUnits = num(breakdown.inactive_30d_units);
+  const barPct = Math.min(100, Math.max(0, row.total_score));
 
   return (
     <Card className="zoho-card p-4 border-border space-y-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary shrink-0" />
           <h3 className="text-sm font-semibold text-foreground">Lead score</h3>
         </div>
-        <Badge variant={bandVariant(band)} className="shrink-0 text-[10px]">
-          {bandLabel(band)}
-        </Badge>
+        <span
+          className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+          style={{
+            background: colors.badgeBg,
+            color: colors.badgeText,
+            borderColor: colors.badgeBorder,
+          }}
+        >
+          {colors.bandLabel}
+        </span>
       </div>
 
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums text-foreground">{row.total_score}</span>
-        <span className="text-xs text-muted-foreground">points</span>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-bold tabular-nums" style={{ color: colors.solidText }}>
+          {row.total_score}
+        </span>
+        <span className="text-xs text-muted-foreground">pts</span>
       </div>
-      <p className="text-[10px] text-muted-foreground">
-        Bands: cold &lt;31 · warm 31–60 · hot 61+.{" "}
-        {row.last_calculated ? (
-          <>
-            Updated {formatDistanceToNow(new Date(row.last_calculated), { addSuffix: true })}.
-          </>
-        ) : null}
-      </p>
+
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, background: colors.solidText }} />
+      </div>
+      <p className="text-[10px] text-muted-foreground">Cold 0–30 · warm 31–60 · hot 61+</p>
 
       <div className="border-t border-border/60 pt-3 space-y-1.5">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Breakdown</p>
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Signals</p>
         <ul className="space-y-1 text-xs">
           {POSITIVE_ROWS.map(({ key, label }) => {
             const v = num(breakdown[key]);
+            if (v === 0) return null;
             return (
               <li key={key} className="flex justify-between gap-2 tabular-nums">
                 <span className="text-muted-foreground">{label}</span>
-                <span className={cn("text-foreground font-medium", v === 0 && "text-muted-foreground font-normal")}>
-                  {v > 0 ? `+${v}` : "0"}
+                <span className={cn("text-foreground font-medium")}>
+                  +{v}
                 </span>
               </li>
             );
           })}
-          <li className="flex justify-between gap-2 tabular-nums">
-            <span className="text-muted-foreground">Inactivity (30d periods × rule)</span>
-            <span className={cn("font-medium", penalty < 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
-              {penalty === 0 ? "0" : penalty}
-            </span>
-          </li>
+          {penalty < 0 && (
+            <li className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Inactivity penalty</span>
+              <span className="font-medium tabular-nums text-amber-400">{penalty}</span>
+            </li>
+          )}
         </ul>
-        {(inactiveDays > 0 || penaltyUnits > 0) && (
-          <p className="text-[10px] text-muted-foreground pt-1">
-            {inactiveDays > 0 ? `${inactiveDays} days since last touch/activity` : null}
-            {inactiveDays > 0 && penaltyUnits > 0 ? " · " : ""}
-            {penaltyUnits > 0 ? `${penaltyUnits} × 30d penalty unit(s)` : null}
-          </p>
-        )}
       </div>
+
+      {row.last_calculated && (
+        <p className="text-[10px] text-muted-foreground">
+          Updated {formatDistanceToNow(new Date(row.last_calculated), { addSuffix: true })}
+        </p>
+      )}
     </Card>
   );
 }

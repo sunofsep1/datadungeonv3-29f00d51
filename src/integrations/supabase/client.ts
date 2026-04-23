@@ -5,8 +5,11 @@ import type { Database } from './types';
 /** Expected Supabase project ref (single source: supabase/project-ref). Must match VITE_SUPABASE_URL. */
 const EXPECTED_PROJECT_REF = "sujyalrzbubvhpkntwja";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const IS_TEST = Boolean(import.meta.env?.VITEST) || import.meta.env?.MODE === "test";
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ?? (IS_TEST ? "https://example.supabase.co" : undefined);
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? (IS_TEST ? "test-anon-key" : undefined);
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error(

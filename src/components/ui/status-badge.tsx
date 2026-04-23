@@ -17,7 +17,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   cancelled: "bg-destructive/20 text-destructive",
   hot: "bg-destructive/20 text-destructive",
   warm: "bg-warning/20 text-warning",
-  cold: "bg-info/20 text-info",
+  cold: "[background:var(--temp-cold-bg)] [color:var(--temp-cold-text)] [border-color:var(--temp-cold-border)]",
   entered: "bg-secondary text-secondary-foreground",
   total: "bg-muted text-muted-foreground",
 };

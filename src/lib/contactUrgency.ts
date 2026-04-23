@@ -13,10 +13,13 @@ export type ContactUrgencySignals = {
 
 export type ContactUrgencyResult = {
   contactId: string;
+  /** Capped at MAX_SCORE for display consistency. */
   score: number;
   tier: ContactUrgencyTier;
   reasons: string[];
 };
+
+const MAX_SCORE = 200;
 
 function hoursUntil(value: Date): number {
   return (value.getTime() - Date.now()) / (1000 * 60 * 60);
@@ -107,6 +110,8 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
     }
   }
 
+  score = Math.min(score, MAX_SCORE);
+
   const autoTier = tierFromScore(score);
   const tier = signals.manualTier ?? autoTier;
   const minScoreByTier: Record<ContactUrgencyTier, number> = {
@@ -115,8 +120,9 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
     planned: 35,
     backlog: 0,
   };
+
   if (signals.manualTier) {
-    score = Math.max(score, minScoreByTier[signals.manualTier]);
+    score = Math.min(Math.max(score, minScoreByTier[signals.manualTier]), MAX_SCORE);
     reasons.unshift(`manually set to ${signals.manualTier}`);
   }
   return {

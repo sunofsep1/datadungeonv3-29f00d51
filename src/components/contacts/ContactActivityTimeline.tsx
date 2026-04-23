@@ -7,6 +7,7 @@ interface ContactActivityTimelineProps {
   limit?: number;
   showAddNote?: boolean;
   includeAppointments?: boolean;
+  embedded?: boolean;
 }
 
 /** Contact-scoped activity timeline (activity_log + appointments). */
@@ -17,6 +18,7 @@ export function ContactActivityTimeline({
   limit,
   showAddNote = true,
   includeAppointments = true,
+  embedded,
 }: ContactActivityTimelineProps) {
   return (
     <ActivityTimeline
@@ -26,6 +28,7 @@ export function ContactActivityTimeline({
       includeAppointments={includeAppointments}
       compact={compact}
       limit={limit}
+      embedded={embedded}
     />
   );
 }

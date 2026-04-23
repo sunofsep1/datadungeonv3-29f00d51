@@ -46,6 +46,8 @@ describe("isClassificationSmartList", () => {
     expect(isClassificationSmartList("stale")).toBe(false);
     expect(isClassificationSmartList("no_next_touch")).toBe(false);
     expect(isClassificationSmartList("automation_blocked")).toBe(false);
+    expect(isClassificationSmartList("birthdays_upcoming")).toBe(false);
+    expect(isClassificationSmartList("annual_review_candidates")).toBe(false);
   });
 });
 

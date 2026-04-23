@@ -14,6 +14,7 @@ import { formatPropertyAddress, type Property } from "@/hooks/useProperties";
 import { cn, getInitials } from "@/lib/utils";
 import { formatAddressForPrint } from "@/lib/formatPrintAddress";
 import { PrintWorksheetAreas } from "@/components/print/PrintWorksheetAreas";
+import type { ContactUrgencyResult } from "@/lib/contactUrgency";
 
 export type LinkedPropertyForPrint = {
   id: string;
@@ -62,6 +63,16 @@ interface ContactPrintLayoutProps {
   documentSubtitle?: string;
   /** When true, include date of birth on the printout (off by default for privacy). Use `?dob=1` on the print URL. */
   includeDateOfBirth?: boolean;
+  /** Optional client-brief blocks (computed on print route). */
+  printBrief?: {
+    classificationLabel: string | null;
+    urgency: ContactUrgencyResult | null;
+    nextTouchDisplay: string | null;
+    activeNurtureHeadline: string | null;
+    talkingPointTitles: string[];
+    lastTouchSnapshot: string | null;
+    nurtureSnapshot: string | null;
+  };
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -127,6 +138,7 @@ export function ContactPrintLayout({
   nurtureJourneys,
   documentSubtitle = "Contact briefing",
   includeDateOfBirth = false,
+  printBrief,
 }: ContactPrintLayoutProps) {
   const printedAt = format(new Date(), "d MMMM yyyy");
   const phones = getAllPhones(contact).flatMap((p) =>
@@ -177,6 +189,60 @@ export function ContactPrintLayout({
       </div>
 
       <div className="print-doc-body">
+        {printBrief ? (
+          <section className="print-section print-brief-executive">
+            <h3 className="print-section-title">Executive summary</h3>
+            <div className="print-prose">
+              <Row
+                label="Classification"
+                value={printBrief.classificationLabel ?? "—"}
+              />
+              {printBrief.urgency ? (
+                <>
+                  <Row
+                    label="Urgency"
+                    value={`${printBrief.urgency.tier} · score ${printBrief.urgency.score}`}
+                  />
+                </>
+              ) : null}
+              <Row
+                label="Next touch"
+                value={printBrief.nextTouchDisplay ?? "No next touch set"}
+              />
+              <Row
+                label="Nurture"
+                value={printBrief.activeNurtureHeadline ?? "Not enrolled"}
+              />
+            </div>
+          </section>
+        ) : null}
+
+        {printBrief && printBrief.talkingPointTitles.length > 0 ? (
+          <section className="print-section print-brief-intelligence">
+            <h3 className="print-section-title">Intelligence &amp; talking points</h3>
+            <p className="print-muted print-brief-intelligence-intro">
+              Suggested playbooks for this contact category (deterministic ranking).
+            </p>
+            <ul className="print-talking-points">
+              {printBrief.talkingPointTitles.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {printBrief ? (
+          <section className="print-section print-brief-snapshot">
+            <h3 className="print-section-title">Activity &amp; nurture snapshot</h3>
+            <p className="print-value-block">
+              {printBrief.lastTouchSnapshot ?? "Last touch: not available on file."}
+            </p>
+            <p className="print-value-block print-brief-snapshot-second">
+              {printBrief.nurtureSnapshot ?? "Active nurture: none."}
+            </p>
+          </section>
+        ) : null}
+
         <div className="print-brief-grid">
           <Section title="At a glance">
             <div className="print-overview">

@@ -29,7 +29,7 @@ import {
 } from "@/hooks/useCrmWorkflows";
 import { useToast } from "@/hooks/use-toast";
 import { useAnnualReviewContactStatusMap } from "@/hooks/useAnnualReviews";
-import { leadScoreBand } from "@/lib/contactScoreQuery";
+import { leadScoreBand, bandColors } from "@/lib/contactScoreQuery";
 import { cn } from "@/lib/utils";
 import type { Json, Tables } from "@/integrations/supabase/types";
 
@@ -145,10 +145,10 @@ export function ContactWorkspaceRail({ contact, contactId }: Props) {
   };
 
   return (
-    <Card className="zoho-card p-4 border-border print:hidden space-y-4">
+    <Card className="zoho-card p-3 sm:p-4 border-border print:hidden space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground">Workspace</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workspace</h3>
       </div>
 
       <div className="space-y-2">
@@ -178,16 +178,26 @@ export function ContactWorkspaceRail({ contact, contactId }: Props) {
         ) : scoreRow ? (
           <>
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="text-2xl font-bold tabular-nums text-foreground">{scoreRow.total_score}</span>
-              {scoreBand === "hot" ? (
-                <Badge className="text-[10px] bg-red-500/20 text-red-200 border-red-400/35">Hot band</Badge>
-              ) : scoreBand === "warm" ? (
-                <Badge className="text-[10px] bg-amber-500/15 text-amber-200 border-amber-400/35">Warm band</Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px]">
-                  Cold band
-                </Badge>
-              )}
+              {(() => {
+                const c = bandColors(scoreBand ?? "cold");
+                return (
+                  <span className="text-2xl font-bold tabular-nums" style={{ color: c.solidText }}>
+                    {scoreRow.total_score}
+                  </span>
+                );
+              })()}
+              {scoreBand &&
+                (() => {
+                  const c = bandColors(scoreBand);
+                  return (
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                      style={{ background: c.badgeBg, color: c.badgeText, borderColor: c.badgeBorder }}
+                    >
+                      {c.bandLabel}
+                    </span>
+                  );
+                })()}
             </div>
             <p className="text-[11px] text-muted-foreground">
               Updated {format(new Date(scoreRow.last_calculated), "d MMM yyyy, h:mm a")}

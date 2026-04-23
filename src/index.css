@@ -361,6 +361,27 @@ html.theme-retro-wave-dusk #root {
     --warning-foreground: 222 47% 6%;
     --info: 199 89% 48%;
     --info-foreground: 210 40% 98%;
+
+    /* Temperature band tokens */
+    --temp-hot-bg: rgba(220, 38, 38, 0.12);
+    --temp-hot-text: #ef4444;
+    --temp-hot-border: rgba(220, 38, 38, 0.35);
+    --temp-hot-solid: #dc2626;
+
+    --temp-warm-bg: rgba(217, 119, 6, 0.12);
+    --temp-warm-text: #f59e0b;
+    --temp-warm-border: rgba(217, 119, 6, 0.35);
+    --temp-warm-solid: #d97706;
+
+    --temp-cold-bg: rgba(100, 116, 139, 0.1);
+    --temp-cold-text: #94a3b8;
+    --temp-cold-border: rgba(100, 116, 139, 0.3);
+    --temp-cold-solid: #64748b;
+
+    --temp-archived-bg: rgba(148, 163, 184, 0.08);
+    --temp-archived-text: #94a3b8;
+    --temp-archived-border: rgba(148, 163, 184, 0.2);
+    --temp-archived-solid: #94a3b8;
     
     /* Teal accent */
     --teal: 168 76% 42%;
@@ -2836,6 +2857,36 @@ html {
   border-bottom: 1px solid hsl(var(--border));
   break-after: avoid;
   page-break-after: avoid;
+}
+.contact-print-document .print-talking-points {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 10pt;
+  line-height: 1.45;
+}
+.contact-print-document .print-talking-points li {
+  margin-bottom: 0.35rem;
+}
+.contact-print-document .print-brief-intelligence-intro {
+  font-size: 9pt;
+  margin: 0 0 10px 0;
+}
+.contact-print-document .print-brief-snapshot-second {
+  margin-top: 8px;
+}
+
+/* Contact card expandable transitions */
+.contact-section-body {
+  overflow: hidden;
+  transition:
+    max-height 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-section-body {
+    transition: none;
+  }
 }
 .contact-print-document .print-overview {
   display: flex;

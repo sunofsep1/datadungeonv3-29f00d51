@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
@@ -22,6 +22,11 @@ export function useRealtimeSubscription(
   queryKeys: string[][]
 ) {
   const queryClient = useQueryClient();
+  const queryKeysRef = useRef(queryKeys);
+
+  useEffect(() => {
+    queryKeysRef.current = queryKeys;
+  });
 
   useEffect(() => {
     const channel = supabase
@@ -33,9 +38,8 @@ export function useRealtimeSubscription(
           schema: "public",
           table: tableName,
         },
-        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
-          // Invalidate all related queries on realtime changes
-          queryKeys.forEach((queryKey) => {
+        (_payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+          queryKeysRef.current.forEach((queryKey) => {
             queryClient.invalidateQueries({ queryKey });
           });
         }
@@ -45,5 +49,6 @@ export function useRealtimeSubscription(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tableName, queryClient, queryKeys]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableName, queryClient]);
 }
