@@ -182,8 +182,8 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Desktop sidebar — theme-aware, collapsible */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 hidden md:flex flex-col overflow-hidden print:hidden transition-[width] duration-250 ease-in-out",
-          "bg-sidebar border-r border-sidebar-border h-dvh max-h-dvh"
+          "fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col overflow-hidden print:hidden transition-[width] duration-250 ease-in-out",
+          "bg-sidebar border-r border-sidebar-border"
         )}
         style={{ width: desktopWidth }}
       >
@@ -387,7 +387,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Mobile slide-out */}
       <aside
         className={cn(
-          "fixed z-50 w-[280px] h-dvh max-h-dvh flex flex-col overflow-hidden bg-sidebar border-r border-sidebar-border transition-transform duration-250 print:hidden md:hidden",
+          "fixed left-0 top-0 bottom-0 z-50 flex w-[280px] flex-col overflow-hidden bg-sidebar border-r border-sidebar-border transition-transform duration-250 print:hidden md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
