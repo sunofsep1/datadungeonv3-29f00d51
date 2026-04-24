@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildContactUrgency, tierFromScore } from "@/lib/contactUrgency";
 
 function isoHoursFromNow(hours: number): string {
@@ -6,6 +6,10 @@ function isoHoursFromNow(hours: number): string {
 }
 
 describe("contact urgency tiers", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("maps score bands to crm tiers", () => {
     expect(tierFromScore(150)).toBe("immediate");
     expect(tierFromScore(90)).toBe("priority");
@@ -26,12 +30,14 @@ describe("contact urgency tiers", () => {
   });
 
   it("rates near-term workload as priority or planned", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-24T15:00:00.000Z"));
     const result = buildContactUrgency({
       contactId: "c2",
-      lastActivityAt: isoHoursFromNow(-24 * 5),
-      taskDueAts: [isoHoursFromNow(18)],
-      sequenceTaskDueAts: [isoHoursFromNow(12)],
-      appointmentDates: [isoHoursFromNow(30)],
+      lastActivityAt: new Date("2026-04-19T15:00:00.000Z").toISOString(),
+      taskDueAts: [new Date("2026-04-25T09:00:00.000Z").toISOString()],
+      sequenceTaskDueAts: [new Date("2026-04-25T03:00:00.000Z").toISOString()],
+      appointmentDates: [new Date("2026-04-25T21:00:00.000Z").toISOString()],
     });
     expect(["priority", "planned"]).toContain(result.tier);
   });

@@ -14,5 +14,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // date-fns calendar helpers use local TZ; pin so urgency tests match GitHub Actions (UTC).
+    env: { TZ: "UTC" },
   },
 });

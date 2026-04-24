@@ -69,7 +69,8 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
 
   const dueSoonTasks = taskDates.filter((date) => {
     const hrs = hoursUntil(date);
-    return hrs > 0 && hrs <= 48;
+    // Exclude same calendar day so we do not stack with `dueTodayTasks` (flaky in UTC near midnight).
+    return hrs > 0 && hrs <= 48 && !isToday(date);
   });
   if (dueSoonTasks.length > 0) {
     score += 45 + Math.min(dueSoonTasks.length * 5, 15);
