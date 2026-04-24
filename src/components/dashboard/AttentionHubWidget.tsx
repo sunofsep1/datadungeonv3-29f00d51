@@ -183,7 +183,7 @@ export function AttentionHubWidget() {
   const [newDueAt, setNewDueAt] = useState("");
   const [newContactId, setNewContactId] = useState("");
   const [visibleUrgencyTiers, setVisibleUrgencyTiers] = useState<Set<ContactUrgencyTier>>(
-    () => new Set<ContactUrgencyTier>(["immediate", "priority"])
+    () => new Set<ContactUrgencyTier>(["immediate", "priority", "planned", "backlog"])
   );
 
   const contactNameById = useMemo(() => {
@@ -351,14 +351,12 @@ export function AttentionHubWidget() {
       });
     });
 
-    return nextItems
-      .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        const at = a.dueAt ? a.dueAt.getTime() : Number.MAX_SAFE_INTEGER;
-        const bt = b.dueAt ? b.dueAt.getTime() : Number.MAX_SAFE_INTEGER;
-        return at - bt;
-      })
-      .slice(0, 12);
+    return nextItems.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const at = a.dueAt ? a.dueAt.getTime() : Number.MAX_SAFE_INTEGER;
+      const bt = b.dueAt ? b.dueAt.getTime() : Number.MAX_SAFE_INTEGER;
+      return at - bt;
+    });
   }, [appointments, contacts, contactNameById, openContactTasks, todos, urgencyByContactId]);
 
   const visibleItems = useMemo(

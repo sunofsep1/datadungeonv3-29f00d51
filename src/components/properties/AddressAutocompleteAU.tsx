@@ -25,6 +25,7 @@ function getEnvKey(): string | undefined {
 
 function parseAuAddressFromComponents(components: google.maps.GeocoderAddressComponent[]): Partial<AuAddressParts> {
   const byType = (t: string) => components.find((c) => c.types.includes(t));
+  const subpremise = byType("subpremise")?.long_name ?? "";
   const streetNumber = byType("street_number")?.long_name ?? "";
   const route = byType("route")?.long_name ?? "";
   const suburb =
@@ -36,7 +37,13 @@ function parseAuAddressFromComponents(components: google.maps.GeocoderAddressCom
   const state = byType("administrative_area_level_1")?.short_name ?? "";
   const postcode = byType("postal_code")?.long_name ?? "";
   const country = byType("country")?.long_name ?? "Australia";
-  const address_line1 = [streetNumber, route].filter(Boolean).join(" ").trim();
+  const unitStreet =
+    subpremise && streetNumber
+      ? /^[A-Za-z0-9-]+$/.test(subpremise)
+        ? `${subpremise}/${streetNumber}`
+        : `${subpremise} ${streetNumber}`
+      : subpremise || streetNumber;
+  const address_line1 = [unitStreet, route].filter(Boolean).join(" ").trim();
   return {
     address_line1,
     city: suburb,

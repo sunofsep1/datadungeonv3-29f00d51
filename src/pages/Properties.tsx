@@ -32,7 +32,7 @@ import {
 import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty, formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
 import { PropertyList } from "@/components/PropertyManagement/PropertyList";
 import { MergePropertiesDialog } from "@/components/PropertyManagement/MergePropertiesDialog";
-import { useContacts } from "@/hooks/useContacts";
+import { getContactDisplayName, useContacts } from "@/hooks/useContacts";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import type { ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
@@ -74,6 +74,7 @@ export default function Properties() {
   const [editingProperty, setEditingProperty] = useState<PropertyWithLinks | null>(null);
   const [formData, setFormData] = useState(createEmptyProperty());
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
+  const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
@@ -96,6 +97,17 @@ export default function Properties() {
     () => (properties ?? []).filter((p) => selectedPropertyIds.has(p.id)),
     [properties, selectedPropertyIds],
   );
+
+  const filteredOwners = useMemo(() => {
+    const q = ownerSearchQuery.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter((contact) => {
+      const name = getContactDisplayName(contact).toLowerCase();
+      const email = String(contact.email ?? "").toLowerCase();
+      const phone = String(contact.phone ?? "").toLowerCase();
+      return name.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [contacts, ownerSearchQuery]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -177,6 +189,7 @@ export default function Properties() {
   };
 
   const handleOpenDialog = (property?: PropertyWithLinks) => {
+    setOwnerSearchQuery("");
     if (property) {
       setEditingProperty(property);
       setFormData({
@@ -661,10 +674,16 @@ export default function Properties() {
                     {!editingProperty ? (
                       <div className="space-y-2">
                         <Label>Property Owners</Label>
+                        <Input
+                          placeholder="Search contacts by name, email, or phone..."
+                          className="bg-input"
+                          value={ownerSearchQuery}
+                          onChange={(e) => setOwnerSearchQuery(e.target.value)}
+                        />
                         <div className="border border-border rounded-md p-3 bg-input min-h-[100px] max-h-[150px] overflow-y-auto">
                           {contacts && contacts.length > 0 ? (
                             <div className="flex flex-col gap-2">
-                              {contacts.map((contact) => (
+                              {filteredOwners.map((contact) => (
                                 <div key={contact.id} className="flex items-center gap-2">
                                   <Checkbox
                                     id={`owner-${contact.id}`}
@@ -683,10 +702,13 @@ export default function Properties() {
                                     htmlFor={`owner-${contact.id}`}
                                     className="text-sm font-normal cursor-pointer flex-1"
                                   >
-                                    {contact.name}
+                                    {getContactDisplayName(contact)}
                                   </Label>
                                 </div>
                               ))}
+                              {filteredOwners.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No contacts match your search.</p>
+                              ) : null}
                             </div>
                           ) : (
                             <p className="text-sm text-muted-foreground">

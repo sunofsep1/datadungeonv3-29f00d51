@@ -31,6 +31,19 @@ interface AddressAutocompleteProps {
 
 type SuggestionRow = { description: string; prediction: google.maps.places.PlacePrediction };
 
+function composeStreetLine1(subpremise: string, streetNumber: string, route: string): string {
+  const unit = subpremise.trim();
+  const streetNo = streetNumber.trim();
+  const streetName = route.trim();
+  const unitStreet =
+    unit && streetNo
+      ? /^[A-Za-z0-9-]+$/.test(unit)
+        ? `${unit}/${streetNo}`
+        : `${unit} ${streetNo}`
+      : unit || streetNo;
+  return [unitStreet, streetName].filter(Boolean).join(" ").trim();
+}
+
 function extractAddressPartsFromComponents(
   components: google.maps.GeocoderAddressComponent[],
   formattedAddress: string,
@@ -46,10 +59,12 @@ function extractAddressPartsFromComponents(
 
   let streetNumber = "";
   let route = "";
+  let subpremise = "";
 
   for (const comp of components) {
     const types = comp.types;
     if (types.includes("subpremise")) {
+      subpremise = comp.long_name;
       parts.address_line2 = comp.long_name;
     } else if (types.includes("street_number")) {
       streetNumber = comp.long_name;
@@ -70,7 +85,7 @@ function extractAddressPartsFromComponents(
     }
   }
 
-  parts.address_line1 = [streetNumber, route].filter(Boolean).join(" ").trim();
+  parts.address_line1 = composeStreetLine1(subpremise, streetNumber, route);
   if (!parts.address_line1 && formattedAddress) {
     parts.address_line1 = formattedAddress;
   }
