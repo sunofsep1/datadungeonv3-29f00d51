@@ -234,7 +234,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
           <nav className="space-y-0.5 p-2 pr-1" aria-label="Main navigation">
           {collapsed ? (
             navItems.map((item) => {
@@ -397,7 +397,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
           </div>
           <span className="text-sm font-semibold text-teal">Data Dungeon</span>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
           <nav className="space-y-1 p-3" aria-label="Main navigation">
           {navItems.map((item) => {
             const active = isNavActive(item, location.pathname);
