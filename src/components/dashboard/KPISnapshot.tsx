@@ -19,8 +19,8 @@ export function KPISnapshot() {
   if (isError) {
     return (
       <Card className="zoho-card p-3">
-        <h3 className="text-[15px] font-semibold text-white mb-2">KPI Snapshot</h3>
-        <p className="text-[14px] text-white/60 mb-2">Couldn&apos;t load KPI data.</p>
+        <h3 className="text-base font-semibold text-white mb-2">KPI Snapshot</h3>
+        <p className="text-sm text-white/60 mb-2">Couldn&apos;t load KPI data.</p>
         <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={refetch}>Retry</Button>
       </Card>
     );
@@ -75,8 +75,8 @@ export function KPISnapshot() {
   return (
     <Card className="zoho-card p-3">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[15px] font-semibold text-white">KPI Snapshot</h3>
-        <Link to="/performance" className="text-[13px] text-[#00BCD4] hover:underline">
+        <h3 className="text-base font-semibold text-white">KPI Snapshot</h3>
+        <Link to="/performance" className="text-xs text-[#00BCD4] hover:underline">
           View All →
         </Link>
       </div>
@@ -89,15 +89,12 @@ export function KPISnapshot() {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
-                  <span className="text-[14px] text-white">{kpi.label}</span>
+                  <span className="text-sm text-white">{kpi.label}</span>
                 </div>
-                <span className="text-[28px] font-bold leading-none text-white tabular-nums">
-                  {kpi.format(kpi.current)}
+                <span className="text-sm font-medium text-white">
+                  {kpi.format(kpi.current)} / {kpi.format(kpi.goal)}
                 </span>
               </div>
-              <p className="text-[13px] text-muted-foreground mb-1.5">
-                Goal: {kpi.format(kpi.goal)}
-              </p>
               <Progress value={progress} className="h-2" />
             </div>
           );
