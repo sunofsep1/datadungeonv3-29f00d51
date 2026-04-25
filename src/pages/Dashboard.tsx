@@ -12,10 +12,9 @@ import {
   DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
+import { DashboardWelcomeHeader } from "@/components/dashboard/DashboardWelcomeHeader";
 import { DashboardCommandCenter } from "@/components/dashboard/DashboardCommandCenter";
 import { SortableWidget } from "@/components/dashboard/SortableWidget";
-import { CommandStrip } from "@/components/dashboard/CommandStrip";
-import { PriorityFocusCard } from "@/components/dashboard/PriorityFocusCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -46,7 +45,7 @@ import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGc
 import { useCreateLead } from "@/hooks/useLeads";
 import { usePosts, useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
-import { format, isPast, isToday, startOfDay, endOfDay, subDays } from "date-fns";
+import { format, isPast, isToday } from "date-fns";
 import { VisionBoard } from "@/components/dashboard/VisionBoard";
 import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
@@ -64,64 +63,13 @@ import {
   resetDashboardWidgetsToDefault,
   DASHBOARD_WIDGET_IDS,
   DASHBOARD_WIDGET_LABELS,
-  storageKeyForDashboardWidgets,
 } from "@/lib/dashboardWidgetOrder";
+import { cn } from "@/lib/utils";
 
-const DASHBOARD_DEFAULT_VISIBLE = [
-  "upcomingAppointments",
-  "activityFeed",
-  "pipeline",
-  "kpi",
-  "activeSequences",
-  "todo",
-];
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function getFirstName(user: { user_metadata?: Record<string, unknown>; email?: string } | null): string {
-  if (!user) return "";
-  const fullName = user.user_metadata?.full_name as string | undefined;
-  if (fullName?.trim()) return fullName.trim().split(/\s+/)[0] ?? "";
-  const email = user.email ?? "";
-  const local = email.split("@")[0] ?? "";
-  return local ? local.charAt(0).toUpperCase() + local.slice(1).toLowerCase() : "";
-}
-
-function getDefaultOrderedVisibleWidgets(): string[] {
-  return [...DASHBOARD_DEFAULT_VISIBLE];
-}
-
-function normalizeWidgetOrder(order: string[]): string[] {
-  const allowed = new Set<string>(DASHBOARD_WIDGET_IDS);
-  const seen = new Set<string>();
-  const ordered = order.filter((id) => {
-    if (!allowed.has(id) || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-  const fallback = getDefaultOrderedVisibleWidgets().filter((id) => !seen.has(id));
-  return [...ordered, ...fallback];
-}
-
-function loadPreferredWidgetOrder(userId: string | undefined): string[] {
-  const storageKey = storageKeyForDashboardWidgets(userId);
-  let hasSavedLayout = false;
-  try {
-    hasSavedLayout = localStorage.getItem(storageKey) != null;
-  } catch {
-    hasSavedLayout = false;
-  }
-  if (!hasSavedLayout) {
-    const defaults = getDefaultOrderedVisibleWidgets();
-    saveDashboardWidgetOrder(userId, defaults);
-    return defaults;
-  }
-  return normalizeWidgetOrder(loadDashboardWidgetOrder(userId));
+/** Keep command center on the board if something removed it; do not force it to first (that broke persisted drag order). */
+function ensureCommandCenterWidget(order: string[]): string[] {
+  if (order.includes("commandCenter")) return [...order];
+  return ["commandCenter", ...order];
 }
 
 export default function Dashboard() {
@@ -146,19 +94,17 @@ export default function Dashboard() {
   }, [searchParams, setSearchParams, toast]);
 
   const [widgetOrder, setWidgetOrder] = useState<string[]>(() =>
-    loadPreferredWidgetOrder(user?.id)
+    ensureCommandCenterWidget(loadDashboardWidgetOrder(user?.id))
   );
   /** Auth resolves after first paint; reload order from the per-user key so drag/save matches persistence. */
   useEffect(() => {
     if (!user?.id) return;
-    setWidgetOrder(loadPreferredWidgetOrder(user.id));
+    setWidgetOrder(ensureCommandCenterWidget(loadDashboardWidgetOrder(user.id)));
   }, [user?.id]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { delay: 120, tolerance: 8 },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -191,8 +137,12 @@ export default function Dashboard() {
 
   const handleRemoveWidget = useCallback(
     (id: string) => {
+      if (id === "commandCenter") {
+        toast({ title: "Command center is always shown", description: "You can move it, but not remove it." });
+        return;
+      }
       setWidgetOrder((prev) => {
-        const next = prev.filter((w) => w !== id);
+        const next = ensureCommandCenterWidget(prev.filter((w) => w !== id));
         saveDashboardWidgetOrder(user?.id, next);
         return next;
       });
@@ -202,10 +152,7 @@ export default function Dashboard() {
   );
 
   const handleRestoreDefaultWidgets = useCallback(() => {
-    resetDashboardWidgetsToDefault(user?.id);
-    const defaults = getDefaultOrderedVisibleWidgets();
-    saveDashboardWidgetOrder(user?.id, defaults);
-    setWidgetOrder(defaults);
+    setWidgetOrder(resetDashboardWidgetsToDefault(user?.id));
     toast({ title: "Dashboard restored", description: "All default widgets are back." });
   }, [user?.id, toast]);
 
@@ -213,7 +160,6 @@ export default function Dashboard() {
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
-  const [quickAddDialogOpen, setQuickAddDialogOpen] = useState(false);
   const [manageWidgetsOpen, setManageWidgetsOpen] = useState(false);
 
   const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
@@ -265,50 +211,6 @@ export default function Dashboard() {
       }).length,
     [appointments]
   );
-
-  const firstName = useMemo(() => getFirstName(user), [user]);
-  const greeting = useMemo(() => getGreeting(), []);
-  const displayName = firstName || "there";
-
-  const contactsDueForTouch = useMemo(() => {
-    const staleBefore = subDays(new Date(), 3).getTime();
-    return contacts.filter((contact) => {
-      const touchedAt = (contact as { last_touch_date?: string | null }).last_touch_date;
-      if (!touchedAt) return true;
-      const touchedTime = new Date(touchedAt).getTime();
-      return Number.isFinite(touchedTime) && touchedTime < staleBefore;
-    }).length;
-  }, [contacts]);
-
-  const todaysAppointments = useMemo(() => {
-    const dayStart = startOfDay(new Date());
-    const dayEnd = endOfDay(new Date());
-    return appointments
-      .filter((appointment) => {
-        const t = new Date(appointment.date).getTime();
-        return t >= dayStart.getTime() && t <= dayEnd.getTime();
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [appointments]);
-
-  const contactNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of contacts) map.set(c.id, c.name || "Contact");
-    return map;
-  }, [contacts]);
-
-  const hotLead = useMemo(() => {
-    const staleBefore = subDays(new Date(), 3).getTime();
-    return contacts.find((contact) => {
-      const temp = String((contact as { lead_temperature?: string | null }).lead_temperature ?? "").toLowerCase();
-      const isHot = temp.includes("hot");
-      if (!isHot) return false;
-      const touchedAt = (contact as { last_touch_date?: string | null }).last_touch_date;
-      if (!touchedAt) return true;
-      const touchedTime = new Date(touchedAt).getTime();
-      return Number.isFinite(touchedTime) && touchedTime < staleBefore;
-    });
-  }, [contacts]);
 
   const handleAddContact = async () => {
     if (!newContact.name.trim()) {
@@ -400,59 +302,17 @@ export default function Dashboard() {
     }
   };
 
-  const priorityFocus = useMemo(() => {
-    if (hotLead) {
-      const name = hotLead.name || "Contact";
-      const category = (hotLead as { contact_category?: string | null }).contact_category ?? "hot lead";
-      return {
-        tone: "hot" as const,
-        message: `🔥 Hot lead: ${name} — ${category}`,
-        primaryAction: {
-          label: "Call",
-          onClick: () => navigate(`/contacts/${hotLead.id}`),
-        },
-        secondaryAction: {
-          label: "View",
-          onClick: () => navigate(`/contacts/${hotLead.id}`),
-        },
-      };
-    }
-
-    const firstAppointment = todaysAppointments[0];
-    if (firstAppointment) {
-      const name = contactNameById.get(firstAppointment.contact_id ?? "") ?? "Contact";
-      return {
-        tone: "appointment" as const,
-        message: `📅 Appointment today with ${name} at ${format(new Date(firstAppointment.date), "h:mm a")}`,
-        primaryAction: {
-          label: "View",
-          onClick: () => navigate("/appointments"),
-        },
-      };
-    }
-
-    if (sequenceSummary.dueNow > 0) {
-      return {
-        tone: "overdue" as const,
-        message: `⚠️ ${sequenceSummary.dueNow} nurture step${sequenceSummary.dueNow === 1 ? "" : "s"} are overdue`,
-        primaryAction: {
-          label: "View Nurture",
-          onClick: () => navigate("/nurture"),
-        },
-      };
-    }
-
-    return {
-      tone: "clear" as const,
-      message: `✅ You're all caught up — ${contacts.length} contacts in your database`,
-    };
-  }, [contactNameById, contacts.length, hotLead, navigate, sequenceSummary.dueNow, todaysAppointments]);
-
   const handleToggleWidgetVisibility = useCallback(
     (id: string) => {
+      if (id === "commandCenter") {
+        toast({ title: "Command center is always shown", description: "This section is required on Home." });
+        return;
+      }
       setWidgetOrder((prev) => {
         const isVisible = prev.includes(id);
-        const next = isVisible ? prev.filter((widgetId) => widgetId !== id) : [...prev, id];
+        const next = ensureCommandCenterWidget(
+          isVisible ? prev.filter((widgetId) => widgetId !== id) : [...prev, id]
+        );
         saveDashboardWidgetOrder(user?.id, next);
         toast({
           title: "Layout saved",
@@ -505,7 +365,7 @@ export default function Dashboard() {
                         <stat.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 zoho-accent" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] sm:text-[14px] text-muted-foreground leading-tight">{stat.label}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{stat.label}</p>
                         <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums leading-tight">{stat.value}</p>
                       </div>
                     </div>
@@ -543,11 +403,11 @@ export default function Dashboard() {
         return (
           <Card className="zoho-card p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-1.5">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
                 <CheckSquare className="w-4 h-4 zoho-accent shrink-0" />
                 To-Do
               </h3>
-              <Button variant="ghost" size="sm" className="h-7 text-[13px] text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/tasks")}>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/tasks")}>
                 View all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Button>
             </div>
@@ -572,8 +432,8 @@ export default function Dashboard() {
         return (
           <Card className="zoho-card p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[15px] font-semibold text-foreground">Recent Contacts</h3>
-              <Button variant="ghost" size="sm" className="h-7 text-[13px] text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/contacts")}>
+              <h3 className="text-base font-semibold text-foreground">Recent Contacts</h3>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/contacts")}>
                 View all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Button>
             </div>
@@ -586,8 +446,8 @@ export default function Dashboard() {
             ) : recentContacts.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border border-dashed border-border">
                 <Users className="w-8 h-8 shrink-0 text-muted-foreground opacity-80" />
-                <p className="text-[14px] text-muted-foreground text-center leading-snug">No contacts yet. Add your first contact.</p>
-                <Button size="sm" className="gap-1.5 h-8 text-[14px]" onClick={() => setContactDialogOpen(true)}>
+                <p className="text-xs text-muted-foreground text-center leading-snug">No contacts yet. Add your first contact.</p>
+                <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setContactDialogOpen(true)}>
                   <Users className="w-3.5 h-3.5" /> Add Contact
                 </Button>
               </div>
@@ -613,14 +473,14 @@ export default function Dashboard() {
         return (
           <Card className="zoho-card p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-1.5">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 zoho-accent shrink-0" />
-                Today's appointments
+                Upcoming appointments
               </h3>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-[13px] text-muted-foreground hover:text-foreground -mr-1"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1"
                 onClick={() => navigate("/appointments")}
               >
                 View all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -632,17 +492,17 @@ export default function Dashboard() {
                   <Skeleton key={i} className="h-12 w-full rounded-md" />
                 ))}
               </div>
-            ) : todaysAppointments.length === 0 ? (
+            ) : upcomingAppointments.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border border-dashed border-border">
                 <Calendar className="w-8 h-8 shrink-0 text-muted-foreground opacity-80" />
-                <p className="text-[14px] text-muted-foreground text-center leading-snug">No appointments scheduled for today.</p>
-                <Button size="sm" variant="outline" className="gap-1.5 h-8 text-[14px] border-border" onClick={() => navigate("/appointments")}>
+                <p className="text-xs text-muted-foreground text-center leading-snug">No upcoming appointments. Use the calendar or quick actions.</p>
+                <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs border-border" onClick={() => navigate("/appointments")}>
                   <Calendar className="w-3.5 h-3.5" /> Appointments
                 </Button>
               </div>
             ) : (
               <ul className="space-y-1.5">
-                {todaysAppointments.map((a) => (
+                {upcomingAppointments.map((a) => (
                   <li key={a.id}>
                     <button
                       type="button"
@@ -650,15 +510,13 @@ export default function Dashboard() {
                       onClick={() => navigate("/appointments")}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-foreground text-[14px] truncate">
-                          {contactNameById.get(a.contact_id ?? "") ?? a.title ?? "Appointment"}
-                        </p>
-                        <p className="text-[13px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <p className="font-medium text-foreground text-sm truncate">{a.title ?? "Appointment"}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3 shrink-0" />
                           {format(new Date(a.date), "EEE d MMM · h:mm a")}
                         </p>
                         {a.location?.trim() && (
-                          <p className="text-[13px] text-muted-foreground mt-0.5 flex items-start gap-1">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 flex items-start gap-1">
                             <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
                             <span className="line-clamp-2">{a.location}</span>
                           </p>
@@ -689,16 +547,16 @@ export default function Dashboard() {
         return (
           <Card className="zoho-card p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-1.5">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
                 <ListTodo className="w-4 h-4 zoho-accent shrink-0" />
                 Contact tasks
               </h3>
-              <Button variant="ghost" size="sm" className="h-7 text-[13px] text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/tasks")}>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground -mr-1" onClick={() => navigate("/tasks")}>
                 Open <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
               </Button>
             </div>
             {top.length === 0 ? (
-              <p className="text-[14px] text-muted-foreground leading-relaxed">No open contact tasks.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">No open contact tasks.</p>
             ) : (
               <ul className="space-y-1">
                 {top.map((t) => {
@@ -723,7 +581,7 @@ export default function Dashboard() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-foreground truncate">{name}</p>
-                          <p className="text-[13px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">
                             {fromSequence ? (
                               <span className="font-medium text-primary/90">Sequence · </span>
                             ) : null}
@@ -752,23 +610,23 @@ export default function Dashboard() {
       case "quickActions":
         return (
           <Card className="zoho-card p-3">
-            <h3 className="text-[15px] font-semibold text-foreground mb-2">Quick Actions</h3>
+            <h3 className="text-base font-semibold text-foreground mb-2">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2 justify-items-stretch">
               <button onClick={() => setContactDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
                 <Users className="w-3.5 h-3.5 zoho-accent shrink-0" />
-                <span className="text-[14px] font-medium leading-tight">Add Contact</span>
+                <span className="text-xs font-medium leading-tight">Add Contact</span>
               </button>
               <button onClick={() => setLeadDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
                 <Megaphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-[14px] font-medium leading-tight">Add Lead</span>
+                <span className="text-xs font-medium leading-tight">Add Lead</span>
               </button>
               <button onClick={() => setAppointmentDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
                 <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <span className="text-[14px] font-medium leading-tight">Schedule</span>
+                <span className="text-xs font-medium leading-tight">Schedule</span>
               </button>
               <button onClick={() => setPostDialogOpen(true)} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background text-left">
                 <Home className="w-3.5 h-3.5 zoho-accent shrink-0" />
-                <span className="text-[14px] font-medium leading-tight">Create Post</span>
+                <span className="text-xs font-medium leading-tight">Create Post</span>
               </button>
             </div>
           </Card>
@@ -780,45 +638,13 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in flex min-h-0 flex-1 flex-col gap-4 pb-6">
-      <CommandStrip
-        greeting={greeting}
-        displayName={displayName}
-        pills={[
-          {
-            key: "touch",
-            label: "contacts due for touch",
-            value: contactsDueForTouch,
-            onClick: () => navigate("/contacts"),
-          },
-          {
-            key: "appointments",
-            label: "appointments today",
-            value: todaysAppointments.length,
-            onClick: () => navigate("/appointments"),
-          },
-          {
-            key: "nurture",
-            label: "nurture steps due today",
-            value: sequenceSummary.dueToday,
-            onClick: () => navigate("/nurture"),
-          },
-        ]}
-        onQuickAdd={() => setQuickAddDialogOpen(true)}
-        onOpenVisionBoard={() => navigate("/vision-board")}
-      />
+      <DashboardWelcomeHeader />
 
-      <PriorityFocusCard
-        tone={priorityFocus.tone}
-        message={priorityFocus.message}
-        primaryAction={priorityFocus.primaryAction}
-        secondaryAction={priorityFocus.secondaryAction}
-      />
-
-      <p className="text-[13px] text-muted-foreground/85 flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1">
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[13px] text-foreground/85">
+      <p className="text-[11px] text-muted-foreground/85 flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] text-foreground/85">
           Widgets are draggable. Layout is saved for this account.
         </span>
-        <Button type="button" variant="outline" size="sm" className="h-7 text-[13px]" onClick={() => setManageWidgetsOpen(true)}>
+        <Button type="button" variant="outline" size="sm" className="h-6 text-[11px]" onClick={() => setManageWidgetsOpen(true)}>
           Manage widgets
         </Button>
       </p>
@@ -845,7 +671,14 @@ export default function Dashboard() {
               onDragCancel={handleDragCancel}
             >
               <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 gap-4">
+                <div
+                  className={cn(
+                    /* Balanced multi-column: short tiles stack under tall ones instead of leaving row gaps */
+                    "columns-1 lg:columns-2 [column-fill:balance] gap-x-3 lg:gap-x-4",
+                    /* Stretch the column set so both columns share one bottom edge with the viewport */
+                    "min-h-[calc(100dvh-14rem)] sm:min-h-[calc(100dvh-15rem)] lg:min-h-[calc(100dvh-16rem)]"
+                  )}
+                >
                   {widgetOrder.map((id) => (
                     <SortableWidget key={id} id={id} onRemove={handleRemoveWidget}>
                       {renderWidget(id)}
@@ -874,63 +707,6 @@ export default function Dashboard() {
       )}
 
       {/* Dialogs */}
-      <Dialog open={quickAddDialogOpen} onOpenChange={setQuickAddDialogOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-popover border-border" aria-describedby="quick-add-desc">
-          <DialogHeader>
-            <DialogTitle>Quick Add</DialogTitle>
-            <DialogDescription id="quick-add-desc">
-              Choose what you want to add from the command centre.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-2 grid grid-cols-1 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start text-[14px]"
-              onClick={() => {
-                setQuickAddDialogOpen(false);
-                setContactDialogOpen(true);
-              }}
-            >
-              Add Contact
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start text-[14px]"
-              onClick={() => {
-                setQuickAddDialogOpen(false);
-                setLeadDialogOpen(true);
-              }}
-            >
-              Add Lead
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start text-[14px]"
-              onClick={() => {
-                setQuickAddDialogOpen(false);
-                setAppointmentDialogOpen(true);
-              }}
-            >
-              Schedule Appointment
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start text-[14px]"
-              onClick={() => {
-                setQuickAddDialogOpen(false);
-                setPostDialogOpen(true);
-              }}
-            >
-              Create Post
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
         <DialogContent className="sm:max-w-[400px] bg-popover border-border" aria-describedby="add-contact-desc">
           <DialogHeader>
@@ -1048,21 +824,23 @@ export default function Dashboard() {
           <div className="mt-2 max-h-[60vh] overflow-y-auto space-y-2 pr-1">
             {DASHBOARD_WIDGET_IDS.map((id) => {
               const visible = widgetOrder.includes(id);
+              const locked = id === "commandCenter";
               return (
                 <div key={id} className="flex items-center justify-between rounded-md border border-border/70 bg-card/40 px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">{DASHBOARD_WIDGET_LABELS[id] ?? id}</p>
-                    <p className="text-[13px] text-muted-foreground">
-                      {visible ? "Currently visible" : "Currently hidden"}
+                    <p className="text-xs text-muted-foreground">
+                      {locked ? "Always shown" : visible ? "Currently visible" : "Currently hidden"}
                     </p>
                   </div>
                   <Button
                     type="button"
                     size="sm"
                     variant={visible ? "secondary" : "outline"}
+                    disabled={locked}
                     onClick={() => handleToggleWidgetVisibility(id)}
                   >
-                    {visible ? "Hide" : "Show"}
+                    {locked ? "Locked" : visible ? "Hide" : "Show"}
                   </Button>
                 </div>
               );

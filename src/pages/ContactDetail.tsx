@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Badge } from "@/components/ui/badge";
@@ -278,6 +279,7 @@ export default function ContactDetail() {
     body: "",
   });
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const [printIncludeDob, setPrintIncludeDob] = useState(false);
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [activitySectionOpen, setActivitySectionOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -674,17 +676,26 @@ export default function ContactDetail() {
               <iframe
                 ref={printFrameRef}
                 title="Print preview"
-                src={id ? `/contacts/${id}/print` : undefined}
+                src={id ? `/contacts/${id}/print${printIncludeDob ? "?dob=1" : ""}` : undefined}
                 className="w-full h-full min-h-[60vh] border-0 bg-white"
               />
             </div>
-            <div className="flex justify-end gap-2 flex-shrink-0">
-              <Button variant="outline" onClick={() => setPrintPreviewOpen(false)}>
-                Close
-              </Button>
-              <Button onClick={handlePrintFromPreview} className="gap-2">
-                <Printer className="w-4 h-4" /> Print
-              </Button>
+            <div className="flex items-center justify-between flex-shrink-0">
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                <Checkbox
+                  checked={printIncludeDob}
+                  onCheckedChange={(checked) => setPrintIncludeDob(Boolean(checked))}
+                />
+                Include date of birth
+              </label>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setPrintPreviewOpen(false)}>
+                  Close
+                </Button>
+                <Button onClick={handlePrintFromPreview} className="gap-2">
+                  <Printer className="w-4 h-4" /> Print
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

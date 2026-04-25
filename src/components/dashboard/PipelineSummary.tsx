@@ -48,11 +48,11 @@ export function PipelineSummary() {
   return (
     <Card className="zoho-card p-3">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[15px] font-semibold text-foreground">Deal Pipeline</h3>
+        <h3 className="text-base font-semibold text-foreground">Deal Pipeline</h3>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-[13px] text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-1"
+          className="h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-white/10 -mr-1"
           onClick={() => navigate("/pipeline")}
         >
           View all <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -61,7 +61,7 @@ export function PipelineSummary() {
 
       {total === 0 ? (
         <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border border-dashed border-white/10">
-          <p className="text-[14px] text-muted-foreground text-center">
+          <p className="text-sm text-muted-foreground text-center">
             No deals in the pipeline yet.
           </p>
           <Button
@@ -81,8 +81,8 @@ export function PipelineSummary() {
             return (
               <div key={stage.key}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[14px] text-muted-foreground">{stage.label}</span>
-                  <span className="text-[14px] font-medium text-foreground">{count}</span>
+                  <span className="text-sm text-muted-foreground">{stage.label}</span>
+                  <span className="text-sm font-medium text-foreground">{count}</span>
                 </div>
                 <div className="h-2 bg-secondary rounded-full overflow-hidden">
                   <div
@@ -94,8 +94,8 @@ export function PipelineSummary() {
             );
           })}
           <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-            <span className="text-[13px] text-muted-foreground">Total deals</span>
-            <span className="text-[14px] font-bold text-foreground">{total}</span>
+            <span className="text-xs text-muted-foreground">Total deals</span>
+            <span className="text-sm font-bold text-foreground">{total}</span>
           </div>
         </div>
       )}
