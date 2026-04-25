@@ -102,7 +102,10 @@ import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDial
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
 import { MergeContactsDialog } from "@/components/contacts/MergeContactsDialog";
 import { ContactRowQuickActions } from "@/components/contacts/ContactRowQuickActions";
+import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { getDaysSinceLastTouch, getLastTouchDate } from "@/lib/contactLastTouch";
+import { openLogTouch } from "@/lib/openLogTouch";
+import { useCreateContactTask } from "@/hooks/useContactTasks";
 import {
   CONTACT_SMART_LISTS,
   parseSmartListParam,
@@ -330,6 +333,13 @@ function getTouchBadgeClasses(daysSinceTouch: number | null): string {
   return "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30";
 }
 
+function formatLastTouchLabel(daysSinceTouch: number | null): string {
+  if (daysSinceTouch == null) return "Last touch: not yet";
+  if (daysSinceTouch <= 0) return "Last touch: today";
+  if (daysSinceTouch === 1) return "Last touch: 1 day ago";
+  return `Last touch: ${daysSinceTouch} days ago`;
+}
+
 const createEmptyContact = () => ({
   name: "",
   phone: "",
@@ -425,6 +435,7 @@ export default function Contacts() {
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
+  const createContactTask = useCreateContactTask();
   const createTag = useCreateTag();
   const addContactTag = useAddContactTag();
   const removeContactTag = useRemoveContactTag();
@@ -455,6 +466,12 @@ export default function Contacts() {
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
+  const [quickTaskOpen, setQuickTaskOpen] = useState(false);
+  const [quickTaskContact, setQuickTaskContact] = useState<ContactWithMeta | null>(null);
+  const [quickTaskTitle, setQuickTaskTitle] = useState("Follow up");
+  const [quickSmsOpen, setQuickSmsOpen] = useState(false);
+  const [quickSmsContact, setQuickSmsContact] = useState<ContactWithMeta | null>(null);
+  const [quickSmsTo, setQuickSmsTo] = useState("");
   const [scriptQuickContact, setScriptQuickContact] = useState<{ id: string; category: string | null } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
@@ -1388,6 +1405,33 @@ export default function Contacts() {
     </div>
   );
 
+  const handleCreateQuickTask = () => {
+    if (!quickTaskContact) return;
+    const title = quickTaskTitle.trim();
+    if (!title) {
+      toast({ title: "Task title required", description: "Enter a task title before saving.", variant: "destructive" });
+      return;
+    }
+    createContactTask.mutate(
+      { contact_id: quickTaskContact.id, title },
+      {
+        onSuccess: () => {
+          toast({ title: "Task created", description: `Added for ${getContactDisplayName(quickTaskContact)}.` });
+          setQuickTaskOpen(false);
+          setQuickTaskContact(null);
+          setQuickTaskTitle("Follow up");
+        },
+        onError: (error) => {
+          toast({
+            title: "Could not create task",
+            description: error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
   function renderContactListRow(contact: ContactWithMeta) {
     if (!contact?.id) return null;
     const primaryEmail = getPrimaryEmail(contact);
@@ -1490,77 +1534,135 @@ export default function Contacts() {
 
   function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid") {
     if (!contact?.id) return null;
-    const primaryEmail = getPrimaryEmail(contact);
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
-    const linkedProperty = getLinkedPropertyAddress(contact);
     const effectiveCategory = getEffectiveCategory(contact);
-    const lastTouch = getLastTouchDate(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
+    const displayName = getContactDisplayName(contact);
     const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
-    const isCompact = _layout === "list" || _layout === "grid";
+    const sourceLabel = String(contact.source ?? "").trim();
+    const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
+    const nextTouch = nextTouchRaw ? new Date(nextTouchRaw) : null;
+    const now = new Date();
+    const isOverdueByNextTouch = Boolean(nextTouch && isValid(nextTouch) && nextTouch.getTime() < now.getTime());
+    const isOverdueForTouch = isOverdueByNextTouch || (daysSinceTouch != null && daysSinceTouch >= 14);
+    const scoreValue = contact.lead_score;
 
-    const actionButtons = listActionButtons(contact);
+    const temperature = normalizeLeadTemperature(contact.lead_temperature);
+    const avatarRingClass = temperature.includes("hot")
+      ? "ring-2 ring-amber-400"
+      : temperature.includes("warm")
+        ? "ring-2 ring-teal-400"
+        : temperature.includes("cold")
+          ? "ring-2 ring-gray-300"
+          : "";
 
-    const cardClass =
-      "group flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-border hover:bg-accent/50 transition-all duration-200 cursor-pointer zoho-card";
+    const baseCardClass =
+      "group relative flex h-[80px] cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-all duration-200 hover:shadow-sm hover:-translate-y-[1px]";
+    const stateCardClass = selectedContactIds.has(contact.id)
+      ? "border-l-[3px] border-l-primary"
+      : isOverdueByNextTouch
+        ? "border-l-[3px] border-l-amber-400"
+        : "";
+
+    const handleCallClick = (e: { stopPropagation: () => void }) => {
+      e.stopPropagation();
+      openLogTouch({ contactId: contact.id });
+    };
+
+    const handleSmsClick = (e: { stopPropagation: () => void }) => {
+      e.stopPropagation();
+      if (primaryPhone) {
+        setQuickSmsContact(contact);
+        setQuickSmsTo(primaryPhone);
+        setQuickSmsOpen(true);
+      } else {
+        openLogTouch({ contactId: contact.id });
+      }
+    };
+
+    const handleTaskClick = (e: { stopPropagation: () => void }) => {
+      e.stopPropagation();
+      setQuickTaskContact(contact);
+      setQuickTaskTitle("Follow up");
+      setQuickTaskOpen(true);
+    };
+
     return (
-      <div key={contact.id} className={cardClass} onClick={() => navigate(`/contacts/${contact.id}`)}>
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size={isCompact ? "sm" : "md"} />
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("font-medium text-foreground", isCompact && "text-sm")}>{getContactDisplayName(contact)}</span>
-              {effectiveCategory && (
-                <span className="text-xs text-muted-foreground">{getCategoryLabel({ category: effectiveCategory })}</span>
-              )}
-              {tagNames.length > 0 && (
-                <span className="flex flex-wrap gap-1">
-                  {tagNames.map((t) => (
-                    <Badge key={t} variant="secondary" className="text-xs font-normal">
-                      {t}
-                    </Badge>
-                  ))}
-                </span>
-              )}
-            </div>
-            <div className={cn("flex flex-wrap items-center gap-3 mt-0.5 text-muted-foreground", isCompact ? "text-xs" : "text-sm")}>
-              {primaryPhone && (
-                <span className="flex items-center gap-1">
-                  <Phone className="w-3 h-3" />
-                  {formatPhoneDisplay(primaryPhone)}
-                </span>
-              )}
-              {primaryEmail && (
-                <span className="flex items-center gap-1">
-                  <Mail className="w-3 h-3" />
-                  {primaryEmail}
-                </span>
-              )}
-              {contact.source && (
-                <span className="text-xs bg-secondary px-2 py-0.5 rounded">{contact.source}</span>
-              )}
-              <span className={cn("text-[10px] px-2 py-0.5 rounded-full", getTouchBadgeClasses(daysSinceTouch))}>
-                {daysSinceTouch == null ? "No touch yet" : `${daysSinceTouch}d since touch`}
+      <div key={contact.id} className={cn(baseCardClass, stateCardClass)} onClick={() => navigate(`/contacts/${contact.id}`)}>
+        <div className="flex w-12 shrink-0 items-center justify-center">
+          <AvatarCircle
+            name={displayName}
+            initials={initials}
+            size="md"
+            className={cn("h-10 w-10 text-[13px]", avatarRingClass)}
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[15px] font-semibold text-foreground">{displayName}</span>
+            {isOverdueForTouch ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" /> : null}
+          </div>
+
+          <div className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+            {effectiveCategory ? (
+              <span className="inline-flex max-w-[160px] truncate rounded-full border border-border/80 px-2 py-0.5 text-[11px]">
+                {getCategoryLabel({ category: effectiveCategory })}
               </span>
-              <span className="text-xs">{lastTouch ? format(lastTouch, "d MMM") : "—"}</span>
-              {contact.lead_score != null && (
-                <span className="text-xs tabular-nums text-muted-foreground">Score {contact.lead_score}</span>
-              )}
-              {(contact as { next_touch_date?: string | null }).next_touch_date ? (
-                <span className="text-xs text-muted-foreground">
-                  Next {formatOptionalIsoDate((contact as { next_touch_date?: string | null }).next_touch_date)}
-                </span>
+            ) : null}
+            {sourceLabel ? (
+              <>
+                {effectiveCategory ? <span className="h-1 w-1 rounded-full bg-muted-foreground/60" /> : null}
+                <span className="truncate">{sourceLabel}</span>
+              </>
+            ) : null}
+          </div>
+
+          <div className="flex min-w-0 items-center gap-2 text-[12px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 truncate">
+              <Clock className="h-3 w-3 shrink-0" />
+              {formatLastTouchLabel(daysSinceTouch)}
+            </span>
+            {nextTouch && isValid(nextTouch) && nextTouch.getTime() > now.getTime() ? (
+              <span className="truncate">Next: {format(nextTouch, "MMM d")}</span>
+            ) : null}
+          </div>
+
+          {tagNames.length > 0 ? (
+            <div className="flex min-w-0 items-center gap-1">
+              {tagNames.slice(0, 2).map((t) => (
+                <Badge key={t} variant="secondary" className="px-2 py-0 text-[11px] font-normal">
+                  {t}
+                </Badge>
+              ))}
+              {tagNames.length > 2 ? (
+                <span className="text-[12px] text-muted-foreground">+{tagNames.length - 2} more</span>
               ) : null}
-              {(contact.active_crm_workflow_count ?? 0) > 0 ? (
-                <span className="text-xs tabular-nums text-muted-foreground" title="Active CRM workflows">
-                  CRM {contact.active_crm_workflow_count}
-                </span>
-              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex w-[110px] shrink-0 items-center justify-end">
+          <div className="flex flex-col items-end gap-1">
+            {scoreValue != null ? (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[12px] font-medium tabular-nums text-foreground">
+                {scoreValue}
+              </span>
+            ) : null}
+            <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCallClick} title="Log call touch">
+                <Phone className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSmsClick} title="Send SMS">
+                <MessageSquare className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleTaskClick} title="Create task">
+                <CheckSquare className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
         </div>
-        {actionButtons}
       </div>
     );
   }
@@ -2542,7 +2644,7 @@ export default function Contacts() {
             {filteredAndSortedContacts.length} contacts
           </p>
           {contactView === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 gap-1">
               {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
             </div>
           ) : (
@@ -2671,6 +2773,52 @@ export default function Contacts() {
         onOpenChange={setBulkSmsOpen}
         contactIds={[...selectedContactIds]}
         onComplete={() => setSelectedContactIds(new Set())}
+      />
+
+      <Dialog open={quickTaskOpen} onOpenChange={setQuickTaskOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create task</DialogTitle>
+            <DialogDescription>
+              Add a quick task for {quickTaskContact ? getContactDisplayName(quickTaskContact) : "this contact"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="quick-task-title">Task title</Label>
+            <Input
+              id="quick-task-title"
+              className="bg-input"
+              value={quickTaskTitle}
+              onChange={(e) => setQuickTaskTitle(e.target.value)}
+              placeholder="Follow up"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setQuickTaskOpen(false);
+                setQuickTaskContact(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleCreateQuickTask} disabled={createContactTask.isPending}>
+              {createContactTask.isPending ? "Creating..." : "Create task"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <SendSmsDialog
+        open={quickSmsOpen}
+        onOpenChange={setQuickSmsOpen}
+        to={quickSmsTo}
+        contactId={quickSmsContact?.id}
+        contactName={quickSmsContact ? getContactDisplayName(quickSmsContact) : undefined}
+        firstName={quickSmsContact?.first_name}
+        lastName={quickSmsContact?.last_name}
       />
 
       <ContactScriptQuickSheet
