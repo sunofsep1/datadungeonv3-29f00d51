@@ -4,7 +4,8 @@ import { PerformanceMetricCard } from "@/components/performance/PerformanceMetri
 import type { PerformanceChartDataPoint } from "@/components/performance/PerformanceChart";
 import { DateRangePicker, getDefaultDateRange, type DateRange } from "@/components/performance/DateRangePicker";
 import { ExportReportButton, type ExportRow } from "@/components/performance/ExportReportButton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -191,12 +192,12 @@ export default function Performance() {
       />
 
       <Tabs value={tab} onValueChange={onTabChange} className="space-y-6">
-        <TabsList className="bg-white/10 border border-white/10">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="numbers">Daily Numbers</TabsTrigger>
-          <TabsTrigger value="goals">Goals & Targets</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+        <SegmentedTabsList className="grid-cols-2 md:grid-cols-4">
+          <SegmentedTabsTrigger value="overview">Overview</SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="numbers">Daily Numbers</SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="goals">Goals & Targets</SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="analytics">Analytics</SegmentedTabsTrigger>
+        </SegmentedTabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="flex flex-wrap items-center gap-4 justify-between">

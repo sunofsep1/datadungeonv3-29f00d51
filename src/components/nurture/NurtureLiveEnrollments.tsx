@@ -67,9 +67,17 @@ function stepTypeLabel(t: string | null) {
 export type NurtureLiveEnrollmentsProps = {
   /** Dashboard widget: compact list; Nurture page: show more rows */
   variant: "dashboard" | "page";
+  /** When the parent page shows its own stat row, hide the duplicate 4-tile summary inside this card */
+  hideSummaryGrid?: boolean;
+  /** When the parent highlights due counts, hide the extra amber “due now” line */
+  hideDueBanner?: boolean;
 };
 
-export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps) {
+export function NurtureLiveEnrollments({
+  variant,
+  hideSummaryGrid = false,
+  hideDueBanner = false,
+}: NurtureLiveEnrollmentsProps) {
   const compactNurtureV2 = isFeatureEnabled("compactNurtureV2");
   const navigate = useNavigate();
   const {
@@ -182,23 +190,34 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
     <Card
       className={cn(
         "zoho-card flex flex-col border-primary/15 bg-gradient-to-b from-primary/[0.03] to-transparent",
-        dash ? "p-3" : "p-4 md:p-6",
-        variant === "page" && "mb-6"
+        dash ? "p-3" : "p-3 md:p-4",
       )}
     >
       <div className={cn("flex flex-col sm:flex-row sm:items-start sm:justify-between", dash ? "gap-2 mb-2" : "gap-3 mb-3")}>
-        <div className="min-w-0">
-          <h3 className={cn("font-semibold text-foreground flex items-center gap-1.5 flex-wrap", dash ? "text-base" : "text-lg")}>
-            <Sparkles className={cn("text-primary shrink-0", dash ? "w-4 h-4" : "w-5 h-5")} />
-            {variant === "page" ? "Live pipeline" : "Nurture sequences"}
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-foreground flex flex-wrap items-center gap-x-2 gap-y-1.5 text-base">
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles className={cn("text-primary shrink-0", dash ? "w-4 h-4" : "w-4 h-4")} />
+              {variant === "page" ? "Live pipeline" : "Nurture sequences"}
+            </span>
             {dueCount > 0 && (
-              <Badge variant="destructive" className={cn("font-normal gap-1 shrink-0", dash && "text-[10px] px-1.5 py-0")}>
-                <Bell className="w-3 h-3" />
-                {dueCount} need attention
+              <Badge
+                variant="destructive"
+                className={cn(
+                  "max-w-full shrink font-normal gap-1 whitespace-normal text-left leading-snug sm:max-w-[14rem]",
+                  dash ? "text-[10px] px-1.5 py-0" : "text-[11px] px-2 py-0.5",
+                )}
+              >
+                <Bell className="w-3 h-3 shrink-0" />
+                <span>
+                  {dueCount} need attention
+                </span>
               </Badge>
             )}
           </h3>
-          {!dash ? <p className="text-xs text-muted-foreground mt-1 max-w-xl">Open {contactsHint} to work steps.</p> : null}
+          {!dash ? (
+            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xl">Open {contactsHint} for full context.</p>
+          ) : null}
           {dataUpdatedAt > 0 && (
             <p className="text-[10px] text-muted-foreground/80 mt-0.5">
               Updated {format(new Date(dataUpdatedAt), "d MMM, h:mm a")}
@@ -231,30 +250,54 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
       </div>
 
       {!dash && compactNurtureV2 ? (
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="mb-3 flex flex-col gap-2 sm:gap-3">
           <input
-            className="h-8 rounded-md border border-border bg-input px-2 text-sm"
-            placeholder="Search contact or sequence..."
+            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm shadow-sm"
+            placeholder="Search contact or sequence…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")}>All</Button>
-            <Button size="sm" variant={statusFilter === "due" ? "default" : "outline"} onClick={() => setStatusFilter("due")}>Due</Button>
-            <Button size="sm" variant={statusFilter === "paused" ? "default" : "outline"} onClick={() => setStatusFilter("paused")}>Paused</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                size="sm"
+                className="h-9 min-w-[4.25rem]"
+                variant={statusFilter === "all" ? "default" : "outline"}
+                onClick={() => setStatusFilter("all")}
+              >
+                All
+              </Button>
+              <Button
+                size="sm"
+                className="h-9 min-w-[4.25rem]"
+                variant={statusFilter === "due" ? "default" : "outline"}
+                onClick={() => setStatusFilter("due")}
+              >
+                Due
+              </Button>
+              <Button
+                size="sm"
+                className="h-9 min-w-[4.25rem]"
+                variant={statusFilter === "paused" ? "default" : "outline"}
+                onClick={() => setStatusFilter("paused")}
+              >
+                Paused
+              </Button>
+            </div>
+            {dueRows.length > 0 && (
+              <Button
+                size="sm"
+                className="h-9 w-full sm:w-auto shrink-0"
+                variant={workSessionActive ? "secondary" : "default"}
+                onClick={() => {
+                  setWorkSessionActive((prev) => !prev);
+                  setWorkSessionIndex(0);
+                }}
+              >
+                {workSessionActive ? "End due session" : "Work through all due"}
+              </Button>
+            )}
           </div>
-          {dueRows.length > 0 && (
-            <Button
-              size="sm"
-              variant={workSessionActive ? "secondary" : "default"}
-              onClick={() => {
-                setWorkSessionActive((prev) => !prev);
-                setWorkSessionIndex(0);
-              }}
-            >
-              {workSessionActive ? "End due session" : "Work through all due"}
-            </Button>
-          )}
         </div>
       ) : null}
 
@@ -319,8 +362,8 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
         </div>
       )}
 
-      {!loading && sequenceSummary.activeTotal > 0 && (
-        <div className={cn("grid grid-cols-2 sm:grid-cols-4", dash ? "gap-1.5 mb-2" : "gap-2 mb-4")}>
+      {!hideSummaryGrid && !loading && sequenceSummary.activeTotal > 0 && (
+        <div className={cn("grid grid-cols-2 sm:grid-cols-4", dash ? "gap-1.5 mb-2" : "gap-2 mb-3")}>
           <div className={cn("rounded-md border border-border bg-background/60 text-center", dash ? "px-2 py-1.5" : "rounded-lg px-3 py-2")}>
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Active</p>
             <p className={cn("font-semibold text-foreground tabular-nums", dash ? "text-sm" : "text-lg")}>{sequenceSummary.activeTotal}</p>
@@ -342,8 +385,13 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
         </div>
       )}
 
-      {dueCount > 0 && !loading ? (
-        <p className={cn("text-amber-800 dark:text-amber-300/95 rounded-md border border-amber-500/25 bg-amber-500/10", dash ? "text-[11px] mb-2 px-2 py-1.5" : "text-xs mb-3 px-2.5 py-2")}>
+      {!hideDueBanner && dueCount > 0 && !loading ? (
+        <p
+          className={cn(
+            "text-amber-800 dark:text-amber-300/95 rounded-md border border-amber-500/25 bg-amber-500/10",
+            dash ? "text-[11px] mb-2 px-2 py-1.5" : "text-xs mb-3 px-2.5 py-2",
+          )}
+        >
           {dueCount} due now
         </p>
       ) : null}
@@ -351,7 +399,7 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
       {loading ? (
         <div className={dash ? "space-y-1.5" : "space-y-2"}>
           {[...Array(dash ? 3 : 4)].map((_, i) => (
-            <Skeleton key={i} className={cn("w-full rounded-lg", dash ? "h-14" : "h-[4.5rem]")} />
+            <Skeleton key={i} className={cn("w-full rounded-lg", dash ? "h-14" : variant === "page" ? "h-24" : "h-[4.5rem]")} />
           ))}
         </div>
       ) : top.length === 0 ? (
@@ -361,7 +409,7 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
           <div
             className={cn(
               "overflow-y-auto pr-1 -mr-1",
-              dash ? "space-y-1.5 max-h-[min(260px,42vh)]" : "space-y-2 max-h-[min(560px,65vh)]"
+              dash ? "space-y-1.5 max-h-[min(260px,42vh)]" : "space-y-2 max-h-[min(420px,52vh)]",
             )}
           >
             <ul className={dash ? "space-y-1.5" : "space-y-2"}>
@@ -379,75 +427,145 @@ export function NurtureLiveEnrollments({ variant }: NurtureLiveEnrollmentsProps)
                     ? `Step ${Math.min(row.current_step_index + 1, row.total_steps)} of ${row.total_steps}`
                     : "—";
                 const nextTitle = row.next_step_title?.replace(/^\[Sequence\]\s*/i, "").trim() || null;
+                const rowShell = cn(
+                  "w-full text-left flex flex-col rounded-lg border transition-colors",
+                  variant === "page" ? "gap-0 p-3" : dash ? "gap-0.5 p-2" : "gap-1 p-2.5",
+                  due
+                    ? "border-amber-500/60 bg-amber-500/5 hover:bg-amber-500/10"
+                    : dueSoon
+                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                      : "border-border hover:bg-muted/50",
+                );
+
                 return (
                   <li key={row.id}>
                     <button
                       type="button"
-                      className={cn(
-                        "w-full text-left flex flex-col rounded-lg border transition-colors",
-                        dash ? "gap-0.5 p-2" : "gap-1 p-2.5",
-                        due
-                          ? "border-amber-500/60 bg-amber-500/5 hover:bg-amber-500/10"
-                          : dueSoon
-                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                            : "border-border hover:bg-muted/50"
-                      )}
+                      className={rowShell}
                       onClick={() => navigate(`/contacts/${row.contact_id}?nurtureFocus=1`)}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5 min-w-0">
-                          {due && (
-                            <Bell className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden />
-                          )}
-                          {row.contactName}
-                        </span>
-                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{progress}</span>
-                          {row.next_step_type && (
-                            <span className="text-[10px] inline-flex items-center gap-0.5 uppercase tracking-wide border border-border rounded px-1.5 py-0.5 text-muted-foreground">
-                              {row.next_step_type === "email" ? (
-                                <Mail className="w-3 h-3" />
-                              ) : row.next_step_type === "sms" ? (
-                                <MessageSquare className="w-3 h-3" />
-                              ) : (
-                                <ListTodo className="w-3 h-3" />
+                      {variant === "page" ? (
+                        <>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                {due ? (
+                                  <Bell className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                                ) : null}
+                                <span className="truncate text-sm font-semibold text-foreground">{row.contactName}</span>
+                              </div>
+                              <p className="mt-1 truncate text-xs font-medium text-muted-foreground">{row.sequenceName}</p>
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+                              {due ? (
+                                <span className="rounded border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                                  Due
+                                </span>
+                              ) : null}
+                              {dueSoon && !due ? (
+                                <span className="rounded border border-primary/35 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                  Soon
+                                </span>
+                              ) : null}
+                              <span
+                                className={cn(
+                                  "max-w-[10.5rem] text-[11px] tabular-nums leading-tight text-muted-foreground",
+                                  due && "font-medium text-amber-800 dark:text-amber-300",
+                                )}
+                              >
+                                {nextLabel}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-2.5">
+                            <span className="text-[10px] tabular-nums text-muted-foreground">{progress}</span>
+                            {row.next_step_type ? (
+                              <span className="inline-flex items-center gap-0.5 rounded border border-border bg-muted/25 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                {row.next_step_type === "email" ? (
+                                  <Mail className="h-3 w-3" />
+                                ) : row.next_step_type === "sms" ? (
+                                  <MessageSquare className="h-3 w-3" />
+                                ) : (
+                                  <ListTodo className="h-3 w-3" />
+                                )}
+                                {stepTypeLabel(row.next_step_type)}
+                              </span>
+                            ) : null}
+                            {row.pause_followup_cadence ? (
+                              <span className="rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                Paused
+                              </span>
+                            ) : null}
+                          </div>
+                          {nextTitle ? (
+                            <p className="mt-2 border-t border-border/40 pt-2 text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                              Next: {nextTitle}
+                            </p>
+                          ) : null}
+                          {row.pause_followup_cadence && (row.pause_reason?.trim() || getPauseReason(row.id)) ? (
+                            <p className="mt-2 border-t border-amber-500/20 pt-2 text-[11px] leading-snug text-amber-900 line-clamp-2 dark:text-amber-200">
+                              Paused reason: {row.pause_reason?.trim() || getPauseReason(row.id)}
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+                              {due && (
+                                <Bell className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                               )}
-                              {stepTypeLabel(row.next_step_type)}
+                              {row.contactName}
                             </span>
-                          )}
-                          {due && (
-                            <span className="text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded px-1.5 py-0.5">
-                              Due
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                              <span className="text-[10px] tabular-nums text-muted-foreground">{progress}</span>
+                              {row.next_step_type && (
+                                <span className="inline-flex items-center gap-0.5 rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  {row.next_step_type === "email" ? (
+                                    <Mail className="h-3 w-3" />
+                                  ) : row.next_step_type === "sms" ? (
+                                    <MessageSquare className="h-3 w-3" />
+                                  ) : (
+                                    <ListTodo className="h-3 w-3" />
+                                  )}
+                                  {stepTypeLabel(row.next_step_type)}
+                                </span>
+                              )}
+                              {due && (
+                                <span className="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                                  Due
+                                </span>
+                              )}
+                              {dueSoon && !due && (
+                                <span className="rounded border border-primary/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                                  Soon
+                                </span>
+                              )}
+                              {row.pause_followup_cadence && (
+                                <span className="rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  Cadence paused
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                            <span className="truncate font-medium">{row.sequenceName}</span>
+                            <span className={cn("shrink-0 tabular-nums", due && "font-medium text-amber-800 dark:text-amber-300")}>
+                              {nextLabel}
                             </span>
+                          </div>
+                          {nextTitle && (
+                            <p className="mt-0.5 border-t border-border/50 pt-1.5 text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                              Next: {nextTitle}
+                            </p>
                           )}
-                          {dueSoon && !due && (
-                            <span className="text-[10px] font-medium uppercase tracking-wide text-primary border border-primary/30 rounded px-1.5 py-0.5">
-                              Soon
-                            </span>
-                          )}
-                          {row.pause_followup_cadence && (
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5">
-                              Cadence paused
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span className="truncate font-medium">{row.sequenceName}</span>
-                        <span className={cn("shrink-0 tabular-nums", due && "text-amber-800 dark:text-amber-300 font-medium")}>
-                          {nextLabel}
-                        </span>
-                      </div>
-                      {nextTitle && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug border-t border-border/50 pt-1.5 mt-0.5">
-                          Next: {nextTitle}
-                        </p>
-                      )}
-                      {row.pause_followup_cadence &&
-                        (row.pause_reason?.trim() || getPauseReason(row.id)) && (
-                        <p className="text-[11px] text-amber-900 dark:text-amber-200 border-t border-amber-500/25 pt-1.5 mt-0.5 line-clamp-2">
-                          Paused reason: {row.pause_reason?.trim() || getPauseReason(row.id)}
-                        </p>
+                          {row.pause_followup_cadence &&
+                            (row.pause_reason?.trim() || getPauseReason(row.id)) && (
+                              <p className="mt-0.5 border-t border-amber-500/25 pt-1.5 text-[11px] leading-snug text-amber-900 line-clamp-2 dark:text-amber-200">
+                                Paused reason: {row.pause_reason?.trim() || getPauseReason(row.id)}
+                              </p>
+                            )}
+                        </>
                       )}
                     </button>
                   </li>

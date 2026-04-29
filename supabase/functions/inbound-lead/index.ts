@@ -45,6 +45,45 @@ function splitName(full: string): { first: string; last: string } {
   return { first: parts[0]!, last: parts.slice(1).join(" ") };
 }
 
+function isPortalBuyerSource(source: string): boolean {
+  return /(realestate\.com\.au|realestate|rea|domain\.com\.au|domain)/i.test(source);
+}
+
+function parseBooleanLike(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value !== "string") return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "y";
+}
+
+function hasSellerLeadSignal(body: Record<string, unknown>): boolean {
+  const explicitFlagKeys = [
+    "has_seller_lead",
+    "seller_lead_attached",
+    "is_seller_lead",
+    "seller_intent",
+  ] as const;
+  for (const key of explicitFlagKeys) {
+    if (parseBooleanLike(body[key])) return true;
+  }
+
+  const leadType = typeof body.lead_type === "string" ? body.lead_type.trim().toLowerCase() : "";
+  if (leadType === "seller" || leadType === "seller_lead") return true;
+
+  const sellerIntentText = [
+    body.seller_context,
+    body.selling_intentions,
+    body.notes,
+    body.property_interest,
+  ]
+    .filter((v): v is string => typeof v === "string")
+    .join(" ")
+    .toLowerCase();
+
+  return /\b(seller|selling|sell|appraisal|list(?:ing)?\s+my\s+property)\b/i.test(sellerIntentText);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -126,6 +165,8 @@ Deno.serve(async (req) => {
   const budgetMax =
     typeof body.budget_max === "number" ? body.budget_max : typeof body.budget_max === "string" ? Number(body.budget_max) : null;
   const createContact = body.create_contact === false ? false : true;
+  const sellerLead = hasSellerLeadSignal(body);
+  const contactCategory = sellerLead ? "seller_lead" : isPortalBuyerSource(source) ? "active_buyer" : "warm_lead";
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -169,10 +210,12 @@ Deno.serve(async (req) => {
         phone,
         source,
         notes,
-        contact_category: "warm_lead",
+        contact_category: contactCategory,
         property_requirements: propertyInterest ? { summary: propertyInterest } : null,
         buying_budget_min: budgetMin != null && Number.isFinite(budgetMin) ? budgetMin : null,
         buying_budget_max: budgetMax != null && Number.isFinite(budgetMax) ? budgetMax : null,
+        selling_intentions:
+          sellerLead && propertyInterest ? `Seller context from enquiry: ${propertyInterest}` : null,
       })
       .select("id")
       .single();

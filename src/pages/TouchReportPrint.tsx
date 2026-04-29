@@ -121,46 +121,58 @@ export default function TouchReportPrint() {
         <div className="print-doc-hero" role="banner">
           <h1 className="print-doc-title">Touch Activity Report</h1>
           <p className="print-doc-subtitle">
-            {periodLabel} · {visibleRowsCount} touches across {visibleGroups.length} contacts · {scopeLabel}
+            Queensland Sotheby's International Realty · Greg Leigh · {periodLabel} · {visibleRowsCount} touches across {visibleGroups.length} contacts · {scopeLabel}
           </p>
           <div className="print-doc-hero-badges">
             <span className="print-badge">{periodLabel}</span>
+            <span className="print-badge print-badge-muted">{scopeLabel}</span>
           </div>
         </div>
 
         <div className="px-[22mm] py-5 space-y-4">
+          <section className="print-section">
+            <h3 className="print-section-title">Executive summary</h3>
+            <div className="print-prose">
+              <div className="print-row"><span className="print-label">Report scope</span><span className="print-value">{scopeLabel}</span></div>
+              <div className="print-row"><span className="print-label">Period</span><span className="print-value">{periodLabel}</span></div>
+              <div className="print-row"><span className="print-label">Total touches</span><span className="print-value">{visibleRowsCount}</span></div>
+              <div className="print-row"><span className="print-label">Contacts touched</span><span className="print-value">{visibleGroups.length}</span></div>
+            </div>
+          </section>
+
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading report...</p>
           ) : visibleGroups.length === 0 ? (
             <p className="text-sm text-muted-foreground">No touch activity found for this period.</p>
           ) : (
-            visibleGroups.map((group) => (
-              <section key={group.key} className="border border-border rounded-lg p-3 break-inside-avoid page-break-inside-avoid">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">{group.contactName}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {group.items.length} touch{group.items.length === 1 ? "" : "es"} · last{" "}
-                      {format(new Date(group.lastTouchedAt), "EEE d MMM, h:mm a")}
-                    </p>
-                  </div>
-                  {group.contactId ? (
-                    <span className="text-xs text-muted-foreground">Contact ID: {group.contactId.slice(0, 8)}</span>
-                  ) : null}
-                </div>
-                <div className="mt-3 space-y-2">
-                  {group.items.map((row) => (
-                    <div key={`${row.source}-${row.id}`} className="border border-border/70 rounded-md px-3 py-2">
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(row.occurred_at), "EEE d MMM, h:mm a")} · {formatTouchLabel(row.touch_type)} ·{" "}
-                        {row.source === "touches" ? "Touch log" : "Interaction"}
-                      </p>
-                      {row.notes ? <p className="text-sm mt-1">{row.notes}</p> : null}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))
+            <section className="print-section">
+              <h3 className="print-section-title">Action queue</h3>
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-1 text-left font-semibold">Contact</th>
+                    <th className="py-1 text-left font-semibold">Last touch</th>
+                    <th className="py-1 text-left font-semibold">Touch type</th>
+                    <th className="py-1 text-left font-semibold">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleGroups.flatMap((group) =>
+                    group.items.slice(0, 2).map((row, idx) => (
+                      <tr key={`${row.source}-${row.id}`} className="align-top border-b border-border/60">
+                        <td className="py-1.5 pr-2">
+                          <div className="font-medium">{group.contactName}</div>
+                          <div className="text-muted-foreground">{group.contactId ? `ID ${group.contactId.slice(0, 8)}` : ""}</div>
+                        </td>
+                        <td className="py-1.5 pr-2">{format(new Date(row.occurred_at), "d MMM yyyy, h:mm a")}</td>
+                        <td className="py-1.5 pr-2">{formatTouchLabel(row.touch_type)}{idx === 0 ? " (latest)" : ""}</td>
+                        <td className="py-1.5">{row.notes || "No note captured."}</td>
+                      </tr>
+                    )),
+                  )}
+                </tbody>
+              </table>
+            </section>
           )}
         </div>
 

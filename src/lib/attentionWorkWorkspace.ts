@@ -4,7 +4,7 @@
  */
 
 export type WorkWorkspaceSourceItem = {
-  kind: "sequenceTask" | "contactTask" | "todoTask" | "appointment" | "contactReminder";
+  kind: "sequenceTask" | "contactTask" | "todoTask" | "appointment";
   contactId?: string;
   contactTaskId?: string;
   todoId?: string;
@@ -30,13 +30,6 @@ function hrefForBaseWorkspace(item: WorkWorkspaceSourceItem, basePath: "/work" |
   if (item.kind === "appointment" && item.appointmentId) {
     const p = new URLSearchParams({ appointmentId: item.appointmentId });
     if (item.contactId) p.set("contactId", item.contactId);
-    return `${basePath}?${p.toString()}`;
-  }
-  if (item.kind === "contactReminder" && item.contactId) {
-    const p = new URLSearchParams({
-      contactId: item.contactId,
-      reminder: "1",
-    });
     return `${basePath}?${p.toString()}`;
   }
   return null;

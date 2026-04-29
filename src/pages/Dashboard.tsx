@@ -638,16 +638,18 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in flex min-h-0 flex-1 flex-col gap-4 pb-6">
-      <DashboardWelcomeHeader />
-
-      <p className="text-[11px] text-muted-foreground/85 flex flex-wrap items-center gap-x-2 gap-y-1 -mt-1">
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] text-foreground/85">
-          Widgets are draggable. Layout is saved for this account.
-        </span>
-        <Button type="button" variant="outline" size="sm" className="h-6 text-[11px]" onClick={() => setManageWidgetsOpen(true)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <DashboardWelcomeHeader />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 self-end text-[11px] sm:self-start"
+          onClick={() => setManageWidgetsOpen(true)}
+        >
           Manage widgets
         </Button>
-      </p>
+      </div>
 
       {widgetOrder.length === 0 ? (
         <Card className="zoho-card p-8 md:p-10 border-dashed border-border max-w-lg">

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 
@@ -38,54 +37,45 @@ export function DashboardWelcomeHeader() {
   const displayName = firstName ? firstName : "there";
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div>
-        {/* 80s/90s LED-style digital clock */}
-        <div className="inline-block">
+    <div>
+      {/* 80s/90s LED-style digital clock */}
+      <div className="inline-block">
+        <div
+          className="relative overflow-hidden rounded-lg px-5 py-3 bg-card border border-border shadow-inner"
+          style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.2)" }}
+        >
           <div
-            className="relative overflow-hidden rounded-lg px-5 py-3 bg-card border border-border shadow-inner"
-            style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.2)" }}
+            className="font-mono text-2xl sm:text-3xl font-bold tabular-nums tracking-[0.15em] text-teal dashboard-clock-glow"
+            style={{ fontFamily: "'Share Tech Mono', monospace" }}
+            aria-live="polite"
+            aria-label={`Current time ${format(now, "h:mm:ss a")}`}
           >
-            <div
-              className="font-mono text-2xl sm:text-3xl font-bold tabular-nums tracking-[0.15em] text-teal dashboard-clock-glow"
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}
-              aria-live="polite"
-              aria-label={`Current time ${format(now, "h:mm:ss a")}`}
-            >
-              {format(now, "h:mm:ss")}
-              <span className="ml-1.5 text-lg sm:text-xl font-medium opacity-90">
-                {format(now, "a")}
-              </span>
-            </div>
-            <div
-              className="mt-1 text-[10px] sm:text-xs font-medium tracking-widest uppercase text-muted-foreground"
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}
-            >
-              {format(now, "EEEE, MMM d")}
-            </div>
+            {format(now, "h:mm:ss")}
+            <span className="ml-1.5 text-lg sm:text-xl font-medium opacity-90">
+              {format(now, "a")}
+            </span>
+          </div>
+          <div
+            className="mt-1 text-[10px] sm:text-xs font-medium tracking-widest uppercase text-muted-foreground"
+            style={{ fontFamily: "'Share Tech Mono', monospace" }}
+          >
+            {format(now, "EEEE, MMM d")}
           </div>
         </div>
-        <p
-          className="mt-2.5 text-[15px] sm:text-base font-normal tracking-tight text-muted-foreground/90"
-          style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
-          aria-label={firstName ? `${greeting}, ${displayName}` : greeting}
-        >
-          {firstName ? (
-            <>
-              <span className="text-foreground/95">{greeting}</span>, {displayName}!
-            </>
-          ) : (
-            `${greeting}!`
-          )}
-        </p>
-        <p className="mt-1.5 text-xs text-muted-foreground max-w-md" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-          Daily command center: follow-ups, tasks, and what needs attention next. For dated KPIs, closings, and exports,{" "}
-          <Link to="/performance" className="text-primary underline underline-offset-2 hover:text-primary/90">
-            open Performance
-          </Link>
-          .
-        </p>
       </div>
+      <p
+        className="mt-2.5 text-[15px] sm:text-base font-normal tracking-tight text-muted-foreground/90"
+        style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
+        aria-label={firstName ? `${greeting}, ${displayName}` : greeting}
+      >
+        {firstName ? (
+          <>
+            <span className="text-foreground/95">{greeting}</span>, {displayName}!
+          </>
+        ) : (
+          `${greeting}!`
+        )}
+      </p>
     </div>
   );
 }

@@ -22,7 +22,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Plus, Calendar, Clock, MapPin, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointments, useUpdateAppointment, useDeleteAppointment, type Appointment } from "@/hooks/useAppointments";
@@ -338,12 +339,12 @@ export default function Appointments() {
               </DialogHeader>
               <ScrollArea className="flex-1 pr-4">
                 <Tabs defaultValue="basic" className="mt-4">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="basic">Basic</TabsTrigger>
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="followup">Follow-up</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
-                  </TabsList>
+                  <SegmentedTabsList className="grid-cols-2 sm:grid-cols-4">
+                    <SegmentedTabsTrigger value="basic">Basic</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="details">Details</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="followup">Follow-up</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="settings">Settings</SegmentedTabsTrigger>
+                  </SegmentedTabsList>
                   <TabsContent value="basic" className="space-y-4 mt-4">
                     <div className="space-y-2">
                     <Label>Title *</Label>

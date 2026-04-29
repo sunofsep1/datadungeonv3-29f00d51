@@ -28,6 +28,7 @@ const Scripts = lazy(() => import("./pages/Scripts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const HotLeads = lazy(() => import("./pages/HotLeads"));
 const Nurture = lazy(() => import("./pages/Nurture"));
+const NurtureBacklogPrintPage = lazy(() => import("./pages/NurtureBacklogPrintPage"));
 const TodoList = lazy(() => import("./pages/TodoList"));
 const AttentionHub = lazy(() => import("./pages/AttentionHub"));
 const WorkWorkspace = lazy(() => import("./pages/WorkWorkspace"));
@@ -46,6 +47,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ContactPrintPage = lazy(() => import("./pages/ContactPrintPage"));
+const PropertyPrintPage = lazy(() => import("./pages/PropertyPrintPage"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
 const AIOps = lazy(() => import("./pages/AIOps"));
 const TouchReport = lazy(() => import("./pages/TouchReport"));
@@ -76,8 +78,10 @@ const App = () => (
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
+                <Route path="/nurture/print" element={<ProtectedRoute><NurtureBacklogPrintPage /></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactDetail /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/:id/print" element={<ProtectedRoute><ContactPrintPage /></ProtectedRoute>} />
+                <Route path="/properties/:id/print" element={<ProtectedRoute><PropertyPrintPage /></ProtectedRoute>} />
                 <Route path="/touch-report/print" element={<ProtectedRoute><TouchReportPrint /></ProtectedRoute>} />
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><ErrorBoundary><Appointments /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><ErrorBoundary><Calendar /></ErrorBoundary></MainLayout></ProtectedRoute>} />

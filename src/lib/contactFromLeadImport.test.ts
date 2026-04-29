@@ -50,4 +50,23 @@ describe("buildContactInsertFromLeadRow", () => {
     expect(p.source).toBe("csv_import");
     expect(Object.prototype.hasOwnProperty.call(p, "status")).toBe(false);
   });
+
+  it("maps REA/Domain lead sources to active buyer category", () => {
+    const row: LeadInsert = {
+      name: "Portal Buyer",
+      source: "realestate.com.au",
+    };
+    const p = buildContactInsertFromLeadRow(row, uid);
+    expect(p.contact_category).toBe("active_buyer");
+  });
+
+  it("maps seller-intent lead rows to seller lead category", () => {
+    const row: LeadInsert = {
+      name: "Potential Seller",
+      source: "domain.com.au",
+      notes: "Wants appraisal before listing",
+    };
+    const p = buildContactInsertFromLeadRow(row, uid);
+    expect(p.contact_category).toBe("seller_lead");
+  });
 });

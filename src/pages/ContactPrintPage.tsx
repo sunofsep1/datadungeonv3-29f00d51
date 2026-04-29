@@ -7,7 +7,6 @@ import { useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { format, isValid, parseISO } from "date-fns";
 import { THEME_HTML_CLASSES } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
 import { useContact } from "@/hooks/useContact";
 import { useProperties } from "@/hooks/useProperties";
 import { useContactTasks } from "@/hooks/useContactTasks";
@@ -26,7 +25,7 @@ import {
   type NurtureJourneyForPrint,
 } from "@/components/contacts/ContactPrintLayout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { X } from "lucide-react";
+import { PrintReportLayout } from "@/components/print/PrintReportLayout";
 
 export default function ContactPrintPage() {
   const { id } = useParams<{ id: string }>();
@@ -188,40 +187,25 @@ export default function ContactPrintPage() {
 
   if (isLoading) {
     return (
-      <div className="contact-print-page">
-        <div className="print-page-chrome print-only-hide">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+      <PrintReportLayout onClose={() => navigate(-1)}>
         <div className="contact-print-document">
           <Skeleton className="h-8 w-48 mb-6" />
           <Skeleton className="h-64 w-full" />
         </div>
-      </div>
+      </PrintReportLayout>
     );
   }
 
   if (isError || !contact) {
     return (
-      <div className="contact-print-page">
-        <div className="print-page-chrome print-only-hide">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+      <PrintReportLayout onClose={() => navigate(-1)}>
         <p className="p-6 text-muted-foreground">Contact not found.</p>
-      </div>
+      </PrintReportLayout>
     );
   }
 
   return (
-    <div className="contact-print-page">
-      <div className="print-page-chrome print-only-hide">
-        <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="gap-2">
-          <X className="w-4 h-4" /> Close
-        </Button>
-      </div>
+    <PrintReportLayout onClose={() => navigate(-1)}>
       <ContactPrintLayout
         contact={contact}
         linkedProperties={linkedProperties}
@@ -229,6 +213,6 @@ export default function ContactPrintPage() {
         includeDateOfBirth={includeDateOfBirth}
         printBrief={printBrief}
       />
-    </div>
+    </PrintReportLayout>
   );
 }

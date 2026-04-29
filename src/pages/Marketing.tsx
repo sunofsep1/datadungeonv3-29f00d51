@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Plus, Search, Calendar, FileText, Pencil, Trash2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePosts, useCreatePost, useUpdatePost, useDeletePost, Post } from "@/hooks/usePosts";
@@ -191,13 +192,23 @@ export default function Marketing() {
       />
 
       <Tabs defaultValue="budget" className="space-y-6">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="budget">Budget Calculator</TabsTrigger>
-          <TabsTrigger value="posts">Posts & Campaigns</TabsTrigger>
-          <TabsTrigger value="campaigns">Email Campaigns</TabsTrigger>
-          <TabsTrigger value="calendar">Content Calendar</TabsTrigger>
-          <TabsTrigger value="leads">Leads</TabsTrigger>
-        </TabsList>
+        <SegmentedTabsList className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          <SegmentedTabsTrigger value="budget" className="px-1.5 text-xs sm:px-2.5 sm:text-sm">
+            Budget Calculator
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="posts" className="px-1.5 text-xs sm:px-2.5 sm:text-sm">
+            Posts & Campaigns
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="campaigns" className="px-1.5 text-xs sm:px-2.5 sm:text-sm">
+            Email Campaigns
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="calendar" className="px-1.5 text-xs sm:px-2.5 sm:text-sm">
+            Content Calendar
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="leads" className="px-1.5 text-xs sm:px-2.5 sm:text-sm">
+            Leads
+          </SegmentedTabsTrigger>
+        </SegmentedTabsList>
 
         <TabsContent value="budget">
           <MarketingBudgetCalculator />

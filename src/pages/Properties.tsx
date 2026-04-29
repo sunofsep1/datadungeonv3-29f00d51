@@ -12,7 +12,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Building2, Search, Plus, LayoutGrid, List, Download, CheckSquare, Square, Upload, GitMerge } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -481,12 +482,12 @@ export default function Properties() {
               </div>
               <ScrollArea className="flex-1 pr-4">
                 <Tabs defaultValue="address" className="mt-4">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="address">Address</TabsTrigger>
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="owners">Owners</TabsTrigger>
-                    <TabsTrigger value="notes">Notes</TabsTrigger>
-                  </TabsList>
+                  <SegmentedTabsList className="grid-cols-2 sm:grid-cols-4">
+                    <SegmentedTabsTrigger value="address">Address</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="details">Details</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="owners">Owners</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="notes">Notes</SegmentedTabsTrigger>
+                  </SegmentedTabsList>
                   <TabsContent value="address" className="space-y-4 mt-4">
                     <div className="space-y-2">
                     <Label>Address Line 1 *</Label>

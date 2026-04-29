@@ -6,8 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { useTodos, useAddTodo, useUpdateTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
-import { useDueSequenceActions } from "@/hooks/useContactTasks";
-import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
+import { useDueSequenceActions, useUpdateContactTask } from "@/hooks/useContactTasks";
+import {
+  usePendingStepRunsByTaskIds,
+  useCompleteNurtureStepAndAdvance,
+  isNurtureNoActiveStepError,
+} from "@/hooks/useNurtureSequences";
 import { Plus, Trash2, Loader2, ListTodo, User } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -100,6 +104,7 @@ export default function TodoList() {
   const updateTodo = useUpdateTodo();
   const deleteTodo = useDeleteTodo();
   const completeAndAdvance = useCompleteNurtureStepAndAdvance();
+  const updateContactTask = useUpdateContactTask();
   const { data: pendingRuns = [] } = usePendingStepRunsByTaskIds(dueSequenceActions.map((t) => t.id));
   const pendingRunByTaskId = new Map(
     pendingRuns
@@ -162,16 +167,16 @@ export default function TodoList() {
             </div>
             <h2 className="font-semibold text-foreground">Tasks</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Add a task..."
-              className="bg-background border-border flex-1"
+              className="h-9 flex-1 min-w-[140px] bg-background border-border"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
             <select
-              className="h-10 rounded-md border border-border bg-background px-2 text-sm"
+              className="h-9 rounded-md border border-border bg-background px-2 text-sm"
               value={newPriority}
               onChange={(e) => setNewPriority(e.target.value as Todo["priority"])}
             >
@@ -183,10 +188,10 @@ export default function TodoList() {
               type="date"
               value={newDueDate}
               onChange={(e) => setNewDueDate(e.target.value)}
-              className="bg-background border-border w-[150px]"
+              className="h-9 w-[150px] bg-background border-border"
             />
             <select
-              className="h-10 rounded-md border border-border bg-background px-2 text-sm"
+              className="h-9 rounded-md border border-border bg-background px-2 text-sm"
               value={newRecurrence}
               onChange={(e) => setNewRecurrence(e.target.value as Todo["recurrence"])}
             >
@@ -253,11 +258,31 @@ export default function TodoList() {
                                     enrollment_id: run.enrollment_id,
                                     step_run_id: run.id,
                                     contact_id: task.contact_id,
+                                    contact_task_id: task.id,
                                     outcome: "completed",
                                   },
                                   {
                                     onSuccess: () => toast.success("Step completed. Next step scheduled."),
-                                    onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                                    onError: (e) => {
+                                      if (isNurtureNoActiveStepError(e)) {
+                                        updateContactTask.mutate(
+                                          {
+                                            id: task.id,
+                                            contact_id: task.contact_id,
+                                            completed_at: new Date().toISOString(),
+                                          },
+                                          {
+                                            onSuccess: () =>
+                                              toast.success(
+                                                "Task marked done. The nurture sequence had already moved on.",
+                                              ),
+                                            onError: (e2) => toast.error(errorMessageFromUnknown(e2)),
+                                          },
+                                        );
+                                        return;
+                                      }
+                                      toast.error(errorMessageFromUnknown(e));
+                                    },
                                   }
                                 )
                               }
@@ -274,11 +299,31 @@ export default function TodoList() {
                                     enrollment_id: run.enrollment_id,
                                     step_run_id: run.id,
                                     contact_id: task.contact_id,
+                                    contact_task_id: task.id,
                                     outcome: "skipped",
                                   },
                                   {
                                     onSuccess: () => toast.success("Step skipped. Sequence advanced."),
-                                    onError: (e) => toast.error(errorMessageFromUnknown(e)),
+                                    onError: (e) => {
+                                      if (isNurtureNoActiveStepError(e)) {
+                                        updateContactTask.mutate(
+                                          {
+                                            id: task.id,
+                                            contact_id: task.contact_id,
+                                            completed_at: new Date().toISOString(),
+                                          },
+                                          {
+                                            onSuccess: () =>
+                                              toast.success(
+                                                "Task marked done. The nurture sequence had already moved on.",
+                                              ),
+                                            onError: (e2) => toast.error(errorMessageFromUnknown(e2)),
+                                          },
+                                        );
+                                        return;
+                                      }
+                                      toast.error(errorMessageFromUnknown(e));
+                                    },
                                   }
                                 )
                               }

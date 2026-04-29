@@ -77,7 +77,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { format, isValid, parseISO } from "date-fns";
 import { openLogTouch } from "@/lib/openLogTouch";
 
@@ -110,7 +111,9 @@ type ContactClassificationCategory =
   | "referral_partner"
   | "hot_lead"
   | "warm_lead"
-  | "seller_nurture";
+  | "seller_nurture"
+  | "active_buyer"
+  | "seller_lead";
 
 const CONTACT_CLASSIFICATION_OPTIONS: Array<{ value: ContactClassificationCategory; label: string }> = [
   { value: "top_100", label: "Top 100" },
@@ -119,6 +122,8 @@ const CONTACT_CLASSIFICATION_OPTIONS: Array<{ value: ContactClassificationCatego
   { value: "hot_lead", label: "Hot Lead" },
   { value: "warm_lead", label: "Warm Lead" },
   { value: "seller_nurture", label: "Seller Nurture" },
+  { value: "active_buyer", label: "Active Buyer" },
+  { value: "seller_lead", label: "Seller Lead" },
 ];
 
 function normalizeContactCategory(value: string | null | undefined): ContactUrgencyCategory | null {
@@ -166,7 +171,9 @@ function normalizeContactClassificationCategory(
     raw === "referral_partner" ||
     raw === "hot_lead" ||
     raw === "warm_lead" ||
-    raw === "seller_nurture"
+    raw === "seller_nurture" ||
+    raw === "active_buyer" ||
+    raw === "seller_lead"
   ) {
     return raw as ContactClassificationCategory;
   }
@@ -1183,10 +1190,10 @@ export default function ContactDetail() {
             <DialogTitle>Edit Contact</DialogTitle>
           </DialogHeader>
           <Tabs defaultValue="core" className="mt-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="core">Core</TabsTrigger>
-              <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
-            </TabsList>
+            <SegmentedTabsList className="grid-cols-2">
+              <SegmentedTabsTrigger value="core">Core</SegmentedTabsTrigger>
+              <SegmentedTabsTrigger value="intelligence">Intelligence</SegmentedTabsTrigger>
+            </SegmentedTabsList>
 
             <TabsContent value="core" className="mt-4">
               <div className="grid grid-cols-2 gap-4">

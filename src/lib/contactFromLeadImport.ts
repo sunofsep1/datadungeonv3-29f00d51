@@ -9,6 +9,21 @@ export function splitDisplayName(full: string): { first: string; last: string } 
   return { first: parts[0]!, last: parts.slice(1).join(" ") };
 }
 
+function isPortalBuyerSource(source: string): boolean {
+  return /(realestate\.com\.au|realestate|rea|domain\.com\.au|domain)/i.test(source);
+}
+
+function inferContactCategoryFromLeadRow(row: LeadInsert): "active_buyer" | "seller_lead" | "warm_lead" {
+  const source = String(row.source ?? "").trim();
+  const notes = String(row.notes ?? "").toLowerCase();
+  const interest = String(row.property_interest ?? "").toLowerCase();
+  const status = String(row.status ?? "").toLowerCase();
+  const sellerSignal = /\b(seller|selling|sell|appraisal|listing)\b/i.test(`${notes} ${interest} ${status}`);
+  if (sellerSignal) return "seller_lead";
+  if (isPortalBuyerSource(source)) return "active_buyer";
+  return "warm_lead";
+}
+
 /**
  * Contact insert payload aligned with inbound-lead webhook (create_contact path).
  */
@@ -34,7 +49,7 @@ export function buildContactInsertFromLeadRow(row: LeadInsert, userId: string): 
     phone,
     source,
     notes,
-    contact_category: "warm_lead",
+    contact_category: inferContactCategoryFromLeadRow(row),
     property_requirements: propertyInterest ? { summary: propertyInterest } : null,
     buying_budget_min: budgetMin,
     buying_budget_max: budgetMax,

@@ -35,6 +35,7 @@ import {
   useCompleteNurtureEnrollment,
   usePendingStepRunsByTaskIds,
   useCompleteNurtureStepAndAdvance,
+  isNurtureNoActiveStepError,
   useSetNurtureEnrollmentCadencePaused,
   useAdvanceNurtureEnrollmentStep,
   NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY,
@@ -253,6 +254,7 @@ export function ContactNurturePanel({
         enrollment_id: engagementTarget.enrollment_id,
         step_run_id: engagementTarget.step_run_id,
         contact_id: contactId,
+        contact_task_id: engagementTarget.task_id,
         outcome: engagementOutcome,
         engagement_note: engagementBody,
       });
@@ -264,7 +266,8 @@ export function ContactNurturePanel({
     } catch (err) {
       const msg = errorMessageFromUnknown(err);
       const enrollmentAlreadyClosed = /enrollment not found or already completed/i.test(msg);
-      if (enrollmentAlreadyClosed && engagementTarget) {
+      const noActiveStep = isNurtureNoActiveStepError(err);
+      if ((enrollmentAlreadyClosed || noActiveStep) && engagementTarget) {
         try {
           await updateTask.mutateAsync({
             id: engagementTarget.task_id,
@@ -276,7 +279,9 @@ export function ContactNurturePanel({
           await queryClient.invalidateQueries({ queryKey: ["contact_tasks", contactId] });
           await queryClient.invalidateQueries({ queryKey: ["contact", contactId] });
           toast.success(
-            "That sequence step was already closed on the server. Your task is marked done and the list is refreshed.",
+            noActiveStep
+              ? "The nurture sequence had already moved on. Your task is marked done and the list is refreshed."
+              : "That sequence step was already closed on the server. Your task is marked done and the list is refreshed.",
           );
           setEngagementDialogOpen(false);
           setEngagementTarget(null);

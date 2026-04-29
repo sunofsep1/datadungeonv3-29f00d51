@@ -38,7 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight, Upload, ImageIcon, GripVertical, Trash2 } from "lucide-react";
+import { MapPin, ArrowLeft, Building2, Plus, Edit, ChevronLeft, ChevronRight, Upload, ImageIcon, GripVertical, Trash2, Printer } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -772,9 +772,14 @@ export default function PropertyDetail() {
           </h1>
           <p className="text-white/60 text-sm mt-0.5">Details and linked owners</p>
         </div>
-        <Button variant="outline" onClick={handleOpenEdit} className="gap-2">
-          <Edit className="w-4 h-4" /> Edit property
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate(`/properties/${id}/print`)} className="gap-2">
+            <Printer className="w-4 h-4" /> Print
+          </Button>
+          <Button variant="outline" onClick={handleOpenEdit} className="gap-2">
+            <Edit className="w-4 h-4" /> Edit property
+          </Button>
+        </div>
       </div>
 
       <PropertyContactsCard property={property} onLinkClick={handleOpenAddOwner} className="mb-6" contactsList={contacts} />

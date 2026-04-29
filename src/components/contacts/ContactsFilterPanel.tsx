@@ -181,6 +181,8 @@ export function ContactsFilterPanel({
             <SelectItem value="hot_lead">Hot lead</SelectItem>
             <SelectItem value="warm_lead">Warm lead</SelectItem>
             <SelectItem value="seller_nurture">Seller nurture</SelectItem>
+            <SelectItem value="active_buyer">Active buyer</SelectItem>
+            <SelectItem value="seller_lead">Seller lead</SelectItem>
           </SelectContent>
         </Select>
       </div>

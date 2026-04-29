@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Calendar as CalendarIcon,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -77,9 +79,9 @@ const getGcalUrl = () => {
 export default function Calendar() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { data: appointments = [], isError: appointmentsError, refetch: refetchAppointments } = useAppointments();
+  const { data: appointments = [], refetch: refetchAppointments } = useAppointments();
   const createAppointmentWithGcal = useCreateAppointmentWithGcal();
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const [gcalEvents, setGcalEvents] = useState<GCalEvent[]>([]);
@@ -236,6 +238,16 @@ export default function Calendar() {
       .slice(0, 10);
   }, [mergedItems]);
 
+  const eventCounts = useMemo(() => {
+    let app = 0;
+    let google = 0;
+    mergedItems.forEach((i) => {
+      if (i.source === "google") google += 1;
+      else app += 1;
+    });
+    return { app, google, total: mergedItems.length };
+  }, [mergedItems]);
+
   const handleConnectGcal = async () => {
     if (!user) return;
     const gcalBase = getGcalUrl();
@@ -338,60 +350,101 @@ export default function Calendar() {
     }
   };
 
+  const sourceAccent = (source: CalendarItemSource) =>
+    source === "google"
+      ? "border-l-4 border-l-sky-500 bg-sky-500/[0.06]"
+      : "border-l-4 border-l-primary bg-primary/[0.06]";
+
+  const eventPillClass = (source: CalendarItemSource) =>
+    cn(
+      "truncate rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-tight",
+      source === "google"
+        ? "border border-sky-500/30 bg-sky-500/15 text-sky-100"
+        : "border border-primary/35 bg-primary/15 text-foreground",
+    );
+
   // Render calendar views
   const renderDayView = () => {
     const events = getEventsForDate(currentDate);
     return (
-      <div className="space-y-2">
-        <div className="text-lg font-semibold mb-4">{format(currentDate, "EEEE, MMMM d, yyyy")}</div>
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Selected day</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            {format(currentDate, "EEEE, MMMM d, yyyy")}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => openNewAppointmentForSlot(currentDate)}
-          className="w-full py-4 rounded-lg border border-dashed border-white/20 text-white/60 hover:border-primary hover:text-primary hover:bg-white/5 transition-colors text-sm mb-4"
+          className="group w-full rounded-xl border-2 border-dashed border-border/80 bg-muted/20 py-4 text-sm font-medium text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
         >
-          + Add booking for this day
+          <span className="inline-flex items-center justify-center gap-2">
+            <Plus className="h-4 w-4 transition-transform group-hover:scale-110" />
+            Add booking for this day
+          </span>
         </button>
         {events.length === 0 ? (
-          <p className="text-white/60 text-center py-8">No events scheduled</p>
-        ) : (
-          <div className="space-y-2">
-            {events.map((item) => (
-              <Card key={item.id} className="p-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{item.title}</span>
-                      <Badge variant={item.source === "google" ? "secondary" : "default"} className="text-xs">
-                        {item.source === "google" ? "Google" : "App"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-white/60">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatEventTime(item)}
-                      </span>
-                      {item.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {item.location}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {item.htmlLink && (
-                    <a
-                      href={item.htmlLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
-                </div>
-              </Card>
-            ))}
+          <div className="flex flex-col items-center justify-center rounded-xl border border-border/60 bg-muted/10 py-14 text-center">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+              <CalendarDays className="h-7 w-7 text-primary" />
+            </div>
+            <p className="font-medium text-foreground">Nothing on the calendar</p>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">Add an appointment or connect Google to see external events.</p>
           </div>
+        ) : (
+          <ul className="space-y-3">
+            {events.map((item) => (
+              <li key={item.id}>
+                <Card
+                  className={cn(
+                    "overflow-hidden border-border bg-card/90 shadow-sm transition-shadow hover:shadow-md",
+                    sourceAccent(item.source),
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3 p-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">{item.title}</span>
+                        <Badge
+                          variant={item.source === "google" ? "outline" : "default"}
+                          className={cn(
+                            "text-[10px] font-normal uppercase tracking-wide",
+                            item.source === "google" && "border-sky-500/40 bg-sky-500/10 text-sky-100",
+                          )}
+                        >
+                          {item.source === "google" ? "Google" : "App"}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+                          {formatEventTime(item)}
+                        </span>
+                        {item.location ? (
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{item.location}</span>
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    {item.htmlLink ? (
+                      <a
+                        href={item.htmlLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 rounded-lg p-2 text-primary ring-offset-background transition-colors hover:bg-muted hover:text-primary"
+                        title="Open in Google Calendar"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    ) : null}
+                  </div>
+                </Card>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     );
@@ -403,46 +456,59 @@ export default function Calendar() {
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
     return (
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {weekDays.map((day) => {
           const events = getEventsForDate(day);
+          const weekend = (() => {
+            const d = day.getDay();
+            return d === 0 || d === 6;
+          })();
           return (
-            <div key={day.toISOString()} className="border border-white/10 rounded-lg p-2 min-h-[200px] flex flex-col">
+            <div
+              key={day.toISOString()}
+              className={cn(
+                "flex min-h-[220px] flex-col rounded-xl border p-2.5 transition-colors sm:min-h-[240px] sm:p-3",
+                isToday(day)
+                  ? "border-primary/50 bg-primary/[0.06] ring-1 ring-primary/25"
+                  : "border-border bg-card/40",
+                weekend && !isToday(day) && "bg-muted/15",
+              )}
+            >
               <button
                 type="button"
                 onClick={() => openNewAppointmentForSlot(day)}
                 className={cn(
-                  "text-sm font-medium mb-2 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
-                  isToday(day) && "text-primary font-bold",
-                  !isSameMonth(day, currentDate) && "text-white/60"
+                  "-m-1 mb-2 rounded-lg p-1.5 text-left text-sm font-medium transition-colors hover:bg-muted/80",
+                  isToday(day) && "text-primary",
+                  !isSameMonth(day, currentDate) && "text-muted-foreground",
+                  !isToday(day) && isSameMonth(day, currentDate) && "text-foreground",
                 )}
                 title="Click to add booking for this day"
               >
-                {format(day, "EEE d")}
+                <span className={cn("block text-[10px] font-normal uppercase tracking-wide text-muted-foreground")}>
+                  {format(day, "EEE")}
+                </span>
+                <span className={cn("tabular-nums", isToday(day) && "text-lg font-bold")}>{format(day, "d")}</span>
               </button>
-              <div className="space-y-1 flex-1">
+              <div className="min-h-0 flex-1 space-y-1">
                 {events.slice(0, 3).map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "text-xs p-1 rounded truncate",
-                      item.source === "google" ? "bg-blue-500/20 text-blue-700" : "bg-primary/20 text-primary"
-                    )}
-                    title={item.title}
-                  >
-                    {formatEventTime(item)} {item.title}
+                  <div key={item.id} className={cn(eventPillClass(item.source), "block")} title={item.title}>
+                    <span className="text-muted-foreground tabular-nums">{formatEventTime(item)}</span>{" "}
+                    <span className="text-foreground">{item.title}</span>
                   </div>
                 ))}
-                {events.length > 3 && (
-                  <div className="text-xs text-white/60">+{events.length - 3} more</div>
-                )}
+                {events.length > 3 ? (
+                  <div className="px-0.5 pt-0.5 text-[10px] font-medium text-muted-foreground">
+                    +{events.length - 3} more
+                  </div>
+                ) : null}
               </div>
               <button
                 type="button"
                 onClick={() => openNewAppointmentForSlot(day)}
-                className="mt-2 text-xs text-white/50 hover:text-primary transition-colors"
+                className="mt-auto rounded-md py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
               >
-                + Add booking
+                + Add
               </button>
             </div>
           );
@@ -459,73 +525,76 @@ export default function Calendar() {
     const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
     return (
-      <div className="grid grid-cols-7 gap-1">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-white/60 p-2">
-            {day}
-          </div>
-        ))}
-        {days.map((day) => {
-          const events = getEventsForDate(day);
-          const isCurrentMonth = isSameMonth(day, currentDate);
-          return (
-            <button
-              key={day.toISOString()}
-              type="button"
-              onClick={() => openNewAppointmentForSlot(day)}
-              className={cn(
-                "border border-white/10 rounded p-1 min-h-[100px] w-full text-left hover:bg-white/10 transition-colors",
-                !isCurrentMonth && "opacity-50"
-              )}
-              title="Click to add booking"
+      <div className="overflow-hidden rounded-xl border border-border/80">
+        <div className="grid grid-cols-7 gap-px bg-border">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+            <div
+              key={day}
+              className="bg-muted/50 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs"
             >
-              <div
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-px bg-border">
+          {days.map((day) => {
+            const events = getEventsForDate(day);
+            const isCurrentMonth = isSameMonth(day, currentDate);
+            return (
+              <button
+                key={day.toISOString()}
+                type="button"
+                onClick={() => openNewAppointmentForSlot(day)}
                 className={cn(
-                  "text-sm mb-1",
-                  isToday(day) && "font-bold text-primary",
-                  !isCurrentMonth && "text-white/60"
+                  "min-h-[92px] w-full bg-card p-1.5 text-left transition-colors hover:bg-muted/50 sm:min-h-[110px] sm:p-2",
+                  !isCurrentMonth && "opacity-40",
                 )}
+                title="Click to add booking"
               >
-                {format(day, "d")}
-              </div>
-              <div className="space-y-0.5">
-                {events.slice(0, 2).map((item) => (
-                  <div
-                    key={item.id}
+                <div className="mb-1 flex justify-end">
+                  <span
                     className={cn(
-                      "text-[10px] p-0.5 rounded truncate",
-                      item.source === "google" ? "bg-blue-500/20" : "bg-primary/20"
+                      "inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-sm tabular-nums",
+                      isToday(day)
+                        ? "bg-primary font-semibold text-primary-foreground shadow-sm"
+                        : cn("text-foreground", !isCurrentMonth && "text-muted-foreground"),
                     )}
-                    title={item.title}
                   >
-                    {item.title}
-                  </div>
-                ))}
-                {events.length > 2 && (
-                  <div className="text-[10px] text-white/60">+{events.length - 2}</div>
-                )}
-              </div>
-            </button>
-          );
-        })}
+                    {format(day, "d")}
+                  </span>
+                </div>
+                <div className="space-y-0.5">
+                  {events.slice(0, 2).map((item) => (
+                    <div key={item.id} className={eventPillClass(item.source)} title={item.title}>
+                      {item.title}
+                    </div>
+                  ))}
+                  {events.length > 2 ? (
+                    <div className="px-0.5 text-[10px] font-medium text-muted-foreground">+{events.length - 2}</div>
+                  ) : null}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in mx-auto max-w-[1600px] space-y-4 pb-10">
       <PageHeader
         title="Calendar"
-        description="View and manage your appointments and Google Calendar events"
         actions={
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add Appointment
+              <Button className="gap-2" size="sm">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add appointment</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-[#242424] border-white/10">
+            <DialogContent className="border-border bg-card sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>New Appointment</DialogTitle>
               </DialogHeader>
@@ -621,11 +690,11 @@ export default function Calendar() {
                       {gcalNeedsAuth && " (Connect Google below first)"}
                     </Label>
                   </div>
-                  {!gcalNeedsAuth && (
-                    <p className="text-xs text-white/50">
+                  {!gcalNeedsAuth ? (
+                    <p className="text-xs text-muted-foreground">
                       Booking will be saved in the app and created in your Google Calendar so both stay in sync.
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
@@ -639,111 +708,165 @@ export default function Calendar() {
         }
       />
 
-      {/* Google Calendar Connection */}
-      {user && (
-        <Card className="p-4 mb-6 zoho-card border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-primary" />
-              <span className="font-medium">Google Calendar</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {gcalNeedsAuth ? (
-                <Button variant="outline" size="sm" onClick={handleConnectGcal} disabled={gcalLoading}>
-                  {gcalLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CalendarIcon className="w-3 h-3" />}
-                  Connect Google
+      {/* Single toolbar: navigation, period, view mode, compact stats & Google */}
+      <Card className="zoho-card overflow-hidden border-border shadow-sm">
+        <div className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={navigatePrevious} aria-label="Previous">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={navigateNext} aria-label="Next">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button variant="secondary" size="sm" className="h-8 shrink-0 px-3 text-xs font-semibold sm:h-9 sm:text-sm" onClick={navigateToday}>
+                  Today
                 </Button>
-              ) : (
-                <>
-                  <Badge variant="secondary" className="text-xs font-normal">Connected</Badge>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchGcal} title="Refresh" disabled={gcalLoading}>
-                    <RefreshCw className={cn("w-3 h-3", gcalLoading && "animate-spin")} />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDisconnectGcal} title="Disconnect">
-                    <Unlink className="w-3 h-3" />
-                  </Button>
-                </>
-              )}
+              </div>
+              <p className="min-w-0 truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                {viewMode === "day" && format(currentDate, "EEEE, MMMM d, yyyy")}
+                {viewMode === "week" &&
+                  `${format(startOfWeek(currentDate), "MMM d")} – ${format(endOfWeek(currentDate), "MMM d, yyyy")}`}
+                {viewMode === "month" && format(currentDate, "MMMM yyyy")}
+              </p>
             </div>
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full lg:w-auto lg:shrink-0">
+              <SegmentedTabsList className="grid h-10 w-full grid-cols-3 gap-1 sm:h-11 lg:w-[min(100%,300px)]">
+                <SegmentedTabsTrigger value="day" className="text-xs sm:text-sm">
+                  Day
+                </SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="week" className="text-xs sm:text-sm">
+                  Week
+                </SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="month" className="text-xs sm:text-sm">
+                  Month
+                </SegmentedTabsTrigger>
+              </SegmentedTabsList>
+            </Tabs>
           </div>
-          {gcalError && (
-            <div className="mt-2 text-sm text-destructive">{gcalError}</div>
-          )}
-        </Card>
-      )}
 
-      {/* Calendar Controls */}
-      <Card className="p-4 mb-6 zoho-card border-white/10">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={navigatePrevious}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={navigateNext}>
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" onClick={navigateToday} className="ml-2">
-              Today
-            </Button>
-            <div className="ml-4 text-lg font-semibold">
-              {viewMode === "day" && format(currentDate, "MMMM d, yyyy")}
-              {viewMode === "week" && `${format(startOfWeek(currentDate), "MMM d")} - ${format(endOfWeek(currentDate), "MMM d, yyyy")}`}
-              {viewMode === "month" && format(currentDate, "MMMM yyyy")}
-            </div>
+          <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <p className="text-[13px] text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">{eventCounts.total}</span> events
+              <span className="mx-1.5 text-border">·</span>
+              <span className="tabular-nums text-primary">{eventCounts.app}</span> in-app
+              <span className="mx-1.5 text-border">·</span>
+              <span className="tabular-nums text-sky-400 dark:text-sky-300">{eventCounts.google}</span> Google
+            </p>
+            {user ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="hidden text-muted-foreground sm:inline">Google</span>
+                {gcalNeedsAuth ? (
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleConnectGcal} disabled={gcalLoading}>
+                    {gcalLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CalendarIcon className="h-3.5 w-3.5" />}
+                    Connect
+                  </Button>
+                ) : (
+                  <>
+                    <Badge
+                      variant="secondary"
+                      className="border border-emerald-500/25 bg-emerald-500/10 text-[11px] font-normal text-emerald-200"
+                    >
+                      Connected
+                    </Badge>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={fetchGcal} title="Refresh Google events" disabled={gcalLoading}>
+                      <RefreshCw className={cn("h-3.5 w-3.5", gcalLoading && "animate-spin")} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground"
+                      onClick={handleDisconnectGcal}
+                      title="Disconnect Google"
+                    >
+                      <Unlink className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <TabsList>
-              <TabsTrigger value="day">Day</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
+        {gcalError ? (
+          <div className="border-t border-border bg-destructive/10 px-3 py-2.5 text-sm text-destructive sm:px-4">{gcalError}</div>
+        ) : null}
       </Card>
 
       {/* Calendar View */}
-      <Card className="p-4 zoho-card border-white/10">
+      <Card className="zoho-card border-border p-4 shadow-sm sm:p-6">
         {viewMode === "day" && renderDayView()}
         {viewMode === "week" && renderWeekView()}
         {viewMode === "month" && renderMonthView()}
       </Card>
 
       {/* Upcoming Events */}
-      {upcomingItems.length > 0 && (
-        <Card className="p-4 mt-6 zoho-card border-white/10">
-          <h3 className="font-semibold mb-4">Upcoming Events</h3>
-          <ScrollArea className="max-h-[300px]">
-            <div className="space-y-2">
+      <Card className="zoho-card border-border p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Upcoming</h3>
+            <p className="text-sm text-muted-foreground">Next events from today — newest first.</p>
+          </div>
+          {upcomingItems.length > 0 ? (
+            <span className="text-xs font-medium text-muted-foreground tabular-nums">{upcomingItems.length} shown</span>
+          ) : null}
+        </div>
+        {upcomingItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-12 text-center">
+            <Clock className="mb-2 h-8 w-8 text-muted-foreground/60" />
+            <p className="font-medium text-foreground">No upcoming events</p>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">You&apos;re clear ahead — add an appointment or connect Google.</p>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[320px] pr-3">
+            <ul className="space-y-2">
               {upcomingItems.map((item) => (
-                <div key={item.id} className="flex items-start justify-between p-2 rounded border border-white/10">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{item.title}</span>
-                      <Badge variant={item.source === "google" ? "secondary" : "default"} className="text-xs">
+                <li
+                  key={item.id}
+                  className={cn(
+                    "flex items-start justify-between gap-3 rounded-xl border border-border bg-card/60 p-3 transition-colors hover:bg-muted/40",
+                    item.source === "google" && "border-sky-500/20 bg-sky-500/[0.04]",
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-foreground">{item.title}</span>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] font-normal",
+                          item.source === "google"
+                            ? "border-sky-500/35 bg-sky-500/10 text-sky-100"
+                            : "border-primary/40 bg-primary/10",
+                        )}
+                      >
                         {item.source === "google" ? "Google" : "App"}
                       </Badge>
                     </div>
-                    <div className="text-sm text-white/60">
-                      {format(parseISO(item.date), "MMM d, h:mm a")}
-                      {item.location && ` • ${item.location}`}
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {format(parseISO(item.date), "EEE d MMM, h:mm a")}
+                      {item.location ? ` · ${item.location}` : ""}
                     </div>
                   </div>
-                  {item.htmlLink && (
+                  {item.htmlLink ? (
                     <a
                       href={item.htmlLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline ml-2"
+                      className="shrink-0 rounded-lg p-2 text-primary hover:bg-muted"
+                      title="Open in Google"
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="h-4 w-4" />
                     </a>
-                  )}
-                </div>
+                  ) : null}
+                </li>
               ))}
-            </div>
+            </ul>
           </ScrollArea>
-        </Card>
-      )}
+        )}
+      </Card>
     </div>
   );
 }

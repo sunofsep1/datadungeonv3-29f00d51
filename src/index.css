@@ -2734,27 +2734,27 @@ html {
 }
 
 .contact-print-document {
-  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   max-width: 210mm;
   margin: 0 auto;
   padding: 0;
-  color: hsl(var(--foreground));
-  font-size: 10.5pt;
-  line-height: 1.55;
-  background: hsl(var(--card));
-  box-shadow: 0 4px 32px hsl(0 0% 0% / 0.35);
+  color: #1a1a2e;
+  font-size: 11px;
+  line-height: 1.45;
+  background: #ffffff;
+  box-shadow: 0 4px 32px hsl(0 0% 0% / 0.28);
 }
 
 .contact-print-document .print-letterhead {
   display: flex;
   flex-direction: column;
-  background: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
+  background: #1a1a2e;
+  color: #ffffff;
   break-inside: avoid;
   page-break-inside: avoid;
 }
 .contact-print-document .print-letterhead-inner {
-  padding: 14px 22mm 12px;
+  padding: 22px 22mm 16px;
 }
 .contact-print-document .print-letterhead-text {
   display: flex;
@@ -2762,97 +2762,116 @@ html {
   gap: 2px;
 }
 .contact-print-document .print-letterhead-brand {
-  font-family: "DM Sans", system-ui, sans-serif;
-  font-size: 11pt;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: hsl(var(--popover-foreground));
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffffff;
 }
 .contact-print-document .print-letterhead-sub {
-  font-size: 8.5pt;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
+  letter-spacing: 1px;
+  text-transform: none;
+  color: #b8a97a;
 }
-/* Primary → teal (CRM accent bar) */
 .contact-print-document .print-letterhead-accent {
-  height: 4px;
-  background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--teal)) 100%);
+  height: 2px;
+  background: #b8a97a;
 }
 
 .contact-print-document .print-doc-hero {
-  padding: 20px 22mm 8px;
-  border-bottom: 1px solid hsl(var(--border));
-  background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 100%);
+  padding: 10px 22mm;
+  border-bottom: 2px solid #b8a97a;
+  background: #f5f0e8;
   break-inside: avoid;
   page-break-inside: avoid;
 }
-/* Match app headings (DM Sans, bold) — same family as contact detail page */
 .contact-print-document .print-doc-title {
-  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
-  font-size: 26pt;
+  font-size: 18px;
   font-weight: 700;
-  margin: 0 0 6px 0;
-  color: hsl(var(--foreground));
+  margin: 0 0 2px 0;
+  color: #1a1a2e;
   line-height: 1.2;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 .contact-print-document .print-doc-subtitle {
-  margin: 0 0 12px 0;
-  font-size: 9.5pt;
-  color: hsl(var(--muted-foreground));
+  margin: 0;
+  font-size: 9px;
+  color: #4f4f63;
   font-weight: 500;
 }
 .contact-print-document .print-doc-hero-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  margin-top: 6px;
 }
 .contact-print-document .print-badge {
-  font-size: 8.5pt;
-  font-weight: 600;
-  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
   border-radius: 999px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--secondary));
-  color: hsl(var(--primary));
+  border: 0;
+  background: #2c2c54;
+  color: #fff;
   text-transform: capitalize;
 }
 .contact-print-document .print-badge-muted {
-  border-color: hsl(var(--border));
-  background: hsl(var(--muted));
-  color: hsl(var(--muted-foreground));
+  background: #64748b;
+  color: #fff;
 }
 
 .contact-print-document .print-doc-body {
-  padding: 18px 22mm 28px;
+  padding: 14px 22mm 24px;
 }
 /* Sections may span pages; avoid only small cards/rows so long lists aren’t clipped */
 .contact-print-document .print-section {
   break-inside: auto;
   page-break-inside: auto;
-  margin-bottom: 18px;
-  padding: 16px 18px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--secondary));
-  border-radius: 6px;
-  border-left: 3px solid hsl(var(--primary));
-  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.06);
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 3px;
+  border-left: 4px solid #b8a97a;
+  box-shadow: none;
 }
 .contact-print-document .print-section-title {
-  font-family: "DM Sans", system-ui, sans-serif;
-  font-size: 9pt;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: hsl(var(--primary));
-  margin: 0 0 12px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid hsl(var(--border));
+  color: #2c2c54;
+  margin: 0 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #ececec;
   break-after: avoid;
   page-break-after: avoid;
+}
+.contact-print-document table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.contact-print-document thead th {
+  background: #2c2c54;
+  color: #fff;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+.contact-print-document tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+.contact-print-document td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+  line-height: 1.4;
 }
 .contact-print-document .print-talking-points {
   margin: 0;
@@ -3113,17 +3132,17 @@ html {
   page-break-inside: avoid;
   margin: 0;
   padding: 14px 22mm 20px;
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid #e5e7eb;
   font-size: 8.5pt;
-  color: hsl(var(--muted-foreground));
+  color: #666;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  background: linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--background)) 100%);
+  background: #fff;
 }
 .contact-print-document .print-doc-footer span:first-child {
-  color: hsl(var(--primary));
+  color: #1a1a2e;
   font-weight: 600;
 }
 

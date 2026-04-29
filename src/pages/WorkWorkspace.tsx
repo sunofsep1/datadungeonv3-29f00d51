@@ -37,6 +37,7 @@ import { useContactTasks, useUpdateContactTask } from "@/hooks/useContactTasks";
 import {
   usePendingStepRunsByTaskIds,
   useCompleteNurtureStepAndAdvance,
+  isNurtureNoActiveStepError,
 } from "@/hooks/useNurtureSequences";
 import { useTodos, useUpdateTodo } from "@/hooks/useTodos";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,6 +155,7 @@ export default function WorkWorkspace() {
                 enrollment_id: run.enrollment_id,
                 step_run_id: run.id,
                 contact_id: contactId,
+                contact_task_id: contactTaskId,
                 outcome: "completed",
                 engagement_note: note || undefined,
               });
@@ -165,10 +167,18 @@ export default function WorkWorkspace() {
                 completed_at: new Date().toISOString(),
                 completion_note: note || null,
               });
-              toast({
-                title: "Task completed",
-                description: `Sequence sync had an issue (${getErrorMessage(sequenceError)}). The task was still marked done.`,
-              });
+              if (isNurtureNoActiveStepError(sequenceError)) {
+                toast({
+                  title: "Task completed",
+                  description:
+                    "The nurture sequence had already moved on; your task is marked done.",
+                });
+              } else {
+                toast({
+                  title: "Task completed",
+                  description: `Sequence sync had an issue (${getErrorMessage(sequenceError)}). The task was still marked done.`,
+                });
+              }
             }
           } else {
             await updateContactTask.mutateAsync({

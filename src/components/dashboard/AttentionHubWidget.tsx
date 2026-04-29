@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
+  Briefcase,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   Clock,
+  ExternalLink,
   Loader2,
   MessageSquareText,
+  Pencil,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
 
@@ -27,13 +32,28 @@ import {
   useDeleteContactTask,
   type ContactTask,
 } from "@/hooks/useContactTasks";
-import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
+import {
+  usePendingStepRunsByTaskIds,
+  useCompleteNurtureStepAndAdvance,
+  isNurtureNoActiveStepError,
+} from "@/hooks/useNurtureSequences";
 import { useTodos, useUpdateTodo, useAddTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
 import { hrefForWorkshop } from "@/lib/attentionWorkWorkspace";
+import {
+  compareAttentionItemsByTierScoreDue,
+  urgencyTierBadgeClass,
+  urgencyTierLabel,
+  urgencyTierSpotlightCardClass,
+  urgencyTierSpotlightRailClass,
+} from "@/lib/urgencyTierStyles";
 import { cn } from "@/lib/utils";
 import type { ContactUrgencyTier } from "@/lib/contactUrgency";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 
-type AttentionItemKind = "sequenceTask" | "contactTask" | "todoTask" | "appointment" | "contactReminder";
+type AttentionItemKind = "sequenceTask" | "contactTask" | "todoTask" | "appointment";
 type AttentionItemUrgency = ContactUrgencyTier;
 
 type AttentionItem = {
@@ -84,37 +104,8 @@ function fallbackScoreByUrgency(
 function kindBadgeLabel(kind: AttentionItemKind): string {
   if (kind === "sequenceTask") return "Sequence";
   if (kind === "contactTask") return "Contact";
-  if (kind === "contactReminder") return "Contact";
   if (kind === "todoTask") return "General";
   return "Appointment";
-}
-
-function urgencyBadgeClass(urgency: AttentionItemUrgency): string {
-  if (urgency === "immediate") return "bg-red-500/15 text-red-300 border-red-400/35";
-  if (urgency === "priority") return "bg-amber-500/15 text-amber-200 border-amber-400/35";
-  if (urgency === "planned") return "bg-sky-500/15 text-sky-200 border-sky-400/35";
-  return "bg-emerald-500/15 text-emerald-200 border-emerald-400/35";
-}
-
-function spotlightCardClass(urgency: AttentionItemUrgency): string {
-  if (urgency === "immediate") return "border-red-400/45 bg-gradient-to-r from-red-500/20 via-red-500/8 to-background";
-  if (urgency === "priority") return "border-amber-400/45 bg-gradient-to-r from-amber-500/20 via-amber-500/8 to-background";
-  if (urgency === "planned") return "border-sky-400/45 bg-gradient-to-r from-sky-500/20 via-sky-500/8 to-background";
-  return "border-emerald-400/45 bg-gradient-to-r from-emerald-500/20 via-emerald-500/8 to-background";
-}
-
-function spotlightRailClass(urgency: AttentionItemUrgency): string {
-  if (urgency === "immediate") return "bg-red-400";
-  if (urgency === "priority") return "bg-amber-400";
-  if (urgency === "planned") return "bg-sky-400";
-  return "bg-emerald-400";
-}
-
-function urgencyLabel(urgency: AttentionItemUrgency): string {
-  if (urgency === "immediate") return "Immediate";
-  if (urgency === "priority") return "Priority";
-  if (urgency === "planned") return "Planned";
-  return "Backlog";
 }
 
 function getErrorMessage(error: unknown): string {
@@ -143,6 +134,66 @@ function localDateTimeFromIso(value: string | null): string {
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+/** Shared Embla options — drag-free + wheel-gestures feels fast/snappy vs native overflow scroll. */
+const HUB_CAROUSEL_OPTS = {
+  align: "start" as const,
+  dragFree: true,
+  containScroll: false,
+};
+
+/** Same slide width for Focus + timeline carousels (responsive cap). */
+const HUB_CARD_SLIDE_CLASS =
+  "w-[min(calc(100vw-2.5rem),300px)] min-w-[280px] max-w-[300px] shrink-0 basis-[min(calc(100vw-2.5rem),300px)] pl-2 md:pl-4";
+
+/** Uniform tile height; inner body scrolls so dense rows stay aligned. */
+const HUB_CARD_HEIGHT_CLASS = "h-[min(380px,78vh)]";
+
+/** Each carousel gets its own plugin instance (Embla initializes plugins per root). */
+function useHubWheelGesturesPlugins() {
+  return useMemo(() => [WheelGesturesPlugin({ forceWheelAxis: "x" })], []);
+}
+
+/** Overdue / Today / Upcoming — same Embla behavior as focus strip. */
+function HubTimelineStrip({
+  title,
+  items,
+  emptyText,
+  renderCard,
+}: {
+  title: string;
+  items: AttentionItem[];
+  emptyText: string;
+  renderCard: (item: AttentionItem) => ReactNode;
+}) {
+  const hubCarouselPlugins = useHubWheelGesturesPlugins();
+
+  return (
+    <div className="min-w-0 rounded-lg border border-border/70 bg-card/45 p-2.5">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+        <Badge variant="outline" className="text-[10px] border-border/70">
+          {items.length}
+        </Badge>
+      </div>
+      {items.length === 0 ? (
+        <p className="px-1 py-2 text-xs text-muted-foreground">{emptyText}</p>
+      ) : (
+        <div className="touch-pan-x w-full min-w-0">
+          <Carousel opts={HUB_CAROUSEL_OPTS} plugins={hubCarouselPlugins} className="w-full">
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {items.map((item) => (
+                <CarouselItem key={item.id} className={HUB_CARD_SLIDE_CLASS}>
+                  {renderCard(item)}
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function AttentionHubWidget() {
@@ -205,7 +256,6 @@ export function AttentionHubWidget() {
   const items = useMemo(() => {
     const nextItems: AttentionItem[] = [];
     const now = Date.now();
-    const contactIdsWithActionItems = new Set<string>();
 
     openContactTasks.forEach((task: ContactTask) => {
       const dueAt = task.due_at ? new Date(task.due_at) : null;
@@ -247,7 +297,6 @@ export function AttentionHubWidget() {
         canComplete: true,
         reason,
       });
-      contactIdsWithActionItems.add(task.contact_id);
     });
 
     todos
@@ -314,42 +363,7 @@ export function AttentionHubWidget() {
           canComplete: false,
           reason,
         });
-        if (appointment.contact_id) contactIdsWithActionItems.add(appointment.contact_id);
       });
-
-    contacts.forEach((contact) => {
-      if (contactIdsWithActionItems.has(contact.id)) return;
-      const contactUrgency = urgencyByContactId.get(contact.id);
-      if (!contactUrgency) return;
-
-      const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
-      const nextTouchDate = nextTouchRaw ? new Date(nextTouchRaw) : null;
-      const dueAt = nextTouchDate && !Number.isNaN(nextTouchDate.getTime()) ? nextTouchDate : null;
-      const contactName = getContactDisplayName(contact);
-
-      const whenText =
-        dueAt == null
-          ? "No next touch date set"
-          : isPast(dueAt) && !isToday(dueAt)
-            ? `Touch overdue since ${format(dueAt, "EEE d MMM")}`
-            : isToday(dueAt)
-              ? `Touch due today at ${format(dueAt, "h:mm a")}`
-              : `Touch ${formatDistanceToNow(dueAt, { addSuffix: true })}`;
-
-      nextItems.push({
-        id: `contact-reminder-${contact.id}`,
-        kind: "contactReminder",
-        urgency: contactUrgency.tier,
-        score: contactUrgency.score + 6,
-        title: contactName,
-        detail: "Relationship follow-up reminder",
-        whenText,
-        dueAt,
-        contactId: contact.id,
-        canComplete: false,
-        reason: contactUrgency.reasons[0] ?? "Manual/derived urgency indicates this contact should stay active.",
-      });
-    });
 
     return nextItems.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -357,7 +371,7 @@ export function AttentionHubWidget() {
       const bt = b.dueAt ? b.dueAt.getTime() : Number.MAX_SAFE_INTEGER;
       return at - bt;
     });
-  }, [appointments, contacts, contactNameById, openContactTasks, todos, urgencyByContactId]);
+  }, [appointments, contactNameById, openContactTasks, todos, urgencyByContactId]);
 
   const visibleItems = useMemo(
     () => items.filter((item) => !hiddenItemIds.includes(item.id)),
@@ -378,10 +392,12 @@ export function AttentionHubWidget() {
     [tierFilteredItems]
   );
 
-  const overdueItems = useMemo(
-    () => timelineItems.filter((item) => item.dueAt && isPast(item.dueAt) && !isToday(item.dueAt)),
-    [timelineItems]
-  );
+  const overdueItems = useMemo(() => {
+    const filtered = timelineItems.filter(
+      (item) => item.dueAt && isPast(item.dueAt) && !isToday(item.dueAt)
+    );
+    return [...filtered].sort(compareAttentionItemsByTierScoreDue);
+  }, [timelineItems]);
   const todayItems = useMemo(
     () => timelineItems.filter((item) => item.dueAt && isToday(item.dueAt)),
     [timelineItems]
@@ -415,7 +431,7 @@ export function AttentionHubWidget() {
       return at - bt;
     });
     const showQueue = visibleUrgencyTiers.size === 4;
-    return ranked.slice(0, showQueue ? 4 : 1);
+    return ranked.slice(0, showQueue ? 8 : 1);
   }, [tierFilteredItems, visibleUrgencyTiers]);
 
   const handleComplete = useCallback(
@@ -439,6 +455,7 @@ export function AttentionHubWidget() {
                 enrollment_id: run.enrollment_id,
                 step_run_id: run.id,
                 contact_id: item.contactId,
+                contact_task_id: item.contactTaskId,
                 outcome: "completed",
                 engagement_note: note?.trim() || undefined,
               });
@@ -448,6 +465,23 @@ export function AttentionHubWidget() {
               toast({ title: "Step completed", description: "Nurture moved to the next step." });
               return;
             } catch (sequenceError) {
+              if (isNurtureNoActiveStepError(sequenceError)) {
+                await updateContactTask.mutateAsync({
+                  id: item.contactTaskId,
+                  contact_id: item.contactId,
+                  completed_at: new Date().toISOString(),
+                  completion_note: note?.trim() || null,
+                });
+                setHiddenItemIds((prev) => [...prev, item.id]);
+                setSessionCompletedCount((prev) => prev + 1);
+                setCelebrating(true);
+                toast({
+                  title: "Task completed",
+                  description:
+                    "The nurture sequence had already moved on; your task is marked done.",
+                });
+                return;
+              }
               await updateContactTask.mutateAsync({
                 id: item.contactTaskId,
                 contact_id: item.contactId,
@@ -603,6 +637,8 @@ export function AttentionHubWidget() {
     return () => window.clearTimeout(timer);
   }, [celebrating]);
 
+  const focusCarouselPlugins = useHubWheelGesturesPlugins();
+
   if (visibleItems.length === 0) {
     return (
       <Card className="zoho-card p-4 border border-emerald-400/20 bg-emerald-500/[0.06]">
@@ -625,194 +661,233 @@ export function AttentionHubWidget() {
     );
   }
 
-  const renderTimelineSection = (title: string, items: AttentionItem[], emptyText: string) => (
-    <div className="rounded-lg border border-border/70 bg-card/45 p-2.5">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
-        <Badge variant="outline" className="text-[10px] border-border/70">
-          {items.length}
-        </Badge>
-      </div>
-      {items.length === 0 ? (
-        <p className="px-1 py-2 text-xs text-muted-foreground">{emptyText}</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {items.map((item) => {
-            const isAppointment = item.kind === "appointment";
-            const dueIcon = item.kind === "appointment" ? CalendarClock : item.urgency === "immediate" ? AlertTriangle : Clock;
-            const DueIcon = dueIcon;
-            const isNoteOpen = noteItemId === item.id;
-            const canEdit = item.kind === "todoTask" || item.kind === "contactTask";
-            const canDelete = item.kind === "todoTask" || item.kind === "contactTask";
-            const isEditing = editingItemId === item.id;
-            const workHref = hrefForWorkshop(item);
-            return (
-              <li key={item.id}>
-                <div className="rounded-md border border-border/70 bg-background/55 px-2.5 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="text-[10px] border-border/80">
-                          {kindBadgeLabel(item.kind)}
-                        </Badge>
-                        <Badge variant="outline" className={cn("text-[10px]", urgencyBadgeClass(item.urgency))}>
-                          {urgencyLabel(item.urgency)}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 truncate text-xs font-semibold text-foreground">{item.title}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{item.detail}</p>
-                      <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <DueIcon className="h-3.5 w-3.5 shrink-0" />
-                        {item.whenText}
-                      </p>
-                      <p className="truncate text-[11px] text-primary/90">{item.reason}</p>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 max-w-[min(100%,220px)] sm:max-w-none">
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => handleOpenItem(item)}>
-                        Open
-                      </Button>
-                      {workHref ? (
+  const renderOneTimelineCard = (item: AttentionItem) => {
+    const isAppointment = item.kind === "appointment";
+    const dueIcon =
+      item.kind === "appointment" ? CalendarClock : item.urgency === "immediate" ? AlertTriangle : Clock;
+    const DueIcon = dueIcon;
+    const isNoteOpen = noteItemId === item.id;
+    const canEdit = item.kind === "todoTask" || item.kind === "contactTask";
+    const canDelete = item.kind === "todoTask" || item.kind === "contactTask";
+    const isEditing = editingItemId === item.id;
+    const workHref = hrefForWorkshop(item);
+    return (
+      <div
+        className={cn(
+          HUB_CARD_HEIGHT_CLASS,
+          "flex flex-col overflow-hidden rounded-xl border border-border/70 bg-background/55 px-3 py-3 shadow-sm",
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+            <Badge variant="outline" className="text-[10px] border-border/80">
+              {kindBadgeLabel(item.kind)}
+            </Badge>
+            <Badge variant="outline" className={cn("text-[10px]", urgencyTierBadgeClass(item.urgency))}>
+              {urgencyTierLabel(item.urgency)}
+            </Badge>
+          </div>
+          <div className="min-w-0 space-y-1">
+            <p className="line-clamp-2 text-xs font-semibold leading-snug text-foreground">{item.title}</p>
+            <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">{item.detail}</p>
+            <p className="flex items-start gap-1 text-[11px] leading-snug text-muted-foreground">
+              <DueIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0">{item.whenText}</span>
+            </p>
+            <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground" title={item.reason}>
+              {item.reason}
+            </p>
+          </div>
+          {isEditing ? (
+          <div className="rounded-md border border-border/70 bg-muted/20 p-2">
+            <p className="mb-1.5 text-[11px] text-muted-foreground">Edit item</p>
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_190px_auto_auto]">
+              <Input
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+                className="h-8 text-xs"
+                placeholder="Title"
+              />
+              <Input
+                type="datetime-local"
+                value={editDueAt}
+                onChange={(event) => setEditDueAt(event.target.value)}
+                className="h-8 text-xs"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-[11px]"
+                onClick={() => {
+                  setEditingItemId(null);
+                  setEditTitle("");
+                  setEditDueAt("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" className="h-8 px-2 text-[11px]" onClick={() => saveEdit(item)}>
+                Save
+              </Button>
+            </div>
+          </div>
+          ) : null}
+          {isNoteOpen ? (
+          <div className="rounded-md border border-border/70 bg-muted/20 p-2">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <MessageSquareText className="h-3.5 w-3.5" />
+              Optional note (recommended for contact/sequence context)
+            </div>
+            <Textarea
+              value={quickNote}
+              onChange={(event) => setQuickNote(event.target.value)}
+              placeholder="Outcome, next step, or blocker..."
+              className="min-h-[70px] text-xs"
+            />
+            <div className="mt-2 flex justify-end gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[11px]"
+                onClick={() => {
+                  setNoteItemId(null);
+                  setQuickNote("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-[11px]"
+                disabled={completingItemId === item.id}
+                onClick={() => handleComplete(item)}
+              >
+                Skip note
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                disabled={completingItemId === item.id}
+                onClick={() => handleComplete(item, quickNote)}
+              >
+                Save + complete
+              </Button>
+            </div>
+          </div>
+          ) : null}
+        </div>
+        <div className="mt-auto -mx-3 -mb-3 shrink-0 rounded-b-xl border-t border-border/50 bg-muted/25 px-3 pb-3 pt-2 dark:bg-muted/15">
+          {/* Single row: primary stays right in dev & prod (no flex-wrap jump). Narrow viewports scroll horizontally. */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="h-8 shrink-0 gap-1.5 px-2.5 text-xs font-medium shadow-none"
+                onClick={() => handleOpenItem(item)}
+              >
+                <ExternalLink className="size-3.5 shrink-0 opacity-90" aria-hidden />
+                Open
+              </Button>
+              {workHref ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0 gap-1.5 border-primary/25 bg-primary/[0.06] px-2.5 text-xs font-medium hover:bg-primary/10"
+                  onClick={() => navigate(workHref)}
+                >
+                  <Briefcase className="size-3.5 shrink-0 text-primary/90" aria-hidden />
+                  Work
+                </Button>
+              ) : null}
+
+              {(canEdit || canDelete) && (
+                <div className="flex shrink-0 items-center gap-0 rounded-md border border-border/60 bg-background/70 p-0.5 shadow-sm">
+                  {canEdit ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[11px]"
-                          onClick={() => navigate(workHref)}
-                        >
-                          Work
-                        </Button>
-                      ) : null}
-                      {canEdit ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[11px]"
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
                           onClick={() => beginEdit(item)}
                         >
-                          Edit
+                          <Pencil className="size-3.5" />
+                          <span className="sr-only">Edit</span>
                         </Button>
-                      ) : null}
-                      {canDelete ? (
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Edit task</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  {canDelete ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[11px]"
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           disabled={deletingItemId === item.id}
                           onClick={() => handleDelete(item)}
                         >
-                          {deletingItemId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+                          {deletingItemId === item.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                          <span className="sr-only">Delete</span>
                         </Button>
-                      ) : null}
-                      {isAppointment ? (
-                        <Button size="sm" className="h-7 px-2 text-[11px]" onClick={() => navigate("/appointments")}>
-                          Prep
-                        </Button>
-                      ) : item.canComplete ? (
-                        <Button
-                          size="sm"
-                          className="h-7 px-2 text-[11px]"
-                          disabled={completingItemId !== null && completingItemId !== item.id}
-                          onClick={() => {
-                            setNoteItemId(item.id);
-                            setQuickNote("");
-                          }}
-                        >
-                          {completingItemId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Complete"}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                  {isEditing ? (
-                    <div className="mt-2 rounded-md border border-border/70 bg-muted/20 p-2">
-                      <p className="mb-1.5 text-[11px] text-muted-foreground">Edit item</p>
-                      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_190px_auto_auto]">
-                        <Input
-                          value={editTitle}
-                          onChange={(event) => setEditTitle(event.target.value)}
-                          className="h-8 text-xs"
-                          placeholder="Title"
-                        />
-                        <Input
-                          type="datetime-local"
-                          value={editDueAt}
-                          onChange={(event) => setEditDueAt(event.target.value)}
-                          className="h-8 text-xs"
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 text-[11px]"
-                          onClick={() => {
-                            setEditingItemId(null);
-                            setEditTitle("");
-                            setEditDueAt("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-8 px-2 text-[11px]"
-                          onClick={() => saveEdit(item)}
-                        >
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {isNoteOpen ? (
-                    <div className="mt-2 rounded-md border border-border/70 bg-muted/20 p-2">
-                      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <MessageSquareText className="h-3.5 w-3.5" />
-                        Optional note (recommended for contact/sequence context)
-                      </div>
-                      <Textarea
-                        value={quickNote}
-                        onChange={(event) => setQuickNote(event.target.value)}
-                        placeholder="Outcome, next step, or blocker..."
-                        className="min-h-[70px] text-xs"
-                      />
-                      <div className="mt-2 flex justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-[11px]"
-                          onClick={() => {
-                            setNoteItemId(null);
-                            setQuickNote("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[11px]"
-                          disabled={completingItemId === item.id}
-                          onClick={() => handleComplete(item)}
-                        >
-                          Skip note
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 px-2 text-[11px]"
-                          disabled={completingItemId === item.id}
-                          onClick={() => handleComplete(item, quickNote)}
-                        >
-                          Save + complete
-                        </Button>
-                      </div>
-                    </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Delete</TooltipContent>
+                    </Tooltip>
                   ) : null}
                 </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end pl-1">
+              {isAppointment ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 gap-1.5 px-3 text-xs font-semibold shadow-sm"
+                  onClick={() => navigate("/appointments")}
+                >
+                  <CalendarClock className="size-3.5 opacity-90" aria-hidden />
+                  Prep
+                </Button>
+              ) : item.canComplete ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 gap-1.5 px-3 text-xs font-semibold shadow-sm"
+                  disabled={completingItemId !== null && completingItemId !== item.id}
+                  onClick={() => {
+                    setNoteItemId(item.id);
+                    setQuickNote("");
+                  }}
+                >
+                  {completingItemId === item.id ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <CheckCircle2 className="size-3.5 opacity-90" aria-hidden />
+                  )}
+                  Complete
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
+    <TooltipProvider delayDuration={300}>
     <Card className="zoho-card p-4 border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
         <div>
@@ -821,7 +896,7 @@ export function AttentionHubWidget() {
             Do This Next
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Timeline view: overdue first, then today, then upcoming.
+            Drag or trackpad-scroll sideways · sections below scroll the same way.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -829,7 +904,7 @@ export function AttentionHubWidget() {
             {visibleItems.length} queued
           </Badge>
           {criticalCount > 0 ? (
-            <Badge className="text-[11px] bg-red-500/20 text-red-200 border-red-400/35">{criticalCount} immediate</Badge>
+            <Badge className="text-[11px] bg-orange-600/35 text-orange-50 border-orange-500/55">{criticalCount} immediate</Badge>
           ) : null}
           {highCount > 0 ? (
             <Badge className="text-[11px] bg-amber-500/20 text-amber-200 border-amber-400/35">{highCount} priority</Badge>
@@ -874,153 +949,178 @@ export function AttentionHubWidget() {
                 })
               }
             >
-              {urgencyLabel(tier)}
+              {urgencyTierLabel(tier)}
             </Button>
           ))}
         </div>
-        <p className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">Quick add</p>
-        <div className="grid gap-2 md:grid-cols-[120px_minmax(0,1fr)_190px_170px_auto]">
-          <select
-            className="h-9 rounded-md border border-border bg-background px-2 text-xs"
-            value={addType}
-            onChange={(e) => setAddType(e.target.value as "todo" | "contact")}
-          >
-            <option value="todo">General task</option>
-            <option value="contact">Contact task</option>
-          </select>
-          <Input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Task title..."
-            className="h-9 text-xs"
-          />
-          <Input
-            type="datetime-local"
-            value={newDueAt}
-            onChange={(e) => setNewDueAt(e.target.value)}
-            className="h-9 text-xs"
-          />
-          {addType === "contact" ? (
+        <Collapsible className="group space-y-2">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground">
+              <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+              Quick add task
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="grid gap-2 md:grid-cols-[120px_minmax(0,1fr)_190px_170px_auto]">
             <select
               className="h-9 rounded-md border border-border bg-background px-2 text-xs"
-              value={newContactId}
-              onChange={(e) => setNewContactId(e.target.value)}
+              value={addType}
+              onChange={(e) => setAddType(e.target.value as "todo" | "contact")}
             >
-              <option value="">Select contact...</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {getContactDisplayName(contact)}
-                </option>
-              ))}
+              <option value="todo">General task</option>
+              <option value="contact">Contact task</option>
             </select>
-          ) : (
-            <div />
-          )}
-          <Button
-            size="sm"
-            className="h-9 text-xs"
-            disabled={addTodo.isPending || createContactTask.isPending}
-            onClick={handleAdd}
-          >
-            {addTodo.isPending || createContactTask.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
-          </Button>
-        </div>
+            <Input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Task title..."
+              className="h-9 text-xs"
+            />
+            <Input
+              type="datetime-local"
+              value={newDueAt}
+              onChange={(e) => setNewDueAt(e.target.value)}
+              className="h-9 text-xs"
+            />
+            {addType === "contact" ? (
+              <select
+                className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+                value={newContactId}
+                onChange={(e) => setNewContactId(e.target.value)}
+              >
+                <option value="">Select contact...</option>
+                {contacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>
+                    {getContactDisplayName(contact)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div />
+            )}
+            <Button
+              size="sm"
+              className="h-9 text-xs"
+              disabled={addTodo.isPending || createContactTask.isPending}
+              onClick={handleAdd}
+            >
+              {addTodo.isPending || createContactTask.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
+            </Button>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {focusItems?.length ? (
-        <div className="mb-3 space-y-2">
-          {focusItems.map((focusItem, idx) => (
-            <div
-              key={focusItem.id}
-              className={cn(
-                "rounded-xl border p-3 shadow-sm cursor-pointer transition-colors hover:bg-accent/20",
-                spotlightCardClass(focusItem.urgency),
-                idx === 0 && focusItem.urgency === "immediate" && "animate-pulse"
-              )}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenItem(focusItem)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  handleOpenItem(focusItem);
-                }
-              }}
-            >
-              <div className="flex items-stretch gap-3">
-                <div className={cn("w-1.5 rounded-full shrink-0", spotlightRailClass(focusItem.urgency))} />
-                <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {idx === 0 ? "Focus Box" : `Focus #${idx + 1}`}
-                    </p>
-                    <p className="mt-1 text-lg font-bold text-foreground truncate">
-                      {focusItem.kind === "todoTask" ? focusItem.title : focusItem.detail}
-                    </p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {focusItem.kind === "todoTask" ? "General task" : focusItem.title}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="outline" className="text-[10px] border-border/80">
-                        {kindBadgeLabel(focusItem.kind)}
-                      </Badge>
-                      <Badge variant="outline" className={cn("text-[10px]", urgencyBadgeClass(focusItem.urgency))}>
-                        {urgencyLabel(focusItem.urgency)}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] border-border/80">
-                        {focusItem.whenText}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] border-border/80">
-                        {idx === 0 ? "Top priority" : "Next priority"}
-                      </Badge>
+        <div className="touch-pan-x mb-3 w-full min-w-0">
+          <Carousel opts={HUB_CAROUSEL_OPTS} plugins={focusCarouselPlugins} className="w-full">
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {focusItems.map((focusItem, idx) => (
+                <CarouselItem key={focusItem.id} className={HUB_CARD_SLIDE_CLASS}>
+                  <div
+                    className={cn(
+                      HUB_CARD_HEIGHT_CLASS,
+                      "flex cursor-pointer flex-col overflow-hidden rounded-xl border p-3 shadow-sm transition-colors hover:bg-accent/20",
+                      urgencyTierSpotlightCardClass(focusItem.urgency),
+                      idx === 0 && focusItem.urgency === "immediate" && "animate-pulse",
+                    )}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpenItem(focusItem)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleOpenItem(focusItem);
+                      }
+                    }}
+                  >
+                    <div className="flex min-h-0 flex-1 gap-3 overflow-hidden">
+                      <div className={cn("w-1.5 shrink-0 rounded-full", urgencyTierSpotlightRailClass(focusItem.urgency))} />
+                      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto">
+                        <p className="shrink-0 text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Focus · {idx + 1}/{focusItems.length}
+                        </p>
+                        <p className="line-clamp-2 text-lg font-bold leading-snug text-foreground">
+                          {focusItem.kind === "todoTask" ? focusItem.title : focusItem.detail}
+                        </p>
+                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                          {focusItem.kind === "todoTask" ? "General task" : focusItem.title}
+                        </p>
+                        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                          <Badge variant="outline" className="text-[10px] border-border/80">
+                            {kindBadgeLabel(focusItem.kind)}
+                          </Badge>
+                          <Badge variant="outline" className={cn("text-[10px]", urgencyTierBadgeClass(focusItem.urgency))}>
+                            {urgencyTierLabel(focusItem.urgency)}
+                          </Badge>
+                          <Badge variant="outline" className="max-w-full truncate text-[10px] border-border/80">
+                            {focusItem.whenText}
+                          </Badge>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="line-clamp-3 cursor-default text-xs leading-snug text-muted-foreground">
+                              {focusItem.reason}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs text-xs">
+                            {focusItem.reason}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs font-medium text-primary/95">{focusItem.reason}</p>
+                    <div className="mt-auto -mx-3 -mb-3 flex shrink-0 justify-end rounded-b-xl border-t border-border/50 bg-muted/25 px-3 pb-3 pt-2 dark:bg-muted/15">
+                      {focusItem.canComplete && focusItem.kind !== "appointment" ? (
+                        <Button
+                          size="sm"
+                          className="h-8 gap-1.5 px-3 text-xs font-semibold shadow-sm"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const href = hrefForWorkshop(focusItem);
+                            if (href) navigate(href);
+                            else handleOpenItem(focusItem);
+                          }}
+                        >
+                          <Briefcase className="size-3.5 opacity-90" aria-hidden />
+                          Work now
+                        </Button>
+                      ) : focusItem.kind === "appointment" ? (
+                        <Button
+                          size="sm"
+                          className="h-8 gap-1.5 px-3 text-xs font-semibold shadow-sm"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const href = hrefForWorkshop({
+                              kind: "appointment",
+                              appointmentId: focusItem.appointmentId,
+                              contactId: focusItem.contactId,
+                            });
+                            if (href) navigate(href);
+                            else navigate("/appointments");
+                          }}
+                        >
+                          <CalendarClock className="size-3.5 opacity-90" aria-hidden />
+                          Prep now
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {focusItem.canComplete && focusItem.kind !== "appointment" ? (
-                      <Button
-                        size="sm"
-                        className="h-8"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const href = hrefForWorkshop(focusItem);
-                          if (href) navigate(href);
-                          else handleOpenItem(focusItem);
-                        }}
-                      >
-                        Work now
-                      </Button>
-                    ) : focusItem.kind === "appointment" ? (
-                      <Button
-                        size="sm"
-                        className="h-8"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const href = hrefForWorkshop({
-                            kind: "appointment",
-                            appointmentId: focusItem.appointmentId,
-                            contactId: focusItem.contactId,
-                          });
-                          if (href) navigate(href);
-                          else navigate("/appointments");
-                        }}
-                      >
-                        Prep now
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
         </div>
       ) : null}
 
       <div className="space-y-2.5">
-        {renderTimelineSection("Overdue", overdueItems, "No overdue actions.")}
-        {renderTimelineSection("Today", todayItems, "Nothing due today yet.")}
-        {renderTimelineSection("Upcoming", upcomingItems, "No upcoming reminders in range.")}
+        <HubTimelineStrip title="Overdue" items={overdueItems} emptyText="No overdue actions." renderCard={renderOneTimelineCard} />
+        <HubTimelineStrip title="Today" items={todayItems} emptyText="Nothing due today yet." renderCard={renderOneTimelineCard} />
+        <HubTimelineStrip
+          title="Upcoming"
+          items={upcomingItems}
+          emptyText="No upcoming reminders in range."
+          renderCard={renderOneTimelineCard}
+        />
       </div>
     </Card>
+    </TooltipProvider>
   );
 }

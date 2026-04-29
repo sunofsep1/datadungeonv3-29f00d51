@@ -39,26 +39,32 @@ function PriorityTile({ to, label, sub, count, icon: Icon, emphasize }: Priority
     <Button
       variant="outline"
       className={cn(
-        "h-auto min-h-[4.25rem] w-full flex-col items-stretch gap-1 p-3 text-left border-border/80 bg-card/50 hover:bg-accent/40",
+        "h-auto min-h-[4.25rem] w-full flex-col items-stretch gap-0 p-3 text-left border-border/80 bg-card/50 hover:bg-accent/40",
         emphasize && count != null && count > 0 && "border-primary/40 bg-primary/5",
       )}
       asChild
     >
-      <Link to={to}>
-        <span className="flex w-full items-start justify-between gap-2">
-          <span className="flex items-center gap-2 min-w-0">
-            <Icon className="h-4 w-4 shrink-0 text-primary" />
-            <span className="text-sm font-medium text-foreground leading-tight">{label}</span>
+      <Link to={to} className="flex flex-row items-start gap-2">
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-1 flex flex-col gap-1">
+          <span className="flex items-start justify-between gap-2">
+            <span className="min-w-0 text-sm font-medium leading-snug text-foreground line-clamp-2 [overflow-wrap:anywhere]">
+              {label}
+            </span>
+            {count != null ? (
+              <Badge variant="secondary" className="shrink-0 tabular-nums font-semibold">
+                {count}
+              </Badge>
+            ) : null}
           </span>
-          {count != null ? (
-            <Badge variant="secondary" className="tabular-nums shrink-0 font-semibold">
-              {count}
-            </Badge>
+          {sub ? (
+            <span className="text-[11px] leading-snug text-muted-foreground line-clamp-2 [overflow-wrap:anywhere]">
+              {sub}
+            </span>
           ) : null}
-        </span>
-        {sub ? <span className="text-[11px] text-muted-foreground pl-6 leading-snug">{sub}</span> : null}
-        <span className="flex items-center gap-0.5 text-[11px] text-primary pl-6">
-          Open <ChevronRight className="h-3 w-3" />
+          <span className="flex items-center gap-0.5 text-[11px] text-primary">
+            Open <ChevronRight className="h-3 w-3 shrink-0" />
+          </span>
         </span>
       </Link>
     </Button>

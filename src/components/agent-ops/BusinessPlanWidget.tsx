@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Target, Calendar, DollarSign, TrendingUp, CheckCircle2, Circle, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,10 +48,10 @@ export function BusinessPlanWidget() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="goals" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary/50">
-            <TabsTrigger value="goals">Annual Goals</TabsTrigger>
-            <TabsTrigger value="milestones">Milestones</TabsTrigger>
-          </TabsList>
+          <SegmentedTabsList className="grid-cols-2">
+            <SegmentedTabsTrigger value="goals">Annual Goals</SegmentedTabsTrigger>
+            <SegmentedTabsTrigger value="milestones">Milestones</SegmentedTabsTrigger>
+          </SegmentedTabsList>
           
           <TabsContent value="goals" className="space-y-3">
             {annualGoals.map((goal) => {

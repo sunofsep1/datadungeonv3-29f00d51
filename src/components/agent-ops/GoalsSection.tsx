@@ -2,7 +2,8 @@ import * as React from "react";
 import { useState } from "react";
 import { Target, User, CheckSquare, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsListCompact, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -94,20 +95,20 @@ export function GoalsSection() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="work" className="w-full">
-          <TabsList className="w-full bg-secondary/50 mb-4">
-            <TabsTrigger value="work" className="flex-1 data-[state=active]:bg-primary">
-              <Target className="w-4 h-4 mr-2" />
-              Work Goals
-            </TabsTrigger>
-            <TabsTrigger value="personal" className="flex-1 data-[state=active]:bg-primary">
-              <User className="w-4 h-4 mr-2" />
+          <SegmentedTabsListCompact className="mb-4 grid-cols-3">
+            <SegmentedTabsTrigger compact value="work" className="inline-flex items-center justify-center gap-1.5">
+              <Target className="h-3.5 w-3.5 shrink-0" />
+              Work
+            </SegmentedTabsTrigger>
+            <SegmentedTabsTrigger compact value="personal" className="inline-flex items-center justify-center gap-1.5">
+              <User className="h-3.5 w-3.5 shrink-0" />
               Personal
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="flex-1 data-[state=active]:bg-primary">
-              <CheckSquare className="w-4 h-4 mr-2" />
+            </SegmentedTabsTrigger>
+            <SegmentedTabsTrigger compact value="tasks" className="inline-flex items-center justify-center gap-1.5">
+              <CheckSquare className="h-3.5 w-3.5 shrink-0" />
               Tasks
-            </TabsTrigger>
-          </TabsList>
+            </SegmentedTabsTrigger>
+          </SegmentedTabsListCompact>
           
           <TabsContent value="work" className="space-y-3 mt-0">
             {workGoals.map((goal) => (

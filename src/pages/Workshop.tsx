@@ -15,7 +15,11 @@ import { useTodos, useUpdateTodo } from "@/hooks/useTodos";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useContact } from "@/hooks/useContact";
 import { useContactTasks, useUpdateContactTask } from "@/hooks/useContactTasks";
-import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
+import {
+  usePendingStepRunsByTaskIds,
+  useCompleteNurtureStepAndAdvance,
+  isNurtureNoActiveStepError,
+} from "@/hooks/useNurtureSequences";
 import { useCreateActivityLog } from "@/hooks/useActivityLog";
 import { ContactActivityTimeline } from "@/components/contacts/ContactActivityTimeline";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
@@ -143,6 +147,7 @@ export default function Workshop() {
                 enrollment_id: run.enrollment_id,
                 step_run_id: run.id,
                 contact_id: contactId,
+                contact_task_id: contactTaskId,
                 outcome: "completed",
                 engagement_note: note || undefined,
               });
@@ -154,10 +159,18 @@ export default function Workshop() {
                 completed_at: new Date().toISOString(),
                 completion_note: note || null,
               });
-              toast({
-                title: "Task completed",
-                description: `Sequence sync had an issue (${getErrorMessage(sequenceError)}). The task was still marked done.`,
-              });
+              if (isNurtureNoActiveStepError(sequenceError)) {
+                toast({
+                  title: "Task completed",
+                  description:
+                    "The nurture sequence had already moved on; your task is marked done.",
+                });
+              } else {
+                toast({
+                  title: "Task completed",
+                  description: `Sequence sync had an issue (${getErrorMessage(sequenceError)}). The task was still marked done.`,
+                });
+              }
             }
           } else {
             await updateContactTask.mutateAsync({

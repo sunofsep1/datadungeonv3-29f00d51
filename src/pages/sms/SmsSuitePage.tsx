@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { MessageSquare, Send, Users, FileText, Clock, History, ListPlus, Trash2, Loader2 } from "lucide-react";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,23 +140,23 @@ export default function SmsSuitePage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="send" className="gap-1.5">
-            <Send className="h-4 w-4" /> Send
-          </TabsTrigger>
-          <TabsTrigger value="lists" className="gap-1.5">
-            <Users className="h-4 w-4" /> Lists
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="gap-1.5">
-            <FileText className="h-4 w-4" /> Templates
-          </TabsTrigger>
-          <TabsTrigger value="scheduled" className="gap-1.5">
-            <Clock className="h-4 w-4" /> Scheduled
-          </TabsTrigger>
-          <TabsTrigger value="history" className="gap-1.5">
-            <History className="h-4 w-4" /> History
-          </TabsTrigger>
-        </TabsList>
+        <SegmentedTabsList className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          <SegmentedTabsTrigger value="send" className="inline-flex items-center justify-center gap-1.5 px-2">
+            <Send className="h-4 w-4 shrink-0" /> Send
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="lists" className="inline-flex items-center justify-center gap-1.5 px-2">
+            <Users className="h-4 w-4 shrink-0" /> Lists
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="templates" className="inline-flex items-center justify-center gap-1.5 px-2">
+            <FileText className="h-4 w-4 shrink-0" /> Templates
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="scheduled" className="inline-flex items-center justify-center gap-1.5 px-2">
+            <Clock className="h-4 w-4 shrink-0" /> Scheduled
+          </SegmentedTabsTrigger>
+          <SegmentedTabsTrigger value="history" className="inline-flex items-center justify-center gap-1.5 px-2">
+            <History className="h-4 w-4 shrink-0" /> History
+          </SegmentedTabsTrigger>
+        </SegmentedTabsList>
 
         <TabsContent value="send">
           <SmsSendPanel

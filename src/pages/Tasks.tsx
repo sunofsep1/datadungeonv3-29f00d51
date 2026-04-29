@@ -1,16 +1,20 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, ListTodo, CheckSquare, Users, Plus, Trash2, Loader2, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, CheckSquare, Users, Plus, Trash2, Loader2, FileText } from "lucide-react";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useContacts } from "@/hooks/useContacts";
 import { useOpenContactTasksForUser, useUpdateContactTask } from "@/hooks/useContactTasks";
-import { usePendingStepRunsByTaskIds, useCompleteNurtureStepAndAdvance } from "@/hooks/useNurtureSequences";
+import {
+  usePendingStepRunsByTaskIds,
+  useCompleteNurtureStepAndAdvance,
+  isNurtureNoActiveStepError,
+} from "@/hooks/useNurtureSequences";
 import { useTodos, useAddTodo, useUpdateTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
 import { endOfWeek, format, isPast, isToday, isWithinInterval, startOfWeek } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,8 +29,33 @@ import {
 } from "@/lib/savedViewPayloads";
 import { useSavedViews } from "@/hooks/useSavedViews";
 import { getTasksOpenDefaultSavedView } from "@/lib/savedViewsClientPrefs";
+import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 
-function PersonalTodoRow({
+/** Same Embla behavior as Daily Hub — smaller slide width for compact tiles. */
+const TASKS_TODO_CAROUSEL_OPTS = {
+  align: "start" as const,
+  dragFree: true,
+  containScroll: false,
+};
+
+const TASKS_TODO_SLIDE_CLASS =
+  "w-[min(calc(100vw-2rem),200px)] min-w-[168px] max-w-[200px] shrink-0 basis-[min(calc(100vw-2rem),200px)] pl-2 md:pl-3";
+
+function useTasksTodoWheelPlugins() {
+  return useMemo(() => [WheelGesturesPlugin({ forceWheelAxis: "x" })], []);
+}
+
+function todoPriorityClass(todo: Todo) {
+  return todo.priority === "high"
+    ? "bg-destructive/15 text-destructive border-destructive/25"
+    : todo.priority === "low"
+      ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/25"
+      : "bg-amber-500/15 text-amber-700 border-amber-500/25";
+}
+
+/** Compact tile for horizontal carousel (smaller than Daily Hub focus cards). */
+function PersonalTodoCarouselCard({
   todo,
   onToggle,
   onDelete,
@@ -40,61 +69,104 @@ function PersonalTodoRow({
   isDeleting: boolean;
 }) {
   const dueLabel = todo.due_at ? format(new Date(todo.due_at), "d MMM") : null;
-  const priorityClass =
-    todo.priority === "high"
-      ? "bg-destructive/15 text-destructive border-destructive/25"
-      : todo.priority === "low"
-        ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/25"
-        : "bg-amber-500/15 text-amber-700 border-amber-500/25";
+  const priorityClass = todoPriorityClass(todo);
   return (
-    <div
+    <Card
       className={cn(
-        "flex items-center gap-3 py-2.5 px-3 rounded-lg border border-transparent hover:bg-muted/40 hover:border-border transition-colors group",
-        todo.completed && "opacity-70"
+        "group h-full flex flex-col gap-1 border border-border bg-background/90 p-2 shadow-sm transition-colors hover:border-border hover:bg-muted/30",
+        todo.completed && "opacity-75",
       )}
     >
-      <Checkbox
-        checked={todo.completed}
-        onCheckedChange={onToggle}
-        disabled={isToggling}
-        className="shrink-0"
-        aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}
-      />
-      {isToggling ? (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
-      ) : null}
-      <div className="flex-1 min-w-0">
-        <span
-          className={cn(
-            "block text-sm",
-            todo.completed && "line-through text-muted-foreground"
-          )}
-        >
-          {todo.title}
-        </span>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <span className={cn("inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase", priorityClass)}>
-            {todo.priority}
-          </span>
-          {dueLabel && <span className="text-[10px] text-muted-foreground">Due {dueLabel}</span>}
-          {todo.recurrence !== "none" && (
-            <span className="text-[10px] text-muted-foreground capitalize">Repeats {todo.recurrence}</span>
-          )}
+      <div className="flex items-start gap-1.5">
+        <Checkbox
+          checked={todo.completed}
+          onCheckedChange={onToggle}
+          disabled={isToggling}
+          className="mt-0.5 shrink-0"
+          aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}
+        />
+        {isToggling ? (
+          <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "line-clamp-3 text-[13px] font-medium leading-snug",
+              todo.completed && "text-muted-foreground line-through",
+            )}
+          >
+            {todo.title}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <span
+              className={cn(
+                "inline-flex rounded-full border px-1 py-0.5 text-[9px] font-semibold uppercase leading-none",
+                priorityClass,
+              )}
+            >
+              {todo.priority}
+            </span>
+            {dueLabel ? (
+              <span className="text-[10px] text-muted-foreground">Due {dueLabel}</span>
+            ) : null}
+            {todo.recurrence !== "none" ? (
+              <span className="text-[10px] text-muted-foreground capitalize">{todo.recurrence}</span>
+            ) : null}
+          </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground opacity-70 hover:text-destructive group-hover:opacity-100"
+          onClick={(e) => {
+            e.preventDefault();
+            onDelete();
+          }}
+          disabled={isDeleting}
+          aria-label="Delete"
+        >
+          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+        </Button>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-        onClick={(e) => {
-          e.preventDefault();
-          onDelete();
-        }}
-        disabled={isDeleting}
-        aria-label="Delete"
-      >
-        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-      </Button>
+    </Card>
+  );
+}
+
+function PersonalTodoCarouselStrip({
+  title,
+  todos,
+  emptyText,
+  renderCard,
+}: {
+  title: string;
+  todos: Todo[];
+  emptyText: string;
+  renderCard: (todo: Todo) => ReactNode;
+}) {
+  const plugins = useTasksTodoWheelPlugins();
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+        <Badge variant="outline" className="border-border/70 text-[10px]">
+          {todos.length}
+        </Badge>
+      </div>
+      {todos.length === 0 ? (
+        <p className="px-1 py-2 text-xs text-muted-foreground">{emptyText}</p>
+      ) : (
+        <div className="touch-pan-x w-full min-w-0">
+          <Carousel opts={TASKS_TODO_CAROUSEL_OPTS} plugins={plugins} className="w-full">
+            <CarouselContent className="-ml-2 md:-ml-3">
+              {todos.map((todo) => (
+                <CarouselItem key={todo.id} className={TASKS_TODO_SLIDE_CLASS}>
+                  {renderCard(todo)}
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+        </div>
+      )}
     </div>
   );
 }
@@ -167,11 +239,6 @@ export default function Tasks() {
     [todos]
   );
   const completedPersonal = useMemo(() => todos.filter((t) => t.completed), [todos]);
-
-  const todoTabBadge =
-    incompletePersonal.length + contactTasks.length > 0
-      ? incompletePersonal.length + contactTasks.length
-      : 0;
 
   const tasks = useMemo(() => {
     const sorted = [...appointments].sort(
@@ -260,7 +327,6 @@ export default function Tasks() {
     <div className="animate-fade-in min-h-[60vh]">
       <PageHeader
         title="Tasks"
-        description="Appointments, your general to-dos, and open tasks on contacts."
         actions={
           <SavedViewsMenu
             objectType="tasks"
@@ -269,263 +335,262 @@ export default function Tasks() {
           />
         }
       />
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "appointments" | "todos")} className="mt-4">
-        <TabsList className="mb-4 flex-wrap h-auto gap-1 py-1">
-          <TabsTrigger value="appointments" className="gap-1.5">
-            <Calendar className="w-4 h-4" /> Appointments
-          </TabsTrigger>
-          <TabsTrigger value="todos" className="gap-1.5">
-            <ListTodo className="w-4 h-4" /> To-do list
-            {todoTabBadge > 0 && (
-              <span className="ml-1 rounded-full bg-primary/20 px-1.5 text-xs">{todoTabBadge}</span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="zoho-card border border-border p-3">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Appointments</div>
+          <div className="mt-0.5 text-xl font-semibold">{appointments.length}</div>
+        </Card>
+        <Card className="zoho-card border border-border p-3">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Overdue</div>
+          <div className="mt-0.5 text-xl font-semibold text-amber-500">{overdueCount}</div>
+        </Card>
+        <Card className="zoho-card border border-border p-3">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Personal to-dos</div>
+          <div className="mt-0.5 text-xl font-semibold">{incompletePersonal.length}</div>
+        </Card>
+      </div>
 
-        <TabsContent value="appointments" className="space-y-4">
+      <div className="mt-4 min-w-0 rounded-lg border border-border/70 bg-card/45 p-2.5 md:p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
+              <CheckSquare className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">General tasks</h2>
+              <p className="text-[11px] text-muted-foreground">
+                Drag or scroll sideways — same carousel as Daily Hub, smaller tiles.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Input
+            placeholder="Add a task…"
+            className="h-9 border-border bg-background"
+            value={newPersonalTitle}
+            onChange={(e) => setNewPersonalTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddPersonal()}
+          />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <select
+              className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+              value={newPersonalPriority}
+              onChange={(e) => setNewPersonalPriority(e.target.value as Todo["priority"])}
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <Input
+              type="date"
+              value={newPersonalDueDate}
+              onChange={(e) => setNewPersonalDueDate(e.target.value)}
+              className="h-9 border-border bg-background text-xs"
+            />
+            <select
+              className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+              value={newPersonalRecurrence}
+              onChange={(e) => setNewPersonalRecurrence(e.target.value as Todo["recurrence"])}
+            >
+              <option value="none">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <Button
+              size="sm"
+              onClick={handleAddPersonal}
+              disabled={!newPersonalTitle.trim() || addTodo.isPending}
+              className="h-9 gap-1.5"
+            >
+              {addTodo.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Add
+            </Button>
+          </div>
+        </div>
+
+        {todosLoading ? (
+          <div className="mt-3 flex gap-2 overflow-hidden pt-1">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[92px] w-[200px] shrink-0 rounded-lg" />
+            ))}
+          </div>
+        ) : todos.length === 0 ? (
+          <p className="mt-3 border-t border-border/50 px-1 py-4 text-center text-xs text-muted-foreground">
+            No general tasks yet. Add one above.
+          </p>
+        ) : (
+          <div className="mt-3 space-y-4 border-t border-border/50 pt-3">
+            <PersonalTodoCarouselStrip
+              title="To do"
+              todos={incompletePersonal}
+              emptyText="Nothing open."
+              renderCard={(todo) => (
+                <PersonalTodoCarouselCard
+                  todo={todo}
+                  onToggle={() =>
+                    updateTodo.mutate(
+                      { id: todo.id, completed: !todo.completed },
+                      { onError: (e) => toast.error(e.message || "Failed to update") },
+                    )
+                  }
+                  onDelete={() =>
+                    deleteTodo.mutate(todo.id, {
+                      onSuccess: () => toast.success("Removed"),
+                      onError: (e) => toast.error(e.message || "Failed to delete"),
+                    })
+                  }
+                  isToggling={updateTodo.isPending && updateTodo.variables?.id === todo.id}
+                  isDeleting={deleteTodo.isPending && deleteTodo.variables === todo.id}
+                />
+              )}
+            />
+            {completedPersonal.length > 0 ? (
+              <PersonalTodoCarouselStrip
+                title="Done"
+                todos={completedPersonal}
+                emptyText="No completed items."
+                renderCard={(todo) => (
+                  <PersonalTodoCarouselCard
+                    todo={todo}
+                    onToggle={() =>
+                      updateTodo.mutate(
+                        { id: todo.id, completed: false },
+                        { onError: (e) => toast.error(e.message || "Failed to update") },
+                      )
+                    }
+                    onDelete={() =>
+                      deleteTodo.mutate(todo.id, {
+                        onSuccess: () => toast.success("Removed"),
+                        onError: (e) => toast.error(e.message || "Failed to delete"),
+                      })
+                    }
+                    isToggling={updateTodo.isPending && updateTodo.variables?.id === todo.id}
+                    isDeleting={deleteTodo.isPending && deleteTodo.variables === todo.id}
+                  />
+                )}
+              />
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <Card className="zoho-card border border-border p-3 md:p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-semibold">Appointments</h2>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {tasks.length} shown
+            </Badge>
+          </div>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>
+              All
+            </Button>
+            <Button variant={filter === "today" ? "default" : "outline"} size="sm" onClick={() => setFilter("today")}>
+              Today
+            </Button>
+            <Button
+              variant={filter === "upcoming" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter("upcoming")}
+            >
+              Upcoming
+            </Button>
+            <Button
+              variant={filter === "overdue" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter("overdue")}
+            >
+              Overdue
+            </Button>
+            <Button
+              variant={filter === "this_week" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter("this_week")}
+            >
+              This week
+            </Button>
+          </div>
+
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="mb-4">
+                {filter !== "all" ? `No ${filter} appointments.` : "No appointments yet. Schedule from Calendar or Dashboard."}
+              </p>
+              <Button variant="default" onClick={() => navigate("/calendar")}>
+                <Calendar className="w-4 h-4 mr-2" />
+                Open Calendar
+              </Button>
+            </div>
           ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={filter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("all")}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={filter === "today" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("today")}
-                >
-                  Today
-                </Button>
-                <Button
-                  variant={filter === "upcoming" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("upcoming")}
-                >
-                  Upcoming
-                </Button>
-                <Button
-                  variant={filter === "overdue" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("overdue")}
-                >
-                  Overdue
-                </Button>
-                <Button
-                  variant={filter === "this_week" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("this_week")}
-                >
-                  This week
-                </Button>
-                {overdueCount > 0 && filter !== "overdue" && (
-                  <span className="text-sm text-muted-foreground self-center">{overdueCount} overdue</span>
-                )}
-              </div>
-              {tasks.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="mb-4">
-                    {filter !== "all"
-                      ? `No ${filter} appointments.`
-                      : "No appointments yet. Schedule from Calendar or Dashboard."}
-                  </p>
-                  <Button variant="default" onClick={() => navigate("/calendar")}>
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Open Calendar
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {tasks.map((apt) => {
-                    const date = new Date(apt.date);
-                    const isOverdue = isPast(date) && !isToday(date);
-                    return (
-                      <Card
-                        key={apt.id}
-                        className={`p-3 border border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer zoho-card ${isOverdue ? "border-amber-500/30" : ""}`}
-                        onClick={() => navigate("/appointments")}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={isPast(date)}
-                            onCheckedChange={() => {}}
-                            onClick={(e) => e.stopPropagation()}
-                            className="pointer-events-none"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground">{apt.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(date, "EEE, d MMM · HH:mm")}
-                              {apt.location && ` · ${apt.location}`}
-                            </p>
-                          </div>
-                          {isOverdue && <span className="text-xs text-amber-500">Overdue</span>}
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-        </TabsContent>
-
-        <TabsContent value="todos" className="space-y-6">
-          {/* General tasks (personal todos) */}
-          <Card className="zoho-card overflow-hidden border border-border">
-            <div className="p-4 border-b border-border bg-muted/20">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
-                  <CheckSquare className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground text-sm">General tasks</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Your own reminders — not linked to a contact.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a task…"
-                  className="bg-background border-border flex-1"
-                  value={newPersonalTitle}
-                  onChange={(e) => setNewPersonalTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddPersonal()}
-                />
-                <select
-                  className="h-10 rounded-md border border-border bg-background px-2 text-sm"
-                  value={newPersonalPriority}
-                  onChange={(e) => setNewPersonalPriority(e.target.value as Todo["priority"])}
-                >
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-                <Input
-                  type="date"
-                  value={newPersonalDueDate}
-                  onChange={(e) => setNewPersonalDueDate(e.target.value)}
-                  className="bg-background border-border w-[140px]"
-                />
-                <select
-                  className="h-10 rounded-md border border-border bg-background px-2 text-sm"
-                  value={newPersonalRecurrence}
-                  onChange={(e) => setNewPersonalRecurrence(e.target.value as Todo["recurrence"])}
-                >
-                  <option value="none">No repeat</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-                <Button
-                  size="sm"
-                  onClick={handleAddPersonal}
-                  disabled={!newPersonalTitle.trim() || addTodo.isPending}
-                  className="gap-1.5 shrink-0"
-                >
-                  {addTodo.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  Add
-                </Button>
-              </div>
-            </div>
-            <div className="p-3">
-              {todosLoading ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-11 w-full" />
-                  ))}
-                </div>
-              ) : todos.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  No general tasks yet. Add one above.
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {incompletePersonal.map((todo) => (
-                    <PersonalTodoRow
-                      key={todo.id}
-                      todo={todo}
-                      onToggle={() =>
-                        updateTodo.mutate(
-                          { id: todo.id, completed: !todo.completed },
-                          { onError: (e) => toast.error(e.message || "Failed to update") }
-                        )
-                      }
-                      onDelete={() =>
-                        deleteTodo.mutate(todo.id, {
-                          onSuccess: () => toast.success("Removed"),
-                          onError: (e) => toast.error(e.message || "Failed to delete"),
-                        })
-                      }
-                      isToggling={updateTodo.isPending && updateTodo.variables?.id === todo.id}
-                      isDeleting={deleteTodo.isPending && deleteTodo.variables === todo.id}
-                    />
-                  ))}
-                  {completedPersonal.length > 0 && (
-                    <>
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-3 pb-1 px-1">
-                        Done
+            <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1">
+              {tasks.map((apt) => {
+                const date = new Date(apt.date);
+                const isOverdue = isPast(date) && !isToday(date);
+                return (
+                  <Card
+                    key={apt.id}
+                    className={`p-2.5 border border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer ${isOverdue ? "border-amber-500/30" : ""}`}
+                    onClick={() => navigate("/appointments")}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Checkbox
+                        checked={isPast(date)}
+                        onCheckedChange={() => {}}
+                        onClick={(e) => e.stopPropagation()}
+                        className="pointer-events-none"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{apt.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(date, "EEE, d MMM · HH:mm")}
+                          {apt.location && ` · ${apt.location}`}
+                        </p>
                       </div>
-                      {completedPersonal.map((todo) => (
-                        <PersonalTodoRow
-                          key={todo.id}
-                          todo={todo}
-                          onToggle={() =>
-                            updateTodo.mutate(
-                              { id: todo.id, completed: false },
-                              { onError: (e) => toast.error(e.message || "Failed to update") }
-                            )
-                          }
-                          onDelete={() =>
-                            deleteTodo.mutate(todo.id, {
-                              onSuccess: () => toast.success("Removed"),
-                              onError: (e) => toast.error(e.message || "Failed to delete"),
-                            })
-                          }
-                          isToggling={updateTodo.isPending && updateTodo.variables?.id === todo.id}
-                          isDeleting={deleteTodo.isPending && deleteTodo.variables === todo.id}
-                        />
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
+                      {isOverdue && <span className="text-xs text-amber-500">Overdue</span>}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
-          </Card>
+          )}
+        </Card>
+      </div>
 
-          {/* Contact CRM tasks */}
-          <Card className="zoho-card overflow-hidden border border-border">
-            <div className="p-4 border-b border-border bg-muted/20">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
-                  <Users className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground text-sm">Contacts with tasks</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Follow-ups and nurture steps — tap a row to open the contact.
-                  </p>
-                </div>
+      <Card className="zoho-card overflow-hidden border border-border mt-4">
+        <div className="p-3 border-b border-border bg-muted/20">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground text-sm">Contact follow-ups</h2>
+                <p className="text-xs text-muted-foreground">
+                  Follow-ups and nurture steps. Open a contact or complete inline.
+                </p>
               </div>
             </div>
-            <div className="p-3">
+            <Badge variant="outline" className="text-xs">
+              {contactTasks.length} open
+            </Badge>
+          </div>
+        </div>
+        <div className="p-2.5">
               {ctLoading ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {[...Array(4)].map((_, i) => (
                     <Skeleton key={i} className="h-14 w-full" />
                   ))}
@@ -540,9 +605,9 @@ export default function Tasks() {
                     return (
                       <Card
                         key={t.id}
-                        className={`p-3 border border-border zoho-card ${overdue ? "border-amber-500/30" : ""}`}
+                        className={`p-2.5 border border-border zoho-card ${overdue ? "border-amber-500/30" : ""}`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2.5">
                           <Checkbox
                             checked={false}
                             onCheckedChange={(v) => {
@@ -554,11 +619,32 @@ export default function Tasks() {
                                     enrollment_id: run.enrollment_id,
                                     step_run_id: run.id,
                                     contact_id: t.contact_id,
+                                    contact_task_id: t.id,
                                     outcome: "completed",
                                   },
                                   {
                                     onSuccess: () => toast.success("Step completed. Next step scheduled."),
-                                    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+                                    onError: (e) => {
+                                      if (isNurtureNoActiveStepError(e)) {
+                                        updateContactTask.mutate(
+                                          {
+                                            id: t.id,
+                                            contact_id: t.contact_id,
+                                            completed_at: new Date().toISOString(),
+                                          },
+                                          {
+                                            onSuccess: () =>
+                                              toast.success(
+                                                "Task marked done. The nurture sequence had already moved on.",
+                                              ),
+                                            onError: (e2) =>
+                                              toast.error(e2 instanceof Error ? e2.message : "Failed"),
+                                          },
+                                        );
+                                        return;
+                                      }
+                                      toast.error(e instanceof Error ? e.message : "Failed");
+                                    },
                                   }
                                 );
                                 return;
@@ -589,10 +675,10 @@ export default function Tasks() {
                                 )
                               }
                             >
-                              <p className="font-medium text-foreground truncate">
+                              <p className="text-sm font-medium text-foreground truncate">
                                 {contactNameById.get(t.contact_id) ?? "Contact"}
                               </p>
-                              <p className="text-sm text-muted-foreground mt-0.5">
+                              <p className="text-xs text-muted-foreground mt-0.5">
                                 {t.sequence_enrollment_id ? (
                                   <span className="font-medium text-primary/90">Sequence task · </span>
                                 ) : null}
@@ -629,11 +715,32 @@ export default function Tasks() {
                                       enrollment_id: run.enrollment_id,
                                       step_run_id: run.id,
                                       contact_id: t.contact_id,
+                                      contact_task_id: t.id,
                                       outcome: "completed",
                                     },
                                     {
                                       onSuccess: () => toast.success("Step completed. Next step scheduled."),
-                                      onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+                                      onError: (e) => {
+                                        if (isNurtureNoActiveStepError(e)) {
+                                          updateContactTask.mutate(
+                                            {
+                                              id: t.id,
+                                              contact_id: t.contact_id,
+                                              completed_at: new Date().toISOString(),
+                                            },
+                                            {
+                                              onSuccess: () =>
+                                                toast.success(
+                                                  "Task marked done. The nurture sequence had already moved on.",
+                                                ),
+                                              onError: (e2) =>
+                                                toast.error(e2 instanceof Error ? e2.message : "Failed"),
+                                            },
+                                          );
+                                          return;
+                                        }
+                                        toast.error(e instanceof Error ? e.message : "Failed");
+                                      },
                                     }
                                   );
                                 }}
@@ -648,10 +755,8 @@ export default function Tasks() {
                   })}
                 </div>
               )}
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </Card>
 
       <ContactScriptQuickSheet
         key={scriptTaskContactId ?? "closed"}

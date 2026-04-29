@@ -29,6 +29,42 @@ const enrollKey = ["nurture_sequence_enrollments"] as const;
 export const NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY = ["nurture_sequence_step_runs"] as const;
 const stepRunsKey = NURTURE_SEQUENCE_STEP_RUNS_QUERY_KEY;
 
+/** When present on an Error, the contact task has no step run that matches enrollment.current_step_index (sequence already advanced or drift). */
+export const NURTURE_NO_ACTIVE_STEP_CODE = "NURTURE_NO_ACTIVE_STEP" as const;
+
+export function isNurtureNoActiveStepError(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === NURTURE_NO_ACTIVE_STEP_CODE;
+}
+
+async function filterToActivePendingStepRuns(runs: NurtureStepRun[]): Promise<NurtureStepRun[]> {
+  if (runs.length === 0) return [];
+  const enrollmentIds = [...new Set(runs.map((r) => r.enrollment_id))];
+  const { data: enrollments, error } = await supabase
+    .from("nurture_sequence_enrollments")
+    .select("id, current_step_index, completed_at")
+    .in("id", enrollmentIds);
+  if (error) throw error;
+  const byId = new Map(
+    (enrollments ?? []).map((row) => [row.id, row as { current_step_index: number; completed_at: string | null }]),
+  );
+  return runs.filter((run) => {
+    const e = byId.get(run.enrollment_id);
+    if (!e || e.completed_at != null) return false;
+    return run.step_index === e.current_step_index;
+  });
+}
+
+async function fetchActivePendingStepRunForTask(taskId: string): Promise<NurtureStepRun | null> {
+  const { data, error } = await supabase
+    .from("nurture_sequence_step_runs" as never)
+    .select("*")
+    .eq("status", "pending")
+    .eq("task_id", taskId);
+  if (error) throw error;
+  const active = await filterToActivePendingStepRuns((data ?? []) as NurtureStepRun[]);
+  return active[0] ?? null;
+}
+
 function addDays(d: Date, days: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + days);
@@ -141,7 +177,7 @@ export function usePendingStepRunsByTaskIds(taskIds?: string[]) {
   const ids = (taskIds ?? []).filter(Boolean);
 
   return useQuery({
-    queryKey: [...stepRunsKey, "task_ids", ...ids],
+    queryKey: [...stepRunsKey, "task_ids", "active", ...ids],
     queryFn: async (): Promise<NurtureStepRun[]> => {
       if (!user || ids.length === 0) return [];
       const { data, error } = await supabase
@@ -150,7 +186,7 @@ export function usePendingStepRunsByTaskIds(taskIds?: string[]) {
         .eq("status", "pending")
         .in("task_id", ids);
       if (error) throw error;
-      return (data ?? []) as NurtureStepRun[];
+      return filterToActivePendingStepRuns((data ?? []) as NurtureStepRun[]);
     },
     enabled: Boolean(user && ids.length > 0),
   });
@@ -164,12 +200,27 @@ export function useCompleteNurtureStepAndAdvance() {
       enrollment_id: string;
       step_run_id: string;
       contact_id: string;
+      /** When set, enrollment/step ids are re-resolved from the DB so the RPC always receives the active step run for this task (avoids "Active step run not found for this enrollment"). */
+      contact_task_id?: string | null;
       outcome?: "completed" | "skipped";
       engagement_note?: string | null;
     }) => {
+      let enrollment_id = input.enrollment_id;
+      let step_run_id = input.step_run_id;
+      if (input.contact_task_id) {
+        const fresh = await fetchActivePendingStepRunForTask(input.contact_task_id);
+        if (!fresh) {
+          const err = new Error("No active nurture step for this contact task.");
+          (err as { code?: string }).code = NURTURE_NO_ACTIVE_STEP_CODE;
+          throw err;
+        }
+        enrollment_id = fresh.enrollment_id;
+        step_run_id = fresh.id;
+      }
+
       const { data, error } = await supabase.rpc("complete_nurture_step_and_advance" as never, {
-        p_enrollment_id: input.enrollment_id,
-        p_step_run_id: input.step_run_id,
+        p_enrollment_id: enrollment_id,
+        p_step_run_id: step_run_id,
         p_outcome: input.outcome ?? "completed",
       } as Record<string, unknown>);
       if (error) throw error;

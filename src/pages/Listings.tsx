@@ -21,7 +21,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Plus, MapPin, Bed, Bath, Trash2, Pencil, Building2, User, Phone, Mail, Calendar, CheckSquare, Square, ChevronRight, LayoutList, LayoutGrid, Download } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Badge } from "@/components/ui/badge";
@@ -402,14 +403,14 @@ export default function Listings({ embedded = false }: ListingsProps) {
               </DialogHeader>
               <ScrollArea className="flex-1 pr-4">
                 <Tabs defaultValue="basic" className="mt-4">
-                  <TabsList className="grid w-full grid-cols-6">
-                    <TabsTrigger value="basic">Basic</TabsTrigger>
-                    <TabsTrigger value="property">Property</TabsTrigger>
-                    <TabsTrigger value="marketing">Marketing</TabsTrigger>
-                    <TabsTrigger value="financial">Financial</TabsTrigger>
-                    <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                    <TabsTrigger value="notes">Notes</TabsTrigger>
-                  </TabsList>
+                  <SegmentedTabsList className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+                    <SegmentedTabsTrigger value="basic">Basic</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="property">Property</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="marketing">Marketing</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="financial">Financial</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="timeline">Timeline</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="notes">Notes</SegmentedTabsTrigger>
+                  </SegmentedTabsList>
                   <TabsContent value="basic" className="space-y-4 mt-4">
                     {/* Property Owner Section */}
                     <div className="space-y-2 p-4 bg-secondary rounded-lg">

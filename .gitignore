@@ -33,3 +33,9 @@ supabase/.branches/
 
 # Local Netlify folder
 .netlify
+
+.env.save
+*.zip
+
+.env.save
+*.zip
