@@ -52,6 +52,7 @@ const Pipeline = lazy(() => import("./pages/Pipeline"));
 const AIOps = lazy(() => import("./pages/AIOps"));
 const TouchReport = lazy(() => import("./pages/TouchReport"));
 const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
+const OfiCheckInPage = lazy(() => import("./pages/OfiCheckInPage"));
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
                 <Route path="/" element={<Navigate to="/attention-hub" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/ofi/check-in/:token" element={<OfiCheckInPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/attention-hub" element={<ProtectedRoute><MainLayout><ErrorBoundary><AttentionHub /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />

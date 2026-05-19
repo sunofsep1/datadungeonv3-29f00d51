@@ -14,6 +14,7 @@ export const DASHBOARD_WIDGET_IDS = [
   "activeSequences",
   "recentContacts",
   "upcomingAppointments",
+  "upcomingInspections",
   "quickActions",
 ] as const;
 
@@ -30,7 +31,7 @@ const LEGACY_STORAGE_KEY = "dashboard-widget-order";
  * Bump when adding new widget types so existing users get them appended once (see WIDGETS_INTRODUCED_IN_SCHEMA).
  * Removing widgets from the saved order is respected and does not re-append deleted ids.
  */
-export const CURRENT_DASHBOARD_SCHEMA = 5;
+export const CURRENT_DASHBOARD_SCHEMA = 6;
 
 /** For each schema version, widget ids to append to the end of the user's order if missing (new features). */
 export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
@@ -40,6 +41,8 @@ export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
   4: ["commandCenter"],
   /** Claude AI Ops dashboard widget. */
   5: ["claudeOps"],
+  /** Open-for-inspection times across listings. */
+  6: ["upcomingInspections"],
 };
 
 const LEGACY_SCHEMA_KEY = `${LEGACY_STORAGE_KEY}:schema`;
@@ -167,5 +170,6 @@ export const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
   activeSequences: "Nurture sequences",
   recentContacts: "Recent contacts",
   upcomingAppointments: "Appointments",
+  upcomingInspections: "Upcoming inspections",
   quickActions: "Quick actions",
 };

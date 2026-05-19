@@ -52,6 +52,7 @@ import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
 import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
+import { UpcomingInspectionsCard } from "@/components/dashboard/UpcomingInspectionsCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
 import { ClaudeCommandCenterWidget } from "@/components/dashboard/ClaudeCommandCenterWidget";
@@ -391,6 +392,8 @@ export default function Dashboard() {
         return <KPISnapshot />;
       case "pipeline":
         return <PipelineSummary />;
+      case "upcomingInspections":
+        return <UpcomingInspectionsCard />;
       case "activityFeed":
         return <RecentActivityFeed />;
       case "todo":

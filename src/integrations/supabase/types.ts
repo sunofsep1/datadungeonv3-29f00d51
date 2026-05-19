@@ -480,6 +480,93 @@ export type Database = {
         }
         Relationships: []
       }
+      buyer_requirements: {
+        Row: {
+          action: string
+          baths_min: number | null
+          beds_min: number | null
+          building_max_sqm: number | null
+          building_min_sqm: number | null
+          category: string | null
+          contact_id: string
+          created_at: string
+          features_required: string[]
+          id: string
+          land_max_sqm: number | null
+          land_min_sqm: number | null
+          notes: string | null
+          parking_min: number | null
+          price_max: number | null
+          price_min: number | null
+          property_type: string | null
+          state: string | null
+          suburbs: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          baths_min?: number | null
+          beds_min?: number | null
+          building_max_sqm?: number | null
+          building_min_sqm?: number | null
+          category?: string | null
+          contact_id: string
+          created_at?: string
+          features_required?: string[]
+          id?: string
+          land_max_sqm?: number | null
+          land_min_sqm?: number | null
+          notes?: string | null
+          parking_min?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          property_type?: string | null
+          state?: string | null
+          suburbs?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          baths_min?: number | null
+          beds_min?: number | null
+          building_max_sqm?: number | null
+          building_min_sqm?: number | null
+          category?: string | null
+          contact_id?: string
+          created_at?: string
+          features_required?: string[]
+          id?: string
+          land_max_sqm?: number | null
+          land_min_sqm?: number | null
+          notes?: string | null
+          parking_min?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          property_type?: string | null
+          state?: string | null
+          suburbs?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_requirements_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_requirements_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -973,6 +1060,96 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_requirements: {
+        Row: {
+          baths_min: number | null
+          beds_min: number | null
+          building_max_sqm: number | null
+          building_min_sqm: number | null
+          category: string | null
+          contact_id: string
+          created_at: string
+          features_required: Json
+          id: string
+          land_max_sqm: number | null
+          land_min_sqm: number | null
+          notes: string | null
+          parking_min: number | null
+          price_max: number | null
+          price_min: number | null
+          property_type: string | null
+          regions: Json
+          sale_rental: string
+          state: string | null
+          suburbs: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baths_min?: number | null
+          beds_min?: number | null
+          building_max_sqm?: number | null
+          building_min_sqm?: number | null
+          category?: string | null
+          contact_id: string
+          created_at?: string
+          features_required?: Json
+          id?: string
+          land_max_sqm?: number | null
+          land_min_sqm?: number | null
+          notes?: string | null
+          parking_min?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          property_type?: string | null
+          regions?: Json
+          sale_rental?: string
+          state?: string | null
+          suburbs?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baths_min?: number | null
+          beds_min?: number | null
+          building_max_sqm?: number | null
+          building_min_sqm?: number | null
+          category?: string | null
+          contact_id?: string
+          created_at?: string
+          features_required?: Json
+          id?: string
+          land_max_sqm?: number | null
+          land_min_sqm?: number | null
+          notes?: string | null
+          parking_min?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          property_type?: string | null
+          regions?: Json
+          sale_rental?: string
+          state?: string | null
+          suburbs?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_requirements_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_requirements_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_scores: {
         Row: {
           contact_id: string
@@ -1124,6 +1301,10 @@ export type Database = {
           created_at: string | null
           current_situation_notes: string | null
           date_of_birth: string | null
+          dnc_email: boolean
+          dnc_mail: boolean
+          dnc_phone: boolean
+          dnc_sms: boolean
           do_not_contact: boolean | null
           email: string | null
           email_opt_out: boolean | null
@@ -1182,6 +1363,10 @@ export type Database = {
           created_at?: string | null
           current_situation_notes?: string | null
           date_of_birth?: string | null
+          dnc_email?: boolean
+          dnc_mail?: boolean
+          dnc_phone?: boolean
+          dnc_sms?: boolean
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
@@ -1240,6 +1425,10 @@ export type Database = {
           created_at?: string | null
           current_situation_notes?: string | null
           date_of_birth?: string | null
+          dnc_email?: boolean
+          dnc_mail?: boolean
+          dnc_phone?: boolean
+          dnc_sms?: boolean
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
@@ -1676,6 +1865,42 @@ export type Database = {
           },
         ]
       }
+      entity_audit_log: {
+        Row: {
+          changed_at: string
+          entity_id: string
+          entity_type: string
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          entity_id: string
+          entity_type: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          summary: string
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          entity_id?: string
+          entity_type?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          summary?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_invites: {
         Row: {
           contact_id: string
@@ -2016,6 +2241,105 @@ export type Database = {
           },
         ]
       }
+      listing_inspection_attendees: {
+        Row: {
+          checked_in_at: string
+          contact_id: string | null
+          created_at: string
+          guest_email: string | null
+          guest_name: string | null
+          guest_phone: string | null
+          id: string
+          inspection_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          contact_id?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          inspection_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          contact_id?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          inspection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_inspection_attendees_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_inspection_attendees_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_inspection_attendees_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "listing_open_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_open_inspections: {
+        Row: {
+          check_in_token: string
+          created_at: string
+          ends_at: string
+          id: string
+          listing_id: string
+          open_type: string
+          starts_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in_token?: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          listing_id: string
+          open_type?: string
+          starts_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in_token?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          listing_id?: string
+          open_type?: string
+          starts_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_open_inspections_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_stage_automations: {
         Row: {
           created_at: string
@@ -2152,6 +2476,7 @@ export type Database = {
           campaign_offers_count: number
           campaign_start_at: string | null
           classification_meta: Json
+          commission_gross_pct: number | null
           compliance_agency_agreement_signed: boolean
           compliance_form6_uploaded: boolean
           compliance_id_verified: boolean
@@ -2162,6 +2487,7 @@ export type Database = {
           contract_finance_days: number | null
           contract_subject_sale_days: number | null
           created_at: string
+          display_price: string | null
           id: string
           journey_stage: string | null
           key_date_appraisal: string | null
@@ -2184,6 +2510,9 @@ export type Database = {
           property_type: string | null
           relationship_category: string | null
           role_category: string | null
+          search_price: number | null
+          search_price_max: number | null
+          search_price_min: number | null
           status: string | null
           timeframe_category: string
           updated_at: string
@@ -2205,6 +2534,7 @@ export type Database = {
           campaign_offers_count?: number
           campaign_start_at?: string | null
           classification_meta?: Json
+          commission_gross_pct?: number | null
           compliance_agency_agreement_signed?: boolean
           compliance_form6_uploaded?: boolean
           compliance_id_verified?: boolean
@@ -2215,6 +2545,7 @@ export type Database = {
           contract_finance_days?: number | null
           contract_subject_sale_days?: number | null
           created_at?: string
+          display_price?: string | null
           id?: string
           journey_stage?: string | null
           key_date_appraisal?: string | null
@@ -2237,6 +2568,9 @@ export type Database = {
           property_type?: string | null
           relationship_category?: string | null
           role_category?: string | null
+          search_price?: number | null
+          search_price_max?: number | null
+          search_price_min?: number | null
           status?: string | null
           timeframe_category?: string
           updated_at?: string
@@ -2258,6 +2592,7 @@ export type Database = {
           campaign_offers_count?: number
           campaign_start_at?: string | null
           classification_meta?: Json
+          commission_gross_pct?: number | null
           compliance_agency_agreement_signed?: boolean
           compliance_form6_uploaded?: boolean
           compliance_id_verified?: boolean
@@ -2268,6 +2603,7 @@ export type Database = {
           contract_finance_days?: number | null
           contract_subject_sale_days?: number | null
           created_at?: string
+          display_price?: string | null
           id?: string
           journey_stage?: string | null
           key_date_appraisal?: string | null
@@ -2290,6 +2626,9 @@ export type Database = {
           property_type?: string | null
           relationship_category?: string | null
           role_category?: string | null
+          search_price?: number | null
+          search_price_max?: number | null
+          search_price_min?: number | null
           status?: string | null
           timeframe_category?: string
           updated_at?: string
@@ -4167,6 +4506,16 @@ export type Database = {
         Args: { p_condition_type: string; p_default: number; p_user_id: string }
         Returns: number
       }
+      get_ofi_check_in_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          ends_at: string
+          inspection_id: string
+          listing_address: string
+          listing_id: string
+          starts_at: string
+        }[]
+      }
       get_touch_activity_report: {
         Args: { p_range?: string }
         Returns: {
@@ -4196,6 +4545,27 @@ export type Database = {
         }
         Returns: string
       }
+      match_buyers_for_listing: {
+        Args: { p_listing_id: string }
+        Returns: {
+          contact_email: string
+          contact_id: string
+          contact_name: string
+          contact_phone: string
+          match_score: number
+          requirement_id: string
+        }[]
+      }
+      ofi_check_in_attendee: {
+        Args: {
+          p_contact_id?: string
+          p_guest_email?: string
+          p_guest_name?: string
+          p_guest_phone?: string
+          p_token: string
+        }
+        Returns: string
+      }
       recalculate_all_contact_scores_system: { Args: never; Returns: Json }
       recalculate_contact_score: {
         Args: { p_contact_id: string }
@@ -4203,6 +4573,10 @@ export type Database = {
       }
       recalculate_lead_scores: { Args: { p_user_id?: string }; Returns: number }
       recalculate_my_lead_scores: { Args: never; Returns: number }
+      refresh_listing_buyer_match_count: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
       run_notification_digest_for_current_user: { Args: never; Returns: Json }
       run_notification_digest_system: { Args: never; Returns: Json }
       search_scripts: {
@@ -4232,6 +4606,10 @@ export type Database = {
         Returns: Json
       }
       seed_scripts_from_library: { Args: never; Returns: number }
+      sync_listing_inspection_kpis: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
       update_contact_with_address: { Args: { payload: Json }; Returns: Json }
       user_can_access_contact: { Args: { cid: string }; Returns: boolean }
     }

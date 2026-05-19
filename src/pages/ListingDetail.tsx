@@ -68,6 +68,9 @@ import {
 } from "@/components/listings/ListingStickyActionBar";
 import { MatchBuyersSheet } from "@/components/listings/MatchBuyersSheet";
 import { ListingContactLinksPanel } from "@/components/listings/ListingContactLinksPanel";
+import { ListingOpenInspectionsPanel } from "@/components/listings/ListingOpenInspectionsPanel";
+import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
+import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
@@ -152,6 +155,7 @@ export default function ListingDetail() {
   const { data: recentActivity = [] } = useActivityLogByListing(id ?? null, 4);
   const createActivityLog = useCreateActivityLog();
   const createAppointment = useCreateAppointment();
+  const createOpenInspection = useCreateListingOpenInspection();
   const { logStageMove } = useLogListingStageMove();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -399,6 +403,13 @@ export default function ListingDetail() {
     const iso = new Date(dt).toISOString();
     const title = inspectionTitle.trim() || `Inspection — ${listing.address || "Listing"}`;
     try {
+      const endsAt = addMinutesToIso(iso, DEFAULT_OFI_DURATION_MINUTES);
+      await createOpenInspection.mutateAsync({
+        listing_id: id,
+        starts_at: iso,
+        ends_at: endsAt,
+        open_type: "advertised",
+      });
       await createAppointment.mutateAsync({
         title,
         date: iso,
@@ -414,7 +425,10 @@ export default function ListingDetail() {
         contact_id: contactId ?? null,
         property_id: listing.property_id ?? null,
       });
-      toast({ title: "Inspection booked", description: "Added to your appointments and the timeline." });
+      toast({
+        title: "Inspection booked",
+        description: "Open inspection with QR check-in, plus calendar and timeline.",
+      });
       setActionModal(null);
       refetch();
     } catch (e) {
@@ -962,10 +976,15 @@ export default function ListingDetail() {
       </div>
 
       {id ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          <ListingContactLinksPanel listingId={id} />
-          <EntityModificationsPanel entityType="listing" entityId={id} />
-        </div>
+        <>
+          <div className="mb-6">
+            <ListingOpenInspectionsPanel listingId={id} listingAddress={listing.address} />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <ListingContactLinksPanel listingId={id} />
+            <EntityModificationsPanel entityType="listing" entityId={id} />
+          </div>
+        </>
       ) : null}
 
       <Card className="zoho-card p-6 border-border">
@@ -994,7 +1013,7 @@ export default function ListingDetail() {
               </DialogDescription>
             ) : actionModal === "book_inspection" ? (
               <DialogDescription className="text-sm leading-relaxed">
-                Creates an appointment and a timeline entry. Appears on Calendar with your other bookings.
+                Schedules an open inspection with QR check-in, plus a calendar entry and timeline note.
               </DialogDescription>
             ) : actionModal === "change_stage" && listing ? (
               <DialogDescription className="text-sm leading-relaxed">
