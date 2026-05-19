@@ -55,34 +55,67 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
     .map((value) => new Date(value))
     .filter((value) => !Number.isNaN(value.getTime()));
 
+  // ── Overdue tasks → red / immediate ─────────────────────────────────────
   const overdueTasks = taskDates.filter((date) => isPast(date) && !isToday(date));
   if (overdueTasks.length > 0) {
     score += 120 + Math.min(overdueTasks.length * 10, 30);
     reasons.push(`${overdueTasks.length} overdue follow-up task${overdueTasks.length > 1 ? "s" : ""}`);
   }
 
+  // ── Due today → red / immediate ─────────────────────────────────────────
   const dueTodayTasks = taskDates.filter((date) => isToday(date));
   if (dueTodayTasks.length > 0) {
     score += 70 + Math.min(dueTodayTasks.length * 8, 24);
     reasons.push(`${dueTodayTasks.length} follow-up task${dueTodayTasks.length > 1 ? "s" : ""} due today`);
   }
 
-  const dueSoonTasks = taskDates.filter((date) => {
+  // ── Due within 30 days → orange / priority ───────────────────────────────
+  // (excludes today already counted above; 30 days = 720 hours)
+  const dueWithin30Days = taskDates.filter((date) => {
     const hrs = hoursUntil(date);
-    // Exclude same calendar day so we do not stack with `dueTodayTasks` (flaky in UTC near midnight).
-    return hrs > 0 && hrs <= 48 && !isToday(date);
+    return hrs > 0 && hrs <= 720 && !isToday(date);
   });
-  if (dueSoonTasks.length > 0) {
-    score += 45 + Math.min(dueSoonTasks.length * 5, 15);
-    reasons.push(`${dueSoonTasks.length} task${dueSoonTasks.length > 1 ? "s" : ""} due within 48h`);
+  if (dueWithin30Days.length > 0) {
+    score += 85 + Math.min(dueWithin30Days.length * 5, 15);
+    reasons.push(
+      `${dueWithin30Days.length} follow-up task${dueWithin30Days.length > 1 ? "s" : ""} due within 30 days`,
+    );
   }
 
+  // ── Due within 31–60 days → yellow / planned ─────────────────────────────
+  // (1440 hrs = 60 days; exclude the 30-day band above)
+  const dueWithin60Days = taskDates.filter((date) => {
+    const hrs = hoursUntil(date);
+    return hrs > 720 && hrs <= 1440;
+  });
+  if (dueWithin60Days.length > 0) {
+    score += 55 + Math.min(dueWithin60Days.length * 4, 12);
+    reasons.push(
+      `${dueWithin60Days.length} follow-up task${dueWithin60Days.length > 1 ? "s" : ""} due within 60 days`,
+    );
+  }
+
+  // ── Due within 61–90 days → yellow (low) / planned ───────────────────────
+  // (2160 hrs = 90 days)
+  const dueWithin90Days = taskDates.filter((date) => {
+    const hrs = hoursUntil(date);
+    return hrs > 1440 && hrs <= 2160;
+  });
+  if (dueWithin90Days.length > 0) {
+    score += 38 + Math.min(dueWithin90Days.length * 3, 9);
+    reasons.push(
+      `${dueWithin90Days.length} follow-up task${dueWithin90Days.length > 1 ? "s" : ""} due within 90 days`,
+    );
+  }
+
+  // ── Sequence steps due within 24h → priority boost ───────────────────────
   const dueSequenceTasks = sequenceDates.filter((date) => hoursUntil(date) <= 24);
   if (dueSequenceTasks.length > 0) {
     score += 40 + Math.min(dueSequenceTasks.length * 6, 18);
     reasons.push(`nurture sequence action${dueSequenceTasks.length > 1 ? "s" : ""} pending`);
   }
 
+  // ── Appointment window ───────────────────────────────────────────────────
   const nextAppointment = appointmentDates
     .filter((date) => hoursUntil(date) > -2)
     .sort((a, b) => a.getTime() - b.getTime())[0];
@@ -97,6 +130,7 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
     }
   }
 
+  // ── Inactivity signals ───────────────────────────────────────────────────
   if (signals.lastActivityAt) {
     const last = new Date(signals.lastActivityAt);
     if (!Number.isNaN(last.getTime())) {

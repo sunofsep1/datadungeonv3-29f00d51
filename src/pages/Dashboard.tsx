@@ -51,8 +51,6 @@ import { AffirmationsWidget } from "@/components/dashboard/AffirmationsWidget";
 import { KPISnapshot } from "@/components/dashboard/KPISnapshot";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
-import { TopStoriesWidget } from "@/components/dashboard/TopStoriesWidget";
-import { NewsWidget } from "@/components/dashboard/NewsWidget";
 import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
@@ -376,10 +374,6 @@ export default function Dashboard() {
             )}
           </div>
         );
-      case "topStories":
-        return <TopStoriesWidget />;
-      case "news":
-        return <NewsWidget />;
       case "calendar":
         return (
           <DashboardCalendarWidget

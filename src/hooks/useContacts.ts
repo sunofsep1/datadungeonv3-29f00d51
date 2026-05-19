@@ -180,8 +180,6 @@ export type ContactWithMeta = Contact & ContactAddressFields & {
   contact_addresses?: ContactAddressRow[];
   /** Hydrated from `contact_scores` (batch); null when no row. */
   lead_score?: number | null;
-  /** Active `crm_workflow_enrollments` rows (batch); 0 when none or query skipped. */
-  active_crm_workflow_count?: number;
 };
 
 /** Batch-load lead scores for list views (RLS-safe). */
@@ -203,33 +201,8 @@ export async function attachLeadScoresToContacts(contacts: ContactWithMeta[]): P
   }
 }
 
-/** Batch-count active CRM workflow enrollments per contact (list views). */
-async function attachActiveCrmWorkflowCounts(contacts: ContactWithMeta[]): Promise<ContactWithMeta[]> {
-  const ids = contacts.map((c) => c.id).filter(Boolean);
-  if (ids.length === 0) return contacts;
-  try {
-    const { data, error } = await supabase
-      .from("crm_workflow_enrollments")
-      .select("contact_id")
-      .in("contact_id", ids)
-      .eq("status", "active");
-    if (error || !Array.isArray(data)) {
-      return contacts.map((c) => ({ ...c, active_crm_workflow_count: 0 }));
-    }
-    const counts = new Map<string, number>();
-    for (const row of data as { contact_id: string | null }[]) {
-      const cid = row.contact_id;
-      if (!cid) continue;
-      counts.set(cid, (counts.get(cid) ?? 0) + 1);
-    }
-    return contacts.map((c) => ({ ...c, active_crm_workflow_count: counts.get(c.id) ?? 0 }));
-  } catch {
-    return contacts.map((c) => ({ ...c, active_crm_workflow_count: 0 }));
-  }
-}
-
 async function enrichContactsListForTable(contacts: ContactWithMeta[]): Promise<ContactWithMeta[]> {
-  return attachActiveCrmWorkflowCounts(await attachLeadScoresToContacts(contacts));
+  return attachLeadScoresToContacts(contacts);
 }
 
 /** Omit nested `properties(...)` — can cause PostgREST 400; list path above hydrates links + properties separately. */

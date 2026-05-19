@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { getDaysSinceLastTouch } from "@/lib/contactLastTouch";
 import { CONTACT_SMART_LISTS } from "@/lib/contactSmartLists";
@@ -148,69 +149,95 @@ export function DailyHubPriorityAndSmartLists() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <PriorityTile
-          to="/contacts?smart=hot_lead"
-          label="Hot leads"
-          sub="Playbook + temperature"
-          count={hotLeadCount}
-          icon={Flame}
-          emphasize
+      <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
+        <CarouselContent className="-ml-0">
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=hot_lead"
+            label="Hot leads"
+            sub="Playbook + temperature"
+            count={hotLeadCount}
+            icon={Flame}
+            emphasize
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/tasks"
+            label="Overdue tasks"
+            sub="Open contact tasks past due"
+            count={overdueTaskCount}
+            icon={ListTodo}
+            emphasize
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=stale"
+            label="Stale contacts"
+            sub="30+ days since last touch"
+            count={staleContactCount}
+            icon={Clock}
+            emphasize
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=no_next_touch"
+            label="No next touch"
+            sub="Missing next touch date"
+            count={noNextTouchCount}
+            icon={CalendarClock}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=birthdays_upcoming"
+            label="Birthdays"
+            sub="Next 30 days (set date of birth on contacts)"
+            count={birthdayUpcomingCount}
+            icon={Cake}
+            emphasize={birthdayUpcomingCount > 0}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=annual_review_candidates"
+            label="Review pool"
+            sub="Top 100 & past clients — schedule January reviews"
+            count={annualReviewCandidateCount}
+            icon={ClipboardList}
+            emphasize={annualReviewCandidateCount > 0}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/listings"
+            label="Listings"
+            sub="Pipeline board"
+            count={listings.length}
+            icon={Home}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/data-health"
+            label="Data health"
+            sub={`${healthScore}% score · cleanup queues`}
+            count={null}
+            icon={Activity}
+          />
+          </CarouselItem>
+        </CarouselContent>
+        <CarouselPrevious
+          className="left-auto right-9 top-[-2.1rem] h-7 w-7 rounded-md border-border/70 bg-card/90 hover:bg-card"
+          aria-label="Previous focus card"
         />
-        <PriorityTile
-          to="/tasks"
-          label="Overdue tasks"
-          sub="Open contact tasks past due"
-          count={overdueTaskCount}
-          icon={ListTodo}
-          emphasize
+        <CarouselNext
+          className="right-0 top-[-2.1rem] h-7 w-7 rounded-md border-border/70 bg-card/90 hover:bg-card"
+          aria-label="Next focus card"
         />
-        <PriorityTile
-          to="/contacts?smart=stale"
-          label="Stale contacts"
-          sub="30+ days since last touch"
-          count={staleContactCount}
-          icon={Clock}
-          emphasize
-        />
-        <PriorityTile
-          to="/contacts?smart=no_next_touch"
-          label="No next touch"
-          sub="Missing next touch date"
-          count={noNextTouchCount}
-          icon={CalendarClock}
-        />
-        <PriorityTile
-          to="/contacts?smart=birthdays_upcoming"
-          label="Birthdays"
-          sub="Next 30 days (set date of birth on contacts)"
-          count={birthdayUpcomingCount}
-          icon={Cake}
-          emphasize={birthdayUpcomingCount > 0}
-        />
-        <PriorityTile
-          to="/contacts?smart=annual_review_candidates"
-          label="Review pool"
-          sub="Top 100 & past clients — schedule January reviews"
-          count={annualReviewCandidateCount}
-          icon={ClipboardList}
-          emphasize={annualReviewCandidateCount > 0}
-        />
-        <PriorityTile
-          to="/listings"
-          label="Listings"
-          sub="Pipeline board"
-          count={listings.length}
-          icon={Home}
-        />
-        <PriorityTile
-          to="/data-health"
-          label="Data health"
-          sub={`${healthScore}% score · cleanup queues`}
-          count={null}
-          icon={Activity}
-        />
-      </div>
+      </Carousel>
 
       <div>
         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Smart lists</p>

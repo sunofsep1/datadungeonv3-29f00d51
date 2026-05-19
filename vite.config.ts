@@ -9,6 +9,19 @@ export default defineConfig(() => ({
     host: "127.0.0.1",
     port: 8080,
   },
+  /**
+   * Pre-bundle deps that often hit 504 "Outdated Optimize Dep" when Vite invalidates `node_modules/.vite/deps/*`
+   * (browser keeps old `?v=` hashes) — breaks lazy routes (Dashboard → @dnd-kit, Attention Hub → Embla).
+   */
+  optimizeDeps: {
+    include: [
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
+      "embla-carousel-react",
+      "embla-carousel-wheel-gestures",
+    ],
+  },
   plugins: [tailwindcss(), react()],
   resolve: {
     alias: {

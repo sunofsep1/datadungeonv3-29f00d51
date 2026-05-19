@@ -5,8 +5,6 @@ export const DASHBOARD_WIDGET_IDS = [
   "visionBoard",
   "affirmations",
   "stats",
-  "topStories",
-  "news",
   "calendar",
   "kpi",
   "pipeline",
@@ -17,6 +15,13 @@ export const DASHBOARD_WIDGET_IDS = [
   "recentContacts",
   "upcomingAppointments",
   "quickActions",
+] as const;
+
+/** Essentials-first defaults for new users and "Restore defaults". */
+export const DASHBOARD_DEFAULT_WIDGET_ORDER = [
+  "visionBoard",
+  "affirmations",
+  "calendar",
 ] as const;
 
 const LEGACY_STORAGE_KEY = "dashboard-widget-order";
@@ -126,7 +131,7 @@ export function loadDashboardWidgetOrder(userId: string | undefined): string[] {
   } catch {
     /* ignore */
   }
-  const defaults = [...DASHBOARD_WIDGET_IDS];
+  const defaults = [...DASHBOARD_DEFAULT_WIDGET_ORDER];
   writeSavedSchema(userId, CURRENT_DASHBOARD_SCHEMA);
   return defaults;
 }
@@ -139,9 +144,9 @@ export function saveDashboardWidgetOrder(userId: string | undefined, order: stri
   }
 }
 
-/** Restore full default widget set and persist. */
+/** Restore default widget set and persist. */
 export function resetDashboardWidgetsToDefault(userId: string | undefined): string[] {
-  const next = [...DASHBOARD_WIDGET_IDS];
+  const next = [...DASHBOARD_DEFAULT_WIDGET_ORDER];
   saveDashboardWidgetOrder(userId, next);
   writeSavedSchema(userId, CURRENT_DASHBOARD_SCHEMA);
   return next;
@@ -153,11 +158,9 @@ export const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
   visionBoard: "Vision board",
   affirmations: "Affirmations",
   stats: "Stats",
-  topStories: "Top stories",
-  news: "News",
   calendar: "Calendar",
   kpi: "KPI snapshot",
-  pipeline: "Pipeline",
+  pipeline: "Listing pipeline",
   activityFeed: "Activity",
   todo: "To-do",
   contactTasks: "Contact tasks",

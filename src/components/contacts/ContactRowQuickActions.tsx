@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { addDays, setHours, setMinutes, setSeconds, setMilliseconds } from "date-fns";
 import {
   AlertDialog,
@@ -32,24 +32,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  useCrmWorkflowEnrollmentsForContact,
-  useCrmWorkflowsList,
-  useStartCrmWorkflowEnrollment,
-} from "@/hooks/useCrmWorkflows";
 import { useCreateContactTask } from "@/hooks/useContactTasks";
 import { useToast } from "@/hooks/use-toast";
 import { getAllPhones, getContactDisplayName, useUpdateContact, type ContactWithMeta } from "@/hooks/useContacts";
 import { openLogTouch } from "@/lib/openLogTouch";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
-import { FileText, GitBranch, Handshake, ListTodo, MessageSquare, MoreHorizontal, Pencil, Tag, Trash2 } from "lucide-react";
+import { FileText, Handshake, ListTodo, MessageSquare, MoreHorizontal, Pencil, Tag, Trash2 } from "lucide-react";
 
 type Props = {
   contact: ContactWithMeta;
@@ -91,30 +79,11 @@ export function ContactRowQuickActions({ contact, onEdit, onScripts, onDelete }:
   const updateContact = useUpdateContact();
   const [taskOpen, setTaskOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState("Follow up");
-  const [workflowOpen, setWorkflowOpen] = useState(false);
-  const [workflowId, setWorkflowId] = useState<string>("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
   const [smsTo, setSmsTo] = useState("");
 
-  const { data: workflows = [] } = useCrmWorkflowsList();
-  const { data: enrollments = [] } = useCrmWorkflowEnrollmentsForContact(workflowOpen ? contact.id : undefined);
-  const startEnrollment = useStartCrmWorkflowEnrollment();
   const createTask = useCreateContactTask();
-
-  const activeWorkflowIds = useMemo(() => {
-    const s = new Set<string>();
-    for (const e of enrollments) {
-      if (e.status === "active") s.add(e.workflow_id);
-    }
-    return s;
-  }, [enrollments]);
-
-  const contactWorkflows = useMemo(
-    () =>
-      workflows.filter((w) => w.is_active && w.trigger_object === "contact" && w.trigger_type === "manual"),
-    [workflows]
-  );
 
   const label = getContactDisplayName(contact);
 
@@ -166,30 +135,6 @@ export function ContactRowQuickActions({ contact, onEdit, onScripts, onDelete }:
     );
   };
 
-  const handleEnroll = () => {
-    if (!workflowId) {
-      toast({ title: "Pick a workflow", variant: "destructive" });
-      return;
-    }
-    startEnrollment.mutate(
-      { workflowId, contactId: contact.id },
-      {
-        onSuccess: () => {
-          toast({ title: "Enrolled", description: `${label} was added to the workflow.` });
-          setWorkflowOpen(false);
-          setWorkflowId("");
-        },
-        onError: (e) => {
-          toast({
-            title: "Enrollment failed",
-            description: e instanceof Error ? e.message : "Try again.",
-            variant: "destructive",
-          });
-        },
-      }
-    );
-  };
-
   return (
     <>
       <DropdownMenu>
@@ -223,15 +168,6 @@ export function ContactRowQuickActions({ contact, onEdit, onScripts, onDelete }:
           >
             <ListTodo className="w-4 h-4 mr-2" />
             Quick task
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              setWorkflowOpen(true);
-            }}
-          >
-            <GitBranch className="w-4 h-4 mr-2" />
-            Add to workflow
           </DropdownMenuItem>
           {smsNumberRows.length > 0 ? (
             <DropdownMenuSub>
@@ -367,50 +303,6 @@ export function ContactRowQuickActions({ contact, onEdit, onScripts, onDelete }:
             </Button>
             <Button onClick={handleCreateTask} disabled={createTask.isPending}>
               {createTask.isPending ? "Saving…" : "Create task"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={workflowOpen} onOpenChange={(o) => { setWorkflowOpen(o); if (!o) setWorkflowId(""); }}>
-        <DialogContent className="sm:max-w-md bg-card border-border" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle>Add to workflow</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">
-              Active manual workflows for contacts. Workflows run on the server schedule (see Automations).
-            </p>
-            {contactWorkflows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active manual contact workflows. Create one under Automations.</p>
-            ) : (
-              <div className="space-y-2">
-                <Label>Workflow</Label>
-                <Select value={workflowId || undefined} onValueChange={setWorkflowId}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="Choose workflow" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contactWorkflows.map((w) => {
-                      const blocked = activeWorkflowIds.has(w.id);
-                      return (
-                        <SelectItem key={w.id} value={w.id} disabled={blocked}>
-                          {w.name}
-                          {blocked ? " (already active)" : ""}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWorkflowOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEnroll} disabled={!workflowId || startEnrollment.isPending || contactWorkflows.length === 0}>
-              {startEnrollment.isPending ? "Enrolling…" : "Enroll"}
             </Button>
           </DialogFooter>
         </DialogContent>

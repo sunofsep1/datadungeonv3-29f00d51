@@ -11,6 +11,7 @@ import {
   Loader2,
   MessageSquareText,
   Pencil,
+  Radio,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -433,6 +434,54 @@ export function AttentionHubWidget() {
     const showQueue = visibleUrgencyTiers.size === 4;
     return ranked.slice(0, showQueue ? 8 : 1);
   }, [tierFilteredItems, visibleUrgencyTiers]);
+
+  /** Contacts with at least one open task — horizontal strip below focus carousel. */
+  const radarItems = useMemo(() => {
+    const byContact = new Map<string, ContactTask[]>();
+    openContactTasks.forEach((task) => {
+      const list = byContact.get(task.contact_id) ?? [];
+      list.push(task);
+      byContact.set(task.contact_id, list);
+    });
+
+    return Array.from(byContact.entries())
+      .map(([contactId, tasks]) => {
+        const sorted = [...tasks].sort((a, b) => {
+          const at = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+          const bt = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+          return at - bt;
+        });
+        const representative = sorted[0];
+        const dueAt = representative.due_at ? new Date(representative.due_at) : null;
+        const contactName = contactNameById.get(contactId) ?? "Contact";
+        const hasSequence = tasks.some((t) => Boolean(t.sequence_enrollment_id));
+
+        const dueText =
+          dueAt == null
+            ? "No due date"
+            : isPast(dueAt) && !isToday(dueAt)
+              ? `Overdue since ${format(dueAt, "EEE d MMM")}`
+              : isToday(dueAt)
+                ? `Due today at ${format(dueAt, "h:mm a")}`
+                : `${formatDistanceToNow(dueAt, { addSuffix: true })}`;
+
+        return {
+          contactId,
+          contactName,
+          taskTitle: representative.title,
+          taskCount: tasks.length,
+          hasSequence,
+          dueAt,
+          dueText,
+          urgency: urgencyByContactId.get(contactId)?.tier ?? ("backlog" as ContactUrgencyTier),
+        };
+      })
+      .sort((a, b) => {
+        const at = a.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const bt = b.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return at - bt;
+      });
+  }, [openContactTasks, contactNameById, urgencyByContactId]);
 
   const handleComplete = useCallback(
     async (item: AttentionItem, note?: string) => {
@@ -1107,6 +1156,70 @@ export function AttentionHubWidget() {
               ))}
             </CarouselContent>
           </Carousel>
+        </div>
+      ) : null}
+
+      {radarItems.length > 0 ? (
+        <div className="mb-3">
+          <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+            <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Radio className="h-3.5 w-3.5 shrink-0 text-primary" />
+              On my radar
+            </p>
+            <Badge variant="outline" className="border-border/60 px-2 py-0 text-[10px]">
+              {radarItems.length} contact{radarItems.length !== 1 ? "s" : ""}
+            </Badge>
+          </div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto overflow-y-visible pb-1 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-0 [&::-webkit-scrollbar]:hidden">
+            {radarItems.map((radar) => {
+              const urgencyDot =
+                radar.urgency === "immediate"
+                  ? "bg-red-400"
+                  : radar.urgency === "priority"
+                    ? "bg-amber-400"
+                    : radar.urgency === "planned"
+                      ? "bg-sky-400"
+                      : "bg-emerald-400";
+              const urgencyText =
+                radar.urgency === "immediate"
+                  ? "text-red-300"
+                  : radar.urgency === "priority"
+                    ? "text-amber-300"
+                    : radar.urgency === "planned"
+                      ? "text-sky-300"
+                      : "text-emerald-300";
+              return (
+                <div
+                  key={radar.contactId}
+                  className="min-w-[min(100%,260px)] max-w-[min(92vw,300px)] shrink-0 sm:min-w-[240px]"
+                >
+                  <div className="flex h-full min-h-[6.5rem] flex-col justify-between gap-2 rounded-lg border border-border/70 bg-background/55 px-3 py-2.5 shadow-sm">
+                    <div className="flex items-start gap-2">
+                      <span className={cn("mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background", urgencyDot)} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-foreground">{radar.contactName}</p>
+                        <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">
+                          {radar.hasSequence ? "Sequence · " : ""}
+                          {radar.taskTitle}
+                          {radar.taskCount > 1 ? ` (+${radar.taskCount - 1} more)` : ""}
+                        </p>
+                        <p className={cn("mt-0.5 text-[11px] font-medium", urgencyText)}>{radar.dueText}</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 w-full shrink-0 text-[11px] sm:w-auto sm:self-end"
+                      onClick={() => navigate(`/contacts/${radar.contactId}`)}
+                    >
+                      Open contact
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 

@@ -34,10 +34,10 @@ describe("contact urgency tiers", () => {
     vi.setSystemTime(new Date("2026-04-24T15:00:00.000Z"));
     const result = buildContactUrgency({
       contactId: "c2",
-      lastActivityAt: new Date("2026-04-19T15:00:00.000Z").toISOString(),
-      taskDueAts: [new Date("2026-04-25T09:00:00.000Z").toISOString()],
-      sequenceTaskDueAts: [new Date("2026-04-25T03:00:00.000Z").toISOString()],
-      appointmentDates: [new Date("2026-04-25T21:00:00.000Z").toISOString()],
+      lastActivityAt: new Date("2026-04-20T15:00:00.000Z").toISOString(),
+      taskDueAts: [new Date("2026-05-04T15:00:00.000Z").toISOString()],
+      sequenceTaskDueAts: [],
+      appointmentDates: [],
     });
     expect(["priority", "planned"]).toContain(result.tier);
   });

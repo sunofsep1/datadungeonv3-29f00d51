@@ -14,6 +14,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useListings } from "@/hooks/useListings";
 import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
+import { listingSearchPrice } from "@/lib/listingPriceFields";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { format, subDays, parseISO, startOfWeek } from "date-fns";
 import { Link } from "react-router-dom";
@@ -148,7 +149,7 @@ export default function Performance() {
         const stage = listingKanbanColumnId(l.pipeline_stage);
         return stage === "appraisal" || stage === "listing" || stage === "under_contract" || stage === "unconditional";
       })
-      .reduce((sum, l) => sum + (Number(l.price) || 0), 0);
+      .reduce((sum, l) => sum + (listingSearchPrice(l) ?? 0), 0);
     return (activePipelineValue * commissionRate) / 100;
   }, [listings, commissionRate]);
 

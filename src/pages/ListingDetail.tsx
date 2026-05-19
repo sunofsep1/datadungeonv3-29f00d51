@@ -83,6 +83,7 @@ import {
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { getInitials, cn } from "@/lib/utils";
+import { listingPublicPriceLabel, listingSearchPrice } from "@/lib/listingPriceFields";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 
@@ -170,6 +171,8 @@ export default function ListingDetail() {
 
   const [editForm, setEditForm] = useState({
     address: "",
+    search_price: null as number | null,
+    display_price: "",
     price: null as number | null,
     bedrooms: null as number | null,
     bathrooms: null as number | null,
@@ -229,8 +232,12 @@ export default function ListingDetail() {
 
   const openEdit = () => {
     if (!listing) return;
+    const ext = listing as Listing & { search_price?: number | null; display_price?: string | null };
+    const searchVal = listingSearchPrice(ext);
     setEditForm({
       address: listing.address || "",
+      search_price: searchVal,
+      display_price: ext.display_price?.trim() ?? "",
       price: listing.price != null ? Number(listing.price) : null,
       bedrooms: listing.bedrooms ?? null,
       bathrooms: listing.bathrooms != null ? Number(listing.bathrooms) : null,
@@ -251,7 +258,9 @@ export default function ListingDetail() {
       await updateListing.mutateAsync({
         id,
         address: editForm.address,
-        price: editForm.price,
+        search_price: editForm.search_price,
+        display_price: editForm.display_price.trim() || null,
+        price: editForm.search_price ?? editForm.price,
         bedrooms: editForm.bedrooms,
         bathrooms: editForm.bathrooms,
         status: editForm.status,
@@ -748,7 +757,10 @@ export default function ListingDetail() {
               {listing.address}
             </p>
             <p className="text-white/95 text-xl sm:text-3xl font-bold mt-1 tabular-nums drop-shadow-sm">
-              {formatAud(listing.price != null ? Number(listing.price) : null)}
+              {listingPublicPriceLabel(
+                listing as Listing & { search_price?: number | null; display_price?: string | null },
+                formatAud,
+              )}
             </p>
           </div>
         </div>
@@ -811,7 +823,9 @@ export default function ListingDetail() {
         <div className="lg:col-span-2 min-w-0">
           <ListingPricingPanel
             listingId={listing.id}
-            listingPrice={listing.price != null ? Number(listing.price) : null}
+            listingPrice={listingSearchPrice(
+              listing as Listing & { search_price?: number | null; display_price?: string | null },
+            )}
             onListingUpdated={() => void refetch()}
           />
         </div>
@@ -863,12 +877,28 @@ export default function ListingDetail() {
         <Card className="zoho-card p-6 border-border lg:col-span-2">
           <h3 className="text-sm font-medium text-foreground/90 mb-4">Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            {listing.price != null && (
+            {listingSearchPrice(
+              listing as Listing & { search_price?: number | null; display_price?: string | null },
+            ) != null && (
               <div>
-                <span className="text-muted-foreground">Guide / price</span>
-                <p className="font-medium">{formatAud(Number(listing.price))}</p>
+                <span className="text-muted-foreground">Search price (internal)</span>
+                <p className="font-medium">
+                  {formatAud(
+                    listingSearchPrice(
+                      listing as Listing & { search_price?: number | null; display_price?: string | null },
+                    ),
+                  )}
+                </p>
               </div>
             )}
+            {(listing as Listing & { display_price?: string | null }).display_price?.trim() ? (
+              <div>
+                <span className="text-muted-foreground">Display price (portal)</span>
+                <p className="font-medium">
+                  {(listing as Listing & { display_price?: string | null }).display_price}
+                </p>
+              </div>
+            ) : null}
             {listing.property_type && (
               <div>
                 <span className="text-muted-foreground">Type</span>
@@ -1341,14 +1371,31 @@ export default function ListingDetail() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Price</Label>
+                <Label>Search price (internal)</Label>
                 <Input
                   type="number"
-                  value={editForm.price ?? ""}
-                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value ? Number(e.target.value) : null })}
+                  value={editForm.search_price ?? ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      search_price: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   className="bg-input mt-1"
+                  placeholder="e.g. 1850000"
                 />
               </div>
+              <div>
+                <Label>Display price (portal)</Label>
+                <Input
+                  value={editForm.display_price}
+                  onChange={(e) => setEditForm({ ...editForm, display_price: e.target.value })}
+                  className="bg-input mt-1"
+                  placeholder='e.g. Offers Above $2m'
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Status</Label>
                 <Select value={editForm.status} onValueChange={(v: ListingStatus) => setEditForm({ ...editForm, status: v })}>

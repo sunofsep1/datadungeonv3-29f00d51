@@ -17,20 +17,26 @@ type TableName =
   | "contact_property_links"
   | "notifications";
 
+function newChannelInstanceId(): string {
+  if (typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export function useRealtimeSubscription(
   tableName: TableName,
   queryKeys: string[][]
 ) {
   const queryClient = useQueryClient();
   const queryKeysRef = useRef(queryKeys);
+  queryKeysRef.current = queryKeys;
 
   useEffect(() => {
-    queryKeysRef.current = queryKeys;
-  });
-
-  useEffect(() => {
+    /** New id every subscribe: Supabase dedupes `channel(name)`; reuse after StrictMode cleanup can return an already-subscribed channel and `.on()` throws. */
+    const instanceId = newChannelInstanceId();
     const channel = supabase
-      .channel(`realtime-${tableName}`)
+      .channel(`realtime-${tableName}-${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -47,7 +53,7 @@ export function useRealtimeSubscription(
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableName, queryClient]);

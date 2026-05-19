@@ -68,6 +68,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 type ViewMode = "day" | "week" | "month";
+const FOCUS_STRIP_SCROLL =
+  "-mx-1 flex gap-4 overflow-x-auto overflow-y-visible pb-2 pt-1 snap-x snap-mandatory sm:-mx-0";
+const FOCUS_CARD_WIDTH = "min-w-[min(100%,320px)] max-w-[90vw] shrink-0 snap-start sm:min-w-[280px]";
 
 interface GCalEvent {
   id: string;
@@ -780,7 +783,7 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       )}
 
       {viewMode === "week" && (
-        <div className="grid grid-cols-7 gap-1 mb-3">
+        <div className={cn(FOCUS_STRIP_SCROLL, "mb-3")}>
           {displayDays.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             return (
@@ -791,23 +794,21 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                 onClick={() => handleDayOrAdd?.(day)}
                 onKeyDown={(e) => e.key === "Enter" && handleDayOrAdd?.(day)}
                 className={cn(
-                  "min-h-[88px] p-1.5 border border-border rounded text-left transition-colors hover:bg-muted/50 cursor-pointer",
+                  FOCUS_CARD_WIDTH,
+                  "min-h-[180px] p-3 border border-border rounded-2xl text-left transition-colors hover:bg-muted/50 cursor-pointer bg-card/40 backdrop-blur-sm",
                   isToday(day) && "bg-primary/10 border-primary"
                 )}
               >
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openNewAppointmentForSlot(day); }}
-                  className={cn(
-                    "text-xs font-medium mb-1 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors",
-                    isToday(day) && "text-primary"
-                  )}
+                  className={cn("text-xs font-medium mb-2 text-left rounded p-1 -m-1 hover:bg-white/10 transition-colors", isToday(day) && "text-primary")}
                   title="Click to add booking"
                 >
                   <div>{format(day, "EEE")}</div>
                   <div className="text-base font-semibold">{format(day, "d")}</div>
                 </button>
-                <div className="flex-1 space-y-1">
+                <div className="flex-1 space-y-1 min-h-[92px]">
                 {dayEvents.map((item) => (
                   <div key={item.id} onClick={(e) => e.stopPropagation()}>
                     <Tooltip delayDuration={200}>
