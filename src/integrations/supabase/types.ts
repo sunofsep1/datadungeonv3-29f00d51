@@ -1060,6 +1060,65 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_relations: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          related_contact_id: string
+          relation_label: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          related_contact_id: string
+          relation_label?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          related_contact_id?: string
+          relation_label?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_relations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_relations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_relations_related_contact_id_fkey"
+            columns: ["related_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_relations_related_contact_id_fkey"
+            columns: ["related_contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_requirements: {
         Row: {
           baths_min: number | null
