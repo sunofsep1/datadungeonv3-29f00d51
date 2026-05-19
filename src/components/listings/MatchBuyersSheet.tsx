@@ -23,6 +23,7 @@ import {
   type BuyerMatchResult,
 } from "@/lib/buyerRequirementMatch";
 import { listingSearchPrice } from "@/lib/listingPriceFields";
+import { contactCanCall, contactCanEmail, contactCanSms } from "@/lib/contactOutreach";
 import { phoneToTelHref } from "@/lib/formatPhone";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
@@ -162,9 +163,9 @@ function MatchList({
       {matches.map((m) => {
         const c = contactsById.get(m.contactId);
         const name = c ? getContactDisplayName(c) : "Contact";
-        const email = c ? getPrimaryEmail(c) : null;
-        const phone = c ? getPrimaryPhone(c) : null;
-        const tel = phoneToTelHref(phone);
+        const email = c && contactCanEmail(c) ? getPrimaryEmail(c) : null;
+        const phone = c && contactCanSms(c) ? getPrimaryPhone(c) : null;
+        const tel = c && contactCanCall(c) ? phoneToTelHref(getPrimaryPhone(c)) : null;
         return (
           <li key={m.contactId} className="rounded-lg border border-border/70 bg-card p-3">
             <p className="font-medium text-sm text-foreground truncate">{name}</p>

@@ -539,6 +539,18 @@ export function useUpdateContact() {
       }
       if (error) throw error;
 
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user && beforeRow && data) {
+        await logEntityFieldChanges(supabase, {
+          userId: authData.user.id,
+          entityType: "contact",
+          entityId: id,
+          before: beforeRow as Record<string, unknown>,
+          after: data as Record<string, unknown>,
+          fieldMap: contactAuditFieldMap(),
+        });
+      }
+
       const addressFields = pickAddressFields(updates as Record<string, unknown>);
       if (addressFields) {
         try {

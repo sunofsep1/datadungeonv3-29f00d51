@@ -70,6 +70,8 @@ import { LeadClassificationPanel } from "@/components/contacts/LeadClassificatio
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
+import { ContactOutreachPreferences } from "@/components/contacts/ContactOutreachPreferences";
+import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
 import {
   DropdownMenu,
@@ -968,6 +970,10 @@ export default function ContactDetail() {
               </Card>
 
               {id ? <ContactBuyerRequirementsPanel contactId={id} /> : null}
+              {id && contact ? (
+                <ContactOutreachPreferences contact={contact} onUpdated={() => void refetch()} />
+              ) : null}
+              {id ? <EntityModificationsPanel entityType="contact" entityId={id} /> : null}
 
               <ContactExpandableSection
                 title="Activity timeline"

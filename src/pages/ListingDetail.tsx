@@ -67,6 +67,8 @@ import {
   type ListingActionModalKey,
 } from "@/components/listings/ListingStickyActionBar";
 import { MatchBuyersSheet } from "@/components/listings/MatchBuyersSheet";
+import { ListingContactLinksPanel } from "@/components/listings/ListingContactLinksPanel";
+import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
 import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNextCard";
@@ -958,6 +960,13 @@ export default function ListingDetail() {
           )}
         </Card>
       </div>
+
+      {id ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <ListingContactLinksPanel listingId={id} />
+          <EntityModificationsPanel entityType="listing" entityId={id} />
+        </div>
+      ) : null}
 
       <Card className="zoho-card p-6 border-border">
         <ActivityTimeline entityType="listing" entityId={id} showAddNote={true} />

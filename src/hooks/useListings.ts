@@ -13,6 +13,7 @@ import {
   isListingsPropertyForeignKeyError,
 } from "@/lib/supabaseErrorMessage";
 import { invokeListingStageAutomation } from "@/lib/listingStageAutomation";
+import { logEntityFieldChanges, listingAuditFieldMap } from "@/lib/entityAuditLog";
 
 export type Listing = Tables<"listings">;
 export type ListingInsert = TablesInsert<"listings">;
@@ -180,6 +181,8 @@ export function useUpdateListing() {
   return useMutation({
     mutationFn: async ({ id, previous_pipeline_stage: _prev, ...updates }: ListingUpdateVariables) => {
       let payload: ListingUpdate = { ...updates };
+      const { data: beforeRow } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
+      const { data: authData } = await supabase.auth.getUser();
 
       for (let attempt = 0; attempt < 2; attempt++) {
         const { data, error } = await supabase
@@ -189,7 +192,19 @@ export function useUpdateListing() {
           .select()
           .single();
 
-        if (!error) return data;
+        if (!error) {
+          if (data && beforeRow && authData.user) {
+            await logEntityFieldChanges(supabase, {
+              userId: authData.user.id,
+              entityType: "listing",
+              entityId: id,
+              before: beforeRow as Record<string, unknown>,
+              after: data as Record<string, unknown>,
+              fieldMap: listingAuditFieldMap(),
+            });
+          }
+          return data;
+        }
 
         if (
           isListingsPipelineStageCheckError(error) &&
