@@ -70,6 +70,8 @@ import { LeadClassificationPanel } from "@/components/contacts/LeadClassificatio
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
+import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
+import { ContactRequirementsPreview } from "@/components/contacts/ContactRequirementsPreview";
 import { ContactOutreachPreferences } from "@/components/contacts/ContactOutreachPreferences";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
@@ -190,6 +192,23 @@ export default function ContactDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const nurtureFocus = searchParams.get("nurtureFocus");
+  const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties"] as const;
+  type ContactTab = (typeof CONTACT_TABS)[number];
+  const tabParam = searchParams.get("tab");
+  const contactTab: ContactTab = CONTACT_TABS.includes(tabParam as ContactTab)
+    ? (tabParam as ContactTab)
+    : "overview";
+  const setContactTab = (tab: ContactTab) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === "overview") next.delete("tab");
+        else next.set("tab", tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const { data: contact, isLoading, isError, refetch } = useContact(id);
 
@@ -928,8 +947,21 @@ export default function ContactDetail() {
             </div>
           </Card>
 
-          {id && (
-            <>
+          {id ? (
+            <Tabs
+              value={contactTab}
+              onValueChange={(v) => setContactTab(v as ContactTab)}
+              className="print:hidden"
+            >
+              <SegmentedTabsList className="grid-cols-2 sm:grid-cols-5">
+                <SegmentedTabsTrigger value="overview">Overview</SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="card">Contact card</SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="requirements">Requirements</SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="people">Related</SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="properties">Properties</SegmentedTabsTrigger>
+              </SegmentedTabsList>
+
+              <TabsContent value="overview" className="mt-4 space-y-5">
               <ContactExpandableSection
                 title="Nurture & tasks"
                 defaultOpen={false}
@@ -969,11 +1001,12 @@ export default function ContactDetail() {
                 </div>
               </Card>
 
-              {id ? <ContactBuyerRequirementsPanel contactId={id} /> : null}
-              {id && contact ? (
-                <ContactOutreachPreferences contact={contact} onUpdated={() => void refetch()} />
-              ) : null}
-              {id ? <EntityModificationsPanel entityType="contact" entityId={id} /> : null}
+              <Card className="zoho-card p-5 sm:p-6 border-border">
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">
+                  Buyer requirements
+                </h3>
+                <ContactRequirementsPreview contactId={id} onViewAll={() => setContactTab("requirements")} />
+              </Card>
 
               <ContactExpandableSection
                 title="Activity timeline"
@@ -1004,10 +1037,9 @@ export default function ContactDetail() {
                   />
                 </div>
               </ContactExpandableSection>
-            </>
-          )}
+              </TabsContent>
 
-          {/* Contact information (address) */}
+              <TabsContent value="card" className="mt-4 space-y-5">
           <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Contact information</h3>
             {(contact.address_line1 || contact.city) ? (
@@ -1020,6 +1052,50 @@ export default function ContactDetail() {
             )}
           </Card>
 
+              {contact ? (
+                <ContactOutreachPreferences contact={contact} onUpdated={() => void refetch()} />
+              ) : null}
+
+          {/* Pain & Pleasure */}
+          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">Pain points</Label>
+                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
+                  {contact.pain_points || "—"}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">Pleasure points</Label>
+                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
+                  {contact.pleasure_points || "—"}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {contact.notes ? (
+            <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
+              <div className="text-foreground text-sm">
+                <PrintNotesBody text={contact.notes} />
+              </div>
+            </Card>
+          ) : null}
+
+              <EntityModificationsPanel entityType="contact" entityId={id} />
+              </TabsContent>
+
+              <TabsContent value="requirements" className="mt-4 space-y-5">
+                <ContactBuyerRequirementsPanel contactId={id} />
+              </TabsContent>
+
+              <TabsContent value="people" className="mt-4 space-y-5">
+                <ContactRelatedContactsPanel contactId={id} />
+              </TabsContent>
+
+              <TabsContent value="properties" className="mt-4 space-y-5">
           {/* Linked properties */}
           <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <div className="flex items-center justify-between mb-4 print:hidden">
@@ -1146,44 +1222,17 @@ export default function ContactDetail() {
             )}
           </Card>
 
-          {/* Pain & Pleasure */}
-          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase">Pain points</Label>
-                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
-                  {contact.pain_points || "—"}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase">Pleasure points</Label>
-                <p className="text-foreground whitespace-pre-wrap bg-muted/30 rounded-md p-3 text-sm">
-                  {contact.pleasure_points || "—"}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {contact.notes && (
-            <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Notes</h3>
-              <div className="text-foreground text-sm">
-                <PrintNotesBody text={contact.notes} />
-              </div>
-            </Card>
-          )}
-
-          {id && (
-            <div className="print:hidden">
-              <ContactSuiteCard
-                variant="page"
-                contactId={id}
-                interactions={interactions}
-                linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
-              />
-            </div>
-          )}
+          <div className="print:hidden">
+            <ContactSuiteCard
+              variant="page"
+              contactId={id}
+              interactions={interactions}
+              linkedPropertyIds={linkedProperties.map((l) => l.property_id)}
+            />
+          </div>
+              </TabsContent>
+            </Tabs>
+          ) : null}
         </div>
       </div>
 

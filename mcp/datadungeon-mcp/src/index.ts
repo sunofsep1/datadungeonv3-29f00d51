@@ -77,7 +77,7 @@ server.registerTool(
     inputSchema: {
       userId: z.string().uuid(),
       query: z.string().default(""),
-      limit: z.number().int().positive().max(50).default(10),
+      limit: z.number().int().positive().default(10),
     },
   },
   async ({ userId, query, limit }) => {
@@ -516,7 +516,7 @@ server.registerTool(
       userId: z.string().uuid(),
       query: z.string().default(""),
       status: z.string().optional(),
-      limit: z.number().int().positive().max(50).default(10),
+      limit: z.number().int().positive().default(10),
     },
   },
   async ({ userId, query, status, limit }) => {
