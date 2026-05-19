@@ -69,6 +69,7 @@ import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
+import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
 import {
   DropdownMenu,
@@ -965,6 +966,8 @@ export default function ContactDetail() {
                   </div>
                 </div>
               </Card>
+
+              {id ? <ContactBuyerRequirementsPanel contactId={id} /> : null}
 
               <ContactExpandableSection
                 title="Activity timeline"

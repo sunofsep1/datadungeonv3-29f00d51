@@ -66,6 +66,7 @@ import {
   ListingStickyActionBar,
   type ListingActionModalKey,
 } from "@/components/listings/ListingStickyActionBar";
+import { MatchBuyersSheet } from "@/components/listings/MatchBuyersSheet";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
 import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNextCard";
@@ -153,6 +154,7 @@ export default function ListingDetail() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [actionModal, setActionModal] = useState<ListingActionModalKey | null>(null);
+  const [matchBuyersOpen, setMatchBuyersOpen] = useState(false);
   const [feedbackBody, setFeedbackBody] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
   const [noteBody, setNoteBody] = useState("");
@@ -289,6 +291,10 @@ export default function ListingDetail() {
 
   const openListingAction = useCallback(
     (key: ListingActionModalKey) => {
+      if (key === "match_buyers") {
+        setMatchBuyersOpen(true);
+        return;
+      }
       if (listing) {
         if (key === "book_inspection") {
           setInspectionTitle(`Inspection — ${listing.address || "Listing"}`);
@@ -1317,6 +1323,10 @@ export default function ListingDetail() {
             }
           }}
         />
+      ) : null}
+
+      {listing ? (
+        <MatchBuyersSheet open={matchBuyersOpen} onOpenChange={setMatchBuyersOpen} listing={listing} />
       ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   Mail,
   GitBranch,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +15,8 @@ export type ListingActionModalKey =
   | "add_note"
   | "book_inspection"
   | "vendor_update"
-  | "change_stage";
+  | "change_stage"
+  | "match_buyers";
 
 type ListingStickyActionBarProps = {
   onOpenAction: (key: ListingActionModalKey) => void;
@@ -27,6 +29,7 @@ const actions: { key: ListingActionModalKey; label: string; icon: typeof Phone }
   { key: "book_inspection", label: "Book inspection", icon: CalendarPlus },
   { key: "vendor_update", label: "Send vendor update", icon: Mail },
   { key: "change_stage", label: "Change stage", icon: GitBranch },
+  { key: "match_buyers", label: "Match buyers", icon: Users },
 ];
 
 export function ListingStickyActionBar({ onOpenAction }: ListingStickyActionBarProps) {
