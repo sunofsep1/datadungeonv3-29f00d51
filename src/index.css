@@ -3425,11 +3425,18 @@ html {
     color: #000 !important;
   }
 
-  /* Contact print layout uses themed colours — don’t force black on every div/span */
-  .contact-print-document div,
-  .contact-print-document span,
-  .contact-print-document p,
-  .contact-print-document li {
+  /* Dedicated contact print route — keep preview theme (don’t flatten to generic black/teal) */
+  body:has(.contact-print-document) h1,
+  body:has(.contact-print-document) h2,
+  body:has(.contact-print-document) h3,
+  body:has(.contact-print-document) h4,
+  body:has(.contact-print-document) p,
+  body:has(.contact-print-document) span,
+  body:has(.contact-print-document) label,
+  body:has(.contact-print-document) div,
+  body:has(.contact-print-document) td,
+  body:has(.contact-print-document) th,
+  body:has(.contact-print-document) li {
     color: inherit !important;
   }
 
@@ -3606,10 +3613,8 @@ html {
     color: #000 !important;
   }
 
-  /* Dedicated contact print — light “customer PDF” look (not app dark theme) */
+  /* Contact print — WYSIWYG: preserve preview theme on paper */
   .contact-print-document {
-    background: #fff !important;
-    color: #171717 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     max-width: 100% !important;
@@ -3619,13 +3624,6 @@ html {
     overflow: visible !important;
     orphans: 3;
     widows: 3;
-    font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-  }
-  .contact-print-document h1,
-  .contact-print-document h2,
-  .contact-print-document h3,
-  .contact-print-document h4 {
-    font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
   }
   .contact-print-page {
     padding: 0 !important;
@@ -3663,189 +3661,60 @@ html {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
-  .contact-print-document .print-doc-hero {
-    background: #fafafa !important;
-    border-bottom: 1px solid #e5e5e5 !important;
+  .contact-print-document .print-letterhead,
+  .contact-print-document .print-doc-hero,
+  .contact-print-document .print-badge,
+  .contact-print-document .print-badge-muted,
+  .contact-print-document thead th,
+  .contact-print-document tbody tr:nth-child(even) {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .contact-print-document thead th {
+    color: #fff !important;
+    background: #2c2c54 !important;
   }
   .contact-print-document .print-letterhead {
-    background: #fff !important;
-    border-bottom: 1px solid #e5e5e5 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    background: #1a1a2e !important;
+    color: #ffffff !important;
   }
   .contact-print-document .print-letterhead-brand {
-    color: #171717 !important;
+    color: #ffffff !important;
   }
   .contact-print-document .print-letterhead-sub {
-    color: #737373 !important;
+    color: #b8a97a !important;
   }
   .contact-print-document .print-letterhead-accent {
-    background: linear-gradient(90deg, #0d9488 0%, #0f766e 100%) !important;
+    background: #b8a97a !important;
+  }
+  .contact-print-document .print-doc-hero {
+    background: #f5f0e8 !important;
+    border-bottom: 2px solid #b8a97a !important;
   }
   .contact-print-document .print-doc-title {
-    color: #171717 !important;
-    font-family: "DM Sans", system-ui, -apple-system, sans-serif !important;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    font-size: 18px !important;
     font-weight: 700 !important;
+    color: #1a1a2e !important;
   }
-  .contact-print-document .print-doc-subtitle,
-  .contact-print-document .print-muted,
-  .contact-print-document .print-row .print-label,
-  .contact-print-document .print-dl-row dt,
-  .contact-print-document .print-property-meta,
-  .contact-print-document .print-activity-meta {
-    color: #525252 !important;
-  }
-  .contact-print-document .print-dl-row dd,
-  .contact-print-document .print-address,
-  .contact-print-document .print-notes,
-  .contact-print-document .print-row .print-value,
-  .contact-print-document .print-property-address,
-  .contact-print-document .print-activity-title {
-    color: #171717 !important;
+  .contact-print-document .print-doc-subtitle {
+    color: #4f4f63 !important;
   }
   .contact-print-document .print-section {
-    border: 1px solid #e5e5e5 !important;
-    border-left: 3px solid #0d9488 !important;
-    border-radius: 4px !important;
-    background: #fafafa !important;
-    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    border-left: 4px solid #b8a97a !important;
+    background: #fff !important;
   }
   .contact-print-document .print-section-title {
-    color: #0f766e !important;
-    border-bottom-color: #e5e5e5 !important;
-  }
-  .contact-print-document .print-avatar {
-    background: #f5f5f5 !important;
-    color: #0f766e !important;
-    border-color: #e5e5e5 !important;
+    color: #2c2c54 !important;
   }
   .contact-print-document .print-badge {
-    background: #fff !important;
-    color: #0f766e !important;
-    border-color: #d4d4d4 !important;
+    background: #2c2c54 !important;
+    color: #fff !important;
   }
   .contact-print-document .print-badge-muted {
-    background: #f5f5f5 !important;
-    color: #525252 !important;
-    border-color: #d4d4d4 !important;
-  }
-  .contact-print-document .print-tag {
-    background: #fff !important;
-    color: #171717 !important;
-    border-color: #d4d4d4 !important;
-  }
-  .contact-print-document .print-value-block {
-    background: #fff !important;
-    border-color: #e5e5e5 !important;
-    color: #171717 !important;
-  }
-  .contact-print-document .print-property-card {
-    background: #fff !important;
-    border-color: #e5e5e5 !important;
-    border-left-color: #14b8a6 !important;
-  }
-  .contact-print-document .print-property-price {
-    color: #0f766e !important;
-  }
-  .contact-print-document .print-role {
-    color: #0d9488 !important;
-  }
-  .contact-print-document .print-activity-type {
-    color: #0f766e !important;
-  }
-  .contact-print-document .print-activity-body {
-    color: #525252 !important;
-  }
-  .contact-print-document .print-doc-footer {
-    border-top: 1px solid #e5e5e5 !important;
-    background: #fafafa !important;
-    color: #737373 !important;
-  }
-  .contact-print-document .print-doc-footer span:first-child {
-    color: #0f766e !important;
-  }
-  .contact-print-document .print-brief-grid {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
-    margin-bottom: 14px !important;
-  }
-  .contact-print-document .print-brief-grid .print-section {
-    margin-bottom: 0 !important;
-  }
-  .contact-print-document .print-address--hero {
-    color: #171717 !important;
-  }
-  .contact-print-document .print-classification-chip {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    border-color: #0d9488 !important;
-    color: #0f766e !important;
-    background: #ecfdf5 !important;
-  }
-  .contact-print-document .print-classification-chip--muted {
-    border-color: #d4d4d4 !important;
-    color: #525252 !important;
-    background: #f5f5f5 !important;
-  }
-  .contact-print-document .print-worksheet-section {
-    border-style: dashed !important;
-    border-color: #a3a3a3 !important;
-    background: #fff !important;
-    border-left: 2px dashed #0d9488 !important;
-  }
-  .contact-print-document .print-worksheet-intro,
-  .contact-print-document .print-worksheet-hint {
-    color: #525252 !important;
-  }
-  .contact-print-document .print-worksheet-context,
-  .contact-print-document .print-worksheet-subtitle {
-    color: #171717 !important;
-  }
-  .contact-print-document .print-lined-pad {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    background-color: #fafafa !important;
-    border-color: #a3a3a3 !important;
-    background-image: repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(8.5mm - 1px),
-      #d4d4d4 calc(8.5mm - 1px),
-      #d4d4d4 8.5mm
-    ) !important;
-  }
-  .contact-print-document .print-journey-crm {
-    border-bottom-color: #e5e5e5 !important;
-  }
-  .contact-print-document .print-nurture-block {
-    background: #fff !important;
-    border-color: #e5e5e5 !important;
-    border-left-color: #14b8a6 !important;
-  }
-  .contact-print-document .print-nurture-sequence-name {
-    color: #171717 !important;
-  }
-  .contact-print-document .print-nurture-meta,
-  .contact-print-document .print-nurture-desc {
-    color: #525252 !important;
-  }
-  .contact-print-document .print-nurture-paused {
-    color: #a16207 !important;
-  }
-  .contact-print-document .print-journey-step {
-    color: #171717 !important;
-    border-bottom-color: #d4d4d4 !important;
-  }
-  .contact-print-document .print-journey-step--done {
-    color: #737373 !important;
-  }
-  .contact-print-document .print-journey-step--current {
-    color: #0f766e !important;
-    background: #ecfdf5 !important;
-  }
-  .contact-print-document .print-journey-step-type {
-    color: #525252 !important;
+    background: #64748b !important;
+    color: #fff !important;
   }
   /* Full-width notes on paper; break between blank-line paragraphs */
   .contact-print-document .print-address,
