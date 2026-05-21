@@ -8,6 +8,7 @@ export const LISTING_DETAIL_SECTIONS = [
   { id: "listing-offers", label: "Offers" },
   { id: "listing-commission", label: "Commission" },
   { id: "listing-marketing", label: "Marketing" },
+  { id: "listing-portals", label: "Portals" },
   { id: "listing-people", label: "People" },
   { id: "listing-activity", label: "Activity" },
 ] as const;

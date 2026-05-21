@@ -72,6 +72,7 @@ import { ListingOpenInspectionsPanel } from "@/components/listings/ListingOpenIn
 import { ListingOffersPanel } from "@/components/listings/ListingOffersPanel";
 import { ListingCommissionPanel } from "@/components/listings/ListingCommissionPanel";
 import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
+import { ListingPortalExportsPanel } from "@/components/listings/ListingPortalExportsPanel";
 import { useListingContactLinks } from "@/hooks/useListingContactLinks";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
@@ -1016,6 +1017,9 @@ export default function ListingDetail() {
           </div>
           <div id="listing-marketing" className="scroll-mt-28">
             <ListingMarketingFundsPanel listingId={id} />
+          </div>
+          <div id="listing-portals" className="scroll-mt-28">
+            <ListingPortalExportsPanel listingId={id} />
           </div>
           <div id="listing-people" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-28">
             <ListingContactLinksPanel listingId={id} />

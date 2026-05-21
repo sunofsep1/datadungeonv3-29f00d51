@@ -2642,6 +2642,150 @@ export type Database = {
           },
         ]
       }
+      listing_portal_configs: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_message: string | null
+          last_pushed_at: string | null
+          last_status: string
+          listing_id: string
+          portal_key: string
+          portal_listing_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_message?: string | null
+          last_pushed_at?: string | null
+          last_status?: string
+          listing_id: string
+          portal_key: string
+          portal_listing_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_message?: string | null
+          last_pushed_at?: string | null
+          last_status?: string
+          listing_id?: string
+          portal_key?: string
+          portal_listing_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_portal_configs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_portal_feed_logs: {
+        Row: {
+          created_at: string
+          exported_at: string
+          id: string
+          listing_id: string
+          message: string | null
+          portal_key: string
+          portal_listing_id: string | null
+          processed_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exported_at?: string
+          id?: string
+          listing_id: string
+          message?: string | null
+          portal_key: string
+          portal_listing_id?: string | null
+          processed_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exported_at?: string
+          id?: string
+          listing_id?: string
+          message?: string | null
+          portal_key?: string
+          portal_listing_id?: string | null
+          processed_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_portal_feed_logs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_portal_hits: {
+        Row: {
+          created_at: string
+          hit_count: number
+          hit_month: string
+          id: string
+          listing_id: string
+          notes: string | null
+          portal_key: string | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hit_count?: number
+          hit_month: string
+          id?: string
+          listing_id: string
+          notes?: string | null
+          portal_key?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hit_count?: number
+          hit_month?: string
+          id?: string
+          listing_id?: string
+          notes?: string | null
+          portal_key?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_portal_hits_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_stage_automations: {
         Row: {
           created_at: string
