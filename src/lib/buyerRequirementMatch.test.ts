@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildListingMatchProfile,
   matchBuyersToListing,
+  matchListingsToRequirements,
   parseSuburbFromAddress,
   profileRequirementFromContact,
   requirementMatchesListing,
@@ -74,5 +75,33 @@ describe("buyerRequirementMatch", () => {
     expect(req?.suburbs).toEqual(["Teneriffe"]);
     expect(req?.price_max).toBe(2_000_000);
     expect(req?._source).toBe("profile");
+  });
+
+  it("matches listings to contact requirements (reverse)", () => {
+    const requirements = [
+      { id: "r1", contact_id: "c1", suburbs: ["Bulimba"], price_max: 1_500_000, beds_min: 3 },
+    ];
+    const listings = [
+      {
+        id: "l1",
+        address: "1 A St, Bulimba QLD 4171",
+        profile: buildListingMatchProfile(
+          { address: "1 A St, Bulimba QLD 4171", search_price: 1_200_000, bedrooms: 4 },
+          null,
+        ),
+      },
+      {
+        id: "l2",
+        address: "2 B St, New Farm QLD 4005",
+        profile: buildListingMatchProfile(
+          { address: "2 B St, New Farm QLD 4005", search_price: 1_200_000, bedrooms: 4 },
+          null,
+        ),
+      },
+    ];
+    const results = matchListingsToRequirements(requirements, listings);
+    expect(results).toHaveLength(1);
+    expect(results[0].listingId).toBe("l1");
+    expect(results[0].matchReasons).toContain("Suburb");
   });
 });

@@ -10,7 +10,7 @@ interface ContactActivityTimelineProps {
   embedded?: boolean;
 }
 
-/** Contact-scoped activity timeline (activity_log + appointments). */
+/** Contact-scoped communications timeline (activity_log + interactions + SMS + appointments). */
 export function ContactActivityTimeline({
   contactId,
   onAddNote,

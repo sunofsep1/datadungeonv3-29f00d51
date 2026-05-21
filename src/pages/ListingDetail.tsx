@@ -69,9 +69,18 @@ import {
 import { MatchBuyersSheet } from "@/components/listings/MatchBuyersSheet";
 import { ListingContactLinksPanel } from "@/components/listings/ListingContactLinksPanel";
 import { ListingOpenInspectionsPanel } from "@/components/listings/ListingOpenInspectionsPanel";
-import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
+import { ListingOffersPanel } from "@/components/listings/ListingOffersPanel";
+import { ListingCommissionPanel } from "@/components/listings/ListingCommissionPanel";
+import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
+import { useListingContactLinks } from "@/hooks/useListingContactLinks";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
+import {
+  ListingDetailSectionNav,
+  scrollToListingSection,
+  type ListingDetailSectionId,
+} from "@/components/listings/ListingDetailSectionNav";
+import { ListingDetailRightRail } from "@/components/listings/ListingDetailRightRail";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
 import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNextCard";
@@ -156,7 +165,15 @@ export default function ListingDetail() {
   const createActivityLog = useCreateActivityLog();
   const createAppointment = useCreateAppointment();
   const createOpenInspection = useCreateListingOpenInspection();
+  const { data: listingContactLinks = [] } = useListingContactLinks(id);
   const { logStageMove } = useLogListingStageMove();
+
+  const linkedContactIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (contactId) ids.add(contactId);
+    for (const link of listingContactLinks) ids.add(link.contact_id);
+    return Array.from(ids);
+  }, [contactId, listingContactLinks]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [actionModal, setActionModal] = useState<ListingActionModalKey | null>(null);
@@ -175,6 +192,7 @@ export default function ListingDetail() {
   const [classifyOpen, setClassifyOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroUploading, setHeroUploading] = useState(false);
+  const [activeSection, setActiveSection] = useState<ListingDetailSectionId>("listing-overview");
   const heroFileRef = useRef<HTMLInputElement>(null);
 
   const [editForm, setEditForm] = useState({
@@ -710,11 +728,21 @@ export default function ListingDetail() {
             }
           />
         ) : null}
+        <ListingDetailSectionNav
+          activeSection={activeSection}
+          onNavigate={(sectionId) => {
+            setActiveSection(sectionId);
+            scrollToListingSection(sectionId);
+          }}
+          className="mt-2 pt-2 border-t border-border/60"
+        />
         <ListingStickyActionBar onOpenAction={openListingAction} />
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-6">
+        <div className="min-w-0 space-y-6">
       {/* Hero / gallery */}
-      <Card className="zoho-card mb-5 border-border overflow-hidden rounded-xl shadow-sm">
+      <Card id="listing-overview" className="zoho-card mb-0 border-border overflow-hidden rounded-xl shadow-sm scroll-mt-28">
         <div className="relative min-h-[220px] sm:min-h-[320px] md:min-h-[380px] bg-muted">
           {activeHeroUrl ? (
             <>
@@ -841,7 +869,7 @@ export default function ListingDetail() {
         createdAt={listing.created_at}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div id="listing-pricing" className="grid grid-cols-1 lg:grid-cols-3 gap-6 scroll-mt-28">
         <div className="lg:col-span-2 min-w-0">
           <ListingPricingPanel
             listingId={listing.id}
@@ -856,7 +884,7 @@ export default function ListingDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div id="listing-details" className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-28">
         <Card className="zoho-card p-4 border-border md:col-span-1">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Agent</h3>
           <div className="flex items-center gap-3">
@@ -977,19 +1005,46 @@ export default function ListingDetail() {
 
       {id ? (
         <>
-          <div className="mb-6">
+          <div id="listing-inspections" className="scroll-mt-28">
             <ListingOpenInspectionsPanel listingId={id} listingAddress={listing.address} />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div id="listing-offers" className="scroll-mt-28">
+            <ListingOffersPanel listingId={id} listingAddress={listing.address} />
+          </div>
+          <div id="listing-commission" className="scroll-mt-28">
+            <ListingCommissionPanel listing={listing} listingId={id} />
+          </div>
+          <div id="listing-marketing" className="scroll-mt-28">
+            <ListingMarketingFundsPanel listingId={id} />
+          </div>
+          <div id="listing-people" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-28">
             <ListingContactLinksPanel listingId={id} />
-            <EntityModificationsPanel entityType="listing" entityId={id} />
+            <EntityModificationsPanel entityType="listing" entityId={id} className="xl:hidden" />
           </div>
         </>
       ) : null}
 
-      <Card className="zoho-card p-6 border-border">
-        <ActivityTimeline entityType="listing" entityId={id} showAddNote={true} />
+      <Card id="listing-activity" className="zoho-card p-6 border-border scroll-mt-28">
+        <ActivityTimeline
+          entityType="listing"
+          entityId={id}
+          linkedContactIds={linkedContactIds}
+          showAddNote={true}
+        />
       </Card>
+        </div>
+
+        {id ? (
+          <ListingDetailRightRail
+            listing={listing}
+            listingId={id}
+            domDays={domDays}
+            recentActivity={recentActivity}
+            onMatchBuyers={() => setMatchBuyersOpen(true)}
+            formatAud={formatAud}
+          />
+        ) : null}
+      </div>
 
       <Dialog open={actionModal != null} onOpenChange={(open) => !open && setActionModal(null)}>
         <DialogContent className="sm:max-w-lg bg-card border-border max-h-[min(90vh,720px)] overflow-y-auto">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -15,23 +15,28 @@ import {
   RefreshCw,
   Cog,
   Key,
+  HandCoins,
+  Megaphone,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import type { ActivityLogRow } from "@/hooks/useActivityLog";
-import { useActivityLog, useCreateActivityLog } from "@/hooks/useActivityLog";
-import { useAppointmentsByContact } from "@/hooks/useAppointments";
-import { useMemo } from "react";
+import { useCreateActivityLog } from "@/hooks/useActivityLog";
+import { useCommunicationsTimeline } from "@/hooks/useCommunicationsTimeline";
 import { isFeatureEnabled } from "@/lib/featureFlags";
+import type { CommunicationsKind, UnifiedCommItem } from "@/lib/communicationsTimeline";
 
 const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   note: MessageSquare,
   call: Phone,
   email: Mail,
+  sms: MessageSquare,
   inspection: Home,
+  open_house: Home,
   status_change: RefreshCw,
   system: Cog,
-  open_house: Home,
   settlement: Key,
+  offer: HandCoins,
+  comms: Megaphone,
+  appointment: Calendar,
 };
 
 type EntityType = "contact" | "property" | "listing";
@@ -39,46 +44,53 @@ type EntityType = "contact" | "property" | "listing";
 interface ActivityTimelineProps {
   entityType: EntityType;
   entityId: string | null | undefined;
-  /** Show Add note button and allow inline create */
+  /** Merge activity_log + interactions + sms_outbound (+ appointments on contacts). */
+  unifiedComms?: boolean;
+  /** Contact IDs for SMS/interaction merge on listings. */
+  linkedContactIds?: string[];
   showAddNote?: boolean;
-  /** Include appointments in feed (only for contact) */
   includeAppointments?: boolean;
-  /** Max items to show; default unlimited */
   limit?: number;
   compact?: boolean;
-  /** Hide the built-in "Activity" title row (parent provides chrome, e.g. expandable section). */
   embedded?: boolean;
+  /** Override heading (default: Communications or Activity). */
+  title?: string;
 }
-
-type TimelineItem =
-  | { kind: "activity"; data: ActivityLogRow }
-  | { kind: "appointment"; data: { id: string; title: string; date: string; location: string | null } };
 
 export function ActivityTimeline({
   entityType,
   entityId,
+  unifiedComms = true,
+  linkedContactIds = [],
   showAddNote = false,
   includeAppointments = false,
   limit,
   compact = isFeatureEnabled("compactTimelineV1"),
   embedded = false,
+  title,
 }: ActivityTimelineProps) {
-  const filters =
-    entityType === "contact"
-      ? { contactId: entityId }
-      : entityType === "property"
-        ? { propertyId: entityId }
-        : { listingId: entityId };
+  const contactId = entityType === "contact" ? entityId : null;
+  const propertyId = entityType === "property" ? entityId : null;
+  const listingId = entityType === "listing" ? entityId : null;
 
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteDescription, setNoteDescription] = useState("");
-
-  const { data: activities = [], isLoading } = useActivityLog({ ...filters, limit: limit ?? 120 });
-  const createLog = useCreateActivityLog();
-  const { data: contactAppointments = [] } = useAppointmentsByContact(entityType === "contact" ? entityId : null, limit ?? 120);
-
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const createLog = useCreateActivityLog();
+
+  const { items, isLoading } = useCommunicationsTimeline({
+    contactId,
+    propertyId,
+    listingId,
+    linkedContactIds: unifiedComms ? linkedContactIds : [],
+    includeAppointments: unifiedComms && includeAppointments,
+    unifiedComms,
+    limit: limit ?? 120,
+  });
+
+  const heading = title ?? (unifiedComms ? "Communications" : "Activity");
 
   const handleAddNote = async () => {
     if (!entityId) return;
@@ -95,28 +107,10 @@ export function ActivityTimeline({
     setNoteOpen(false);
   };
 
-  const items = useMemo((): TimelineItem[] => {
-    const list: TimelineItem[] = activities.map((a) => ({ kind: "activity", data: a }));
-    if (includeAppointments && entityType === "contact") {
-      contactAppointments.forEach((apt) => {
-        list.push({
-          kind: "appointment",
-          data: {
-            id: apt.id,
-            title: apt.title,
-            date: apt.date,
-            location: apt.location ?? null,
-          },
-        });
-      });
-    }
-    list.sort((a, b) => {
-      const timeA = a.kind === "activity" ? new Date(a.data.occurred_at).getTime() : new Date(a.data.date).getTime();
-      const timeB = b.kind === "activity" ? new Date(b.data.occurred_at).getTime() : new Date(b.data.date).getTime();
-      return timeB - timeA;
-    });
-    return limit ? list.slice(0, limit) : list;
-  }, [activities, includeAppointments, entityType, contactAppointments, limit]);
+  const displayItems = useMemo(() => {
+    if (unifiedComms) return items;
+    return items.filter((i) => i.source === "activity_log" || i.source === "appointment");
+  }, [items, unifiedComms]);
 
   if (isLoading) {
     return (
@@ -131,7 +125,7 @@ export function ActivityTimeline({
   return (
     <div>
       <div className={embedded ? "flex items-center justify-end mb-3" : "flex items-center justify-between mb-4"}>
-        {!embedded ? <h3 className="font-semibold text-foreground">Activity</h3> : <span className="sr-only">Activity</span>}
+        {!embedded ? <h3 className="font-semibold text-foreground">{heading}</h3> : <span className="sr-only">{heading}</span>}
         {showAddNote && entityId && (
           <>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setNoteOpen(true)} disabled={createLog.isPending}>
@@ -175,73 +169,69 @@ export function ActivityTimeline({
         )}
       </div>
       <div className={compact ? "space-y-2" : "space-y-4"}>
-        {items.map((item) =>
-          item.kind === "activity" ? (
-            <ActivityLogItem
-              key={item.data.id}
-              row={item.data}
-              compact={compact}
-              expanded={expandedIds.has(item.data.id)}
-              onToggleExpand={() =>
-                setExpandedIds((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(item.data.id)) next.delete(item.data.id);
-                  else next.add(item.data.id);
-                  return next;
-                })
-              }
-            />
-          ) : (
-            <div
-              key={`apt-${item.data.id}`}
-              className={compact ? "flex gap-2 py-2 border-b border-border last:border-0" : "flex gap-3 pb-4 border-b border-border last:border-0"}
-            >
-              <div className={compact ? "w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0" : "w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0"}>
-                <Calendar className="w-4 h-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-foreground">{item.data.title}</p>
-                <p className="text-xs text-muted-foreground">{format(new Date(item.data.date), compact ? "d MMM, h:mm a" : "PPp")}</p>
-                {!compact && item.data.location && <p className="text-xs text-muted-foreground">{item.data.location}</p>}
-              </div>
-            </div>
-          )
-        )}
-        {items.length === 0 && (
-          <p className="text-muted-foreground text-sm text-center py-4">No activity yet.</p>
+        {displayItems.map((item) => (
+          <CommTimelineItem
+            key={item.id}
+            item={item}
+            compact={compact}
+            expanded={expandedIds.has(item.id)}
+            onToggleExpand={() =>
+              setExpandedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(item.id)) next.delete(item.id);
+                else next.add(item.id);
+                return next;
+              })
+            }
+          />
+        ))}
+        {displayItems.length === 0 && (
+          <p className="text-muted-foreground text-sm text-center py-4">
+            {unifiedComms ? "No communications logged yet." : "No activity yet."}
+          </p>
         )}
       </div>
     </div>
   );
 }
 
-function ActivityLogItem({
-  row,
+function CommTimelineItem({
+  item,
   compact,
   expanded,
   onToggleExpand,
 }: {
-  row: ActivityLogRow;
+  item: UnifiedCommItem;
   compact: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
 }) {
-  const Icon = ACTIVITY_ICONS[row.activity_type] ?? FileText;
+  const Icon = ACTIVITY_ICONS[item.kind] ?? FileText;
+  const kindLabel = formatKindLabel(item.kind);
+
   return (
     <div className={compact ? "flex gap-2 py-2 border-b border-border last:border-0" : "flex gap-3 pb-4 border-b border-border last:border-0"}>
       <div className={compact ? "w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0" : "w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0"}>
         <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-foreground">{row.title}</p>
-        {row.description && (!compact || expanded) ? <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p> : null}
-        <div className="flex items-center gap-2 mt-1">
+        <p className="font-medium text-sm text-foreground">{item.title}</p>
+        {item.description && (!compact || expanded) ? (
+          <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{item.description}</p>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2 mt-1">
           <Clock className="w-3 h-3 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(row.occurred_at), { addSuffix: true })}
+            {formatDistanceToNow(new Date(item.occurredAt), { addSuffix: true })}
           </span>
-          <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded capitalize">{row.activity_type.replace("_", " ")}</span>
-          {compact && row.description ? (
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            · {format(new Date(item.occurredAt), compact ? "d MMM, h:mm a" : "PPp")}
+          </span>
+          <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded capitalize">{kindLabel}</span>
+          {item.source === "interaction" ? (
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Legacy</span>
+          ) : null}
+          {compact && item.description ? (
             <button type="button" className="text-xs text-primary" onClick={onToggleExpand}>
               {expanded ? "Less" : "More"}
             </button>
@@ -250,4 +240,8 @@ function ActivityLogItem({
       </div>
     </div>
   );
+}
+
+function formatKindLabel(kind: CommunicationsKind): string {
+  return kind.replace(/_/g, " ");
 }

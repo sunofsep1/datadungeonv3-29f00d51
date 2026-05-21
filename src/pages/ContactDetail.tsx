@@ -70,6 +70,7 @@ import { LeadClassificationPanel } from "@/components/contacts/LeadClassificatio
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
+import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatchingListingsPanel";
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
 import { ContactRequirementsPreview } from "@/components/contacts/ContactRequirementsPreview";
 import { ContactOutreachPreferences } from "@/components/contacts/ContactOutreachPreferences";
@@ -678,7 +679,12 @@ export default function ContactDetail() {
           to={getPrimaryEmail(contact) ?? contact.email ?? ""}
           contactId={id}
           contactName={displayName === "—" ? undefined : displayName}
-          onSent={() => id && queryClient.invalidateQueries({ queryKey: ["interactions", id] })}
+          onSent={() => {
+            if (!id) return;
+            void queryClient.invalidateQueries({ queryKey: ["interactions", id] });
+            void queryClient.invalidateQueries({ queryKey: ["communications_linked"] });
+            void queryClient.invalidateQueries({ queryKey: ["activity_log"] });
+          }}
         />
       )}
       {getAllPhones(contact).length > 0 && (
@@ -1018,8 +1024,7 @@ export default function ContactDetail() {
               >
                 <div className="print:hidden max-h-[min(560px,60vh)] overflow-y-auto pr-1">
                   <p className="text-xs text-muted-foreground mb-3">
-                    {/* TODO: Legacy `interactions` vs `activity_log` — timeline reads activity_log; unify migrations later. */}
-                    Logged activity and notes. Use Log touch for calls and emails, or Add note.
+                    Notes, calls, emails, SMS, offers, and appointments in one feed.
                   </p>
                   <div className="flex flex-wrap justify-end gap-2 pb-2">
                     <Button size="sm" variant="outline" onClick={() => setAddInteractionOpen(true)} className="gap-1">
@@ -1089,6 +1094,7 @@ export default function ContactDetail() {
 
               <TabsContent value="requirements" className="mt-4 space-y-5">
                 <ContactBuyerRequirementsPanel contactId={id} />
+                <ContactMatchingListingsPanel contactId={id} />
               </TabsContent>
 
               <TabsContent value="people" className="mt-4 space-y-5">

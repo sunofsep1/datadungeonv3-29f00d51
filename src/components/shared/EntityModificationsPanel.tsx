@@ -8,9 +8,10 @@ type Props = {
   entityType: "contact" | "listing" | "property";
   entityId: string | undefined;
   className?: string;
+  compact?: boolean;
 };
 
-export function EntityModificationsPanel({ entityType, entityId, className }: Props) {
+export function EntityModificationsPanel({ entityType, entityId, className, compact }: Props) {
   const { data: rows = [], isLoading } = useEntityAuditLog(entityType, entityId);
 
   return (
@@ -25,9 +26,9 @@ export function EntityModificationsPanel({ entityType, entityId, className }: Pr
           <Skeleton className="h-8 w-full" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No logged field changes yet.</p>
+        <p className={`text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}>No logged field changes yet.</p>
       ) : (
-        <ul className="space-y-2 max-h-64 overflow-y-auto pr-1">
+        <ul className={`space-y-2 overflow-y-auto pr-1 ${compact ? "max-h-48" : "max-h-64"}`}>
           {rows.map((row) => (
             <li key={row.id} className="text-sm border-b border-border/50 last:border-0 pb-2 last:pb-0">
               <p className="text-foreground">{row.summary ?? row.field_name}</p>

@@ -2242,6 +2242,109 @@ export type Database = {
           },
         ]
       }
+      listing_campaign_expenses: {
+        Row: {
+          agent_paid: number
+          category: string
+          cost: number
+          created_at: string
+          expense_date: string
+          id: string
+          invoice_no: string | null
+          item_comment: string | null
+          listing_id: string
+          office_paid: number
+          supplier: string | null
+          supplier_status: string
+          updated_at: string
+          user_id: string
+          vendor_paid: number
+        }
+        Insert: {
+          agent_paid?: number
+          category?: string
+          cost?: number
+          created_at?: string
+          expense_date?: string
+          id?: string
+          invoice_no?: string | null
+          item_comment?: string | null
+          listing_id: string
+          office_paid?: number
+          supplier?: string | null
+          supplier_status?: string
+          updated_at?: string
+          user_id: string
+          vendor_paid?: number
+        }
+        Update: {
+          agent_paid?: number
+          category?: string
+          cost?: number
+          created_at?: string
+          expense_date?: string
+          id?: string
+          invoice_no?: string | null
+          item_comment?: string | null
+          listing_id?: string
+          office_paid?: number
+          supplier?: string | null
+          supplier_status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_paid?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_campaign_expenses_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_commission_splits: {
+        Row: {
+          agent_name: string
+          created_at: string
+          id: string
+          listing_id: string
+          sort_order: number
+          split_pct: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          sort_order?: number
+          split_pct: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          sort_order?: number
+          split_pct?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_commission_splits_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_contact_links: {
         Row: {
           contact_id: string
@@ -2351,6 +2454,146 @@ export type Database = {
             columns: ["inspection_id"]
             isOneToOne: false
             referencedRelation: "listing_open_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_marketing_funds: {
+        Row: {
+          approved_amount: number
+          comments: string | null
+          created_at: string
+          fund_date: string
+          id: string
+          listing_id: string
+          received_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_amount?: number
+          comments?: string | null
+          created_at?: string
+          fund_date?: string
+          id?: string
+          listing_id: string
+          received_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_amount?: number
+          comments?: string | null
+          created_at?: string
+          fund_date?: string
+          id?: string
+          listing_id?: string
+          received_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_marketing_funds_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_offers: {
+        Row: {
+          buyer_contact_id: string | null
+          buyer_solicitor_contact_id: string | null
+          created_at: string
+          exchange_date: string | null
+          id: string
+          inclusions: string | null
+          investor: boolean
+          listing_id: string
+          notes: string | null
+          offer_date: string
+          offer_price: number
+          ref_code: string
+          settlement_date: string | null
+          special_conditions: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buyer_contact_id?: string | null
+          buyer_solicitor_contact_id?: string | null
+          created_at?: string
+          exchange_date?: string | null
+          id?: string
+          inclusions?: string | null
+          investor?: boolean
+          listing_id: string
+          notes?: string | null
+          offer_date?: string
+          offer_price: number
+          ref_code: string
+          settlement_date?: string | null
+          special_conditions?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buyer_contact_id?: string | null
+          buyer_solicitor_contact_id?: string | null
+          created_at?: string
+          exchange_date?: string | null
+          id?: string
+          inclusions?: string | null
+          investor?: boolean
+          listing_id?: string
+          notes?: string | null
+          offer_date?: string
+          offer_price?: number
+          ref_code?: string
+          settlement_date?: string | null
+          special_conditions?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_offers_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_offers_buyer_contact_id_fkey"
+            columns: ["buyer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_offers_buyer_solicitor_contact_id_fkey"
+            columns: ["buyer_solicitor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_offers_buyer_solicitor_contact_id_fkey"
+            columns: ["buyer_solicitor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_offers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
         ]
@@ -4565,16 +4808,19 @@ export type Database = {
         Args: { p_condition_type: string; p_default: number; p_user_id: string }
         Returns: number
       }
-      get_ofi_check_in_by_token: {
-        Args: { p_token: string }
-        Returns: {
-          ends_at: string
-          inspection_id: string
-          listing_address: string
-          listing_id: string
-          starts_at: string
-        }[]
-      }
+      get_ofi_check_in_by_token:
+        | {
+            Args: { p_token: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.get_ofi_check_in_by_token(p_token => text), public.get_ofi_check_in_by_token(p_token => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
+          }
+        | {
+            Args: { p_token: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.get_ofi_check_in_by_token(p_token => text), public.get_ofi_check_in_by_token(p_token => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
+          }
       get_touch_activity_report: {
         Args: { p_range?: string }
         Returns: {
@@ -4615,16 +4861,27 @@ export type Database = {
           requirement_id: string
         }[]
       }
-      ofi_check_in_attendee: {
-        Args: {
-          p_contact_id?: string
-          p_guest_email?: string
-          p_guest_name?: string
-          p_guest_phone?: string
-          p_token: string
-        }
-        Returns: string
-      }
+      ofi_check_in_attendee:
+        | {
+            Args: {
+              p_contact_id?: string
+              p_guest_email?: string
+              p_guest_name?: string
+              p_guest_phone?: string
+              p_token: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_contact_id?: string
+              p_guest_email?: string
+              p_guest_name?: string
+              p_guest_phone?: string
+              p_token: string
+            }
+            Returns: string
+          }
       recalculate_all_contact_scores_system: { Args: never; Returns: Json }
       recalculate_contact_score: {
         Args: { p_contact_id: string }
@@ -4666,6 +4923,10 @@ export type Database = {
       }
       seed_scripts_from_library: { Args: never; Returns: number }
       sync_listing_inspection_kpis: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
+      sync_listing_offers_kpis: {
         Args: { p_listing_id: string }
         Returns: undefined
       }

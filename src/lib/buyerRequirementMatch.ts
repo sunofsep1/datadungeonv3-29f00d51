@@ -309,6 +309,53 @@ export function matchBuyersToListing(
   return Array.from(bestByContact.values()).sort((a, b) => b.matchScore - a.matchScore);
 }
 
+export type ListingMatchResult = {
+  listingId: string;
+  requirementId: string;
+  matchScore: number;
+  matchReasons: string[];
+};
+
+export type ListingForMatching = {
+  id: string;
+  address?: string | null;
+  profile: ListingMatchProfile;
+};
+
+/** Reverse match: given a contact's requirements, return listings that satisfy at least one brief. */
+export function matchListingsToRequirements(
+  requirements: BuyerRequirementRecord[],
+  listings: ListingForMatching[],
+): ListingMatchResult[] {
+  if (!requirements.length) return [];
+
+  const results: ListingMatchResult[] = [];
+
+  for (const listing of listings) {
+    let best: ListingMatchResult | null = null;
+
+    for (const req of requirements) {
+      const { matches, score, reasons } = requirementMatchesListing(req, listing.profile);
+      if (!matches) continue;
+
+      const row: ListingMatchResult = {
+        listingId: listing.id,
+        requirementId: req.id,
+        matchScore: score,
+        matchReasons: reasons,
+      };
+
+      if (!best || row.matchScore > best.matchScore) {
+        best = row;
+      }
+    }
+
+    if (best) results.push(best);
+  }
+
+  return results.sort((a, b) => b.matchScore - a.matchScore);
+}
+
 export function formatRequirementSummary(req: BuyerRequirementRecord): string {
   const parts: string[] = [];
   const suburbs = (req.suburbs ?? []).filter(Boolean);
