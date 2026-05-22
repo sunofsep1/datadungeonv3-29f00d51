@@ -74,6 +74,7 @@ import { ListingCommissionPanel } from "@/components/listings/ListingCommissionP
 import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
 import { ListingPortalExportsPanel } from "@/components/listings/ListingPortalExportsPanel";
 import { useListingContactLinks } from "@/hooks/useListingContactLinks";
+import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import {

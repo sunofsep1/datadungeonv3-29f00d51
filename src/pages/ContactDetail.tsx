@@ -715,6 +715,9 @@ export default function ContactDetail() {
                 className="w-full h-full min-h-[60vh] border-0 bg-white"
               />
             </div>
+            <p className="text-xs text-muted-foreground flex-shrink-0">
+              Double-sided upside down? In the print dialog use <strong>Long-edge binding</strong> (book flip). If still wrong, try <strong>Short-edge</strong>. Enable background graphics for the navy header.
+            </p>
             <div className="flex items-center justify-between flex-shrink-0">
               <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
                 <Checkbox

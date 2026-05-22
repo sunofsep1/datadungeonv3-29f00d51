@@ -1294,10 +1294,7 @@ export default function Contacts() {
   if (isLoading) {
     return (
       <div className="animate-fade-in">
-        <PageHeader
-          title="Contacts"
-          description="Smart lists filter mostly by contact category; urgency is separate (edit contact). Saved views like Stale filter by recency, not category."
-        />
+        <PageHeader title="Contacts" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-24" />
@@ -1315,10 +1312,7 @@ export default function Contacts() {
   if (isError) {
     return (
       <div className="animate-fade-in">
-        <PageHeader
-          title="Contacts"
-          description="Smart lists filter mostly by contact category; urgency is separate (edit contact). Saved views like Stale filter by recency, not category."
-        />
+        <PageHeader title="Contacts" />
         <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="font-medium text-foreground mb-2">Couldn&apos;t load contacts</p>
@@ -1671,7 +1665,6 @@ export default function Contacts() {
     <div className="animate-fade-in">
       <PageHeader
         title="Contacts"
-        description="Smart list chips (Top 100, Hot, Past, …) mostly match Contact category on the person—set that in Edit contact. Urgency is a different field. Chips like Stale or No next touch are saved views (filters), not a category you assign. Refine source, property, and last touched inline; open Filters for classification and tags."
         actions={
           <>
             <SavedViewsMenu

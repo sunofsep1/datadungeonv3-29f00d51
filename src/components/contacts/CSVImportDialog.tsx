@@ -20,6 +20,12 @@ import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag } from "@/hooks/useContactTags";
 import type { ContactWithMeta } from "@/hooks/useContacts";
+import {
+  autoMapContactCsvColumn,
+  EMAIL_RE,
+  mergeCsvFieldValue,
+  parseCsvYesNo,
+} from "@/lib/csvContactImport";
 
 interface CSVImportDialogProps {
   open: boolean;
@@ -40,9 +46,13 @@ const MAP_OPTIONS = [
   { value: "postcode", label: "Postcode" },
   { value: "source", label: "Source" },
   { value: "status", label: "Status" },
-  { value: "tags", label: "Tags (comma-separated)" },
+  { value: "tags", label: "Tags / Categories (comma-separated)" },
   { value: "notes", label: "Notes" },
   { value: "story", label: "Story" },
+  { value: "dnc_phone", label: "Do not call (Yes/No)" },
+  { value: "dnc_sms", label: "Do not SMS (Yes/No)" },
+  { value: "dnc_email", label: "Do not email (Yes/No)" },
+  { value: "agentbox_id", label: "Agentbox ID (appended to notes)" },
   { value: "skip", label: "-- Skip --" },
 ];
 
@@ -93,7 +103,6 @@ function normalizeAddressKey(addr: { address_line1: string; city?: string; state
   const p = (addr.postcode || "").replace(/\D/g, "").slice(0, 4);
   return [a, c, s, p].filter(Boolean).join("|");
 }
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const qc = useQueryClient();
@@ -187,46 +196,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       setCsvData(rows.slice(1));
       const auto: Record<number, string> = {};
       rows[0].forEach((h, i) => {
-        const lower = h.toLowerCase().replace(/[^a-z]/g, "");
-        let opt: (typeof MAP_OPTIONS)[0] | undefined;
-        // HubSpot-style: "Linked property address" / "Property address"
-        if ((lower.includes("linked") && lower.includes("address")) || (lower.includes("property") && lower.includes("address"))) {
-          opt = MAP_OPTIONS.find((o) => o.value === "address");
-        }
-        // Explicit matching for common address parts (check before generic)
-        if (!opt) {
-          if (
-            lower.includes("addressline1") ||
-            (lower.includes("addressline") && lower.includes("1")) ||
-            lower.includes("streetaddress") ||
-            lower.includes("streetaddr") ||
-            (lower.includes("addr") && (lower.includes("line1") || (lower.includes("1") && !lower.includes("2"))))
-          ) {
-            opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
-          } else if (lower.includes("suburb") || lower.includes("town") || lower.includes("locality") || lower === "city") {
-            opt = MAP_OPTIONS.find((o) => o.value === "city");
-          } else if (lower.includes("postcode") || lower.includes("postal") || lower.includes("zip")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "postcode");
-          } else if (
-            lower.includes("street") ||
-            (lower.includes("road") && !lower.includes("postal")) ||
-            ((lower === "rd" || lower === "st") && lower.length <= 3)
-          ) {
-            opt = MAP_OPTIONS.find((o) => o.value === "address_line1");
-          } else if ((lower.includes("state") || lower.includes("region") || lower.includes("province")) && !lower.includes("address")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "state");
-          } else if (lower.includes("addr") && !lower.includes("line2")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "address");
-          } else if (lower === "phones" || lower.includes("phone")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "phone");
-          } else if (lower === "emails" || lower.includes("email")) {
-            opt = MAP_OPTIONS.find((o) => o.value === "email");
-          }
-        }
-        if (!opt) {
-          opt = MAP_OPTIONS.find((o) => o.value !== "skip" && lower.includes(o.value.replace("_", "").slice(0, 4)));
-        }
-        if (opt) auto[i] = opt.value;
+        auto[i] = autoMapContactCsvColumn(h);
       });
       setMapping(auto);
       setStep("mapping");
@@ -242,7 +212,10 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     return csvData.map((row) => {
       const rec: Record<string, string> = {};
       Object.entries(mapping).forEach(([i, field]) => {
-        if (field !== "skip") rec[field] = (row[parseInt(i)] ?? "").trim();
+        if (field === "skip") return;
+        const val = (row[parseInt(i)] ?? "").trim();
+        const merged = mergeCsvFieldValue(field, rec[field], val);
+        if (merged != null) rec[field] = merged;
       });
       return rec;
     });
@@ -361,14 +334,24 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
         };
         const addr = resolveAddress();
 
+        const noteParts = [r.notes?.trim(), r.story?.trim()].filter(Boolean);
+        if (r.agentbox_id?.trim()) noteParts.push(`Agentbox ID: ${r.agentbox_id.trim()}`);
+        const combinedNotes = noteParts.length ? noteParts.join("\n\n") : null;
+
+        const dncPhone = parseCsvYesNo(r.dnc_phone);
+        const dncSms = parseCsvYesNo(r.dnc_sms);
+        const dncEmail = parseCsvYesNo(r.dnc_email);
+
         const contactPayload = {
           name: r.name,
           email: r.email || null,
           phone: r.phone || r.mobile || null,
           source: r.source || null,
           status: (r.status as "hot" | "warm" | "cold" | "lead") || "lead",
-          notes: r.notes || null,
-          story: r.story || null,
+          notes: combinedNotes,
+          ...(dncPhone !== undefined ? { dnc_phone: dncPhone } : {}),
+          ...(dncSms !== undefined ? { dnc_sms: dncSms } : {}),
+          ...(dncEmail !== undefined ? { dnc_email: dncEmail } : {}),
           ...(addr.addressLine1 || addr.suburb || addr.state || addr.postcode
             ? {
                 address_line1: addr.addressLine1 || null,

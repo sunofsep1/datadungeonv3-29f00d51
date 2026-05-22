@@ -9,6 +9,7 @@ import {
   invalidateContactInteractions,
 } from "@/lib/contactActivityLog";
 import { applyClassificationDefaultsForNewContact } from "@/lib/leadCategoryService";
+import { contactAuditFieldMap, logEntityFieldChanges } from "@/lib/entityAuditLog";
 import type { Database } from "@/integrations/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ContactChannel } from "./useContactChannels";
