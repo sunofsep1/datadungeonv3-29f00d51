@@ -4,6 +4,8 @@ export const LISTING_DETAIL_SECTIONS = [
   { id: "listing-overview", label: "Overview" },
   { id: "listing-pricing", label: "Pricing" },
   { id: "listing-details", label: "Details" },
+  { id: "listing-features", label: "Features" },
+  { id: "listing-resources", label: "Resources" },
   { id: "listing-inspections", label: "Inspections" },
   { id: "listing-offers", label: "Offers" },
   { id: "listing-commission", label: "Commission" },

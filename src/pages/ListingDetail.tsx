@@ -72,6 +72,7 @@ import { ListingOpenInspectionsPanel } from "@/components/listings/ListingOpenIn
 import { ListingOffersPanel } from "@/components/listings/ListingOffersPanel";
 import { ListingCommissionPanel } from "@/components/listings/ListingCommissionPanel";
 import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
+import { ListingInvoicesPanel } from "@/components/listings/ListingInvoicesPanel";
 import { ListingPortalExportsPanel } from "@/components/listings/ListingPortalExportsPanel";
 import { useListingContactLinks } from "@/hooks/useListingContactLinks";
 import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
@@ -83,8 +84,12 @@ import {
   type ListingDetailSectionId,
 } from "@/components/listings/ListingDetailSectionNav";
 import { ListingDetailRightRail } from "@/components/listings/ListingDetailRightRail";
+import { ListingKeyDatesPanel } from "@/components/listings/ListingKeyDatesPanel";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
+import { ListingForSalePanel } from "@/components/listings/ListingForSalePanel";
+import { ListingFeaturesPanel } from "@/components/listings/ListingFeaturesPanel";
+import { ListingResourcesPanel } from "@/components/listings/ListingResourcesPanel";
 import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNextCard";
 import { useActivityLogByListing, useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useCreateAppointment } from "@/hooks/useAppointments";
@@ -101,6 +106,7 @@ import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { getInitials, cn } from "@/lib/utils";
 import { listingPublicPriceLabel, listingSearchPrice } from "@/lib/listingPriceFields";
+import { listingDaysOnMarket } from "@/lib/listingReports";
 
 type ListingStatus = "active" | "pending" | "sold" | "withdrawn";
 
@@ -222,11 +228,7 @@ export default function ListingDetail() {
 
   const domDays = useMemo(() => {
     if (!listing) return null;
-    const col = listingKanbanColumnId(listing.pipeline_stage);
-    if (col === "appraisal" || col === "past_client") return null;
-    const anchor = listing.created_at || listing.updated_at;
-    if (!anchor) return null;
-    return Math.max(0, differenceInCalendarDays(new Date(), new Date(anchor)));
+    return listingDaysOnMarket(listing as Listing & { key_date_listed?: string | null; campaign_start_at?: string | null });
   }, [listing]);
 
   const daysInStage = useMemo(() => {
@@ -871,18 +873,31 @@ export default function ListingDetail() {
         createdAt={listing.created_at}
       />
 
-      <div id="listing-pricing" className="grid grid-cols-1 lg:grid-cols-3 gap-6 scroll-mt-28">
-        <div className="lg:col-span-2 min-w-0">
-          <ListingPricingPanel
-            listingId={listing.id}
-            listingPrice={listingSearchPrice(
-              listing as Listing & { search_price?: number | null; display_price?: string | null },
-            )}
-            onListingUpdated={() => void refetch()}
-          />
-        </div>
-        <div className="lg:col-span-1 min-w-0">
-          <ListingPipelineNextCard pipelineStage={listing.pipeline_stage} />
+      <div id="listing-pricing" className="space-y-6 scroll-mt-28">
+        <ListingForSalePanel
+          listing={
+            listing as Listing & {
+              search_price?: number | null;
+              display_price?: string | null;
+              search_price_min?: number | null;
+              search_price_max?: number | null;
+            }
+          }
+          onUpdated={() => void refetch()}
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 min-w-0">
+            <ListingPricingPanel
+              listingId={listing.id}
+              listingPrice={listingSearchPrice(
+                listing as Listing & { search_price?: number | null; display_price?: string | null },
+              )}
+              onListingUpdated={() => void refetch()}
+            />
+          </div>
+          <div className="lg:col-span-1 min-w-0">
+            <ListingPipelineNextCard pipelineStage={listing.pipeline_stage} />
+          </div>
         </div>
       </div>
 
@@ -1005,6 +1020,34 @@ export default function ListingDetail() {
         </Card>
       </div>
 
+      <div id="listing-features" className="scroll-mt-28">
+        <ListingFeaturesPanel
+          listingId={listing.id}
+          propertyId={listing.property_id}
+          marketingHeadline={
+            (listing as Listing & { marketing_headline?: string | null }).marketing_headline
+          }
+          marketingDescription={
+            (listing as Listing & { marketing_description?: string | null }).marketing_description
+          }
+          featureFlags={(listing as Listing & { feature_flags?: unknown }).feature_flags}
+          bedrooms={beds}
+          bathrooms={baths}
+          landSqm={landSqm}
+          buildingSqm={linkedProperty?.floor_area_sqm ?? null}
+          onUpdated={() => void refetch()}
+        />
+      </div>
+
+      <div id="listing-resources" className="scroll-mt-28">
+        <ListingResourcesPanel
+          listingId={listing.id}
+          heroUrls={heroUrls}
+          listingImageUrl={listing.listing_image_url}
+          onUpdated={() => void refetch()}
+        />
+      </div>
+
       {id ? (
         <>
           <div id="listing-inspections" className="scroll-mt-28">
@@ -1019,8 +1062,21 @@ export default function ListingDetail() {
           <div id="listing-marketing" className="scroll-mt-28">
             <ListingMarketingFundsPanel listingId={id} />
           </div>
+          <div id="listing-invoices" className="scroll-mt-28">
+            <ListingInvoicesPanel listingId={id} />
+          </div>
           <div id="listing-portals" className="scroll-mt-28">
-            <ListingPortalExportsPanel listingId={id} />
+            <ListingPortalExportsPanel
+              listingId={id}
+              listingAddress={listing.address}
+              addressDisplayMode={
+                (listing as Listing & { address_display_mode?: string | null }).address_display_mode
+              }
+              hideAddressPortal={
+                (listing as Listing & { hide_address_portal?: boolean | null }).hide_address_portal ?? false
+              }
+              onListingUpdated={() => void refetch()}
+            />
           </div>
           <div id="listing-people" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-28">
             <ListingContactLinksPanel listingId={id} />
@@ -1040,14 +1096,29 @@ export default function ListingDetail() {
         </div>
 
         {id ? (
-          <ListingDetailRightRail
-            listing={listing}
-            listingId={id}
-            domDays={domDays}
-            recentActivity={recentActivity}
-            onMatchBuyers={() => setMatchBuyersOpen(true)}
-            formatAud={formatAud}
-          />
+          <div className="hidden xl:block space-y-4">
+            <ListingKeyDatesPanel
+              listingId={id}
+              keyDateListed={
+                (listing as Listing & { key_date_listed?: string | null }).key_date_listed
+              }
+              keyDateAgencyExpiry={
+                (listing as Listing & { key_date_agency_expiry?: string | null }).key_date_agency_expiry
+              }
+              keyDateSettlement={
+                (listing as Listing & { key_date_settlement?: string | null }).key_date_settlement
+              }
+              onUpdated={() => void refetch()}
+            />
+            <ListingDetailRightRail
+              listing={listing}
+              listingId={id}
+              domDays={domDays}
+              recentActivity={recentActivity}
+              onMatchBuyers={() => setMatchBuyersOpen(true)}
+              formatAud={formatAud}
+            />
+          </div>
         ) : null}
       </div>
 

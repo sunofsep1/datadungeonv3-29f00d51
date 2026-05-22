@@ -52,8 +52,23 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import {
+  formatListingAddressForPortal,
+  LISTING_ADDRESS_DISPLAY_OPTIONS,
+  listingAddressDisplayLabel,
+  parseListingAddressDisplayMode,
+  type ListingAddressDisplayMode,
+} from "@/lib/listingAddressDisplay";
+import { useUpdateListing } from "@/hooks/useListings";
+import { MapPin } from "lucide-react";
 
-type Props = { listingId: string };
+type Props = {
+  listingId: string;
+  listingAddress?: string | null;
+  addressDisplayMode?: string | null;
+  hideAddressPortal?: boolean;
+  onListingUpdated?: () => void;
+};
 
 function statusClass(status: string): string {
   if (status === "live" || status === "processed") return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
@@ -62,8 +77,15 @@ function statusClass(status: string): string {
   return "bg-muted text-muted-foreground border-border";
 }
 
-export function ListingPortalExportsPanel({ listingId }: Props) {
+export function ListingPortalExportsPanel({
+  listingId,
+  listingAddress,
+  addressDisplayMode,
+  hideAddressPortal = false,
+  onListingUpdated,
+}: Props) {
   const { toast } = useToast();
+  const updateListing = useUpdateListing();
   const { data: configs = [], isLoading } = useListingPortalConfigs(listingId);
   const { data: logs = [], isLoading: logsLoading } = useListingPortalFeedLogs(listingId);
   const upsert = useUpsertListingPortalConfig();
@@ -87,6 +109,28 @@ export function ListingPortalExportsPanel({ listingId }: Props) {
   const enabledCount = configs.filter((c) => c.enabled).length;
   const hitsChart = useMemo(() => buildMonthlyHitsChart(hits), [hits]);
   const hitsTotal12m = useMemo(() => totalHitsInPeriod(hits), [hits]);
+
+  const displayMode = parseListingAddressDisplayMode(addressDisplayMode);
+  const portalAddressLine = useMemo(
+    () => formatListingAddressForPortal(listingAddress, displayMode, hideAddressPortal),
+    [listingAddress, displayMode, hideAddressPortal],
+  );
+
+  const saveAddressCompliance = async (patch: {
+    address_display_mode?: ListingAddressDisplayMode;
+    hide_address_portal?: boolean;
+  }) => {
+    try {
+      await updateListing.mutateAsync({ id: listingId, ...patch });
+      onListingUpdated?.();
+    } catch (e) {
+      toast({
+        title: "Could not save address settings",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
 
   const togglePortal = async (portalKey: ListingPortalKey, enabled: boolean) => {
     try {
@@ -199,6 +243,56 @@ export function ListingPortalExportsPanel({ listingId }: Props) {
           <Button type="button" size="sm" variant="outline" className="gap-1 h-8" onClick={() => setLogOpen(true)}>
             <Plus className="h-3.5 w-3.5" /> Log entry
           </Button>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border/70 bg-muted/15 p-3 mb-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground">Portal address</p>
+            <p className="text-sm font-medium mt-1">{portalAddressLine}</p>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {listingAddressDisplayLabel(displayMode)}
+              {hideAddressPortal ? " · Street hidden on portals" : ""}
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Address display</Label>
+            <Select
+              value={displayMode}
+              onValueChange={(v) =>
+                void saveAddressCompliance({
+                  address_display_mode: parseListingAddressDisplayMode(v),
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LISTING_ADDRESS_DISPLAY_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-end gap-2 pb-0.5">
+            <Switch
+              id="hide-address-portal"
+              checked={hideAddressPortal}
+              onCheckedChange={(checked) =>
+                void saveAddressCompliance({ hide_address_portal: checked })
+              }
+            />
+            <Label htmlFor="hide-address-portal" className="text-xs cursor-pointer">
+              Hide street on portal exports (silent sale)
+            </Label>
+          </div>
         </div>
       </div>
 

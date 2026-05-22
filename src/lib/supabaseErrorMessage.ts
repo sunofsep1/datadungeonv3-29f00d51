@@ -50,6 +50,13 @@ export const LISTING_INSERT_STRIPPABLE_COLUMN_NAMES = [
   "campaign_start_at",
   "search_price",
   "display_price",
+  "search_price_min",
+  "search_price_max",
+  "marketing_headline",
+  "marketing_description",
+  "feature_flags",
+  "address_display_mode",
+  "hide_address_portal",
 ] as const;
 
 /** Parse PostgREST / Postgres "column missing on listings" messages. */

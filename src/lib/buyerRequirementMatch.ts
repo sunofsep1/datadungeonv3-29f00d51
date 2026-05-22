@@ -1,4 +1,5 @@
 import { listingSearchPrice, type ListingPriceSource } from "@/lib/listingPriceFields";
+import { mergeListingFeatures } from "@/lib/listingFeatures";
 
 export type BuyerRequirementRecord = {
   id: string;
@@ -68,6 +69,7 @@ export function buildListingMatchProfile(
     bedrooms?: number | null;
     bathrooms?: number | null;
     property_type?: string | null;
+    feature_flags?: unknown;
   },
   property?: {
     suburb?: string | null;
@@ -98,7 +100,7 @@ export function buildListingMatchProfile(
     property_type: listing.property_type ?? property?.property_type ?? null,
     land_sqm: property?.land_area_sqm ?? null,
     building_sqm: property?.floor_area_sqm ?? null,
-    features: (property?.features ?? []).map((f) => f.toLowerCase()),
+    features: mergeListingFeatures(listing.feature_flags, property?.features),
   };
 }
 

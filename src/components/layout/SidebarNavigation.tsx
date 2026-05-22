@@ -28,6 +28,7 @@ import {
   Clock,
   LineChart,
   Bot,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,8 @@ const planningItems: NavItem[] = [{ title: "Reviews & events", url: "/annual-rev
 const businessItems: NavItem[] = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Performance", url: "/performance", icon: BarChart3 },
+  { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Invoices", url: "/invoices", icon: Receipt },
 ];
 
 const insightsItems: NavItem[] = [
@@ -127,6 +130,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/ai-ops" && pathname.startsWith("/ai-ops")) return true;
   if (item.url === "/data-health" && pathname.startsWith("/data-health")) return true;
   if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
+  if (item.url === "/invoices" && pathname.startsWith("/invoices")) return true;
   return false;
 }
 
@@ -485,6 +489,18 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                       <NavLink to="/performance" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <BarChart3 className="w-4 h-4" />
                         Performance
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/reports" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <FileText className="w-4 h-4" />
+                        Reports
+                      </NavLink>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <NavLink to="/invoices" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                        <Receipt className="w-4 h-4" />
+                        Invoices
                       </NavLink>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

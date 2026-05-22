@@ -52,6 +52,9 @@ const Pipeline = lazy(() => import("./pages/Pipeline"));
 const AIOps = lazy(() => import("./pages/AIOps"));
 const TouchReport = lazy(() => import("./pages/TouchReport"));
 const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
+const Reports = lazy(() => import("./pages/Reports"));
+const InvoicePrintPage = lazy(() => import("./pages/InvoicePrintPage"));
+const Invoices = lazy(() => import("./pages/Invoices"));
 const OfiCheckInPage = lazy(() => import("./pages/OfiCheckInPage"));
 
 const queryClient = new QueryClient();
@@ -104,6 +107,9 @@ const App = () => (
                 <Route path="/annual-reviews" element={<ProtectedRoute><MainLayout><AnnualReviews /></MainLayout></ProtectedRoute>} />
                 <Route path="/ai-ops" element={<ProtectedRoute><MainLayout><AIOps /></MainLayout></ProtectedRoute>} />
                 <Route path="/touch-report" element={<ProtectedRoute><MainLayout><TouchReport /></MainLayout></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
+                <Route path="/invoices" element={<ProtectedRoute><MainLayout><ErrorBoundary><Invoices /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/invoices/:id/print" element={<ProtectedRoute><InvoicePrintPage /></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />

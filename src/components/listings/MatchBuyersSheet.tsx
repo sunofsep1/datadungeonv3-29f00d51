@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useContacts,
   getContactDisplayName,
@@ -22,11 +23,13 @@ import {
   type BuyerRequirementRecord,
   type BuyerMatchResult,
 } from "@/lib/buyerRequirementMatch";
-import { listingSearchPrice } from "@/lib/listingPriceFields";
+import { listingPublicPriceLabel, listingSearchPrice } from "@/lib/listingPriceFields";
 import { contactCanCall, contactCanEmail, contactCanSms } from "@/lib/contactOutreach";
 import { phoneToTelHref } from "@/lib/formatPhone";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
+import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
+import { BulkEmailCampaignDialog } from "@/components/contacts/BulkEmailCampaignDialog";
 
 type Props = {
   open: boolean;
@@ -34,13 +37,25 @@ type Props = {
   listing: Listing;
 };
 
+function formatAud(value: number | null) {
+  if (value == null) return "";
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: "AUD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: savedReqs = [], isLoading: reqsLoading } = useBuyerRequirements();
   const { data: property } = useProperty(listing.property_id ?? undefined);
   const [emailOpen, setEmailOpen] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
+  const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
   const [activeContactId, setActiveContactId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const listingProfile = useMemo(
     () => buildListingMatchProfile(listing, property ?? null),
@@ -65,11 +80,45 @@ export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
     [listingProfile, allRequirements, contactsById],
   );
 
+  const matchContactIds = useMemo(() => matches.map((m) => m.contactId), [matches]);
+
+  const selectedContactIds = useMemo(
+    () => matchContactIds.filter((id) => selectedIds.has(id)),
+    [matchContactIds, selectedIds],
+  );
+
   const activeContact = activeContactId ? contactsById.get(activeContactId) : null;
   const activeEmail = activeContact ? getPrimaryEmail(activeContact) : null;
   const activePhone = activeContact ? getPrimaryPhone(activeContact) : null;
   const loading = contactsLoading || reqsLoading;
   const price = listingSearchPrice(listing);
+  const priceLabel = listingPublicPriceLabel(listing, formatAud);
+  const mergeDefaults = useMemo(
+    () => ({
+      custom1: listing.address,
+      custom2: priceLabel || (price != null ? formatAud(price) : ""),
+      custom3: (listing as Listing & { marketing_headline?: string | null }).marketing_headline?.trim() ?? "",
+      custom4: "",
+    }),
+    [listing.address, listing.marketing_headline, price, priceLabel],
+  );
+
+  const toggleSelect = (contactId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === matchContactIds.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(matchContactIds));
+    }
+  };
 
   return (
     <>
@@ -82,16 +131,52 @@ export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
             </SheetTitle>
             <p className="text-xs text-muted-foreground text-left">
               {listing.address}
-              {price != null
-                ? ` · ${new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(price)}`
-                : ""}
+              {price != null ? ` · ${formatAud(price)}` : ""}
             </p>
           </SheetHeader>
+
+          {matches.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 mt-3 pb-2 border-b border-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={toggleSelectAll}
+              >
+                {selectedIds.size === matchContactIds.length ? "Clear all" : "Select all"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                disabled={selectedContactIds.length === 0}
+                onClick={() => setBulkSmsOpen(true)}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Bulk SMS ({selectedContactIds.length})
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                disabled={selectedContactIds.length === 0}
+                onClick={() => setBulkEmailOpen(true)}
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Bulk email ({selectedContactIds.length})
+              </Button>
+            </div>
+          ) : null}
 
           <MatchList
             loading={loading}
             matches={matches}
             contactsById={contactsById}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
             onEmail={(id) => {
               setActiveContactId(id);
               setEmailOpen(true);
@@ -123,6 +208,28 @@ export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
           contactName={activeContact ? getContactDisplayName(activeContact) : undefined}
         />
       ) : null}
+
+      <BulkSmsCampaignDialog
+        open={bulkSmsOpen}
+        onOpenChange={setBulkSmsOpen}
+        contactIds={selectedContactIds}
+        initialCustom={{
+          custom1: mergeDefaults.custom1 ?? "",
+          custom2: mergeDefaults.custom2 ?? "",
+          custom3: mergeDefaults.custom3 ?? "",
+          custom4: "",
+        }}
+      />
+
+      <BulkEmailCampaignDialog
+        open={bulkEmailOpen}
+        onOpenChange={setBulkEmailOpen}
+        contacts={contacts}
+        contactIds={selectedContactIds}
+        mergeDefaults={mergeDefaults}
+        defaultSubject={`New listing — ${listing.address}`}
+        defaultBody={`Hi {{first_name}},\n\nThis property may suit your brief:\n\n${listing.address}\n${priceLabel || ""}\n\nReply if you'd like to inspect or discuss.\n\n{{signature}}`}
+      />
     </>
   );
 }
@@ -131,12 +238,16 @@ function MatchList({
   loading,
   matches,
   contactsById,
+  selectedIds,
+  onToggleSelect,
   onEmail,
   onSms,
 }: {
   loading: boolean;
   matches: BuyerMatchResult[];
   contactsById: Map<string, ContactWithMeta>;
+  selectedIds: Set<string>;
+  onToggleSelect: (contactId: string) => void;
   onEmail: (contactId: string) => void;
   onSms: (contactId: string) => void;
 }) {
@@ -168,9 +279,19 @@ function MatchList({
         const tel = c && contactCanCall(c) ? phoneToTelHref(getPrimaryPhone(c)) : null;
         return (
           <li key={m.contactId} className="rounded-lg border border-border/70 bg-card p-3">
-            <p className="font-medium text-sm text-foreground truncate">{name}</p>
-            <MatchBadges m={m} />
-            <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                checked={selectedIds.has(m.contactId)}
+                onCheckedChange={() => onToggleSelect(m.contactId)}
+                className="mt-0.5"
+                aria-label={`Select ${name}`}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-sm text-foreground truncate">{name}</p>
+                <MatchBadges m={m} />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2 pl-6">
               {tel ? (
                 <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" asChild>
                   <a href={tel}>

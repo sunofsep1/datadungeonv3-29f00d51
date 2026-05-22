@@ -29,6 +29,7 @@ type BulkSmsCampaignDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contactIds: string[];
+  initialCustom?: SmsComposerCustomFields;
   onComplete?: () => void;
 };
 
@@ -43,6 +44,7 @@ export function BulkSmsCampaignDialog({
   open,
   onOpenChange,
   contactIds,
+  initialCustom,
   onComplete,
 }: BulkSmsCampaignDialogProps) {
   const { toast } = useToast();
@@ -61,9 +63,11 @@ export function BulkSmsCampaignDialog({
   const resetWhenClose = (next: boolean) => {
     if (!next) {
       setBody("");
-      setCustom(defaultSmsComposerCustomFields());
+      setCustom(initialCustom ?? defaultSmsComposerCustomFields());
       setIncludeOptOutIfMissing(true);
       setResult(null);
+    } else {
+      setCustom(initialCustom ?? defaultSmsComposerCustomFields());
     }
     onOpenChange(next);
   };

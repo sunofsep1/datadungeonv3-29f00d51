@@ -2048,6 +2048,181 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_line_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          gst_rate: number
+          id: string
+          invoice_id: string
+          position: number
+          quantity: number
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          gst_rate?: number
+          id?: string
+          invoice_id: string
+          position?: number
+          quantity?: number
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          gst_rate?: number
+          id?: string
+          invoice_id?: string
+          position?: number
+          quantity?: number
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          contact_id: string | null
+          counterparty_abn: string | null
+          counterparty_name: string
+          created_at: string
+          currency: string
+          direction: string
+          due_date: string
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          gst_amount: number | null
+          gst_mode: string
+          id: string
+          invoice_number: string
+          issue_date: string
+          listing_id: string | null
+          mime_type: string | null
+          notes: string | null
+          paid_amount: number | null
+          paid_date: string | null
+          property_address: string | null
+          reimbursable: boolean
+          reimbursement_invoice_id: string | null
+          source: string
+          status: string
+          subtotal: number
+          terms_days: number
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          counterparty_abn?: string | null
+          counterparty_name: string
+          created_at?: string
+          currency?: string
+          direction: string
+          due_date: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          gst_amount?: number | null
+          gst_mode?: string
+          id?: string
+          invoice_number: string
+          issue_date: string
+          listing_id?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          property_address?: string | null
+          reimbursable?: boolean
+          reimbursement_invoice_id?: string | null
+          source?: string
+          status?: string
+          subtotal?: number
+          terms_days?: number
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string | null
+          counterparty_abn?: string | null
+          counterparty_name?: string
+          created_at?: string
+          currency?: string
+          direction?: string
+          due_date?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          gst_amount?: number | null
+          gst_mode?: string
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          listing_id?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_date?: string | null
+          property_address?: string | null
+          reimbursable?: boolean
+          reimbursement_invoice_id?: string | null
+          source?: string
+          status?: string
+          subtotal?: number
+          terms_days?: number
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_reimbursement_invoice_id_fkey"
+            columns: ["reimbursement_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_goals: {
         Row: {
           appointments_set_goal: number | null
@@ -2786,6 +2961,50 @@ export type Database = {
           },
         ]
       }
+      listing_resources: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          listing_id: string
+          sort_order: number
+          title: string | null
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          listing_id: string
+          sort_order?: number
+          title?: string | null
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          listing_id?: string
+          sort_order?: number
+          title?: string | null
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_resources_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_stage_automations: {
         Row: {
           created_at: string
@@ -2912,6 +3131,7 @@ export type Database = {
           action_plan_name: string | null
           action_plan_progress: number
           address: string
+          address_display_mode: string
           bathrooms: number | null
           bedrooms: number | null
           campaign_buyer_matches_count: number
@@ -2934,14 +3154,19 @@ export type Database = {
           contract_subject_sale_days: number | null
           created_at: string
           display_price: string | null
+          feature_flags: Json
+          hide_address_portal: boolean
           id: string
           journey_stage: string | null
+          key_date_agency_expiry: string | null
           key_date_appraisal: string | null
           key_date_contract: string | null
           key_date_listed: string | null
           key_date_settlement: string | null
           lead_temperature: string
           listing_image_url: string | null
+          marketing_description: string | null
+          marketing_headline: string | null
           mkt_brochure_status: string
           mkt_copywriting_status: string
           mkt_domain_status: string
@@ -2970,6 +3195,7 @@ export type Database = {
           action_plan_name?: string | null
           action_plan_progress?: number
           address: string
+          address_display_mode?: string
           bathrooms?: number | null
           bedrooms?: number | null
           campaign_buyer_matches_count?: number
@@ -2992,14 +3218,19 @@ export type Database = {
           contract_subject_sale_days?: number | null
           created_at?: string
           display_price?: string | null
+          feature_flags?: Json
+          hide_address_portal?: boolean
           id?: string
           journey_stage?: string | null
+          key_date_agency_expiry?: string | null
           key_date_appraisal?: string | null
           key_date_contract?: string | null
           key_date_listed?: string | null
           key_date_settlement?: string | null
           lead_temperature?: string
           listing_image_url?: string | null
+          marketing_description?: string | null
+          marketing_headline?: string | null
           mkt_brochure_status?: string
           mkt_copywriting_status?: string
           mkt_domain_status?: string
@@ -3028,6 +3259,7 @@ export type Database = {
           action_plan_name?: string | null
           action_plan_progress?: number
           address?: string
+          address_display_mode?: string
           bathrooms?: number | null
           bedrooms?: number | null
           campaign_buyer_matches_count?: number
@@ -3050,14 +3282,19 @@ export type Database = {
           contract_subject_sale_days?: number | null
           created_at?: string
           display_price?: string | null
+          feature_flags?: Json
+          hide_address_portal?: boolean
           id?: string
           journey_stage?: string | null
+          key_date_agency_expiry?: string | null
           key_date_appraisal?: string | null
           key_date_contract?: string | null
           key_date_listed?: string | null
           key_date_settlement?: string | null
           lead_temperature?: string
           listing_image_url?: string | null
+          marketing_description?: string | null
+          marketing_headline?: string | null
           mkt_brochure_status?: string
           mkt_copywriting_status?: string
           mkt_domain_status?: string
