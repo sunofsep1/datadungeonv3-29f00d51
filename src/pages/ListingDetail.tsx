@@ -104,8 +104,6 @@ import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNe
 import { useActivityLogByListing, useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useCreateAppointment } from "@/hooks/useAppointments";
 import { useLogListingStageMove } from "@/hooks/useEvents";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import {
   getContactDisplayName,
   getPrimaryEmail,
@@ -176,7 +174,6 @@ export default function ListingDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
   const { user } = useAuth();
   const { data: listing, isLoading, isError, refetch } = useListing(id);
   const listingWithContact = listing as (Listing & { contact_id?: string | null }) | null;
