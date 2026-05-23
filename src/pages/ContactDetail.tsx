@@ -70,6 +70,7 @@ import { LeadClassificationPanel } from "@/components/contacts/LeadClassificatio
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
+import { ContactAmlPanel } from "@/components/contacts/ContactAmlPanel";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
 import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatchingListingsPanel";
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
@@ -868,6 +869,17 @@ export default function ContactDetail() {
           {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
           {id && <ContactScorePanel contactId={id} />}
           {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
+          {id && contact ? (
+            <ContactAmlPanel
+              contact={{
+                id: contact.id,
+                aml_id_verified: (contact as { aml_id_verified?: boolean }).aml_id_verified,
+                aml_verified_at: (contact as { aml_verified_at?: string | null }).aml_verified_at,
+                aml_pep_clear: (contact as { aml_pep_clear?: boolean }).aml_pep_clear,
+                aml_notes: (contact as { aml_notes?: string | null }).aml_notes,
+              }}
+            />
+          ) : null}
         </div>
 
         <div className="space-y-5 print-contact-main">

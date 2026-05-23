@@ -8,6 +8,7 @@ import {
   logContactActivity,
   invalidateContactInteractions,
 } from "@/lib/contactActivityLog";
+import { detectAndLogContactDuplicates } from "@/lib/contactConflictDetection";
 import { applyClassificationDefaultsForNewContact } from "@/lib/leadCategoryService";
 import { contactAuditFieldMap, logEntityFieldChanges } from "@/lib/entityAuditLog";
 import type { Database } from "@/integrations/supabase/types";
@@ -473,6 +474,17 @@ export function useCreateContact() {
           subject: "Contact created",
           body: nm ? `Added: ${nm}` : "New contact added",
         });
+        try {
+          await detectAndLogContactDuplicates({
+            contactId: normalized.id,
+            userId: user.id,
+            email: (contactData as { email?: string | null }).email,
+            phone: (contactData as { phone?: string | null }).phone,
+            mobile: (contactData as { mobile?: string | null }).mobile,
+          });
+        } catch {
+          /* duplicate log is best-effort */
+        }
       }
 
       return normalized;
@@ -597,6 +609,23 @@ export function useUpdateContact() {
             subject: "Contact updated",
             body: bodyParts.join("\n"),
           });
+        }
+        try {
+          const {
+            data: { user: authUser },
+          } = await supabase.auth.getUser();
+          if (authUser) {
+            const row = data as Record<string, unknown>;
+            await detectAndLogContactDuplicates({
+              contactId: id,
+              userId: authUser.id,
+              email: row.email as string | null,
+              phone: row.phone as string | null,
+              mobile: row.mobile as string | null,
+            });
+          }
+        } catch {
+          /* duplicate log is best-effort */
         }
       }
 

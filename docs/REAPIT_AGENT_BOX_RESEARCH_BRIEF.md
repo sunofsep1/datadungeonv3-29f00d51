@@ -495,4 +495,6 @@ After these three, evaluate whether to push into Marketing Funds, Portal Exports
 | 2026-05-23 | **Activity schedule builder** — Settings create/edit/duplicate templates and steps | `ActivityScheduleBuilderCard` |
 | 2026-05-23 | **Match buyers letters** — bulk print mail-merge from Match buyers sheet | `/listings/match-buyers/letters/print` |
 | 2026-05-23 | **Reports** — Current listings + Offers & contracts tabs | `/reports?tab=current` · `?tab=offers` |
-| 2026-05-23 | **Listing General panel** — authority, outgoings, investment, legal, access | `20260523180000_listing_general_panel.sql` — run `npm run db:push` |  
+| 2026-05-23 | **Listing General panel** — authority, outgoings, investment, legal, access | `20260523180000_listing_general_panel.sql` — run `npm run db:push` |
+| 2026-05-23 | **P4** — contact AML/KYC panel; listing compliance checkboxes; duplicate → interaction history | `20260523210000_contact_aml_kyc.sql` |
+| 2026-05-23 | **Reports** — Contact source + GCI by listing tabs | `/reports?tab=sources` · `?tab=gci` |  

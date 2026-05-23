@@ -1,6 +1,17 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, BarChart3, CalendarClock, Clock, ExternalLink, FileSignature, Home, List } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  CalendarClock,
+  Clock,
+  ExternalLink,
+  FileSignature,
+  Home,
+  List,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,17 +42,29 @@ import {
   type ListingReportRow,
 } from "@/lib/listingReports";
 import { domToneClasses } from "@/lib/listingCampaignDashboard";
+import { listingSearchPrice } from "@/lib/listingPriceFields";
+import { buildContactSourceReport, buildGciByListingReport } from "@/lib/contactReports";
 import { cn } from "@/lib/utils";
 
-type ReportTab = "pipeline" | "dom" | "expiry" | "settlements" | "current" | "offers";
+type ReportTab =
+  | "pipeline"
+  | "dom"
+  | "expiry"
+  | "settlements"
+  | "current"
+  | "offers"
+  | "sources"
+  | "gci";
 
 const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
   { id: "pipeline", label: "Pipeline monitor", icon: BarChart3 },
   { id: "current", label: "Current listings", icon: List },
+  { id: "gci", label: "GCI by listing", icon: TrendingUp },
   { id: "dom", label: "Days on market", icon: Clock },
   { id: "expiry", label: "Agency expiry", icon: CalendarClock },
   { id: "settlements", label: "Upcoming settlements", icon: Home },
   { id: "offers", label: "Offers & contracts", icon: FileSignature },
+  { id: "sources", label: "Contact source", icon: Users },
 ];
 
 function ReportTable({
@@ -100,7 +123,9 @@ export default function Reports() {
     tabParam === "expiry" ||
     tabParam === "settlements" ||
     tabParam === "current" ||
-    tabParam === "offers"
+    tabParam === "offers" ||
+    tabParam === "sources" ||
+    tabParam === "gci"
       ? tabParam
       : "pipeline";
   const [expiryWindow, setExpiryWindow] = useState(90);
@@ -108,7 +133,7 @@ export default function Reports() {
 
   const { data: listings = [], isLoading } = useListings();
   const { data: allOffers = [], isLoading: offersLoading } = useAllListingOffers();
-  const { data: contacts = [] } = useContacts();
+  const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
@@ -131,6 +156,24 @@ export default function Reports() {
     [reportRows, settlementWindow],
   );
   const currentListingRows = useMemo(() => buildCurrentListingsReport(reportRows), [reportRows]);
+  const sourceRows = useMemo(
+    () => buildContactSourceReport(contacts.map((c) => ({ source: c.source, created_at: c.created_at }))),
+    [contacts],
+  );
+  const gciRows = useMemo(
+    () =>
+      buildGciByListingReport(
+        reportRows.map((l) => ({
+          id: l.id,
+          address: l.address,
+          pipeline_stage: l.pipeline_stage,
+          searchPrice: listingSearchPrice(l),
+        })),
+        commissionRate,
+        pipelineStageLabel,
+      ),
+    [reportRows, commissionRate],
+  );
   const offerRows = useMemo(() => {
     const offersForReport = allOffers.map((o) => {
       const c = o.buyer_contact_id ? contactsById.get(o.buyer_contact_id) : null;
@@ -647,6 +690,102 @@ export default function Reports() {
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="gci" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">GCI by listing</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Projected gross commission at {commissionRate}% on internal search price
+                </p>
+              </div>
+              <ExportReportButton
+                filename="gci-by-listing"
+                columns={[
+                  { key: "address", label: "Address" },
+                  { key: "stage", label: "Stage" },
+                  { key: "search_price", label: "Search price" },
+                  { key: "gci", label: "Projected GCI" },
+                ]}
+                data={gciRows.map((r) => ({
+                  address: r.address,
+                  stage: r.stage,
+                  search_price: formatReportAud(r.searchPrice),
+                  gci: formatReportAud(r.projectedGci),
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Address", "Stage", "Search price", "Projected GCI", ""]}
+                emptyMessage="No listings with search price for GCI estimate."
+                rows={gciRows.map((row) => [
+                  <Link
+                    key="addr"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <Badge key="stage" variant="secondary" className="font-normal">
+                    {row.stage}
+                  </Badge>,
+                  <span key="price" className="tabular-nums whitespace-nowrap">
+                    {formatReportAud(row.searchPrice)}
+                  </span>,
+                  <span key="gci" className="tabular-nums font-semibold whitespace-nowrap">
+                    {formatReportAud(row.projectedGci)}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sources" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contact source</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  How contacts entered the database — {contacts.length} total
+                </p>
+              </div>
+              <ExportReportButton
+                filename="contact-source"
+                columns={[
+                  { key: "source", label: "Source" },
+                  { key: "count", label: "Contacts" },
+                ]}
+                data={sourceRows.map((r) => ({ source: r.source, count: r.count }))}
+              />
+            </div>
+            {contactsLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Source", "Count"]}
+                emptyMessage="No contacts yet."
+                rows={sourceRows.map((row) => [
+                  <span key="src" className="font-medium">
+                    {row.source}
+                  </span>,
+                  <span key="cnt" className="tabular-nums">
+                    {row.count}
+                  </span>,
                 ])}
               />
             )}

@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "DataDungeon",
+  "version": "0.2.0",
+  "description": "Capture contacts from RiTA into a CSV ready for your DataDungeon CRM importer.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://app.ritabyaire.com/*",
+    "https://api.ritabyaire.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DataDungeon"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://app.ritabyaire.com/*"],
+      "js": ["src/interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://app.ritabyaire.com/*"],
+      "js": ["src/adapters/rita.js", "src/content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

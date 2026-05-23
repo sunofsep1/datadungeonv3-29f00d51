@@ -94,6 +94,7 @@ import {
 import { ListingDetailRightRail } from "@/components/listings/ListingDetailRightRail";
 import { ListingKeyDatesPanel } from "@/components/listings/ListingKeyDatesPanel";
 import { ListingGeneralPanel } from "@/components/listings/ListingGeneralPanel";
+import { ListingCompliancePanel } from "@/components/listings/ListingCompliancePanel";
 import type { ListingGeneralFields } from "@/lib/listingGeneral";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
@@ -1214,8 +1215,20 @@ export default function ListingDetail() {
           </div>
           <div id="listing-people" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-28">
             <ListingContactLinksPanel listingId={id} />
-            <EntityModificationsPanel entityType="listing" entityId={id} className="xl:hidden" />
+            <ListingCompliancePanel
+              listingId={id}
+              compliance_agency_agreement_signed={
+                (listing as { compliance_agency_agreement_signed?: boolean }).compliance_agency_agreement_signed
+              }
+              compliance_id_verified={
+                (listing as { compliance_id_verified?: boolean }).compliance_id_verified
+              }
+              compliance_form6_uploaded={
+                (listing as { compliance_form6_uploaded?: boolean }).compliance_form6_uploaded
+              }
+            />
           </div>
+          <EntityModificationsPanel entityType="listing" entityId={id} className="xl:hidden" />
         </>
       ) : null}
 

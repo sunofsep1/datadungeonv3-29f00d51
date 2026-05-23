@@ -1550,6 +1550,10 @@ export type Database = {
           address: string | null
           address_line1: string | null
           address_line2: string | null
+          aml_id_verified: boolean
+          aml_notes: string | null
+          aml_pep_clear: boolean
+          aml_verified_at: string | null
           assigned_at: string | null
           buying_budget_max: number | null
           buying_budget_min: number | null
@@ -1612,6 +1616,10 @@ export type Database = {
           address?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          aml_id_verified?: boolean
+          aml_notes?: string | null
+          aml_pep_clear?: boolean
+          aml_verified_at?: string | null
           assigned_at?: string | null
           buying_budget_max?: number | null
           buying_budget_min?: number | null

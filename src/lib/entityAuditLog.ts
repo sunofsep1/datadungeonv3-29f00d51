@@ -36,6 +36,9 @@ const TRACKED_LISTING_FIELDS: Record<string, string> = {
 };
 
 const TRACKED_CONTACT_FIELDS: Record<string, string> = {
+  aml_id_verified: "AML ID verified",
+  aml_pep_clear: "AML PEP cleared",
+  aml_notes: "AML notes",
   name: "Name",
   email: "Email",
   phone: "Phone",
