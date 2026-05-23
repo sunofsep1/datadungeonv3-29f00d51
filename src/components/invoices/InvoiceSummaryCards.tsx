@@ -12,7 +12,7 @@ export function InvoiceSummaryCards({ summary, loading }: Props) {
     {
       label: "Owed to me",
       value: summary.owedToMe,
-      hint: "Sent reimbursements + unlinked bills",
+      hint: "Agency due + paid trades to invoice",
       accent: "text-primary",
     },
     {

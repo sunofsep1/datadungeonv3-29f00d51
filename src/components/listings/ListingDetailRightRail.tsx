@@ -4,6 +4,7 @@ import { Calendar, Clock, DollarSign, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EntityActivitySchedulesPanel } from "@/components/shared/EntityActivitySchedulesPanel";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { useListingContactLinks } from "@/hooks/useListingContactLinks";
 import { useListingOpenInspections } from "@/hooks/useListingOpenInspections";
@@ -157,6 +158,7 @@ export function ListingDetailRightRail({
         )}
       </Card>
 
+      <EntityActivitySchedulesPanel appliesTo="listing" listingId={listingId} compact />
       <EntityModificationsPanel entityType="listing" entityId={listingId} compact />
     </aside>
   );

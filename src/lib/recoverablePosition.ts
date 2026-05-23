@@ -70,11 +70,14 @@ export function computeRecoverablePosition(
         incomingPaid += paid || total;
       }
 
-      if (inv.reimbursable !== false && !inv.reimbursement_invoice_id) {
+      // Only paid reimbursable bills count as owed back — unpaid bills are still payable to the supplier.
+      if (
+        inv.reimbursable !== false &&
+        !inv.reimbursement_invoice_id &&
+        inv.status === "paid"
+      ) {
         owedToMe += total;
-        if (inv.status === "paid") {
-          unbilledCosts += total;
-        }
+        unbilledCosts += total;
       }
     }
   }

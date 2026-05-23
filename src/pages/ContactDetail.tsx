@@ -74,6 +74,7 @@ import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatch
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
 import { ContactRequirementsPreview } from "@/components/contacts/ContactRequirementsPreview";
 import { ContactOutreachPreferences } from "@/components/contacts/ContactOutreachPreferences";
+import { EntityActivitySchedulesPanel } from "@/components/shared/EntityActivitySchedulesPanel";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
 import {
@@ -1092,6 +1093,7 @@ export default function ContactDetail() {
             </Card>
           ) : null}
 
+              <EntityActivitySchedulesPanel appliesTo="contact" contactId={id} />
               <EntityModificationsPanel entityType="contact" entityId={id} />
               </TabsContent>
 

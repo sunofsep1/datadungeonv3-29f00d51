@@ -63,4 +63,33 @@ describe("computeRecoverablePosition", () => {
     expect(linked.owedToMe).toBe(500);
     expect(linked.unbilledCosts).toBe(0);
   });
+
+  it("does not count unpaid supplier bills in owedToMe", () => {
+    const position = computeRecoverablePosition(
+      [
+        {
+          id: "paynter",
+          direction: "incoming",
+          status: "unpaid",
+          due_date: "2026-06-04",
+          total: 1280,
+          reimbursable: true,
+          reimbursement_invoice_id: null,
+        },
+        {
+          id: "sothebys",
+          direction: "outgoing",
+          status: "sent",
+          due_date: "2026-05-31",
+          total: 1280,
+          reimbursable: true,
+          reimbursement_invoice_id: null,
+        },
+      ],
+      today,
+    );
+
+    expect(position.owedToMe).toBe(1280);
+    expect(position.unbilledCosts).toBe(0);
+  });
 });

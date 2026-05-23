@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExportReportButton } from "@/components/performance/ExportReportButton";
+import { ListingPipelineFunnelCard } from "@/components/reports/ListingPipelineFunnelCard";
+import { ReportsSnapshotCards } from "@/components/reports/ReportsSnapshotCards";
+import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { useListings } from "@/hooks/useListings";
+import { buildReportsSnapshot } from "@/lib/reportsSnapshot";
 import {
   buildAgencyExpiryReport,
   buildDaysOnMarketReport,
@@ -92,8 +96,14 @@ export default function Reports() {
   const [settlementWindow, setSettlementWindow] = useState(60);
 
   const { data: listings = [], isLoading } = useListings();
+  const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
+
+  const snapshot = useMemo(
+    () => buildReportsSnapshot(reportRows, commissionRate),
+    [reportRows, commissionRate],
+  );
 
   const pipeline = useMemo(() => buildPipelineMonitor(reportRows), [reportRows]);
   const domRows = useMemo(() => buildDaysOnMarketReport(reportRows), [reportRows]);
@@ -119,6 +129,10 @@ export default function Reports() {
     <div className="space-y-6">
       <PageHeader title="Reports" />
 
+      {!isLoading ? (
+        <ReportsSnapshotCards snapshot={snapshot} activeTab={activeTab} onSelectTab={(t) => setTab(t as ReportTab)} />
+      ) : null}
+
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as ReportTab)}>
         <TabsList className="flex-wrap h-auto">
           {REPORT_TABS.map(({ id, label, icon: Icon }) => (
@@ -134,6 +148,12 @@ export default function Reports() {
             <Skeleton className="h-32 w-full" />
           ) : (
             <>
+              <ListingPipelineFunnelCard
+                listings={reportRows}
+                commissionRate={commissionRate}
+                variant="reports"
+              />
+
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {pipeline.map(({ stage, label, count }) => (
                   <Card key={stage} className="zoho-card p-3 border-border">
