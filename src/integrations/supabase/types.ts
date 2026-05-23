@@ -154,6 +154,209 @@ export type Database = {
           },
         ]
       }
+      activity_schedule_instances: {
+        Row: {
+          applied_at: string
+          applies_to: string
+          contact_id: string | null
+          created_at: string
+          id: string
+          listing_id: string | null
+          status: string
+          template_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          applies_to: string
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          status?: string
+          template_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          applies_to?: string
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          status?: string
+          template_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_schedule_instances_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_schedule_instances_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_schedule_instances_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_schedule_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "activity_schedule_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_schedule_step_runs: {
+        Row: {
+          body: string | null
+          completed_at: string | null
+          contact_task_id: string | null
+          created_at: string
+          due_at: string
+          id: string
+          instance_id: string
+          sort_order: number
+          step_type: string
+          template_step_id: string | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          completed_at?: string | null
+          contact_task_id?: string | null
+          created_at?: string
+          due_at: string
+          id?: string
+          instance_id: string
+          sort_order?: number
+          step_type?: string
+          template_step_id?: string | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          completed_at?: string | null
+          contact_task_id?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          instance_id?: string
+          sort_order?: number
+          step_type?: string
+          template_step_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_schedule_step_runs_contact_task_id_fkey"
+            columns: ["contact_task_id"]
+            isOneToOne: false
+            referencedRelation: "contact_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_schedule_step_runs_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "activity_schedule_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_schedule_step_runs_template_step_id_fkey"
+            columns: ["template_step_id"]
+            isOneToOne: false
+            referencedRelation: "activity_schedule_template_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_schedule_template_steps: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          offset_days: number
+          sort_order: number
+          step_type: string
+          template_id: string
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          offset_days?: number
+          sort_order?: number
+          step_type?: string
+          template_id: string
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          offset_days?: number
+          sort_order?: number
+          step_type?: string
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_schedule_template_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "activity_schedule_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_schedule_templates: {
+        Row: {
+          applies_to: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applies_to: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applies_to?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       affirmations: {
         Row: {
           created_at: string
@@ -5122,9 +5325,21 @@ export type Database = {
       }
     }
     Functions: {
+      apply_activity_schedule: {
+        Args: {
+          p_contact_id?: string
+          p_listing_id?: string
+          p_template_id: string
+        }
+        Returns: string
+      }
       cleanup_old_notifications: {
         Args: { days_old?: number }
         Returns: number
+      }
+      complete_activity_schedule_step: {
+        Args: { p_step_run_id: string }
+        Returns: undefined
       }
       complete_nurture_step_and_advance: {
         Args: {
