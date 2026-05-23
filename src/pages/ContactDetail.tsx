@@ -69,6 +69,7 @@ import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
 import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
+import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
 import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatchingListingsPanel";
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
@@ -1290,6 +1291,11 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
               />
             </div>
+            <ContactDuplicateAlert
+              email={editFormData.email}
+              phone={editFormData.phone}
+              excludeId={id}
+            />
             <div className="space-y-2">
               <Label>Date of birth</Label>
               <Input

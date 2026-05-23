@@ -490,4 +490,9 @@ After these three, evaluate whether to push into Marketing Funds, Portal Exports
 | 2026-05-23 | Brief saved to `docs/REAPIT_AGENT_BOX_RESEARCH_BRIEF.md` | Done |
 | 2026-05-23 | WO-1–3 core (listing detail, match buyers, OFI) | In repo (prior) |
 | 2026-05-23 | **Activity Schedules** (P1) — templates, apply to listing/contact, sidebar panel | `20260523160000_activity_schedules.sql` — run `npm run db:push` |
-| 2026-05-23 | **Reports pack** (P3) — `/reports` with Pipeline (count/value/GCI), DOM, Agency expiry, Settlements + KPI strip | Done |  
+| 2026-05-23 | **Reports pack** (P3) — `/reports` with Pipeline (count/value/GCI), DOM, Agency expiry, Settlements + KPI strip | Done |
+| 2026-05-23 | **P1/P4 polish** — unified comms rail, log enquiry, contact duplicate hints, ~80 feature checklist | Done |
+| 2026-05-23 | **Activity schedule builder** — Settings create/edit/duplicate templates and steps | `ActivityScheduleBuilderCard` |
+| 2026-05-23 | **Match buyers letters** — bulk print mail-merge from Match buyers sheet | `/listings/match-buyers/letters/print` |
+| 2026-05-23 | **Reports** — Current listings + Offers & contracts tabs | `/reports?tab=current` · `?tab=offers` |
+| 2026-05-23 | **Listing General panel** — authority, outgoings, investment, legal, access | `20260523180000_listing_general_panel.sql` — run `npm run db:push` |  

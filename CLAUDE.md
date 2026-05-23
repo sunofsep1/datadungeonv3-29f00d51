@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-DataDungeon is a single-agent real estate CRM for the Australian market (Queensland-focused). It is not multi-tenant SaaS — all data is user-scoped via Supabase RLS (`user_id = auth.uid()`). The live app is at `https://datadungeonv3.lovable.app`, Supabase project ref `sujyalrzbubvhpkntwja`.
+DataDungeon is a single-agent real estate CRM for the Australian market (Queensland-focused). It is not multi-tenant SaaS — all data is user-scoped via Supabase RLS (`user_id = auth.uid()`). The live app is at `https://tiny-brioche-b979f7.netlify.app` (Netlify, from `main`). Supabase project ref `sujyalrzbubvhpkntwja`.
 
 ## Commands
 

@@ -14,6 +14,7 @@ export type CommunicationsKind =
   | "open_house"
   | "settlement"
   | "appointment"
+  | "enquiry"
   | "other";
 
 export type CommunicationsSource = "activity_log" | "interaction" | "sms_outbound" | "appointment";
@@ -57,11 +58,17 @@ function mapInteractionKind(type: string, channel: string | null): Communication
   return "other";
 }
 
+function activityLogKind(row: ActivityLogRow): CommunicationsKind {
+  const title = row.title?.toLowerCase() ?? "";
+  if (title.startsWith("enquiry")) return "enquiry";
+  return (row.activity_type as CommunicationsKind) || "other";
+}
+
 export function activityLogToComm(row: ActivityLogRow): UnifiedCommItem {
   return {
     id: `activity:${row.id}`,
     source: "activity_log",
-    kind: (row.activity_type as CommunicationsKind) || "other",
+    kind: activityLogKind(row),
     title: row.title,
     description: row.description,
     occurredAt: row.occurred_at,

@@ -4,6 +4,7 @@ import { Calendar, Clock, DollarSign, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ListingCommunicationsRail } from "@/components/listings/ListingCommunicationsRail";
 import { EntityActivitySchedulesPanel } from "@/components/shared/EntityActivitySchedulesPanel";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { useListingContactLinks } from "@/hooks/useListingContactLinks";
@@ -12,15 +13,12 @@ import type { Listing } from "@/hooks/useListings";
 import { listingKanbanColumnId, LISTING_PIPELINE_STAGE_OPTIONS } from "@/lib/listingKanbanStages";
 import { listingPublicPriceLabel, listingSearchPrice } from "@/lib/listingPriceFields";
 import { partitionInspections } from "@/lib/ofiInspection";
-import type { Tables } from "@/integrations/supabase/types";
-
-type ActivityRow = Tables<"activity_log">;
 
 type Props = {
   listing: Listing;
   listingId: string;
   domDays: number | null;
-  recentActivity: ActivityRow[];
+  linkedContactIds: string[];
   onMatchBuyers: () => void;
   formatAud: (n: number | null | undefined) => string;
 };
@@ -34,7 +32,7 @@ export function ListingDetailRightRail({
   listing,
   listingId,
   domDays,
-  recentActivity,
+  linkedContactIds,
   onMatchBuyers,
   formatAud,
 }: Props) {
@@ -138,25 +136,7 @@ export function ListingDetailRightRail({
         </p>
       </Card>
 
-      <Card className="zoho-card p-4 border-border">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Recent activity
-        </h3>
-        {recentActivity.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nothing logged yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {recentActivity.slice(0, 3).map((row) => (
-              <li key={row.id} className="text-xs border-b border-border/50 last:border-0 pb-2 last:pb-0">
-                <p className="font-medium line-clamp-1">{row.title}</p>
-                <p className="text-muted-foreground mt-0.5">
-                  {format(new Date(row.occurred_at), "d MMM, h:mm a")}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      <ListingCommunicationsRail listingId={listingId} linkedContactIds={linkedContactIds} />
 
       <EntityActivitySchedulesPanel appliesTo="listing" listingId={listingId} compact />
       <EntityModificationsPanel entityType="listing" entityId={listingId} compact />

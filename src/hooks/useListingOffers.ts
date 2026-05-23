@@ -32,6 +32,24 @@ async function syncOffersKpi(listingId: string) {
   }
 }
 
+export function useAllListingOffers() {
+  return useQuery({
+    queryKey: ["listing_offers", "all"],
+    queryFn: async (): Promise<ListingOffer[]> => {
+      const { data, error } = await supabase
+        .from("listing_offers")
+        .select("*")
+        .order("offer_date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === "42P01") return [];
+        throw new Error(supabaseErrorMessage(error));
+      }
+      return (data ?? []) as ListingOffer[];
+    },
+  });
+}
+
 export function useListingOffers(listingId: string | undefined) {
   return useQuery({
     queryKey: ["listing_offers", listingId ?? ""],

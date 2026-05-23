@@ -17,7 +17,7 @@ npm run dev
 
 ## 2. Log in as the same user
 
-- Use the **same email and password** as on https://datadungeonv3.lovable.app
+- Use the **same email and password** as on https://tiny-brioche-b979f7.netlify.app
 - Data is tied to your user; a different account will see different data
 
 ---
@@ -38,7 +38,7 @@ Then set the function’s secrets in **Supabase Dashboard** → **Edge Functions
 
 | Secret | Value |
 |--------|-------|
-| `REDIRECT_BASE_URL` | `http://localhost:8080` for local, or `https://datadungeonv3.lovable.app` for production |
+| `REDIRECT_BASE_URL` | `http://localhost:8080` for local, or `https://tiny-brioche-b979f7.netlify.app` for production |
 | `GOOGLE_CLIENT_ID` | From Google Cloud Console (OAuth client) |
 | `GOOGLE_CLIENT_SECRET` | From Google Cloud Console |
 

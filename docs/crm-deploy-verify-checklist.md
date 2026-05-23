@@ -8,7 +8,7 @@ Tight pass after schema, Edge, or cron changes. Tick boxes as you go; adjust nam
 npm run deploy:all
 ```
 
-Runs **`npm run verify`** (build + Vitest), then **`supabase db push --linked --yes`** and **`supabase functions deploy --use-api`** (all functions, no local Docker). Frontend is **not** included — publish the Vite app via Lovable, Vercel, Netlify, or your CI (see README §7).
+Runs **`npm run verify`** (build + Vitest), then **`supabase db push --linked --yes`** and **`supabase functions deploy --use-api`** (all functions, no local Docker). Frontend deploys separately via **Netlify** on push to `main` (see README §7).
 
 ## Frontend (local, before merge)
 

@@ -2,7 +2,7 @@
 
 Real estate CRM with **Dashboard**, **Contacts**, **Listings & Deals**, **Pipeline**, **Calendar**, **Marketing**, **Performance**, and **Settings**.
 
-- **Live app**: [https://datadungeonv3.lovable.app](https://datadungeonv3.lovable.app)
+- **Live app**: [https://tiny-brioche-b979f7.netlify.app](https://tiny-brioche-b979f7.netlify.app) (Netlify, auto-deploys from `main`)
 - **Stack**: Vite, TypeScript, React, shadcn-ui, Tailwind CSS, **Supabase** (Postgres + Auth)
 
 ### CRM documentation
@@ -61,7 +61,7 @@ If `npm run build` fails with `EPERM` writing config cache, use `npm run build:s
 
 ## 2. Environment variables
 
-Local and **production** (Lovable) use the **same Supabase project** so they share the same database and data.
+Local and **production** (Netlify) use the **same Supabase project** so they share the same database and data.
 
 ### Setup
 
@@ -73,7 +73,7 @@ Local and **production** (Lovable) use the **same Supabase project** so they sha
    - **Project URL** → `VITE_SUPABASE_URL`
    - **anon public** key → `VITE_SUPABASE_PUBLISHABLE_KEY`
    - **Project ref** (optional) → `VITE_SUPABASE_PROJECT_ID`
-3. Use the **same** URL and anon key as in your Lovable project settings so local and live use the same DB.
+3. Use the **same** URL and anon key as in **Netlify → Site configuration → Environment variables** so local and live use the same DB.
 
 ### Supabase project ref (single source of truth)
 
@@ -221,8 +221,8 @@ RLS ensures users only see and modify their own data. Contact access goes throug
 
 ## 4. Verify local vs production (same data)
 
-1. **Same DB**: Use the same `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env` as in Lovable.
-2. **Same user**: Log in with the **same** email/password locally and at [datadungeonv3.lovable.app](https://datadungeonv3.lovable.app).
+1. **Same DB**: Use the same `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env` as on Netlify.
+2. **Same user**: Log in with the **same** email/password locally and on the [live app](https://tiny-brioche-b979f7.netlify.app).
 3. **Contact count**: Open **/contacts** in both environments. The counts and list should match.
 4. **Health script**: Run `npm run health` to check Supabase connectivity. The script reports contact count for **anon, no auth** (0); your real count is visible in the app when logged in.
 
@@ -245,19 +245,20 @@ RLS ensures users only see and modify their own data. Contact access goes throug
 
 ## 7. Deployment (production)
 
-### Lovable (current)
+### Frontend — Netlify (current)
 
-1. Open the [Lovable project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID).
-2. **Share** → **Publish**.
-3. Set **env vars** in Lovable (same `VITE_SUPABASE_*` as local).
-4. Lovable builds and deploys the frontend; the app uses the same Supabase project as local.
+Production builds from **`main`** on `sunofsep1/datadungeonv3-29f00d51` (see `netlify.toml`).
 
-### Manual deploy (Vercel / Netlify / etc.)
+1. Push to GitHub: `git push latest main` (use SSH; see §11).
+2. Netlify auto-builds (`npm run build` → `dist`). Dashboard: [Netlify project](https://app.netlify.com/projects/tiny-brioche-b979f7).
+3. **Env vars** in Netlify (same as local `.env`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and any other `VITE_*` keys you use locally.
 
-1. Connect the repo to your provider.
-2. **Build command**: `npm run build`
-3. **Output**: `dist`
-4. **Env**: Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (same as production Supabase project).
+Manual Netlify deploy (only if needed): `netlify deploy --prod` from the repo root.
+
+### Backend — Supabase
+
+- **Schema:** `npm run db:push`
+- **Edge functions:** `npm run deploy:supabase` (or `npm run deploy:all` for verify + db + functions)
 
 ---
 
@@ -291,20 +292,21 @@ scripts/
 
 ---
 
-## 10. Lovable workflow
+## 10. Production workflow
 
-- **Edit in Lovable**: [Lovable project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) → changes sync to the repo.
-- **Edit locally**: Push to the connected repo → Lovable stays in sync.
-- **Custom domain**: Lovable → Project → Settings → Domains. [Docs](https://docs.lovable.dev/features/custom-domain#custom-domain).
+- **Edit locally** in Cursor / VS Code → commit → push `main` → Netlify deploys automatically.
+- **Custom domain**: Netlify → Site configuration → Domain management.
 
 ---
 
 ## 11. Pushing to the repo
 
-To push `main` to the `sunofsep1/datadungeonv3-29f00d51` repo (remote name: `latest`):
+Remote `latest` → `sunofsep1/datadungeonv3-29f00d51` (SSH recommended):
 
 ```sh
-git push latest main
+GIT_SSH_COMMAND="ssh -i ~/.ssh/github_sunofsep1 -o IdentitiesOnly=yes" git push latest main
 ```
+
+Or set `latest` to `git@github.com:sunofsep1/datadungeonv3-29f00d51.git` and push normally.
 
 You need write access: use credentials for the account that owns the repo (e.g. SSH key or Personal Access Token for **sunofsep1**), or have **gregleigh** added as a collaborator. If you get "Permission denied", see the plan in `.cursor/plans/` for options.

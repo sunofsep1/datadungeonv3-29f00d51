@@ -5,6 +5,7 @@ import {
   listingKanbanColumnId,
   type ListingKanbanColumnId,
 } from "@/lib/listingKanbanStages";
+import { offerStatusLabel } from "@/lib/listingOffers";
 import { listingPublicPriceLabel, listingSearchPrice, type ListingPriceSource } from "@/lib/listingPriceFields";
 
 export type ListingReportRow = ListingPriceSource & {
@@ -215,4 +216,75 @@ export function reportPublicPrice(listing: ListingPriceSource): string {
 
 export function reportSearchPrice(listing: ListingPriceSource): string {
   return formatReportAud(listingSearchPrice(listing));
+}
+
+/** Active pipeline listings (excludes appraisal and past client). */
+export function buildCurrentListingsReport(listings: ListingReportRow[]): ListingReportRow[] {
+  return listings
+    .filter((l) => {
+      const col = listingKanbanColumnId(l.pipeline_stage);
+      return col !== "past_client" && col !== "appraisal";
+    })
+    .slice()
+    .sort((a, b) => a.address.localeCompare(b.address));
+}
+
+const OPEN_OFFER_STATUSES = new Set([
+  "submitted",
+  "countered",
+  "accepted",
+  "conditional",
+  "unconditional",
+]);
+
+export type OffersPipelineReportRow = {
+  offerId: string;
+  refCode: string;
+  listingId: string;
+  listingAddress: string;
+  offerDate: string;
+  offerPrice: number;
+  status: string;
+  statusLabel: string;
+  buyerName: string;
+};
+
+export type OfferReportInput = {
+  id: string;
+  listing_id: string;
+  ref_code: string;
+  offer_date: string;
+  offer_price: number;
+  status: string;
+  buyer?: { name: string | null; first_name: string | null; last_name: string | null } | null;
+};
+
+export function buildOffersPipelineReport(
+  offers: OfferReportInput[],
+  listingsById: Map<string, ListingReportRow>,
+): OffersPipelineReportRow[] {
+  const rows: OffersPipelineReportRow[] = [];
+  for (const o of offers) {
+    if (!OPEN_OFFER_STATUSES.has(o.status)) continue;
+    const listing = listingsById.get(o.listing_id);
+    const buyer = o.buyer;
+    const buyerName =
+      buyer?.name?.trim() ||
+      [buyer?.first_name, buyer?.last_name].filter(Boolean).join(" ").trim() ||
+      "—";
+    rows.push({
+      offerId: o.id,
+      refCode: o.ref_code,
+      listingId: o.listing_id,
+      listingAddress: listing?.address ?? "—",
+      offerDate: o.offer_date,
+      offerPrice: o.offer_price,
+      status: o.status,
+      statusLabel: offerStatusLabel(o.status),
+      buyerName,
+    });
+  }
+  return rows.sort(
+    (a, b) => b.offerDate.localeCompare(a.offerDate) || a.listingAddress.localeCompare(b.listingAddress),
+  );
 }

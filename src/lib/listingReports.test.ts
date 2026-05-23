@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAgencyExpiryReport,
+  buildCurrentListingsReport,
   buildDaysOnMarketReport,
+  buildOffersPipelineReport,
   buildPipelineMonitor,
   buildUpcomingSettlementsReport,
   listingDaysOnMarket,
@@ -97,6 +99,49 @@ describe("buildAgencyExpiryReport", () => {
     );
     expect(rows).toHaveLength(1);
     expect(daysUntilAgencyExpiry(rows[0]!, new Date("2026-05-21"))).toBe(11);
+  });
+});
+
+describe("buildCurrentListingsReport", () => {
+  it("excludes appraisal and past client", () => {
+    const rows = buildCurrentListingsReport([
+      baseListing,
+      { ...baseListing, id: "2", pipeline_stage: "appraisal", address: "Appraisal St" },
+      { ...baseListing, id: "3", pipeline_stage: "past_client", address: "Past St" },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.address).toBe("1 Test St");
+  });
+});
+
+describe("buildOffersPipelineReport", () => {
+  it("includes only open offer statuses", () => {
+    const listingsById = new Map([[baseListing.id, baseListing]]);
+    const rows = buildOffersPipelineReport(
+      [
+        {
+          id: "o1",
+          listing_id: baseListing.id,
+          ref_code: "OFF-1",
+          offer_date: "2026-05-01",
+          offer_price: 950000,
+          status: "submitted",
+          buyer: { name: "Sam Buyer", first_name: "Sam", last_name: "Buyer" },
+        },
+        {
+          id: "o2",
+          listing_id: baseListing.id,
+          ref_code: "OFF-2",
+          offer_date: "2026-05-02",
+          offer_price: 900000,
+          status: "rejected",
+          buyer: null,
+        },
+      ],
+      listingsById,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.buyerName).toBe("Sam Buyer");
   });
 });
 

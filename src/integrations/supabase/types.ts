@@ -3358,6 +3358,40 @@ export type Database = {
           created_at: string
           display_price: string | null
           feature_flags: Json
+          for_sale_or_lease: string
+          sale_method: string | null
+          listed_as_auction: boolean
+          authority_type: string | null
+          off_market: boolean
+          hidden_listing: boolean
+          quote_price: number | null
+          gst_status: string | null
+          access_details: string | null
+          internal_info: string | null
+          water_rates_amount: number | null
+          water_rates_period: string | null
+          council_rates_amount: number | null
+          council_rates_period: string | null
+          other_outgoings_amount: number | null
+          other_outgoings_period: string | null
+          land_tax_amount: number | null
+          land_tax_period: string | null
+          strata_admin_amount: number | null
+          strata_admin_period: string | null
+          strata_sinking_amount: number | null
+          strata_sinking_period: string | null
+          investment_flag: boolean
+          lease_potential_weekly: number | null
+          return_pct: number | null
+          tenanted: boolean
+          legal_description: string | null
+          legal_lot: string | null
+          legal_volume: string | null
+          legal_block: string | null
+          legal_deposited_plan: string | null
+          legal_folio: string | null
+          legal_section: string | null
+          legal_zoning: string | null
           hide_address_portal: boolean
           id: string
           journey_stage: string | null
@@ -3422,6 +3456,40 @@ export type Database = {
           created_at?: string
           display_price?: string | null
           feature_flags?: Json
+          for_sale_or_lease?: string
+          sale_method?: string | null
+          listed_as_auction?: boolean
+          authority_type?: string | null
+          off_market?: boolean
+          hidden_listing?: boolean
+          quote_price?: number | null
+          gst_status?: string | null
+          access_details?: string | null
+          internal_info?: string | null
+          water_rates_amount?: number | null
+          water_rates_period?: string | null
+          council_rates_amount?: number | null
+          council_rates_period?: string | null
+          other_outgoings_amount?: number | null
+          other_outgoings_period?: string | null
+          land_tax_amount?: number | null
+          land_tax_period?: string | null
+          strata_admin_amount?: number | null
+          strata_admin_period?: string | null
+          strata_sinking_amount?: number | null
+          strata_sinking_period?: string | null
+          investment_flag?: boolean
+          lease_potential_weekly?: number | null
+          return_pct?: number | null
+          tenanted?: boolean
+          legal_description?: string | null
+          legal_lot?: string | null
+          legal_volume?: string | null
+          legal_block?: string | null
+          legal_deposited_plan?: string | null
+          legal_folio?: string | null
+          legal_section?: string | null
+          legal_zoning?: string | null
           hide_address_portal?: boolean
           id?: string
           journey_stage?: string | null
@@ -3486,6 +3554,40 @@ export type Database = {
           created_at?: string
           display_price?: string | null
           feature_flags?: Json
+          for_sale_or_lease?: string
+          sale_method?: string | null
+          listed_as_auction?: boolean
+          authority_type?: string | null
+          off_market?: boolean
+          hidden_listing?: boolean
+          quote_price?: number | null
+          gst_status?: string | null
+          access_details?: string | null
+          internal_info?: string | null
+          water_rates_amount?: number | null
+          water_rates_period?: string | null
+          council_rates_amount?: number | null
+          council_rates_period?: string | null
+          other_outgoings_amount?: number | null
+          other_outgoings_period?: string | null
+          land_tax_amount?: number | null
+          land_tax_period?: string | null
+          strata_admin_amount?: number | null
+          strata_admin_period?: string | null
+          strata_sinking_amount?: number | null
+          strata_sinking_period?: string | null
+          investment_flag?: boolean
+          lease_potential_weekly?: number | null
+          return_pct?: number | null
+          tenanted?: boolean
+          legal_description?: string | null
+          legal_lot?: string | null
+          legal_volume?: string | null
+          legal_block?: string | null
+          legal_deposited_plan?: string | null
+          legal_folio?: string | null
+          legal_section?: string | null
+          legal_zoning?: string | null
           hide_address_portal?: boolean
           id?: string
           journey_stage?: string | null

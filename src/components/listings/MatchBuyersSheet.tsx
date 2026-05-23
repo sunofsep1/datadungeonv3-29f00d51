@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, MessageSquare, Phone, Users } from "lucide-react";
+import { FileText, Mail, MessageSquare, Phone, Users } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
 import { BulkEmailCampaignDialog } from "@/components/contacts/BulkEmailCampaignDialog";
+import { MatchBuyersLettersDialog } from "@/components/listings/MatchBuyersLettersDialog";
 
 type Props = {
   open: boolean;
@@ -54,6 +55,7 @@ export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
   const [smsOpen, setSmsOpen] = useState(false);
   const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
   const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
+  const [lettersOpen, setLettersOpen] = useState(false);
   const [activeContactId, setActiveContactId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -168,6 +170,17 @@ export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
                 <Mail className="h-3.5 w-3.5" />
                 Bulk email ({selectedContactIds.length})
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                disabled={selectedContactIds.length === 0}
+                onClick={() => setLettersOpen(true)}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Letters ({selectedContactIds.length})
+              </Button>
             </div>
           ) : null}
 
@@ -229,6 +242,15 @@ export function MatchBuyersSheet({ open, onOpenChange, listing }: Props) {
         mergeDefaults={mergeDefaults}
         defaultSubject={`New listing — ${listing.address}`}
         defaultBody={`Hi {{first_name}},\n\nThis property may suit your brief:\n\n${listing.address}\n${priceLabel || ""}\n\nReply if you'd like to inspect or discuss.\n\n{{signature}}`}
+      />
+
+      <MatchBuyersLettersDialog
+        open={lettersOpen}
+        onOpenChange={setLettersOpen}
+        listingAddress={listing.address}
+        contactIds={selectedContactIds}
+        contactsById={contactsById}
+        mergeDefaults={mergeDefaults}
       />
     </>
   );

@@ -3,6 +3,13 @@
 export type ActivityScheduleAppliesTo = "listing" | "contact";
 export type ActivityScheduleStepType = "task" | "note" | "call" | "email";
 
+export const ACTIVITY_SCHEDULE_STEP_TYPES: ActivityScheduleStepType[] = [
+  "task",
+  "call",
+  "email",
+  "note",
+];
+
 export function addDaysToIso(base: Date, offsetDays: number): string {
   const d = new Date(base);
   d.setUTCDate(d.getUTCDate() + Math.max(0, Math.floor(offsetDays)));

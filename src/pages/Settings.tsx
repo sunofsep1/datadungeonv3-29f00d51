@@ -16,7 +16,7 @@ import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/
 import { useUserCommunicationSettings, useUpsertUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { toast } from "sonner";
-import { ActivityScheduleTemplatesCard } from "@/components/settings/ActivityScheduleTemplatesCard";
+import { ActivityScheduleBuilderCard } from "@/components/settings/ActivityScheduleBuilderCard";
 import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
 import { InboundLeadWebhookHelp } from "@/components/settings/InboundLeadWebhookHelp";
 import { LeadCsvImportBlock } from "@/components/settings/LeadCsvImportBlock";
@@ -399,7 +399,7 @@ export default function Settings() {
 
         <ListingStageAutomationCard />
 
-        <ActivityScheduleTemplatesCard />
+        <ActivityScheduleBuilderCard />
 
         <Card className="zoho-card p-6 border-border">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

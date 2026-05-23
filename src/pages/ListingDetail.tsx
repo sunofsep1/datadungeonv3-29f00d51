@@ -74,7 +74,15 @@ import { ListingCommissionPanel } from "@/components/listings/ListingCommissionP
 import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
 import { ListingInvoicesPanel } from "@/components/listings/ListingInvoicesPanel";
 import { ListingPortalExportsPanel } from "@/components/listings/ListingPortalExportsPanel";
-import { useListingContactLinks } from "@/hooks/useListingContactLinks";
+import { useListingContactLinks, useAddListingContactLink } from "@/hooks/useListingContactLinks";
+import { useCreateContact } from "@/hooks/useContacts";
+import {
+  findContactDuplicates,
+  normalizeContactEmail,
+  normalizeContactPhoneKey,
+} from "@/lib/contactConflictDetection";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
@@ -85,6 +93,8 @@ import {
 } from "@/components/listings/ListingDetailSectionNav";
 import { ListingDetailRightRail } from "@/components/listings/ListingDetailRightRail";
 import { ListingKeyDatesPanel } from "@/components/listings/ListingKeyDatesPanel";
+import { ListingGeneralPanel } from "@/components/listings/ListingGeneralPanel";
+import type { ListingGeneralFields } from "@/lib/listingGeneral";
 import { ListingCampaignKpiRow } from "@/components/listings/ListingCampaignKpiRow";
 import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
 import { ListingForSalePanel } from "@/components/listings/ListingForSalePanel";
@@ -132,6 +142,11 @@ const LISTING_ACTION_MODAL_COPY: Record<ListingActionModalKey, { title: string; 
     description: "SMS, email, or a quick note — all tied to this listing when you log here.",
   },
   change_stage: { title: "Change pipeline stage" },
+  log_enquiry: {
+    title: "Log enquiry",
+    description: "Capture a buyer enquiry, create or match a contact, and link them to this listing.",
+  },
+  match_buyers: { title: "Match buyers" },
 };
 
 function pipelineStageLabel(stageId: string): string {
@@ -162,6 +177,7 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { user } = useAuth();
   const { data: listing, isLoading, isError, refetch } = useListing(id);
   const listingWithContact = listing as (Listing & { contact_id?: string | null }) | null;
   const contactId = listingWithContact?.contact_id ?? undefined;
@@ -174,6 +190,8 @@ export default function ListingDetail() {
   const createAppointment = useCreateAppointment();
   const createOpenInspection = useCreateListingOpenInspection();
   const { data: listingContactLinks = [] } = useListingContactLinks(id);
+  const addListingContactLink = useAddListingContactLink();
+  const createContact = useCreateContact();
   const { logStageMove } = useLogListingStageMove();
 
   const linkedContactIds = useMemo(() => {
@@ -197,6 +215,10 @@ export default function ListingDetail() {
   const [callLogNotes, setCallLogNotes] = useState("");
   const [vendorSmsOpen, setVendorSmsOpen] = useState(false);
   const [vendorTouchNote, setVendorTouchNote] = useState("");
+  const [enquiryName, setEnquiryName] = useState("");
+  const [enquiryPhone, setEnquiryPhone] = useState("");
+  const [enquiryEmail, setEnquiryEmail] = useState("");
+  const [enquiryMessage, setEnquiryMessage] = useState("");
   const [classifyOpen, setClassifyOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroUploading, setHeroUploading] = useState(false);
@@ -334,6 +356,12 @@ export default function ListingDetail() {
           setStageChangeNote("");
         }
       }
+      if (key === "log_enquiry") {
+        setEnquiryName("");
+        setEnquiryPhone("");
+        setEnquiryEmail("");
+        setEnquiryMessage("");
+      }
       if (key === "log_feedback") setFeedbackBody("");
       if (key === "add_note") {
         setNoteTitle("");
@@ -345,6 +373,108 @@ export default function ListingDetail() {
     },
     [listing],
   );
+
+  const submitLogEnquiry = async () => {
+    if (!id || !listing) return;
+    const name = enquiryName.trim();
+    if (!name) {
+      toast({ title: "Name required", description: "Enter the enquirer’s name.", variant: "destructive" });
+      return;
+    }
+    const phone = enquiryPhone.trim() || null;
+    const email = enquiryEmail.trim() || null;
+    if (!phone && !email) {
+      toast({
+        title: "Phone or email required",
+        description: "Add at least one way to follow up.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const collected = new Map<string, { id: string; name: string | null; email: string | null; phone: string | null; mobile: string | null }>();
+      const normEmail = normalizeContactEmail(email);
+      const phoneKey = normalizeContactPhoneKey(phone);
+      if (user?.id) {
+        const scope = `user_id.eq.${user.id},owner_id.eq.${user.id}`;
+        if (normEmail) {
+          const { data } = await supabase
+            .from("contacts")
+            .select("id, name, email, phone, mobile")
+            .or(scope)
+            .ilike("email", normEmail)
+            .limit(8);
+          for (const row of data ?? []) collected.set(row.id, row);
+        }
+        if (phoneKey) {
+          const tail = phoneKey.slice(-8);
+          const { data } = await supabase
+            .from("contacts")
+            .select("id, name, email, phone, mobile")
+            .or(scope)
+            .or(`phone.ilike.%${tail}%,mobile.ilike.%${tail}%`)
+            .limit(8);
+          for (const row of data ?? []) collected.set(row.id, row);
+        }
+      }
+      let contactIdForEnquiry: string | null = null;
+      const dupes = findContactDuplicates([...collected.values()], { email, phone });
+      if (dupes.length > 0) {
+        contactIdForEnquiry = dupes[0]!.id;
+      } else {
+        const created = await createContact.mutateAsync({
+          name,
+          phone,
+          email,
+          source: `Listing enquiry — ${listing.address || "listing"}`,
+          status: "lead",
+          skipActivityLog: true,
+        });
+        contactIdForEnquiry = created.id;
+      }
+      if (contactIdForEnquiry) {
+        try {
+          await addListingContactLink.mutateAsync({
+            listing_id: id,
+            contact_id: contactIdForEnquiry,
+            role: "prospective_buyer",
+          });
+        } catch {
+          /* may already be linked */
+        }
+      }
+      const msg = enquiryMessage.trim();
+      await createActivityLog.mutateAsync({
+        activity_type: "note",
+        title: `Enquiry — ${name}`,
+        description: [msg, phone ? `Phone: ${phone}` : null, email ? `Email: ${email}` : null]
+          .filter(Boolean)
+          .join("\n"),
+        listing_id: id,
+        contact_id: contactIdForEnquiry,
+        property_id: listing.property_id ?? null,
+      });
+      const prevEnq = Number((listing as Record<string, unknown>).campaign_enquiry_count) || 0;
+      try {
+        await updateListing.mutateAsync({
+          id,
+          campaign_enquiry_count: prevEnq + 1,
+          campaign_last_enquiry_at: new Date().toISOString(),
+        } as Parameters<typeof updateListing.mutateAsync>[0]);
+      } catch {
+        /* optional campaign columns */
+      }
+      toast({ title: "Enquiry logged", description: "Contact linked as prospective buyer." });
+      setActionModal(null);
+      refetch();
+    } catch (e) {
+      toast({
+        title: "Could not log enquiry",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
 
   const submitLogFeedback = async () => {
     if (!id || !listing) return;
@@ -901,6 +1031,13 @@ export default function ListingDetail() {
         </div>
       </div>
 
+      <div id="listing-general" className="scroll-mt-28">
+        <ListingGeneralPanel
+          listing={listing as Listing & ListingGeneralFields}
+          onUpdated={() => void refetch()}
+        />
+      </div>
+
       <div id="listing-details" className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-28">
         <Card className="zoho-card p-4 border-border md:col-span-1">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Agent</h3>
@@ -1114,7 +1251,7 @@ export default function ListingDetail() {
               listing={listing}
               listingId={id}
               domDays={domDays}
-              recentActivity={recentActivity}
+              linkedContactIds={linkedContactIds}
               onMatchBuyers={() => setMatchBuyersOpen(true)}
               formatAud={formatAud}
             />
@@ -1129,7 +1266,7 @@ export default function ListingDetail() {
               {actionModal ? LISTING_ACTION_MODAL_COPY[actionModal].title : "Action"}
             </DialogTitle>
             {actionModal &&
-            ["call_vendor", "vendor_update"].includes(actionModal) &&
+            ["call_vendor", "vendor_update", "log_enquiry"].includes(actionModal) &&
             LISTING_ACTION_MODAL_COPY[actionModal].description ? (
               <DialogDescription className="text-sm leading-relaxed">
                 {LISTING_ACTION_MODAL_COPY[actionModal].description}
@@ -1156,6 +1293,63 @@ export default function ListingDetail() {
               </DialogDescription>
             ) : null}
           </DialogHeader>
+
+          {actionModal === "log_enquiry" ? (
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="enquiry-name">Name *</Label>
+                <Input
+                  id="enquiry-name"
+                  className="bg-input mt-1.5"
+                  value={enquiryName}
+                  onChange={(e) => setEnquiryName(e.target.value)}
+                  placeholder="Buyer name"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="enquiry-phone">Phone</Label>
+                  <Input
+                    id="enquiry-phone"
+                    className="bg-input mt-1.5"
+                    value={enquiryPhone}
+                    onChange={(e) => setEnquiryPhone(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="enquiry-email">Email</Label>
+                  <Input
+                    id="enquiry-email"
+                    className="bg-input mt-1.5"
+                    value={enquiryEmail}
+                    onChange={(e) => setEnquiryEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="enquiry-msg">Message</Label>
+                <Textarea
+                  id="enquiry-msg"
+                  className="bg-input mt-1.5 min-h-[88px] text-sm"
+                  value={enquiryMessage}
+                  onChange={(e) => setEnquiryMessage(e.target.value)}
+                  placeholder="What they asked, price feedback, finance…"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setActionModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void submitLogEnquiry()}
+                  disabled={createActivityLog.isPending || createContact.isPending}
+                >
+                  {createActivityLog.isPending || createContact.isPending ? "Saving…" : "Save enquiry"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {actionModal === "log_feedback" ? (
             <div className="space-y-3 py-2">

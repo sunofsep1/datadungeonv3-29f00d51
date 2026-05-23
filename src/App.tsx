@@ -52,6 +52,7 @@ const Pipeline = lazy(() => import("./pages/Pipeline"));
 const AIOps = lazy(() => import("./pages/AIOps"));
 const TouchReport = lazy(() => import("./pages/TouchReport"));
 const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
+const MatchBuyersLettersPrintPage = lazy(() => import("./pages/MatchBuyersLettersPrintPage"));
 const Reports = lazy(() => import("./pages/Reports"));
 const InvoicePrintPage = lazy(() => import("./pages/InvoicePrintPage"));
 const Invoices = lazy(() => import("./pages/Invoices"));
@@ -88,6 +89,10 @@ const App = () => (
                 <Route path="/contacts/:id/print" element={<ProtectedRoute><ContactPrintPage /></ProtectedRoute>} />
                 <Route path="/properties/:id/print" element={<ProtectedRoute><PropertyPrintPage /></ProtectedRoute>} />
                 <Route path="/touch-report/print" element={<ProtectedRoute><TouchReportPrint /></ProtectedRoute>} />
+                <Route
+                  path="/listings/match-buyers/letters/print"
+                  element={<ProtectedRoute><MatchBuyersLettersPrintPage /></ProtectedRoute>}
+                />
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><ErrorBoundary><Appointments /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><ErrorBoundary><Calendar /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />

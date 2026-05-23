@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 export const LISTING_DETAIL_SECTIONS = [
   { id: "listing-overview", label: "Overview" },
   { id: "listing-pricing", label: "Pricing" },
+  { id: "listing-general", label: "General" },
   { id: "listing-details", label: "Details" },
   { id: "listing-features", label: "Features" },
   { id: "listing-resources", label: "Resources" },

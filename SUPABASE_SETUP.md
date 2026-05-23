@@ -41,7 +41,7 @@ You only need to run it once per project. Running it again is safe.
 **Checklist (if things still don't work)**
 
 1. **Same project?** Make sure the Supabase project in Dashboard matches the `VITE_SUPABASE_URL` in your `.env` file.
-2. **Lovable / other hosts?** If you deploy via Lovable, set the same `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` env vars there.
+2. **Netlify:** Site configuration → Environment variables — set the same `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as local `.env`.
 3. **Columns exist?** In Supabase Dashboard -> Table Editor -> `contacts`, confirm you see `address_line1`, etc.
 4. **Functions exist?** In Dashboard -> Database -> Functions, you should see `create_contact_with_address` and `update_contact_with_address`.
 5. **Hard refresh** your app (Cmd+Shift+R / Ctrl+Shift+R) after running the script.

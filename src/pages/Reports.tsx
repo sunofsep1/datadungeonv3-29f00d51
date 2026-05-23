@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, BarChart3, CalendarClock, Clock, ExternalLink, Home } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarClock, Clock, ExternalLink, FileSignature, Home, List } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +12,18 @@ import { ListingPipelineFunnelCard } from "@/components/reports/ListingPipelineF
 import { ReportsSnapshotCards } from "@/components/reports/ReportsSnapshotCards";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { useListings } from "@/hooks/useListings";
+import { useAllListingOffers } from "@/hooks/useListingOffers";
+import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
 import { buildReportsSnapshot } from "@/lib/reportsSnapshot";
 import {
   buildAgencyExpiryReport,
+  buildCurrentListingsReport,
   buildDaysOnMarketReport,
+  buildOffersPipelineReport,
   buildPipelineMonitor,
   buildUpcomingSettlementsReport,
   daysInPipelineStage,
+  formatReportAud,
   formatReportDate,
   pipelineStageLabel,
   reportPublicPrice,
@@ -28,13 +33,15 @@ import {
 import { domToneClasses } from "@/lib/listingCampaignDashboard";
 import { cn } from "@/lib/utils";
 
-type ReportTab = "pipeline" | "dom" | "expiry" | "settlements";
+type ReportTab = "pipeline" | "dom" | "expiry" | "settlements" | "current" | "offers";
 
 const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
   { id: "pipeline", label: "Pipeline monitor", icon: BarChart3 },
+  { id: "current", label: "Current listings", icon: List },
   { id: "dom", label: "Days on market", icon: Clock },
   { id: "expiry", label: "Agency expiry", icon: CalendarClock },
   { id: "settlements", label: "Upcoming settlements", icon: Home },
+  { id: "offers", label: "Offers & contracts", icon: FileSignature },
 ];
 
 function ReportTable({
@@ -89,16 +96,24 @@ export default function Reports() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const activeTab: ReportTab =
-    tabParam === "dom" || tabParam === "expiry" || tabParam === "settlements"
+    tabParam === "dom" ||
+    tabParam === "expiry" ||
+    tabParam === "settlements" ||
+    tabParam === "current" ||
+    tabParam === "offers"
       ? tabParam
       : "pipeline";
   const [expiryWindow, setExpiryWindow] = useState(90);
   const [settlementWindow, setSettlementWindow] = useState(60);
 
   const { data: listings = [], isLoading } = useListings();
+  const { data: allOffers = [], isLoading: offersLoading } = useAllListingOffers();
+  const { data: contacts = [] } = useContacts();
   const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
+  const listingsById = useMemo(() => new Map(reportRows.map((l) => [l.id, l])), [reportRows]);
+  const contactsById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
 
   const snapshot = useMemo(
     () => buildReportsSnapshot(reportRows, commissionRate),
@@ -115,6 +130,23 @@ export default function Reports() {
     () => buildUpcomingSettlementsReport(reportRows, { withinDays: settlementWindow, includePast: true }),
     [reportRows, settlementWindow],
   );
+  const currentListingRows = useMemo(() => buildCurrentListingsReport(reportRows), [reportRows]);
+  const offerRows = useMemo(() => {
+    const offersForReport = allOffers.map((o) => {
+      const c = o.buyer_contact_id ? contactsById.get(o.buyer_contact_id) : null;
+      return {
+        ...o,
+        buyer: c
+          ? {
+              name: getContactDisplayName(c),
+              first_name: c.first_name ?? null,
+              last_name: c.last_name ?? null,
+            }
+          : null,
+      };
+    });
+    return buildOffersPipelineReport(offersForReport, listingsById);
+  }, [allOffers, listingsById, contactsById]);
 
   const totalActive = useMemo(
     () => pipeline.filter((p) => p.stage !== "past_client").reduce((n, p) => n + p.count, 0),
@@ -220,6 +252,70 @@ export default function Reports() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="current" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">All current listings</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Active pipeline excluding appraisals and past clients — {currentListingRows.length} listing
+                  {currentListingRows.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <ExportReportButton
+                filename="current-listings"
+                columns={[
+                  { key: "address", label: "Address" },
+                  { key: "stage", label: "Stage" },
+                  { key: "search_price", label: "Search price" },
+                  { key: "display_price", label: "Display price" },
+                  { key: "listed", label: "Listed date" },
+                  { key: "enquiries", label: "Enquiries" },
+                ]}
+                data={currentListingRows.map((l) => ({
+                  address: l.address,
+                  stage: pipelineStageLabel(l.pipeline_stage),
+                  search_price: reportSearchPrice(l),
+                  display_price: reportPublicPrice(l),
+                  listed: formatReportDate(l.key_date_listed ?? l.campaign_start_at ?? l.created_at),
+                  enquiries: l.campaign_enquiry_count ?? 0,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Address", "Stage", "Search price", "Display", "Listed", "Enquiries", ""]}
+                emptyMessage="No active listings."
+                rows={currentListingRows.map((listing) => [
+                  <ListingAddressLink key="addr" listing={listing} />,
+                  <Badge key="stage" variant="secondary" className="font-normal">
+                    {pipelineStageLabel(listing.pipeline_stage)}
+                  </Badge>,
+                  <span key="search" className="tabular-nums whitespace-nowrap">
+                    {reportSearchPrice(listing)}
+                  </span>,
+                  <span key="display" className="tabular-nums whitespace-nowrap">
+                    {reportPublicPrice(listing)}
+                  </span>,
+                  <span key="listed" className="whitespace-nowrap text-muted-foreground">
+                    {formatReportDate(listing.key_date_listed ?? listing.campaign_start_at ?? listing.created_at)}
+                  </span>,
+                  <span key="enq" className="tabular-nums">
+                    {listing.campaign_enquiry_count ?? 0}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${listing.id}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
         </TabsContent>
 
         <TabsContent value="dom" className="space-y-4 mt-4">
@@ -479,6 +575,79 @@ export default function Reports() {
                     </Button>,
                   ];
                 })}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="offers" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Offers & contracts</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Open offers and contracts across all listings (submitted through unconditional)
+                </p>
+              </div>
+              <ExportReportButton
+                filename="offers-pipeline"
+                columns={[
+                  { key: "ref", label: "Ref" },
+                  { key: "listing", label: "Listing" },
+                  { key: "buyer", label: "Buyer" },
+                  { key: "date", label: "Offer date" },
+                  { key: "price", label: "Offer price" },
+                  { key: "status", label: "Status" },
+                ]}
+                data={offerRows.map((r) => ({
+                  ref: r.refCode,
+                  listing: r.listingAddress,
+                  buyer: r.buyerName,
+                  date: formatReportDate(r.offerDate),
+                  price: formatReportAud(r.offerPrice),
+                  status: r.statusLabel,
+                }))}
+              />
+            </div>
+            {isLoading || offersLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : offerRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No open offers or contracts. Add offers on a listing detail page.
+              </p>
+            ) : (
+              <ReportTable
+                headers={["Ref", "Listing", "Buyer", "Date", "Price", "Status", ""]}
+                emptyMessage="No open offers."
+                rows={offerRows.map((row) => [
+                  <span key="ref" className="font-mono text-xs">
+                    {row.refCode}
+                  </span>,
+                  <Link
+                    key="listing"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.listingAddress}
+                  </Link>,
+                  <span key="buyer" className="text-muted-foreground">
+                    {row.buyerName}
+                  </span>,
+                  <span key="date" className="whitespace-nowrap">
+                    {formatReportDate(row.offerDate)}
+                  </span>,
+                  <span key="price" className="tabular-nums font-medium whitespace-nowrap">
+                    {formatReportAud(row.offerPrice)}
+                  </span>,
+                  <Badge key="status" variant="secondary" className="font-normal">
+                    {row.statusLabel}
+                  </Badge>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
               />
             )}
           </Card>

@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, isValid, parseISO } from "date-fns";
+import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Button } from "@/components/ui/button";
@@ -1892,6 +1893,11 @@ export default function Contacts() {
                           }
                         />
                       </div>
+                      <ContactDuplicateAlert
+                        email={formData.email}
+                        phone={formData.phone}
+                        excludeId={editingContact?.id}
+                      />
                       <div className="space-y-2">
                         <Label>Date of birth</Label>
                         <Input
