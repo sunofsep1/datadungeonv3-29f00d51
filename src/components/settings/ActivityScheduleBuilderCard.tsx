@@ -278,13 +278,13 @@ function ScheduleEditorSheet({
       setInitialized(true);
       return;
     }
-    if (!existing || stepsLoading) return;
+    if (stepsLoading || !existing) return;
     setName(existing.name);
     setDescription(existing.description ?? "");
     setAppliesTo(existing.applies_to);
     setSteps(loadedSteps.length ? stepsToDrafts(loadedSteps) : [newStepDraft()]);
     setInitialized(true);
-  }, [open, isNew, existing, loadedSteps, stepsLoading, appliesToDefault]);
+  }, [open, isNew, existing?.id, existing?.name, existing?.description, existing?.applies_to, loadedSteps, stepsLoading, appliesToDefault]);
 
   const updateStep = useCallback((index: number, patch: Partial<ActivityScheduleStepDraft>) => {
     setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -432,7 +432,12 @@ export function ActivityScheduleBuilderCard() {
 
   const openNew = () => {
     setEditingId(null);
-    setEditorOpen(true);
+    if (editorOpen) {
+      setEditorOpen(false);
+      window.setTimeout(() => setEditorOpen(true), 0);
+    } else {
+      setEditorOpen(true);
+    }
   };
 
   const openEdit = (id: string) => {
@@ -500,6 +505,7 @@ export function ActivityScheduleBuilderCard() {
       </Card>
 
       <ScheduleEditorSheet
+        key={editingId ?? "new"}
         open={editorOpen}
         onOpenChange={setEditorOpen}
         templateId={editingId}

@@ -29,6 +29,14 @@ function phoneMatches(a: string | null | undefined, b: string | null | undefined
   return !!ka && !!kb && ka === kb;
 }
 
+function candidatePhoneValues(row: {
+  phone?: string | null;
+  mobile?: string | null;
+  extraPhones?: string[];
+}): string[] {
+  return [row.phone, row.mobile, ...(row.extraPhones ?? [])].filter(Boolean) as string[];
+}
+
 export function findContactDuplicates(
   candidates: Array<{
     id: string;
@@ -36,6 +44,7 @@ export function findContactDuplicates(
     email?: string | null;
     phone?: string | null;
     mobile?: string | null;
+    extraPhones?: string[];
   }>,
   input: {
     email?: string | null;
@@ -54,8 +63,9 @@ export function findContactDuplicates(
     if (normEmail && normalizeContactEmail(row.email) === normEmail) {
       reasons.push("Same email");
     }
+    const rowPhones = candidatePhoneValues(row);
     for (const p of inputPhones) {
-      if (phoneMatches(p, row.phone) || phoneMatches(p, row.mobile)) {
+      if (rowPhones.some((rp) => phoneMatches(p, rp))) {
         reasons.push("Same phone");
         break;
       }

@@ -28,4 +28,22 @@ describe("contactConflictDetection", () => {
     expect(hits[0]?.id).toBe("a");
     expect(hits[0]?.matchReasons).toContain("Same email");
   });
+
+  it("matches phone stored in contact_channels via extraPhones", () => {
+    const hits = findContactDuplicates(
+      [
+        {
+          id: "a",
+          name: "Jane",
+          email: null,
+          phone: null,
+          mobile: null,
+          extraPhones: ["+61 412 345 678"],
+        },
+      ],
+      { phone: "0412 345 678" },
+    );
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.matchReasons).toContain("Same phone");
+  });
 });
