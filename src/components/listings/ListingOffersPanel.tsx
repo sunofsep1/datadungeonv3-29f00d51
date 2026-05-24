@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Mail, Plus, Trash2 } from "lucide-react";
+import { OfferLetterDialog } from "@/components/listings/OfferLetterDialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
-import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
+import { useContacts, getContactDisplayName, type Contact } from "@/hooks/useContacts";
 import {
   useListingOffers,
   useCreateListingOffer,
@@ -87,6 +88,8 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
   const [inclusions, setInclusions] = useState("");
   const [specialConditions, setSpecialConditions] = useState("");
   const [notes, setNotes] = useState("");
+  const [letterOpen, setLetterOpen] = useState(false);
+  const [letterOffer, setLetterOffer] = useState<ListingOffer | null>(null);
 
   const contactsById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
   const filtered = useMemo(() => filterOffersByTab(offers, tab), [offers, tab]);
@@ -238,6 +241,10 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
                   }
                   onStatus={(s) => void changeStatus(offer, s)}
                   onDelete={() => void remove(offer)}
+                  onLetter={() => {
+                    setLetterOffer(offer);
+                    setLetterOpen(true);
+                  }}
                 />
               ))}
             </ul>
@@ -295,6 +302,18 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <OfferLetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        offer={letterOffer}
+        listingAddress={listingAddress ?? ""}
+        buyer={
+          letterOffer?.buyer_contact_id
+            ? contactsById.get(letterOffer.buyer_contact_id) ?? null
+            : null
+        }
+      />
     </Card>
   );
 }
@@ -304,11 +323,13 @@ function OfferRow({
   buyerName,
   onStatus,
   onDelete,
+  onLetter,
 }: {
   offer: ListingOffer;
   buyerName: string | null;
   onStatus: (s: ListingOfferStatus) => void;
   onDelete: () => void;
+  onLetter: () => void;
 }) {
   const actions = offerStatusActions(offer.status);
 
@@ -352,6 +373,9 @@ function OfferRow({
           ) : null}
         </div>
         <div className="flex shrink-0 gap-1">
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Offer letter" onClick={onLetter}>
+            <Mail className="h-3.5 w-3.5" />
+          </Button>
           {actions.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

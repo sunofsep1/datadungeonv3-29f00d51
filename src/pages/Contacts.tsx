@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { format, isValid, parseISO } from "date-fns";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -99,6 +99,18 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
+import {
+  contactPassesClassFilter,
+  contactPassesSubscriptionFilter,
+  hasActiveClassFilters,
+  hasActiveSubscriptionFilters,
+} from "@/lib/contactClassFilters";
+import type { ContactSubscriptionKind } from "@/lib/contactSubscriptions";
+import {
+  useContactClasses,
+  useContactClassAssignmentIndex,
+  useContactSubscriptionIndex,
+} from "@/hooks/useContactClasses";
 import { BulkSmsCampaignDialog } from "@/components/contacts/BulkSmsCampaignDialog";
 import { ContactScriptQuickSheet } from "@/components/contacts/ContactScriptQuickSheet";
 import { MergeContactsDialog } from "@/components/contacts/MergeContactsDialog";
@@ -433,6 +445,9 @@ export default function Contacts() {
   const { data: reviewStatusByContact = new Map<string, string>() } =
     useAnnualReviewContactStatusMap(reviewYear);
   const { data: tags } = useTags();
+  const { data: contactClasses = [] } = useContactClasses();
+  const { data: classAssignmentIndex = new Map() } = useContactClassAssignmentIndex();
+  const { data: subscriptionIndex = new Map() } = useContactSubscriptionIndex();
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
@@ -465,6 +480,13 @@ export default function Contacts() {
   const [filterLeadTemperature, setFilterLeadTemperature] = useState("all");
   const [filterTimeframeCategory, setFilterTimeframeCategory] = useState("all");
   const [filterRoleCategory, setFilterRoleCategory] = useState("all");
+  const [filterIncludeClassIds, setFilterIncludeClassIds] = useState<string[]>([]);
+  const [filterExcludeClassIds, setFilterExcludeClassIds] = useState<string[]>([]);
+  const [filterClassIncludeMatch, setFilterClassIncludeMatch] = useState<"any" | "all">("any");
+  const [filterSubscriptionKind, setFilterSubscriptionKind] = useState<ContactSubscriptionKind | "all">("all");
+  const [filterSubscriptionMode, setFilterSubscriptionMode] = useState<
+    "any" | "subscribed" | "not_subscribed"
+  >("any");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
@@ -833,6 +855,25 @@ export default function Contacts() {
       );
     }
 
+    const classFilter = {
+      includeClassIds: filterIncludeClassIds,
+      excludeClassIds: filterExcludeClassIds,
+      includeMatch: filterClassIncludeMatch,
+    };
+    if (hasActiveClassFilters(classFilter)) {
+      list = list.filter((c) => contactPassesClassFilter(c.id, classFilter, classAssignmentIndex));
+    }
+
+    const subscriptionFilter = {
+      kind: filterSubscriptionKind,
+      mode: filterSubscriptionMode,
+    };
+    if (hasActiveSubscriptionFilters(subscriptionFilter)) {
+      list = list.filter((c) =>
+        contactPassesSubscriptionFilter(c.id, subscriptionFilter, subscriptionIndex),
+      );
+    }
+
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
       const name = (c.name || "").trim();
@@ -881,6 +922,13 @@ export default function Contacts() {
     filterAutomationBlocked,
     filterBirthdaysUpcoming,
     filterAnnualReviewCandidates,
+    filterIncludeClassIds,
+    filterExcludeClassIds,
+    filterClassIncludeMatch,
+    filterSubscriptionKind,
+    filterSubscriptionMode,
+    classAssignmentIndex,
+    subscriptionIndex,
     reviewStatusByContact,
     sortBy,
   ]);
@@ -910,6 +958,11 @@ export default function Contacts() {
     filterAutomationBlocked,
     filterBirthdaysUpcoming,
     filterAnnualReviewCandidates,
+    filterIncludeClassIds,
+    filterExcludeClassIds,
+    filterClassIncludeMatch,
+    filterSubscriptionKind,
+    filterSubscriptionMode,
     sortBy,
   ]);
 
@@ -926,7 +979,16 @@ export default function Contacts() {
     filterNoNextTouch ||
     filterAutomationBlocked ||
     filterBirthdaysUpcoming ||
-    filterAnnualReviewCandidates;
+    filterAnnualReviewCandidates ||
+    hasActiveClassFilters({
+      includeClassIds: filterIncludeClassIds,
+      excludeClassIds: filterExcludeClassIds,
+      includeMatch: filterClassIncludeMatch,
+    }) ||
+    hasActiveSubscriptionFilters({
+      kind: filterSubscriptionKind,
+      mode: filterSubscriptionMode,
+    });
 
   const clearSmartListParam = () => setSearchParams({}, { replace: true });
 
@@ -942,9 +1004,33 @@ export default function Contacts() {
     setFilterContactClassification("all");
     setFilterNoNextTouch(false);
     setFilterAutomationBlocked(false);
+    setFilterBirthdaysUpcoming(false);
+    setFilterAnnualReviewCandidates(false);
+    setFilterIncludeClassIds([]);
+    setFilterExcludeClassIds([]);
+    setFilterClassIncludeMatch("any");
+    setFilterSubscriptionKind("all");
+    setFilterSubscriptionMode("any");
     clearSmartListParam();
     setCurrentPage(1);
   };
+
+  const toggleIncludeClassFilter = (classId: string) => {
+    setFilterIncludeClassIds((prev) =>
+      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId],
+    );
+  };
+
+  const toggleExcludeClassFilter = (classId: string) => {
+    setFilterExcludeClassIds((prev) =>
+      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId],
+    );
+  };
+
+  const classNameById = useMemo(
+    () => new Map(contactClasses.map((c) => [c.id, c.name])),
+    [contactClasses],
+  );
 
   const distinctSources = useMemo(() => {
     const set = new Set<string>();
@@ -1379,6 +1465,32 @@ export default function Contacts() {
     },
     hasActiveFilters,
     onClearFilters: clearAllFilters,
+    contactClasses,
+    filterIncludeClassIds,
+    filterExcludeClassIds,
+    filterClassIncludeMatch,
+    onToggleIncludeClass: (id: string) => {
+      toggleIncludeClassFilter(id);
+      clearSmartListParam();
+    },
+    onToggleExcludeClass: (id: string) => {
+      toggleExcludeClassFilter(id);
+      clearSmartListParam();
+    },
+    onFilterClassIncludeMatchChange: (v: "any" | "all") => {
+      setFilterClassIncludeMatch(v);
+      clearSmartListParam();
+    },
+    filterSubscriptionKind,
+    filterSubscriptionMode,
+    onFilterSubscriptionKindChange: (v: ContactSubscriptionKind | "all") => {
+      setFilterSubscriptionKind(v);
+      clearSmartListParam();
+    },
+    onFilterSubscriptionModeChange: (v: "any" | "subscribed" | "not_subscribed") => {
+      setFilterSubscriptionMode(v);
+      clearSmartListParam();
+    },
   };
 
   const listGridCols = "grid-cols-[auto_1fr_auto_auto] md:grid-cols-[auto_1fr_auto_120px_1fr_100px_minmax(0,1fr)_auto]";
@@ -1531,6 +1643,9 @@ export default function Contacts() {
     if (!contact?.id) return null;
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
+    const classNames = [...(classAssignmentIndex.get(contact.id) ?? [])]
+      .map((id) => classNameById.get(id))
+      .filter((n): n is string => Boolean(n));
     const effectiveCategory = getEffectiveCategory(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
     const displayName = getContactDisplayName(contact);
@@ -1624,6 +1739,22 @@ export default function Contacts() {
             ) : null}
           </div>
 
+          {classNames.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {classNames.slice(0, 2).map((name) => (
+                <span
+                  key={name}
+                  className="inline-flex max-w-[120px] truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+                >
+                  {name}
+                </span>
+              ))}
+              {classNames.length > 2 ? (
+                <span className="text-[10px] text-muted-foreground">+{classNames.length - 2}</span>
+              ) : null}
+            </div>
+          ) : null}
+
           {tagNames.length > 0 ? (
             <div className="flex min-w-0 items-center gap-1">
               {tagNames.slice(0, 2).map((t) => (
@@ -1668,6 +1799,9 @@ export default function Contacts() {
         title="Contacts"
         actions={
           <>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link to="/contacts/requirements-search">Requirements search</Link>
+            </Button>
             <SavedViewsMenu
               objectType="contacts"
               buildPayload={buildContactsSavedViewPayload}

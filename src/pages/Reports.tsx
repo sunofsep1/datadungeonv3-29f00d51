@@ -43,7 +43,17 @@ import {
 } from "@/lib/listingReports";
 import { domToneClasses } from "@/lib/listingCampaignDashboard";
 import { listingSearchPrice } from "@/lib/listingPriceFields";
-import { buildContactSourceReport, buildGciByListingReport } from "@/lib/contactReports";
+import {
+  buildAuctionStatusReport,
+  buildContactClassStatistics,
+  buildContactSourceReport,
+  buildContactsCreatedByMonth,
+  buildGciByListingReport,
+} from "@/lib/contactReports";
+import {
+  useContactClasses,
+  useContactClassAssignmentIndex,
+} from "@/hooks/useContactClasses";
 import { cn } from "@/lib/utils";
 
 type ReportTab =
@@ -54,17 +64,23 @@ type ReportTab =
   | "current"
   | "offers"
   | "sources"
-  | "gci";
+  | "gci"
+  | "created"
+  | "auctions"
+  | "class-stats";
 
 const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
   { id: "pipeline", label: "Pipeline monitor", icon: BarChart3 },
   { id: "current", label: "Current listings", icon: List },
   { id: "gci", label: "GCI by listing", icon: TrendingUp },
+  { id: "auctions", label: "Auction status", icon: Home },
   { id: "dom", label: "Days on market", icon: Clock },
   { id: "expiry", label: "Agency expiry", icon: CalendarClock },
   { id: "settlements", label: "Upcoming settlements", icon: Home },
   { id: "offers", label: "Offers & contracts", icon: FileSignature },
   { id: "sources", label: "Contact source", icon: Users },
+  { id: "created", label: "Contacts created", icon: Users },
+  { id: "class-stats", label: "Contact classes", icon: Users },
 ];
 
 function ReportTable({
@@ -125,7 +141,10 @@ export default function Reports() {
     tabParam === "current" ||
     tabParam === "offers" ||
     tabParam === "sources" ||
-    tabParam === "gci"
+    tabParam === "gci" ||
+    tabParam === "created" ||
+    tabParam === "auctions" ||
+    tabParam === "class-stats"
       ? tabParam
       : "pipeline";
   const [expiryWindow, setExpiryWindow] = useState(90);
@@ -134,6 +153,8 @@ export default function Reports() {
   const { data: listings = [], isLoading } = useListings();
   const { data: allOffers = [], isLoading: offersLoading } = useAllListingOffers();
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
+  const { data: contactClasses = [] } = useContactClasses();
+  const { data: classAssignmentIndex = new Map() } = useContactClassAssignmentIndex();
   const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
@@ -173,6 +194,36 @@ export default function Reports() {
         pipelineStageLabel,
       ),
     [reportRows, commissionRate],
+  );
+  const contactsCreatedRows = useMemo(
+    () => buildContactsCreatedByMonth(contacts.map((c) => ({ source: c.source, created_at: c.created_at }))),
+    [contacts],
+  );
+  const classStatRows = useMemo(() => {
+    const assignments: { contact_id: string; class_id: string }[] = [];
+    for (const [contact_id, classIds] of classAssignmentIndex) {
+      for (const class_id of classIds) {
+        assignments.push({ contact_id, class_id });
+      }
+    }
+    return buildContactClassStatistics(contactClasses, assignments);
+  }, [contactClasses, classAssignmentIndex]);
+
+  const auctionRows = useMemo(
+    () =>
+      buildAuctionStatusReport(
+        reportRows.map((l) => ({
+          id: l.id,
+          address: l.address,
+          pipeline_stage: l.pipeline_stage,
+          sale_method: (l as { sale_method?: string | null }).sale_method,
+          listed_as_auction: (l as { listed_as_auction?: boolean | null }).listed_as_auction,
+          display_price: (l as { display_price?: string | null }).display_price,
+          display_price_public: (l as { display_price_public?: string | null }).display_price_public,
+        })),
+        pipelineStageLabel,
+      ),
+    [reportRows],
   );
   const offerRows = useMemo(() => {
     const offersForReport = allOffers.map((o) => {
@@ -785,6 +836,137 @@ export default function Reports() {
                   </span>,
                   <span key="cnt" className="tabular-nums">
                     {row.count}
+                  </span>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="created" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contacts created</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">New contacts by month (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="contacts-created"
+                columns={[
+                  { key: "month", label: "Month" },
+                  { key: "count", label: "Contacts" },
+                ]}
+                data={contactsCreatedRows.map((r) => ({ month: r.label, count: r.count }))}
+              />
+            </div>
+            {contactsLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Month", "Contacts created"]}
+                emptyMessage="No contacts with created dates."
+                rows={contactsCreatedRows.map((row) => [
+                  <span key="m" className="font-medium">
+                    {row.label}
+                  </span>,
+                  <span key="c" className="tabular-nums">
+                    {row.count}
+                  </span>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="auctions" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Auction status</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Listings marked auction or listed as auction
+                </p>
+              </div>
+              <ExportReportButton
+                filename="auction-status"
+                columns={[
+                  { key: "address", label: "Address" },
+                  { key: "stage", label: "Stage" },
+                  { key: "method", label: "Sale method" },
+                  { key: "display", label: "Display price" },
+                ]}
+                data={auctionRows.map((r) => ({
+                  address: r.address,
+                  stage: r.stage,
+                  method: r.saleMethod,
+                  display: r.displayPrice,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Address", "Stage", "Method", "Display price", ""]}
+                emptyMessage="No auction listings in the pipeline."
+                rows={auctionRows.map((row) => [
+                  <Link
+                    key="addr"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <Badge key="stage" variant="secondary" className="font-normal">
+                    {row.stage}
+                  </Badge>,
+                  <span key="method" className="text-sm capitalize">
+                    {row.saleMethod}
+                  </span>,
+                  <span key="disp" className="text-sm">
+                    {row.displayPrice}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="class-stats" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contact class statistics</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Contacts per Reapit-style segment (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="contact-class-stats"
+                columns={[
+                  { key: "class", label: "Class" },
+                  { key: "count", label: "Contacts" },
+                ]}
+                data={classStatRows.map((r) => ({ class: r.className, count: r.contactCount }))}
+              />
+            </div>
+            {classStatRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No class assignments yet. Add classes on contact cards.
+              </p>
+            ) : (
+              <ReportTable
+                headers={["Class", "Contacts"]}
+                emptyMessage="No data"
+                rows={classStatRows.map((row) => [
+                  <span key="n" className="font-medium">
+                    {row.className}
+                  </span>,
+                  <span key="c" className="tabular-nums">
+                    {row.contactCount}
                   </span>,
                 ])}
               />

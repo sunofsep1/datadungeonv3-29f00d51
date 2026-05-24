@@ -5,12 +5,21 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   useContactBuyerRequirements,
@@ -20,26 +29,44 @@ import {
   type BuyerRequirement,
 } from "@/hooks/useBuyerRequirements";
 import { formatRequirementSummary } from "@/lib/buyerRequirementMatch";
+import { LISTING_FEATURE_CATALOG } from "@/lib/listingFeatures";
+import { PROPERTY_TYPE_VALUES } from "@/lib/propertyType";
 
 type Props = { contactId: string };
 
 type FormState = {
+  action: string;
+  property_type: string;
+  state: string;
   suburbs: string;
   price_min: string;
   price_max: string;
   beds_min: string;
   baths_min: string;
   parking_min: string;
+  land_min_sqm: string;
+  land_max_sqm: string;
+  building_min_sqm: string;
+  building_max_sqm: string;
+  features_required: string[];
   notes: string;
 };
 
 const emptyForm = (): FormState => ({
+  action: "buy",
+  property_type: "",
+  state: "QLD",
   suburbs: "",
   price_min: "",
   price_max: "",
   beds_min: "",
   baths_min: "",
   parking_min: "",
+  land_min_sqm: "",
+  land_max_sqm: "",
+  building_min_sqm: "",
+  building_max_sqm: "",
+  features_required: [],
   notes: "",
 });
 
@@ -50,12 +77,20 @@ function parseNum(raw: string): number | null {
 
 function formFromReq(r: BuyerRequirement): FormState {
   return {
+    action: r.action?.trim() || "buy",
+    property_type: r.property_type?.trim() ?? "",
+    state: r.state?.trim() || "QLD",
     suburbs: (r.suburbs ?? []).join(", "),
     price_min: r.price_min != null ? String(r.price_min) : "",
     price_max: r.price_max != null ? String(r.price_max) : "",
     beds_min: r.beds_min != null ? String(r.beds_min) : "",
     baths_min: r.baths_min != null ? String(r.baths_min) : "",
     parking_min: r.parking_min != null ? String(r.parking_min) : "",
+    land_min_sqm: r.land_min_sqm != null ? String(r.land_min_sqm) : "",
+    land_max_sqm: r.land_max_sqm != null ? String(r.land_max_sqm) : "",
+    building_min_sqm: r.building_min_sqm != null ? String(r.building_min_sqm) : "",
+    building_max_sqm: r.building_max_sqm != null ? String(r.building_max_sqm) : "",
+    features_required: [...(r.features_required ?? [])],
     notes: r.notes ?? "",
   };
 }
@@ -82,6 +117,18 @@ export function ContactBuyerRequirementsPanel({ contactId }: Props) {
     setOpen(true);
   };
 
+  const toggleFeature = (key: string) => {
+    setForm((f) => {
+      const has = f.features_required.includes(key);
+      return {
+        ...f,
+        features_required: has
+          ? f.features_required.filter((k) => k !== key)
+          : [...f.features_required, key],
+      };
+    });
+  };
+
   const save = async () => {
     const suburbs = form.suburbs
       .split(/[,;]/)
@@ -89,12 +136,20 @@ export function ContactBuyerRequirementsPanel({ contactId }: Props) {
       .filter(Boolean);
     const payload = {
       contact_id: contactId,
+      action: form.action,
+      property_type: form.property_type.trim() || null,
+      state: form.state.trim() || "QLD",
       suburbs,
       price_min: parseNum(form.price_min),
       price_max: parseNum(form.price_max),
       beds_min: parseNum(form.beds_min),
       baths_min: parseNum(form.baths_min),
       parking_min: parseNum(form.parking_min),
+      land_min_sqm: parseNum(form.land_min_sqm),
+      land_max_sqm: parseNum(form.land_max_sqm),
+      building_min_sqm: parseNum(form.building_min_sqm),
+      building_max_sqm: parseNum(form.building_max_sqm),
+      features_required: form.features_required,
       notes: form.notes.trim() || null,
     };
     try {
@@ -170,11 +225,48 @@ export function ContactBuyerRequirementsPanel({ contactId }: Props) {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit buyer brief" : "Add buyer brief"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Action</Label>
+                <Select value={form.action} onValueChange={(v) => setForm({ ...form, action: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="rent">Rent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>State</Label>
+                <Input className="mt-1" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label>Property type</Label>
+              <Select
+                value={form.property_type || "any"}
+                onValueChange={(v) => setForm({ ...form, property_type: v === "any" ? "" : v })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any type</SelectItem>
+                  {PROPERTY_TYPE_VALUES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Suburbs (comma-separated)</Label>
               <Input
@@ -207,6 +299,42 @@ export function ContactBuyerRequirementsPanel({ contactId }: Props) {
                 <Label>Parking+</Label>
                 <Input className="mt-1" value={form.parking_min} onChange={(e) => setForm({ ...form, parking_min: e.target.value })} />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Land min (sqm)</Label>
+                <Input className="mt-1" value={form.land_min_sqm} onChange={(e) => setForm({ ...form, land_min_sqm: e.target.value })} />
+              </div>
+              <div>
+                <Label>Land max (sqm)</Label>
+                <Input className="mt-1" value={form.land_max_sqm} onChange={(e) => setForm({ ...form, land_max_sqm: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Building min (sqm)</Label>
+                <Input className="mt-1" value={form.building_min_sqm} onChange={(e) => setForm({ ...form, building_min_sqm: e.target.value })} />
+              </div>
+              <div>
+                <Label>Building max (sqm)</Label>
+                <Input className="mt-1" value={form.building_max_sqm} onChange={(e) => setForm({ ...form, building_max_sqm: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label>Required features ({form.features_required.length})</Label>
+              <ScrollArea className="h-36 mt-2 rounded-md border border-border p-2">
+                <div className="grid grid-cols-1 gap-1.5">
+                  {LISTING_FEATURE_CATALOG.map((f) => (
+                    <label key={f.key} className="flex items-center gap-2 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={form.features_required.includes(f.key)}
+                        onCheckedChange={() => toggleFeature(f.key)}
+                      />
+                      <span>{f.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
             <div>
               <Label>Notes</Label>

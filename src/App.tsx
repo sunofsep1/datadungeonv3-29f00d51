@@ -47,12 +47,14 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ContactPrintPage = lazy(() => import("./pages/ContactPrintPage"));
+const ContactRequirementsSearch = lazy(() => import("./pages/ContactRequirementsSearch"));
 const PropertyPrintPage = lazy(() => import("./pages/PropertyPrintPage"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
 const AIOps = lazy(() => import("./pages/AIOps"));
 const TouchReport = lazy(() => import("./pages/TouchReport"));
 const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
 const MatchBuyersLettersPrintPage = lazy(() => import("./pages/MatchBuyersLettersPrintPage"));
+const OfferLettersPrintPage = lazy(() => import("./pages/OfferLettersPrintPage"));
 const Reports = lazy(() => import("./pages/Reports"));
 const InvoicePrintPage = lazy(() => import("./pages/InvoicePrintPage"));
 const Invoices = lazy(() => import("./pages/Invoices"));
@@ -83,6 +85,7 @@ const App = () => (
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/contacts/requirements-search" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactRequirementsSearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture/print" element={<ProtectedRoute><NurtureBacklogPrintPage /></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactDetail /></ErrorBoundary></MainLayout></ProtectedRoute>} />
@@ -92,6 +95,10 @@ const App = () => (
                 <Route
                   path="/listings/match-buyers/letters/print"
                   element={<ProtectedRoute><MatchBuyersLettersPrintPage /></ProtectedRoute>}
+                />
+                <Route
+                  path="/listings/offers/letters/print"
+                  element={<ProtectedRoute><OfferLettersPrintPage /></ProtectedRoute>}
                 />
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><ErrorBoundary><Appointments /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><ErrorBoundary><Calendar /></ErrorBoundary></MainLayout></ProtectedRoute>} />

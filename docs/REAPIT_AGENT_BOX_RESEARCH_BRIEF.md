@@ -497,4 +497,13 @@ After these three, evaluate whether to push into Marketing Funds, Portal Exports
 | 2026-05-23 | **Reports** — Current listings + Offers & contracts tabs | `/reports?tab=current` · `?tab=offers` |
 | 2026-05-23 | **Listing General panel** — authority, outgoings, investment, legal, access | `20260523180000_listing_general_panel.sql` — run `npm run db:push` |
 | 2026-05-23 | **P4** — contact AML/KYC panel; listing compliance checkboxes; duplicate → interaction history | `20260523210000_contact_aml_kyc.sql` |
-| 2026-05-23 | **Reports** — Contact source + GCI by listing tabs | `/reports?tab=sources` · `?tab=gci` |  
+| 2026-05-23 | **Reports** — Contact source + GCI by listing tabs | `/reports?tab=sources` · `?tab=gci` |
+| 2026-05-23 | **Contact classes & subscriptions** (§4) — segments + marketing opt-ins on contact card | `20260524100000_contact_classes_subscriptions.sql` |
+| 2026-05-23 | **Requirements search** (§4.3) — filter buyer briefs; limit search excludes missing criteria | `/contacts/requirements-search` |
+| 2026-05-24 | **Contacts filters** — class include/exclude (any/all), subscription filter on list | Contacts → Filters sheet |
+| 2026-05-24 | **Buyer brief form** — action, type, state, land/building, features checklist | Contact → Requirements |
+| 2026-05-24 | **Reports** — Contacts created by month, Auction status | `/reports?tab=created` · `?tab=auctions` |
+| 2026-05-24 | **Offer letters** — accept / reject / counter mail-merge per offer | Listing → Offers → letter icon → print |
+| 2026-05-24 | **Requirements search** — saved searches, land/building/features filters | Saved searches menu on requirements page |
+| 2026-05-24 | **Reports** — Contact class statistics | `/reports?tab=class-stats` |
+| 2026-05-24 | **Contacts list** — class segment badges on cards | Contacts list/grid |

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-export type SavedViewObjectType = "contacts" | "tasks";
+export type SavedViewObjectType = "contacts" | "tasks" | "requirements_search";
 
 export type SavedViewRow = {
   id: string;

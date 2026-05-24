@@ -21,6 +21,11 @@ export type BuyerRequirementInsert = {
   beds_min?: number | null;
   baths_min?: number | null;
   parking_min?: number | null;
+  land_min_sqm?: number | null;
+  land_max_sqm?: number | null;
+  building_min_sqm?: number | null;
+  building_max_sqm?: number | null;
+  features_required?: string[];
   notes?: string | null;
 };
 
@@ -91,6 +96,11 @@ export function useCreateBuyerRequirement() {
         beds_min: payload.beds_min ?? null,
         baths_min: payload.baths_min ?? null,
         parking_min: payload.parking_min ?? null,
+        land_min_sqm: payload.land_min_sqm ?? null,
+        land_max_sqm: payload.land_max_sqm ?? null,
+        building_min_sqm: payload.building_min_sqm ?? null,
+        building_max_sqm: payload.building_max_sqm ?? null,
+        features_required: payload.features_required ?? [],
         notes: payload.notes ?? null,
       };
 

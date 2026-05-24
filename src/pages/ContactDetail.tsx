@@ -71,6 +71,7 @@ import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
 import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
 import { ContactAmlPanel } from "@/components/contacts/ContactAmlPanel";
+import { ContactClassesSubscriptionsPanel } from "@/components/contacts/ContactClassesSubscriptionsPanel";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
 import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatchingListingsPanel";
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
@@ -1077,6 +1078,8 @@ export default function ContactDetail() {
               {contact ? (
                 <ContactOutreachPreferences contact={contact} onUpdated={() => void refetch()} />
               ) : null}
+
+              {id ? <ContactClassesSubscriptionsPanel contactId={id} /> : null}
 
           {/* Pain & Pleasure */}
           <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">

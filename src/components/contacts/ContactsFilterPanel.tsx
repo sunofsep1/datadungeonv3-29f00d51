@@ -14,7 +14,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Tag, Building2, Clock, ArrowUpDown, Thermometer } from "lucide-react";
+import { Search, Tag, Building2, Clock, ArrowUpDown, Thermometer, Layers, Mail } from "lucide-react";
+import {
+  CONTACT_SUBSCRIPTION_KINDS,
+  CONTACT_SUBSCRIPTION_LABELS,
+  type ContactSubscriptionKind,
+} from "@/lib/contactSubscriptions";
 import {
   LEAD_TEMPERATURES,
   TIMEFRAME_CATEGORIES,
@@ -57,6 +62,17 @@ export interface ContactsFilterPanelProps {
   onFilterContactClassificationChange: (v: string) => void;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
+  contactClasses?: { id: string; name: string }[];
+  filterIncludeClassIds?: string[];
+  filterExcludeClassIds?: string[];
+  filterClassIncludeMatch?: "any" | "all";
+  onToggleIncludeClass?: (classId: string) => void;
+  onToggleExcludeClass?: (classId: string) => void;
+  onFilterClassIncludeMatchChange?: (v: "any" | "all") => void;
+  filterSubscriptionKind?: ContactSubscriptionKind | "all";
+  filterSubscriptionMode?: "any" | "subscribed" | "not_subscribed";
+  onFilterSubscriptionKindChange?: (v: ContactSubscriptionKind | "all") => void;
+  onFilterSubscriptionModeChange?: (v: "any" | "subscribed" | "not_subscribed") => void;
   /** When "filtersOnly", search + sort are omitted (render those in the page toolbar). */
   variant?: "full" | "filtersOnly";
   /** When true, Source / Property / Last touched are omitted (e.g. shown in page quick strip). */
@@ -88,6 +104,17 @@ export function ContactsFilterPanel({
   onFilterContactClassificationChange,
   hasActiveFilters,
   onClearFilters,
+  contactClasses = [],
+  filterIncludeClassIds = [],
+  filterExcludeClassIds = [],
+  filterClassIncludeMatch = "any",
+  onToggleIncludeClass,
+  onToggleExcludeClass,
+  onFilterClassIncludeMatchChange,
+  filterSubscriptionKind = "all",
+  filterSubscriptionMode = "any",
+  onFilterSubscriptionKindChange,
+  onFilterSubscriptionModeChange,
   variant = "full",
   omitQuickFilters = false,
 }: ContactsFilterPanelProps) {
@@ -235,6 +262,121 @@ export function ContactsFilterPanel({
           </Select>
         </div>
       </div>
+
+      {contactClasses.length > 0 && onToggleIncludeClass ? (
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+            Contact classes (Reapit)
+          </Label>
+          <div className="space-y-2">
+            <Select
+              value={filterClassIncludeMatch}
+              onValueChange={(v) => onFilterClassIncludeMatchChange?.(v as "any" | "all")}
+            >
+              <SelectTrigger className="w-full bg-input border-border text-foreground">
+                <Layers className="w-4 h-4 mr-1 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Include — match any</SelectItem>
+                <SelectItem value="all">Include — match all</SelectItem>
+              </SelectContent>
+            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start gap-2 bg-input border-border text-foreground hover:bg-accent"
+                >
+                  <Layers className="w-4 h-4" />
+                  Include classes {filterIncludeClassIds.length ? `(${filterIncludeClassIds.length})` : ""}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto bg-popover border-border">
+                {contactClasses.map((c) => (
+                  <DropdownMenuCheckboxItem
+                    key={`inc-${c.id}`}
+                    checked={filterIncludeClassIds.includes(c.id)}
+                    onCheckedChange={() => onToggleIncludeClass(c.id)}
+                  >
+                    {c.name}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {onToggleExcludeClass ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2 bg-input border-border text-foreground hover:bg-accent"
+                  >
+                    <Layers className="w-4 h-4 opacity-60" />
+                    Exclude classes {filterExcludeClassIds.length ? `(${filterExcludeClassIds.length})` : ""}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto bg-popover border-border">
+                  {contactClasses.map((c) => (
+                    <DropdownMenuCheckboxItem
+                      key={`exc-${c.id}`}
+                      checked={filterExcludeClassIds.includes(c.id)}
+                      onCheckedChange={() => onToggleExcludeClass(c.id)}
+                    >
+                      {c.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {onFilterSubscriptionKindChange ? (
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+            Subscriptions
+          </Label>
+          <div className="space-y-2">
+            <Select
+              value={filterSubscriptionKind}
+              onValueChange={(v) =>
+                onFilterSubscriptionKindChange(v as ContactSubscriptionKind | "all")
+              }
+            >
+              <SelectTrigger className="w-full bg-input border-border text-foreground">
+                <Mail className="w-4 h-4 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="Subscription" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any subscription</SelectItem>
+                {CONTACT_SUBSCRIPTION_KINDS.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {CONTACT_SUBSCRIPTION_LABELS[k]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filterSubscriptionMode}
+              onValueChange={(v) =>
+                onFilterSubscriptionModeChange?.(v as "any" | "subscribed" | "not_subscribed")
+              }
+            >
+              <SelectTrigger className="w-full bg-input border-border text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any status</SelectItem>
+                <SelectItem value="subscribed">Subscribed</SelectItem>
+                <SelectItem value="not_subscribed">Not subscribed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ) : null}
 
       <div>
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">

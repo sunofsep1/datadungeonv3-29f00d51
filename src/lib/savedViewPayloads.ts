@@ -2,6 +2,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 export const CONTACTS_SAVED_VIEW_V = 1 as const;
 export const TASKS_SAVED_VIEW_V = 1 as const;
+export const REQUIREMENTS_SEARCH_SAVED_VIEW_V = 1 as const;
 
 /** Serializable contacts list state (v1). */
 export type ContactsSavedViewPayloadV1 = {
@@ -29,6 +30,25 @@ export type TasksSavedViewPayloadV1 = {
   v: typeof TASKS_SAVED_VIEW_V;
   mainTab: "appointments" | "todos";
   appointmentsFilter: "all" | "today" | "upcoming" | "overdue" | "this_week";
+};
+
+export type RequirementsSearchSavedPayloadV1 = {
+  v: typeof REQUIREMENTS_SEARCH_SAVED_VIEW_V;
+  action: string;
+  state: string;
+  suburbs: string;
+  priceMin: string;
+  priceMax: string;
+  bedsMin: string;
+  bathsMin: string;
+  parkingMin: string;
+  landMin: string;
+  landMax: string;
+  buildingMin: string;
+  buildingMax: string;
+  propertyType: string;
+  featuresRequired: string[];
+  excludeMissing: boolean;
 };
 
 export function parseContactsSavedViewPayload(raw: unknown): ContactsSavedViewPayloadV1 | null {
@@ -75,6 +95,38 @@ export function parseTasksSavedViewPayload(raw: unknown): TasksSavedViewPayloadV
   const appointmentsFilter =
     af === "today" || af === "upcoming" || af === "overdue" || af === "this_week" ? af : "all";
   return { v: TASKS_SAVED_VIEW_V, mainTab, appointmentsFilter };
+}
+
+export function parseRequirementsSearchSavedPayload(
+  raw: unknown,
+): RequirementsSearchSavedPayloadV1 | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if (o.v !== REQUIREMENTS_SEARCH_SAVED_VIEW_V) return null;
+  return {
+    v: REQUIREMENTS_SEARCH_SAVED_VIEW_V,
+    action: typeof o.action === "string" ? o.action : "all",
+    state: typeof o.state === "string" ? o.state : "QLD",
+    suburbs: typeof o.suburbs === "string" ? o.suburbs : "",
+    priceMin: typeof o.priceMin === "string" ? o.priceMin : "",
+    priceMax: typeof o.priceMax === "string" ? o.priceMax : "",
+    bedsMin: typeof o.bedsMin === "string" ? o.bedsMin : "",
+    bathsMin: typeof o.bathsMin === "string" ? o.bathsMin : "",
+    parkingMin: typeof o.parkingMin === "string" ? o.parkingMin : "",
+    landMin: typeof o.landMin === "string" ? o.landMin : "",
+    landMax: typeof o.landMax === "string" ? o.landMax : "",
+    buildingMin: typeof o.buildingMin === "string" ? o.buildingMin : "",
+    buildingMax: typeof o.buildingMax === "string" ? o.buildingMax : "",
+    propertyType: typeof o.propertyType === "string" ? o.propertyType : "",
+    featuresRequired: Array.isArray(o.featuresRequired)
+      ? o.featuresRequired.filter((x): x is string => typeof x === "string")
+      : [],
+    excludeMissing: o.excludeMissing !== false,
+  };
+}
+
+export function requirementsSearchPayloadToJson(p: RequirementsSearchSavedPayloadV1): Json {
+  return p as unknown as Json;
 }
 
 export function contactsPayloadToJson(p: ContactsSavedViewPayloadV1): Json {
