@@ -3,12 +3,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BarChart3,
+  Cake,
   CalendarClock,
   Clock,
   ExternalLink,
   FileSignature,
   Home,
   List,
+  MapPin,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -25,10 +27,17 @@ import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { useListings } from "@/hooks/useListings";
 import { useAllListingOffers } from "@/hooks/useListingOffers";
 import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
+import { useProperties } from "@/hooks/useProperties";
+import { useAllListingContactLinks } from "@/hooks/useListingContactLinks";
 import { buildReportsSnapshot } from "@/lib/reportsSnapshot";
 import {
   buildAgencyExpiryReport,
+  buildAppraisalListingContactsReport,
+  buildContractConditionsDueReport,
   buildCurrentListingsReport,
+  buildListingsSalesSummaryReport,
+  buildSalesByRegionReport,
+  buildUpcomingUnconditionalReport,
   buildDaysOnMarketReport,
   buildOffersPipelineReport,
   buildPipelineMonitor,
@@ -45,11 +54,14 @@ import { domToneClasses } from "@/lib/listingCampaignDashboard";
 import { listingSearchPrice } from "@/lib/listingPriceFields";
 import {
   buildAuctionStatusReport,
+  buildContactAnniversaryReport,
   buildContactClassStatistics,
   buildContactSourceReport,
+  buildContactSuburbBreakdownReport,
   buildContactsCreatedByMonth,
   buildContactUnsubscribedReport,
   buildGciByListingReport,
+  buildProspectPropertyContactsReport,
 } from "@/lib/contactReports";
 import {
   useContactClasses,
@@ -70,7 +82,15 @@ type ReportTab =
   | "created"
   | "auctions"
   | "class-stats"
-  | "unsubscribed";
+  | "unsubscribed"
+  | "suburb"
+  | "anniversaries"
+  | "property-contacts"
+  | "contract-conditions"
+  | "unconditional"
+  | "sales-region"
+  | "sales-summary"
+  | "appraisal-contacts";
 
 const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
   { id: "pipeline", label: "Pipeline monitor", icon: BarChart3 },
@@ -85,6 +105,14 @@ const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = 
   { id: "created", label: "Contacts created", icon: Users },
   { id: "class-stats", label: "Contact classes", icon: Users },
   { id: "unsubscribed", label: "Unsubscribed", icon: Users },
+  { id: "suburb", label: "Suburb breakdown", icon: MapPin },
+  { id: "anniversaries", label: "Anniversaries", icon: Cake },
+  { id: "property-contacts", label: "Property contacts", icon: Home },
+  { id: "contract-conditions", label: "Contract conditions", icon: FileSignature },
+  { id: "unconditional", label: "Unconditional sales", icon: CalendarClock },
+  { id: "sales-region", label: "Sales by region", icon: MapPin },
+  { id: "sales-summary", label: "Listings & sales", icon: BarChart3 },
+  { id: "appraisal-contacts", label: "Appraisal contacts", icon: Users },
 ];
 
 function ReportTable({
@@ -149,13 +177,26 @@ export default function Reports() {
     tabParam === "created" ||
     tabParam === "auctions" ||
     tabParam === "class-stats" ||
-    tabParam === "unsubscribed"
+    tabParam === "unsubscribed" ||
+    tabParam === "suburb" ||
+    tabParam === "anniversaries" ||
+    tabParam === "property-contacts" ||
+    tabParam === "contract-conditions" ||
+    tabParam === "unconditional" ||
+    tabParam === "sales-region" ||
+    tabParam === "sales-summary" ||
+    tabParam === "appraisal-contacts"
       ? tabParam
       : "pipeline";
   const [expiryWindow, setExpiryWindow] = useState(90);
   const [settlementWindow, setSettlementWindow] = useState(60);
+  const [unconditionalWindow, setUnconditionalWindow] = useState(60);
+  const [anniversaryWindow, setAnniversaryWindow] = useState(30);
+  const [contractConditionWindow, setContractConditionWindow] = useState(30);
 
   const { data: listings = [], isLoading } = useListings();
+  const { data: properties = [] } = useProperties();
+  const { data: allListingContactLinks = [], isLoading: listingLinksLoading } = useAllListingContactLinks();
   const { data: allOffers = [], isLoading: offersLoading } = useAllListingOffers();
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: contactClasses = [] } = useContactClasses();
@@ -164,6 +205,20 @@ export default function Reports() {
   const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
+  const propertyById = useMemo(
+    () =>
+      new Map(
+        properties.map((p) => [
+          p.id,
+          {
+            city: p.city,
+            suburb: (p as { suburb?: string | null }).suburb ?? null,
+            state: p.state,
+          },
+        ]),
+      ),
+    [properties],
+  );
   const listingsById = useMemo(() => new Map(reportRows.map((l) => [l.id, l])), [reportRows]);
   const contactsById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
 
@@ -226,6 +281,91 @@ export default function Reports() {
         subscriptionIndex,
       ),
     [contacts, subscriptionIndex],
+  );
+
+  const suburbRows = useMemo(
+    () =>
+      buildContactSuburbBreakdownReport(
+        contacts.map((c) => ({ city: c.city, state: c.state })),
+      ),
+    [contacts],
+  );
+
+  const anniversaryRows = useMemo(
+    () =>
+      buildContactAnniversaryReport(
+        contacts.map((c) => ({
+          id: c.id,
+          name: getContactDisplayName(c),
+          date_of_birth: (c as { date_of_birth?: string | null }).date_of_birth,
+        })),
+        anniversaryWindow,
+      ),
+    [contacts, anniversaryWindow],
+  );
+
+  const propertyContactRows = useMemo(
+    () =>
+      buildProspectPropertyContactsReport(
+        contacts.map((c) => ({
+          id: c.id,
+          name: getContactDisplayName(c),
+          contact_property_links: c.contact_property_links,
+        })),
+      ),
+    [contacts],
+  );
+
+  const unconditionalRows = useMemo(
+    () =>
+      buildUpcomingUnconditionalReport(reportRows, {
+        withinDays: unconditionalWindow,
+        includePast: true,
+      }),
+    [reportRows, unconditionalWindow],
+  );
+
+  const salesByRegionRows = useMemo(
+    () => buildSalesByRegionReport(reportRows, propertyById),
+    [reportRows, propertyById],
+  );
+
+  const salesSummaryRows = useMemo(
+    () => buildListingsSalesSummaryReport(reportRows, commissionRate),
+    [reportRows, commissionRate],
+  );
+
+  const appraisalContactRows = useMemo(
+    () => buildAppraisalListingContactsReport(allListingContactLinks),
+    [allListingContactLinks],
+  );
+
+  const contractConditionRows = useMemo(
+    () =>
+      buildContractConditionsDueReport(
+        reportRows.map((l) => {
+          const row = l as ListingReportRow & {
+            key_date_contract?: string | null;
+            contract_finance_days?: number | null;
+            contract_building_pest_days?: number | null;
+            contract_due_diligence_days?: number | null;
+            contract_subject_sale_days?: number | null;
+            contract_body_corporate_days?: number | null;
+          };
+          return {
+            id: row.id,
+            address: row.address,
+            key_date_contract: row.key_date_contract,
+            contract_finance_days: row.contract_finance_days,
+            contract_building_pest_days: row.contract_building_pest_days,
+            contract_due_diligence_days: row.contract_due_diligence_days,
+            contract_subject_sale_days: row.contract_subject_sale_days,
+            contract_body_corporate_days: row.contract_body_corporate_days,
+          };
+        }),
+        { withinDays: contractConditionWindow, includeOverdue: true },
+      ),
+    [reportRows, contractConditionWindow],
   );
 
   const auctionRows = useMemo(
@@ -1038,6 +1178,494 @@ export default function Reports() {
                   </span>,
                   <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
                     <Link to={`/contacts/${row.contactId}`} aria-label="Open contact">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="suburb" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contact suburb breakdown</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Contacts by suburb/city and state (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="contact-suburb-breakdown"
+                columns={[
+                  { key: "suburb", label: "Suburb" },
+                  { key: "count", label: "Contacts" },
+                ]}
+                data={suburbRows.map((r) => ({ suburb: r.suburbKey, count: r.count }))}
+              />
+            </div>
+            {contactsLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Suburb", "Contacts"]}
+                emptyMessage="No contacts with suburb data."
+                rows={suburbRows.map((row) => [
+                  <span key="s" className="font-medium">
+                    {row.suburbKey}
+                  </span>,
+                  <span key="c" className="tabular-nums">
+                    {row.count}
+                  </span>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="anniversaries" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contact anniversaries</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Upcoming birthdays in the next {anniversaryWindow} days (§9)
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[14, 30, 60].map((days) => (
+                  <Button
+                    key={days}
+                    type="button"
+                    size="sm"
+                    variant={anniversaryWindow === days ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setAnniversaryWindow(days)}
+                  >
+                    {days}d
+                  </Button>
+                ))}
+                <ExportReportButton
+                  filename="contact-anniversaries"
+                  columns={[
+                    { key: "name", label: "Contact" },
+                    { key: "dob", label: "Date of birth" },
+                    { key: "next", label: "Next" },
+                    { key: "days", label: "Days until" },
+                  ]}
+                  data={anniversaryRows.map((r) => ({
+                    name: r.name,
+                    dob: r.dateOfBirth,
+                    next: r.nextOccurrenceLabel,
+                    days: r.daysUntil,
+                  }))}
+                />
+              </div>
+            </div>
+            {contactsLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Contact", "DOB", "Next", "Days", ""]}
+                emptyMessage="No birthdays in this window — add date of birth on contacts."
+                rows={anniversaryRows.map((row) => [
+                  <Link
+                    key="n"
+                    to={`/contacts/${row.contactId}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {row.name}
+                  </Link>,
+                  <span key="d" className="text-sm tabular-nums">
+                    {row.dateOfBirth}
+                  </span>,
+                  <span key="nx" className="text-sm">
+                    {row.nextOccurrenceLabel}
+                  </span>,
+                  <Badge
+                    key="days"
+                    variant={row.daysUntil === 0 ? "default" : "secondary"}
+                    className="font-normal tabular-nums"
+                  >
+                    {row.daysUntil === 0 ? "Today" : `${row.daysUntil}d`}
+                  </Badge>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/contacts/${row.contactId}`} aria-label="Open contact">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="property-contacts" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Prospect property contacts</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Contacts linked to properties in your database (§9)
+                </p>
+              </div>
+              <ExportReportButton
+                filename="prospect-property-contacts"
+                columns={[
+                  { key: "name", label: "Contact" },
+                  { key: "count", label: "Properties" },
+                  { key: "roles", label: "Roles" },
+                  { key: "sample", label: "Sample address" },
+                ]}
+                data={propertyContactRows.map((r) => ({
+                  name: r.name,
+                  count: r.propertyCount,
+                  roles: r.roles,
+                  sample: r.sampleAddress,
+                }))}
+              />
+            </div>
+            {contactsLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Contact", "Properties", "Roles", "Sample address", ""]}
+                emptyMessage="No contacts linked to properties yet."
+                rows={propertyContactRows.map((row) => [
+                  <Link
+                    key="n"
+                    to={`/contacts/${row.contactId}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {row.name}
+                  </Link>,
+                  <span key="c" className="tabular-nums">
+                    {row.propertyCount}
+                  </span>,
+                  <span key="r" className="text-sm text-muted-foreground capitalize">
+                    {row.roles}
+                  </span>,
+                  <span key="a" className="text-sm line-clamp-2">
+                    {row.sampleAddress}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/contacts/${row.contactId}`} aria-label="Open contact">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="contract-conditions" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contract conditions due</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  QLD-style buyer conditions from contract date + day counts (§9)
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[14, 30, 60].map((days) => (
+                  <Button
+                    key={days}
+                    type="button"
+                    size="sm"
+                    variant={contractConditionWindow === days ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setContractConditionWindow(days)}
+                  >
+                    {days}d
+                  </Button>
+                ))}
+                <ExportReportButton
+                  filename="contract-conditions-due"
+                  columns={[
+                    { key: "address", label: "Listing" },
+                    { key: "condition", label: "Condition" },
+                    { key: "due", label: "Due" },
+                    { key: "days", label: "Days until" },
+                    { key: "contract", label: "Contract date" },
+                  ]}
+                  data={contractConditionRows.map((r) => ({
+                    address: r.address,
+                    condition: r.conditionLabel,
+                    due: r.dueDateLabel,
+                    days: r.daysUntil,
+                    contract: r.contractDateLabel,
+                  }))}
+                />
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Listing", "Condition", "Due", "Days", "Contract", ""]}
+                emptyMessage="No conditions due — set contract date and condition days on listings under contract."
+                rows={contractConditionRows.map((row) => [
+                  <Link
+                    key="a"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <span key="c" className="text-sm">
+                    {row.conditionLabel}
+                  </span>,
+                  <span key="d" className="text-sm tabular-nums">
+                    {row.dueDateLabel}
+                  </span>,
+                  <Badge
+                    key="days"
+                    variant={row.daysUntil < 0 ? "destructive" : row.daysUntil <= 3 ? "default" : "secondary"}
+                    className="font-normal tabular-nums"
+                  >
+                    {row.daysUntil < 0 ? `${Math.abs(row.daysUntil)}d overdue` : `${row.daysUntil}d`}
+                  </Badge>,
+                  <span key="cd" className="text-sm text-muted-foreground">
+                    {row.contractDateLabel}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="unconditional" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Upcoming unconditional sales</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Unconditional listings with settlement dates (§9)
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[30, 60, 90].map((days) => (
+                  <Button
+                    key={days}
+                    type="button"
+                    size="sm"
+                    variant={unconditionalWindow === days ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setUnconditionalWindow(days)}
+                  >
+                    {days}d
+                  </Button>
+                ))}
+                <ExportReportButton
+                  filename="upcoming-unconditional"
+                  columns={[
+                    { key: "address", label: "Listing" },
+                    { key: "settlement", label: "Settlement" },
+                    { key: "days", label: "Days until" },
+                    { key: "price", label: "Search price" },
+                  ]}
+                  data={unconditionalRows.map((r) => ({
+                    address: r.address,
+                    settlement: formatReportDate(r.settlementDate),
+                    days: r.daysUntil,
+                    price: reportSearchPrice(r),
+                  }))}
+                />
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Listing", "Settlement", "Days", "Search price", ""]}
+                emptyMessage="No unconditional listings with settlement dates in this window."
+                rows={unconditionalRows.map((row) => [
+                  <Link
+                    key="a"
+                    to={`/listings/${row.id}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <span key="s" className="text-sm">
+                    {formatReportDate(row.settlementDate)}
+                  </span>,
+                  <Badge
+                    key="d"
+                    variant={row.daysUntil < 0 ? "destructive" : "secondary"}
+                    className="font-normal tabular-nums"
+                  >
+                    {row.daysUntil < 0 ? `${Math.abs(row.daysUntil)}d overdue` : `${row.daysUntil}d`}
+                  </Badge>,
+                  <span key="p" className="text-sm tabular-nums">
+                    {reportSearchPrice(row)}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.id}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sales-region" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Sales by region</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Settled and past-client listings by suburb (§9)
+                </p>
+              </div>
+              <ExportReportButton
+                filename="sales-by-region"
+                columns={[
+                  { key: "region", label: "Region" },
+                  { key: "sales", label: "Sales" },
+                  { key: "value", label: "Total value" },
+                ]}
+                data={salesByRegionRows.map((r) => ({
+                  region: r.region,
+                  sales: r.saleCount,
+                  value: r.totalValue,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Region", "Sales", "Total value"]}
+                emptyMessage="No settled sales to group by region."
+                rows={salesByRegionRows.map((row) => [
+                  <span key="r" className="font-medium">
+                    {row.region}
+                  </span>,
+                  <span key="c" className="tabular-nums">
+                    {row.saleCount}
+                  </span>,
+                  <span key="v" className="tabular-nums">
+                    {formatReportAud(row.totalValue)}
+                  </span>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sales-summary" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Listings & sales summary</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Count, value, and projected GCI by pipeline stage (§9)
+                </p>
+              </div>
+              <ExportReportButton
+                filename="listings-sales-summary"
+                columns={[
+                  { key: "stage", label: "Stage" },
+                  { key: "count", label: "Count" },
+                  { key: "value", label: "Total value" },
+                  { key: "gci", label: "Projected GCI" },
+                ]}
+                data={salesSummaryRows.map((r) => ({
+                  stage: r.label,
+                  count: r.count,
+                  value: r.totalValue,
+                  gci: r.projectedGci,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Stage", "Count", "Total value", "Projected GCI"]}
+                emptyMessage="No listings in pipeline."
+                rows={salesSummaryRows.map((row) => [
+                  <span key="s" className="font-medium">
+                    {row.label}
+                  </span>,
+                  <span key="c" className="tabular-nums">
+                    {row.count}
+                  </span>,
+                  <span key="v" className="tabular-nums">
+                    {formatReportAud(row.totalValue)}
+                  </span>,
+                  <span key="g" className="tabular-nums">
+                    {formatReportAud(row.projectedGci)}
+                  </span>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="appraisal-contacts" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Appraisal & listing contacts</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Contacts linked to appraisal or listed stock (§9)
+                </p>
+              </div>
+              <ExportReportButton
+                filename="appraisal-listing-contacts"
+                columns={[
+                  { key: "contact", label: "Contact" },
+                  { key: "listing", label: "Listing" },
+                  { key: "stage", label: "Stage" },
+                  { key: "role", label: "Role" },
+                ]}
+                data={appraisalContactRows.map((r) => ({
+                  contact: r.contactName,
+                  listing: r.listingAddress,
+                  stage: r.stage,
+                  role: r.role,
+                }))}
+              />
+            </div>
+            {listingLinksLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Contact", "Listing", "Stage", "Role", ""]}
+                emptyMessage="No contacts linked to appraisal or listing-stage properties."
+                rows={appraisalContactRows.map((row) => [
+                  <Link
+                    key="c"
+                    to={`/contacts/${row.contactId}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {row.contactName}
+                  </Link>,
+                  <Link
+                    key="l"
+                    to={`/listings/${row.listingId}`}
+                    className="text-sm text-primary hover:underline line-clamp-2"
+                  >
+                    {row.listingAddress}
+                  </Link>,
+                  <Badge key="st" variant="secondary" className="font-normal">
+                    {row.stage}
+                  </Badge>,
+                  <span key="r" className="text-sm capitalize text-muted-foreground">
+                    {row.role}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </Button>,

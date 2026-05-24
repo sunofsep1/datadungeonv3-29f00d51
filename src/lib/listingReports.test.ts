@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAgencyExpiryReport,
+  buildAppraisalListingContactsReport,
+  buildContractConditionsDueReport,
   buildCurrentListingsReport,
+  buildListingsSalesSummaryReport,
+  buildSalesByRegionReport,
+  buildUpcomingUnconditionalReport,
   buildDaysOnMarketReport,
   buildOffersPipelineReport,
   buildPipelineMonitor,
@@ -166,5 +171,88 @@ describe("buildUpcomingSettlementsReport", () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]?.daysUntil).toBe(25);
+  });
+});
+
+describe("buildUpcomingUnconditionalReport", () => {
+  it("includes only unconditional stage with settlement", () => {
+    const rows = buildUpcomingUnconditionalReport(
+      [
+        {
+          ...baseListing,
+          pipeline_stage: "unconditional",
+          key_date_settlement: "2026-06-01T00:00:00.000Z",
+        },
+        {
+          ...baseListing,
+          id: "2",
+          pipeline_stage: "under_contract",
+          key_date_settlement: "2026-06-01T00:00:00.000Z",
+        },
+      ],
+      { withinDays: 60 },
+      new Date("2026-05-21"),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.pipeline_stage).toBe("unconditional");
+  });
+});
+
+describe("buildSalesByRegionReport", () => {
+  it("groups settled listings by region", () => {
+    const rows = buildSalesByRegionReport(
+      [
+        {
+          ...baseListing,
+          pipeline_stage: "settled",
+          address: "1 Test St, Brisbane QLD 4000",
+          search_price: 1_000_000,
+        },
+      ],
+      new Map(),
+    );
+    expect(rows[0]?.region).toBe("Brisbane, QLD");
+    expect(rows[0]?.saleCount).toBe(1);
+  });
+});
+
+describe("buildAppraisalListingContactsReport", () => {
+  it("filters to appraisal and listing stages", () => {
+    const rows = buildAppraisalListingContactsReport([
+      {
+        id: "l1",
+        contact_id: "c1",
+        role: "vendor",
+        contacts: { name: "Vendor Co", first_name: null, last_name: null },
+        listings: { id: "lst1", address: "1 St", pipeline_stage: "appraisal" },
+      },
+      {
+        id: "l2",
+        contact_id: "c2",
+        role: "vendor",
+        contacts: { name: "Sold", first_name: null, last_name: null },
+        listings: { id: "lst2", address: "2 St", pipeline_stage: "settled" },
+      },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.contactName).toBe("Vendor Co");
+  });
+});
+
+describe("buildContractConditionsDueReport", () => {
+  it("lists conditions due within window from contract date", () => {
+    const rows = buildContractConditionsDueReport(
+      [
+        {
+          ...baseListing,
+          key_date_contract: "2026-05-01T00:00:00.000Z",
+          contract_finance_days: 14,
+        },
+      ],
+      { withinDays: 30, includeOverdue: true },
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.conditionLabel).toBe("Finance approval");
+    expect(rows[0]?.daysUntil).toBeLessThanOrEqual(30);
   });
 });

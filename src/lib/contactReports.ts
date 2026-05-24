@@ -4,6 +4,7 @@ import {
   CONTACT_SUBSCRIPTION_LABELS,
   type ContactSubscriptionKind,
 } from "@/lib/contactSubscriptions";
+import { daysUntilNextBirthday } from "@/lib/contactBirthday";
 
 export type ContactSourceRow = {
   source: string;
@@ -197,6 +198,114 @@ export function buildContactUnsubscribedReport(
     });
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export type ContactSuburbRow = {
+  suburbKey: string;
+  count: number;
+};
+
+/** §9 Contact Suburb Breakdown — contacts grouped by suburb/city + state. */
+export function contactSuburbKey(
+  cityInput: string | null | undefined,
+  stateInput: string | null | undefined,
+): string {
+  const city = (cityInput ?? "").trim();
+  const st = (stateInput ?? "").trim().toUpperCase();
+  if (!city && !st) return "Unknown";
+  if (city && st) return `${city}, ${st}`;
+  return city || st;
+}
+
+export function buildContactSuburbBreakdownReport(
+  contacts: { city?: string | null; state?: string | null }[],
+): ContactSuburbRow[] {
+  const counts = new Map<string, number>();
+  for (const c of contacts) {
+    const key = contactSuburbKey(c.city, c.state);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([suburbKey, count]) => ({ suburbKey, count }))
+    .sort((a, b) => b.count - a.count || a.suburbKey.localeCompare(b.suburbKey));
+}
+
+export type ContactAnniversaryRow = {
+  contactId: string;
+  name: string;
+  dateOfBirth: string;
+  daysUntil: number;
+  nextOccurrenceLabel: string;
+};
+
+/** §9 Contact Anniversary — upcoming birthdays (DOB) within window. */
+export function buildContactAnniversaryReport(
+  contacts: { id: string; name: string | null; date_of_birth?: string | null }[],
+  withinDays = 30,
+  from: Date = new Date(),
+): ContactAnniversaryRow[] {
+  const rows: ContactAnniversaryRow[] = [];
+  for (const c of contacts) {
+    const dob = c.date_of_birth?.trim();
+    if (!dob) continue;
+    const daysUntil = daysUntilNextBirthday(dob, from);
+    if (daysUntil == null || daysUntil > withinDays) continue;
+    const born = parseISO(`${dob.slice(0, 10)}T12:00:00`);
+    if (Number.isNaN(born.getTime())) continue;
+    const y = from.getFullYear();
+    let next = new Date(y, born.getMonth(), born.getDate(), 12, 0, 0);
+    if (next < from) next = new Date(y + 1, born.getMonth(), born.getDate(), 12, 0, 0);
+    rows.push({
+      contactId: c.id,
+      name: c.name?.trim() || "Unnamed",
+      dateOfBirth: dob.slice(0, 10),
+      daysUntil,
+      nextOccurrenceLabel: format(next, "d MMM yyyy"),
+    });
+  }
+  return rows.sort((a, b) => a.daysUntil - b.daysUntil || a.name.localeCompare(b.name));
+}
+
+export type ProspectPropertyContactRow = {
+  contactId: string;
+  name: string;
+  propertyCount: number;
+  roles: string;
+  sampleAddress: string;
+};
+
+/** §9 Prospect Property Contacts — contacts linked to at least one property. */
+export function buildProspectPropertyContactsReport(
+  contacts: {
+    id: string;
+    name: string | null;
+    contact_property_links?: Array<{
+      role?: string | null;
+      properties?: { address_line1?: string | null; city?: string | null } | null;
+    }>;
+  }[],
+): ProspectPropertyContactRow[] {
+  return contacts
+    .filter((c) => (c.contact_property_links?.length ?? 0) > 0)
+    .map((c) => {
+      const links = c.contact_property_links ?? [];
+      const roles = [
+        ...new Set(
+          links.map((l) => (l.role?.trim() ? l.role.trim().replace(/_/g, " ") : "linked")),
+        ),
+      ].join(", ");
+      const prop = links[0]?.properties;
+      const sampleAddress =
+        [prop?.address_line1, prop?.city].filter(Boolean).join(", ").trim() || "—";
+      return {
+        contactId: c.id,
+        name: c.name?.trim() || "Unnamed",
+        propertyCount: links.length,
+        roles,
+        sampleAddress,
+      };
+    })
+    .sort((a, b) => b.propertyCount - a.propertyCount || a.name.localeCompare(b.name));
 }
 
 export function formatContactCreatedMonth(iso: string | null | undefined): string {

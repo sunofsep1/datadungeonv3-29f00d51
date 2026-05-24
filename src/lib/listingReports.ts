@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, format, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
+import { QLD_CONTRACT_CONDITIONS, type QldConditionField } from "@/lib/qldContractConditions";
 import {
   LISTING_KANBAN_COLUMN_IDS,
   LISTING_PIPELINE_STAGE_OPTIONS,
@@ -7,6 +8,7 @@ import {
 } from "@/lib/listingKanbanStages";
 import { offerStatusLabel } from "@/lib/listingOffers";
 import { listingPublicPriceLabel, listingSearchPrice, type ListingPriceSource } from "@/lib/listingPriceFields";
+import { listingRegionKey } from "@/lib/listingAddressRegion";
 
 export type ListingReportRow = ListingPriceSource & {
   id: string;
@@ -23,6 +25,7 @@ export type ListingReportRow = ListingPriceSource & {
   campaign_inspection_count?: number | null;
   campaign_offers_count?: number | null;
   commission_gross_pct?: number | null;
+  property_id?: string | null;
   contacts?: { id: string; name: string } | null;
 };
 
@@ -258,6 +261,222 @@ export type OfferReportInput = {
   status: string;
   buyer?: { name: string | null; first_name: string | null; last_name: string | null } | null;
 };
+
+export type ContractConditionDueRow = {
+  listingId: string;
+  address: string;
+  conditionLabel: string;
+  dueDateIso: string;
+  dueDateLabel: string;
+  daysUntil: number;
+  contractDateLabel: string;
+};
+
+type ListingContractFields = {
+  id: string;
+  address: string;
+  key_date_contract?: string | null;
+} & Partial<Record<QldConditionField, number | null>>;
+
+function parseContractAnchor(iso: string | null | undefined): Date | null {
+  if (!iso?.trim()) return null;
+  try {
+    const d = iso.includes("T") ? parseISO(iso) : parseISO(`${iso.slice(0, 10)}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? null : startOfDay(d);
+  } catch {
+    return null;
+  }
+}
+
+/** §9 Contract Conditions Due — QLD-style condition deadlines from contract date + day counts. */
+export function buildContractConditionsDueReport(
+  listings: ListingContractFields[],
+  options: { withinDays?: number; includeOverdue?: boolean } = {},
+): ContractConditionDueRow[] {
+  const withinDays = options.withinDays ?? 30;
+  const includeOverdue = options.includeOverdue !== false;
+  const today = startOfDay(new Date());
+  const rows: ContractConditionDueRow[] = [];
+
+  for (const listing of listings) {
+    const contractStart = parseContractAnchor(listing.key_date_contract);
+    if (!contractStart) continue;
+
+    for (const cond of QLD_CONTRACT_CONDITIONS) {
+      const days = listing[cond.field];
+      if (days == null || !Number.isFinite(days) || days <= 0) continue;
+      const due = startOfDay(addDays(contractStart, days));
+      const daysUntil = differenceInCalendarDays(due, today);
+      if (!includeOverdue && daysUntil < 0) continue;
+      if (daysUntil > withinDays) continue;
+
+      rows.push({
+        listingId: listing.id,
+        address: listing.address,
+        conditionLabel: cond.title,
+        dueDateIso: format(due, "yyyy-MM-dd"),
+        dueDateLabel: format(due, "d MMM yyyy"),
+        daysUntil,
+        contractDateLabel: format(contractStart, "d MMM yyyy"),
+      });
+    }
+  }
+
+  return rows.sort(
+    (a, b) =>
+      a.daysUntil - b.daysUntil ||
+      a.dueDateIso.localeCompare(b.dueDateIso) ||
+      a.address.localeCompare(b.address),
+  );
+}
+
+export type UpcomingUnconditionalRow = ListingReportRow & {
+  settlementDate: string;
+  daysUntil: number;
+};
+
+/** §9 Upcoming unconditional sales — unconditional stage with settlement dates. */
+export function buildUpcomingUnconditionalReport(
+  listings: ListingReportRow[],
+  options: { withinDays?: number; includePast?: boolean } = {},
+  asOf: Date = new Date(),
+): UpcomingUnconditionalRow[] {
+  const withinDays = options.withinDays ?? 60;
+  const includePast = options.includePast ?? false;
+  const rows: UpcomingUnconditionalRow[] = [];
+
+  for (const listing of listings) {
+    if (listingKanbanColumnId(listing.pipeline_stage) !== "unconditional") continue;
+    const daysUntil = daysUntilSettlement(listing, asOf);
+    const raw = listing.key_date_settlement?.trim();
+    if (daysUntil == null || !raw) continue;
+    if (daysUntil > withinDays) continue;
+    if (!includePast && daysUntil < 0) continue;
+    rows.push({ ...listing, settlementDate: raw, daysUntil });
+  }
+
+  return rows.sort((a, b) => a.daysUntil - b.daysUntil || a.address.localeCompare(b.address));
+}
+
+export type SalesByRegionRow = {
+  region: string;
+  saleCount: number;
+  totalValue: number;
+};
+
+/** §9 Sales by region — settled / past client listings grouped by suburb. */
+export function buildSalesByRegionReport(
+  listings: ListingReportRow[],
+  propertyById: Map<string, { city?: string | null; suburb?: string | null; state?: string | null }>,
+): SalesByRegionRow[] {
+  const buckets = new Map<string, { count: number; value: number }>();
+
+  for (const listing of listings) {
+    const col = listingKanbanColumnId(listing.pipeline_stage);
+    if (col !== "settled" && col !== "past_client") continue;
+    const price = listingSearchPrice(listing);
+    const propertyId = (listing as { property_id?: string | null }).property_id;
+    const property = propertyId ? propertyById.get(propertyId) : null;
+    const region = listingRegionKey(listing.address, property);
+    const cur = buckets.get(region) ?? { count: 0, value: 0 };
+    cur.count += 1;
+    if (price != null) cur.value += price;
+    buckets.set(region, cur);
+  }
+
+  return [...buckets.entries()]
+    .map(([region, { count, value }]) => ({
+      region,
+      saleCount: count,
+      totalValue: value,
+    }))
+    .sort((a, b) => b.saleCount - a.saleCount || b.totalValue - a.totalValue || a.region.localeCompare(b.region));
+}
+
+export type ListingsSalesSummaryRow = {
+  stage: ListingKanbanColumnId;
+  label: string;
+  count: number;
+  totalValue: number;
+  projectedGci: number;
+};
+
+/** §9 No. of listings / sales summary — pipeline stage counts with value and GCI. */
+export function buildListingsSalesSummaryReport(
+  listings: ListingReportRow[],
+  commissionRatePct: number,
+): ListingsSalesSummaryRow[] {
+  const rate = Number.isFinite(commissionRatePct) ? Math.max(0, commissionRatePct) : 0;
+  const monitor = buildPipelineMonitor(listings);
+  return monitor.map((bucket) => {
+    let totalValue = 0;
+    let projectedGci = 0;
+    for (const l of bucket.listings) {
+      const price = listingSearchPrice(l);
+      if (price != null) {
+        totalValue += price;
+        projectedGci += (price * rate) / 100;
+      }
+    }
+    return {
+      stage: bucket.stage,
+      label: bucket.label,
+      count: bucket.count,
+      totalValue,
+      projectedGci,
+    };
+  });
+}
+
+export type AppraisalListingContactRow = {
+  linkId: string;
+  contactId: string;
+  contactName: string;
+  listingId: string;
+  listingAddress: string;
+  stage: string;
+  role: string;
+};
+
+const APPRAISAL_LISTING_STAGES = new Set<ListingKanbanColumnId>(["appraisal", "listing"]);
+
+/** §9 Appraisal / listing contacts — people linked to pre-sale listings. */
+export function buildAppraisalListingContactsReport(
+  links: Array<{
+    id: string;
+    contact_id: string;
+    role: string;
+    contacts?: { name: string | null; first_name: string | null; last_name: string | null } | null;
+    listings?: { id: string; address: string | null; pipeline_stage: string | null } | null;
+  }>,
+): AppraisalListingContactRow[] {
+  const rows: AppraisalListingContactRow[] = [];
+  for (const link of links) {
+    const listing = link.listings;
+    if (!listing) continue;
+    const col = listingKanbanColumnId(listing.pipeline_stage);
+    if (!APPRAISAL_LISTING_STAGES.has(col)) continue;
+    const c = link.contacts;
+    const contactName =
+      c?.name?.trim() ||
+      [c?.first_name, c?.last_name].filter(Boolean).join(" ").trim() ||
+      "Unnamed";
+    rows.push({
+      linkId: link.id,
+      contactId: link.contact_id,
+      contactName,
+      listingId: listing.id,
+      listingAddress: listing.address?.trim() || "—",
+      stage: pipelineStageLabel(listing.pipeline_stage),
+      role: link.role.replace(/_/g, " "),
+    });
+  }
+  return rows.sort(
+    (a, b) =>
+      a.listingAddress.localeCompare(b.listingAddress) ||
+      a.contactName.localeCompare(b.contactName),
+  );
+}
 
 export function buildOffersPipelineReport(
   offers: OfferReportInput[],

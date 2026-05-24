@@ -29,6 +29,32 @@ export type ListingContactLink = {
   contacts?: { id: string; name: string | null; first_name: string | null; last_name: string | null } | null;
 };
 
+export type ListingContactLinkWithListing = ListingContactLink & {
+  listings?: {
+    id: string;
+    address: string | null;
+    pipeline_stage: string | null;
+  } | null;
+};
+
+/** All listing↔contact links for reports (appraisal/listing contacts). */
+export function useAllListingContactLinks() {
+  return useQuery({
+    queryKey: ["listing_contact_links", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listing_contact_links")
+        .select("*, contacts(id, name, first_name, last_name), listings(id, address, pipeline_stage)")
+        .order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === "42P01") return [] as ListingContactLinkWithListing[];
+        throw error;
+      }
+      return (data ?? []) as ListingContactLinkWithListing[];
+    },
+  });
+}
+
 export function useListingContactLinks(listingId: string | undefined) {
   return useQuery({
     queryKey: ["listing_contact_links", listingId ?? ""],

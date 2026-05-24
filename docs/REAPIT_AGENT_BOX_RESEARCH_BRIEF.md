@@ -507,3 +507,7 @@ After these three, evaluate whether to push into Marketing Funds, Portal Exports
 | 2026-05-24 | **Requirements search** — saved searches, land/building/features filters | Saved searches menu on requirements page |
 | 2026-05-24 | **Reports** — Contact class statistics | `/reports?tab=class-stats` |
 | 2026-05-24 | **Contacts list** — class segment badges on cards | Contacts list/grid |
+| 2026-05-24 | **Listing clone + vendor preview** | Listing header · `/listings/:id/vendor-preview` |
+| 2026-05-24 | **CSV import** — duplicate preview; saved views class/subscription filters | Contacts → Import CSV |
+| 2026-05-24 | **Reports** — Unsubscribed, suburb breakdown, anniversaries, property contacts, contract conditions due | `/reports?tab=unsubscribed` · `suburb` · `anniversaries` · `property-contacts` · `contract-conditions` |
+| 2026-05-24 | **Reports** — Unconditional sales, sales by region, listings/sales summary, appraisal contacts | `?tab=unconditional` · `sales-region` · `sales-summary` · `appraisal-contacts` |
