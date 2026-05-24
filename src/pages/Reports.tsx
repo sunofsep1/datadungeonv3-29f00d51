@@ -11,6 +11,7 @@ import {
   Home,
   List,
   MapPin,
+  DollarSign,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -29,11 +30,20 @@ import { useAllListingOffers } from "@/hooks/useListingOffers";
 import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
 import { useAllListingContactLinks } from "@/hooks/useListingContactLinks";
+import { useBuyerRequirements } from "@/hooks/useBuyerRequirements";
+import { useUpcomingOpenInspections } from "@/hooks/useListingOpenInspections";
 import { buildReportsSnapshot } from "@/lib/reportsSnapshot";
 import {
   buildAgencyExpiryReport,
   buildAppraisalListingContactsReport,
+  buildAuctionClearanceSummary,
+  buildAuctionsBookedReport,
   buildContractConditionsDueReport,
+  buildDatabaseUsageMetrics,
+  buildDetailedListingsReport,
+  buildDetailedSalesAnalysisReport,
+  buildGrossNetCommissionReport,
+  buildListToSellClearanceReport,
   buildCurrentListingsReport,
   buildListingsSalesSummaryReport,
   buildSalesByRegionReport,
@@ -90,7 +100,14 @@ type ReportTab =
   | "unconditional"
   | "sales-region"
   | "sales-summary"
-  | "appraisal-contacts";
+  | "appraisal-contacts"
+  | "database"
+  | "detailed-listings"
+  | "sales-analysis"
+  | "commission-summary"
+  | "auctions-booked"
+  | "auction-clearance"
+  | "list-to-sell";
 
 const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
   { id: "pipeline", label: "Pipeline monitor", icon: BarChart3 },
@@ -113,6 +130,13 @@ const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = 
   { id: "sales-region", label: "Sales by region", icon: MapPin },
   { id: "sales-summary", label: "Listings & sales", icon: BarChart3 },
   { id: "appraisal-contacts", label: "Appraisal contacts", icon: Users },
+  { id: "database", label: "Database usage", icon: BarChart3 },
+  { id: "detailed-listings", label: "Detailed listings", icon: List },
+  { id: "sales-analysis", label: "Sales analysis", icon: TrendingUp },
+  { id: "commission-summary", label: "Gross / net GCI", icon: DollarSign },
+  { id: "auctions-booked", label: "Auctions booked", icon: CalendarClock },
+  { id: "auction-clearance", label: "Auction clearance", icon: Home },
+  { id: "list-to-sell", label: "List to sell", icon: TrendingUp },
 ];
 
 function ReportTable({
@@ -185,7 +209,14 @@ export default function Reports() {
     tabParam === "unconditional" ||
     tabParam === "sales-region" ||
     tabParam === "sales-summary" ||
-    tabParam === "appraisal-contacts"
+    tabParam === "appraisal-contacts" ||
+    tabParam === "database" ||
+    tabParam === "detailed-listings" ||
+    tabParam === "sales-analysis" ||
+    tabParam === "commission-summary" ||
+    tabParam === "auctions-booked" ||
+    tabParam === "auction-clearance" ||
+    tabParam === "list-to-sell"
       ? tabParam
       : "pipeline";
   const [expiryWindow, setExpiryWindow] = useState(90);
@@ -202,6 +233,8 @@ export default function Reports() {
   const { data: contactClasses = [] } = useContactClasses();
   const { data: classAssignmentIndex = new Map() } = useContactClassAssignmentIndex();
   const { data: subscriptionIndex = new Map() } = useContactSubscriptionIndex();
+  const { data: buyerRequirements = [] } = useBuyerRequirements();
+  const { data: upcomingInspections = [] } = useUpcomingOpenInspections(150);
   const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
@@ -339,6 +372,39 @@ export default function Reports() {
     () => buildAppraisalListingContactsReport(allListingContactLinks),
     [allListingContactLinks],
   );
+
+  const databaseMetrics = useMemo(
+    () =>
+      buildDatabaseUsageMetrics({
+        contactCount: contacts.length,
+        listingCount: reportRows.length,
+        propertyCount: properties.length,
+        requirementCount: buyerRequirements.length,
+        listings: reportRows,
+      }),
+    [contacts.length, reportRows, properties.length, buyerRequirements.length],
+  );
+
+  const detailedListingRows = useMemo(() => buildDetailedListingsReport(reportRows), [reportRows]);
+
+  const detailedSalesRows = useMemo(
+    () => buildDetailedSalesAnalysisReport(reportRows, propertyById, commissionRate),
+    [reportRows, propertyById, commissionRate],
+  );
+
+  const grossNetRows = useMemo(
+    () => buildGrossNetCommissionReport(reportRows, commissionRate),
+    [reportRows, commissionRate],
+  );
+
+  const auctionsBookedRows = useMemo(
+    () => buildAuctionsBookedReport(upcomingInspections),
+    [upcomingInspections],
+  );
+
+  const auctionClearance = useMemo(() => buildAuctionClearanceSummary(reportRows), [reportRows]);
+
+  const listToSellRows = useMemo(() => buildListToSellClearanceReport(reportRows), [reportRows]);
 
   const contractConditionRows = useMemo(
     () =>
@@ -1672,6 +1738,368 @@ export default function Reports() {
                 ])}
               />
             )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="database" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Database usage</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">CRM footprint (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="database-usage"
+                columns={[
+                  { key: "metric", label: "Metric" },
+                  { key: "value", label: "Count" },
+                ]}
+                data={databaseMetrics.map((r) => ({ metric: r.metric, value: r.value }))}
+              />
+            </div>
+            <ReportTable
+              headers={["Metric", "Count"]}
+              emptyMessage="No data."
+              rows={databaseMetrics.map((row) => [
+                <span key="m" className="font-medium">
+                  {row.metric}
+                  {row.hint ? (
+                    <span className="block text-[10px] font-normal text-muted-foreground">{row.hint}</span>
+                  ) : null}
+                </span>,
+                <span key="v" className="tabular-nums text-lg font-semibold">
+                  {row.value.toLocaleString()}
+                </span>,
+              ])}
+            />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="detailed-listings" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Detailed listings</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Active stock with pricing and DOM (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="detailed-listings"
+                columns={[
+                  { key: "address", label: "Address" },
+                  { key: "stage", label: "Stage" },
+                  { key: "search", label: "Search price" },
+                  { key: "display", label: "Display price" },
+                  { key: "dom", label: "DOM" },
+                  { key: "listed", label: "Listed" },
+                ]}
+                data={detailedListingRows.map((r) => ({
+                  address: r.address,
+                  stage: r.stage,
+                  search: r.searchPrice ?? "",
+                  display: r.displayPrice,
+                  dom: r.domDays ?? "",
+                  listed: r.listedDate,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Listing", "Stage", "Search", "Display", "DOM", "Listed", ""]}
+                emptyMessage="No active listings."
+                rows={detailedListingRows.map((row) => [
+                  <Link
+                    key="a"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <span key="s" className="text-sm">
+                    {row.stage}
+                  </span>,
+                  <span key="sp" className="text-sm tabular-nums">
+                    {formatReportAud(row.searchPrice)}
+                  </span>,
+                  <span key="dp" className="text-sm">
+                    {row.displayPrice}
+                  </span>,
+                  <span key="dom" className="tabular-nums">
+                    {row.domDays ?? "—"}
+                  </span>,
+                  <span key="ld" className="text-sm">
+                    {row.listedDate}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sales-analysis" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Detailed sales analysis</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Settled stock with commission estimates (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="detailed-sales-analysis"
+                columns={[
+                  { key: "address", label: "Address" },
+                  { key: "region", label: "Region" },
+                  { key: "price", label: "Sale price" },
+                  { key: "dom", label: "DOM" },
+                  { key: "ex", label: "GCI ex GST" },
+                  { key: "inc", label: "GCI inc GST" },
+                ]}
+                data={detailedSalesRows.map((r) => ({
+                  address: r.address,
+                  region: r.region,
+                  price: r.salePrice ?? "",
+                  dom: r.domDays ?? "",
+                  ex: r.grossExGst,
+                  inc: r.grossIncGst,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Listing", "Region", "Sale price", "DOM", "GCI ex GST", "GCI inc GST", ""]}
+                emptyMessage="No settled sales yet."
+                rows={detailedSalesRows.map((row) => [
+                  <Link
+                    key="a"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <span key="r" className="text-sm">
+                    {row.region}
+                  </span>,
+                  <span key="p" className="tabular-nums">
+                    {formatReportAud(row.salePrice)}
+                  </span>,
+                  <span key="d" className="tabular-nums">
+                    {row.domDays ?? "—"}
+                  </span>,
+                  <span key="ex" className="tabular-nums">
+                    {formatReportAud(row.grossExGst)}
+                  </span>,
+                  <span key="inc" className="tabular-nums">
+                    {formatReportAud(row.grossIncGst)}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="commission-summary" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Gross / net commission</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Contract-stage listings with GST split (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="gross-net-commission"
+                columns={[
+                  { key: "address", label: "Address" },
+                  { key: "stage", label: "Stage" },
+                  { key: "price", label: "Sale price" },
+                  { key: "pct", label: "Commission %" },
+                  { key: "ex", label: "Ex GST" },
+                  { key: "gst", label: "GST" },
+                  { key: "inc", label: "Inc GST" },
+                ]}
+                data={grossNetRows.map((r) => ({
+                  address: r.address,
+                  stage: r.stage,
+                  price: r.salePrice,
+                  pct: r.commissionPct,
+                  ex: r.grossExGst,
+                  gst: r.gstAmount,
+                  inc: r.grossIncGst,
+                }))}
+              />
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Listing", "Stage", "Sale price", "%", "Ex GST", "GST", "Inc GST", ""]}
+                emptyMessage="No contract-stage listings with search price."
+                rows={grossNetRows.map((row) => [
+                  <Link
+                    key="a"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <span key="s" className="text-sm">
+                    {row.stage}
+                  </span>,
+                  <span key="p" className="tabular-nums">
+                    {formatReportAud(row.salePrice)}
+                  </span>,
+                  <span key="pct" className="tabular-nums">
+                    {row.commissionPct}%
+                  </span>,
+                  <span key="ex" className="tabular-nums">
+                    {formatReportAud(row.grossExGst)}
+                  </span>,
+                  <span key="gst" className="tabular-nums">
+                    {formatReportAud(row.gstAmount)}
+                  </span>,
+                  <span key="inc" className="tabular-nums">
+                    {formatReportAud(row.grossIncGst)}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="auctions-booked" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Auctions booked</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Upcoming OFIs on auction listings (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="auctions-booked"
+                columns={[
+                  { key: "address", label: "Listing" },
+                  { key: "when", label: "Inspection" },
+                  { key: "type", label: "Type" },
+                ]}
+                data={auctionsBookedRows.map((r) => ({
+                  address: r.address,
+                  when: r.startsLabel,
+                  type: r.openType,
+                }))}
+              />
+            </div>
+            {auctionsBookedRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No upcoming inspections on auction listings. Schedule OFIs and mark listings as auction.
+              </p>
+            ) : (
+              <ReportTable
+                headers={["Listing", "Inspection", "Type", ""]}
+                emptyMessage="No auctions booked."
+                rows={auctionsBookedRows.map((row) => [
+                  <Link
+                    key="a"
+                    to={`/listings/${row.listingId}`}
+                    className="font-medium text-primary hover:underline line-clamp-2"
+                  >
+                    {row.address}
+                  </Link>,
+                  <span key="w" className="text-sm">
+                    {row.startsLabel}
+                  </span>,
+                  <span key="t" className="text-sm capitalize text-muted-foreground">
+                    {row.openType}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/listings/${row.listingId}`} aria-label="Open listing">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="auction-clearance" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold">Auction clearance</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Sold vs total auction stock (§9)</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Auction stock</p>
+                <p className="text-2xl font-semibold tabular-nums">{auctionClearance.auctionStock}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Sold</p>
+                <p className="text-2xl font-semibold tabular-nums">{auctionClearance.soldAtAuction}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Active</p>
+                <p className="text-2xl font-semibold tabular-nums">{auctionClearance.activeAuction}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-[10px] uppercase text-muted-foreground">Clearance</p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {auctionClearance.clearancePct != null ? `${auctionClearance.clearancePct}%` : "—"}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="list-to-sell" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">List to sell clearance</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Appraisal → listed conversion (§9)</p>
+              </div>
+              <ExportReportButton
+                filename="list-to-sell-clearance"
+                columns={[
+                  { key: "stage", label: "Stage" },
+                  { key: "count", label: "Count" },
+                  { key: "pct", label: "% of appraisals" },
+                ]}
+                data={listToSellRows.map((r) => ({
+                  stage: r.stage,
+                  count: r.count,
+                  pct: r.pctOfAppraisals ?? "",
+                }))}
+              />
+            </div>
+            <ReportTable
+              headers={["Metric", "Count", "% of appraisals"]}
+              emptyMessage="No listings."
+              rows={listToSellRows.map((row) => [
+                <span key="s" className="font-medium">
+                  {row.stage}
+                </span>,
+                <span key="c" className="tabular-nums">
+                  {row.count}
+                </span>,
+                <span key="p" className="tabular-nums">
+                  {row.pctOfAppraisals != null ? `${row.pctOfAppraisals}%` : "—"}
+                </span>,
+              ])}
+            />
           </Card>
         </TabsContent>
       </Tabs>

@@ -9,6 +9,7 @@ import {
 import { offerStatusLabel } from "@/lib/listingOffers";
 import { listingPublicPriceLabel, listingSearchPrice, type ListingPriceSource } from "@/lib/listingPriceFields";
 import { listingRegionKey } from "@/lib/listingAddressRegion";
+import { calculateListingCommission } from "@/lib/listingCommission";
 
 export type ListingReportRow = ListingPriceSource & {
   id: string;
@@ -476,6 +477,269 @@ export function buildAppraisalListingContactsReport(
       a.listingAddress.localeCompare(b.listingAddress) ||
       a.contactName.localeCompare(b.contactName),
   );
+}
+
+export type DatabaseUsageMetric = {
+  metric: string;
+  value: number;
+  hint?: string;
+};
+
+/** §9 Database usage — CRM footprint snapshot. */
+export function buildDatabaseUsageMetrics(input: {
+  contactCount: number;
+  listingCount: number;
+  propertyCount: number;
+  requirementCount: number;
+  listings: ListingReportRow[];
+}): DatabaseUsageMetric[] {
+  let active = 0;
+  let sold = 0;
+  let auction = 0;
+  for (const l of input.listings) {
+    const col = listingKanbanColumnId(l.pipeline_stage);
+    if (col === "settled" || col === "past_client") sold++;
+    else if (col !== "appraisal") active++;
+    const row = l as { listed_as_auction?: boolean; sale_method?: string | null };
+    if (row.listed_as_auction || (row.sale_method ?? "").toLowerCase() === "auction") auction++;
+  }
+  return [
+    { metric: "Contacts", value: input.contactCount },
+    { metric: "Properties", value: input.propertyCount },
+    { metric: "Buyer requirements", value: input.requirementCount },
+    { metric: "Listings (all)", value: input.listingCount },
+    { metric: "Active pipeline listings", value: active, hint: "Excludes settled / past client" },
+    { metric: "Sold / past client", value: sold },
+    { metric: "Auction stock", value: auction },
+  ];
+}
+
+export type ListToSellRow = {
+  stage: string;
+  count: number;
+  pctOfAppraisals: number | null;
+};
+
+/** §9 List to sell clearance — appraisal vs listed stock. */
+export function buildListToSellClearanceReport(listings: ListingReportRow[]): ListToSellRow[] {
+  const counts = new Map<string, number>();
+  for (const l of listings) {
+    const col = listingKanbanColumnId(l.pipeline_stage);
+    counts.set(col, (counts.get(col) ?? 0) + 1);
+  }
+  const appraisals = counts.get("appraisal") ?? 0;
+  const listed =
+    (counts.get("listing") ?? 0) +
+    (counts.get("under_contract") ?? 0) +
+    (counts.get("unconditional") ?? 0) +
+    (counts.get("settled") ?? 0) +
+    (counts.get("past_client") ?? 0);
+  const rows: ListToSellRow[] = [
+    { stage: "Appraisal", count: appraisals, pctOfAppraisals: appraisals > 0 ? 100 : null },
+    { stage: "Listed onward", count: listed, pctOfAppraisals: appraisals > 0 ? Math.round((listed / appraisals) * 100) : null },
+    {
+      stage: "Clearance (listed ÷ appraisal)",
+      count: listed,
+      pctOfAppraisals: appraisals > 0 ? Math.round((listed / appraisals) * 100) : null,
+    },
+  ];
+  return rows;
+}
+
+export type AuctionClearanceSummary = {
+  auctionStock: number;
+  soldAtAuction: number;
+  clearancePct: number | null;
+  activeAuction: number;
+};
+
+export function buildAuctionClearanceSummary(listings: ListingReportRow[]): AuctionClearanceSummary {
+  let auctionStock = 0;
+  let soldAtAuction = 0;
+  let activeAuction = 0;
+  for (const l of listings) {
+    const row = l as { listed_as_auction?: boolean; sale_method?: string | null };
+    const isAuction =
+      row.listed_as_auction === true || (row.sale_method ?? "").toLowerCase() === "auction";
+    if (!isAuction) continue;
+    auctionStock++;
+    const col = listingKanbanColumnId(l.pipeline_stage);
+    if (col === "settled" || col === "past_client") soldAtAuction++;
+    else activeAuction++;
+  }
+  return {
+    auctionStock,
+    soldAtAuction,
+    clearancePct: auctionStock > 0 ? Math.round((soldAtAuction / auctionStock) * 100) : null,
+    activeAuction,
+  };
+}
+
+export type AuctionBookedRow = {
+  inspectionId: string;
+  listingId: string;
+  address: string;
+  startsAt: string;
+  startsLabel: string;
+  openType: string;
+};
+
+/** §9 Auctions booked — upcoming OFIs on auction listings. */
+export function buildAuctionsBookedReport(
+  inspections: Array<{
+    id: string;
+    starts_at: string;
+    open_type: string;
+    listing_id: string;
+    listings?: { id: string; address: string | null; listed_as_auction?: boolean; sale_method?: string | null } | null;
+  }>,
+): AuctionBookedRow[] {
+  const rows: AuctionBookedRow[] = [];
+  for (const insp of inspections) {
+    const listing = insp.listings;
+    if (!listing) continue;
+    const isAuction =
+      listing.listed_as_auction === true ||
+      (listing.sale_method ?? "").toLowerCase() === "auction";
+    if (!isAuction) continue;
+    let startsLabel = "—";
+    try {
+      startsLabel = format(parseISO(insp.starts_at), "EEE d MMM yyyy, h:mm a");
+    } catch {
+      /* ignore */
+    }
+    rows.push({
+      inspectionId: insp.id,
+      listingId: listing.id,
+      address: listing.address?.trim() || "—",
+      startsAt: insp.starts_at,
+      startsLabel,
+      openType: insp.open_type.replace(/_/g, " "),
+    });
+  }
+  return rows.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
+export type DetailedListingRow = {
+  listingId: string;
+  address: string;
+  stage: string;
+  searchPrice: number | null;
+  displayPrice: string;
+  domDays: number | null;
+  listedDate: string;
+};
+
+/** §9 Detailed listings — active stock with pricing and DOM. */
+export function buildDetailedListingsReport(
+  listings: ListingReportRow[],
+  asOf: Date = new Date(),
+): DetailedListingRow[] {
+  return buildCurrentListingsReport(listings)
+    .map((l) => {
+      const dom = listingDaysOnMarket(l, asOf);
+      const listed = listingListedDateIso(l);
+      return {
+        listingId: l.id,
+        address: l.address,
+        stage: pipelineStageLabel(l.pipeline_stage),
+        searchPrice: listingSearchPrice(l),
+        displayPrice: reportPublicPrice(l),
+        domDays: dom,
+        listedDate: listed ? formatReportDate(listed) : "—",
+      };
+    })
+    .sort((a, b) => (b.domDays ?? -1) - (a.domDays ?? -1) || a.address.localeCompare(b.address));
+}
+
+export type DetailedSalesRow = {
+  listingId: string;
+  address: string;
+  region: string;
+  salePrice: number | null;
+  domDays: number | null;
+  grossExGst: number;
+  grossIncGst: number;
+};
+
+/** §9 Detailed sales analysis — settled stock with commission estimates. */
+export function buildDetailedSalesAnalysisReport(
+  listings: ListingReportRow[],
+  propertyById: Map<string, { city?: string | null; suburb?: string | null; state?: string | null }>,
+  commissionRatePct: number,
+  asOf: Date = new Date(),
+): DetailedSalesRow[] {
+  const rows: DetailedSalesRow[] = [];
+  for (const l of listings) {
+    const col = listingKanbanColumnId(l.pipeline_stage);
+    if (col !== "settled" && col !== "past_client") continue;
+    const price = listingSearchPrice(l);
+    const pct =
+      (l as { commission_gross_pct?: number | null }).commission_gross_pct ?? commissionRatePct;
+    const totals = calculateListingCommission({
+      salePrice: price ?? 0,
+      grossCommissionPct: pct ?? 0,
+    });
+    const propertyId = (l as { property_id?: string | null }).property_id;
+    rows.push({
+      listingId: l.id,
+      address: l.address,
+      region: listingRegionKey(l.address, propertyId ? propertyById.get(propertyId) : null),
+      salePrice: price,
+      domDays: listingDaysOnMarket(l, asOf),
+      grossExGst: totals.grossExGst,
+      grossIncGst: totals.grossIncGst,
+    });
+  }
+  return rows.sort((a, b) => (b.salePrice ?? 0) - (a.salePrice ?? 0) || a.address.localeCompare(b.address));
+}
+
+export type GrossNetCommissionRow = {
+  listingId: string;
+  address: string;
+  stage: string;
+  salePrice: number;
+  commissionPct: number;
+  grossExGst: number;
+  gstAmount: number;
+  grossIncGst: number;
+};
+
+/** §9 Gross / net commission — contract-stage listings with GST split. */
+export function buildGrossNetCommissionReport(
+  listings: ListingReportRow[],
+  commissionRatePct: number,
+): GrossNetCommissionRow[] {
+  const contractStages = new Set<ListingKanbanColumnId>([
+    "under_contract",
+    "unconditional",
+    "settled",
+    "past_client",
+  ]);
+  const rows: GrossNetCommissionRow[] = [];
+  for (const l of listings) {
+    const col = listingKanbanColumnId(l.pipeline_stage);
+    if (!contractStages.has(col)) continue;
+    const price = listingSearchPrice(l) ?? 0;
+    if (price <= 0) continue;
+    const pct =
+      (l as { commission_gross_pct?: number | null }).commission_gross_pct ?? commissionRatePct;
+    const totals = calculateListingCommission({
+      salePrice: price,
+      grossCommissionPct: pct ?? 0,
+    });
+    rows.push({
+      listingId: l.id,
+      address: l.address,
+      stage: pipelineStageLabel(l.pipeline_stage),
+      salePrice: price,
+      commissionPct: pct ?? 0,
+      grossExGst: totals.grossExGst,
+      gstAmount: totals.gstAmount,
+      grossIncGst: totals.grossIncGst,
+    });
+  }
+  return rows.sort((a, b) => b.grossExGst - a.grossExGst || a.address.localeCompare(b.address));
 }
 
 export function buildOffersPipelineReport(

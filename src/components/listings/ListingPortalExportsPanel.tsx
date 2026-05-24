@@ -152,6 +152,67 @@ export function ListingPortalExportsPanel({
     }
   };
 
+  const pushPortal = async (portalKey: ListingPortalKey, status: PortalStatus = "syncing") => {
+    const cur = configByKey.get(portalKey);
+    if (!cur?.enabled) {
+      toast({ title: "Enable portal first", variant: "destructive" });
+      return;
+    }
+    try {
+      await upsert.mutateAsync({
+        listing_id: listingId,
+        portal_key: portalKey,
+        enabled: true,
+        last_status: status,
+        portal_listing_id: cur.portal_listing_id,
+        log_export: true,
+        last_message:
+          status === "live"
+            ? "Marked live on portal (manual sync)"
+            : "Export queued — ready for syndication feed",
+      });
+      toast({
+        title: status === "live" ? "Marked live" : "Export queued",
+        description: portalLabel(portalKey),
+      });
+    } catch (e) {
+      toast({
+        title: "Could not push",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const pushAllEnabled = async () => {
+    const enabled = LISTING_PORTALS.filter((p) => configByKey.get(p.key)?.enabled);
+    if (enabled.length === 0) {
+      toast({ title: "No portals enabled", description: "Turn on at least one portal export." });
+      return;
+    }
+    let ok = 0;
+    for (const portal of enabled) {
+      try {
+        await upsert.mutateAsync({
+          listing_id: listingId,
+          portal_key: portal.key,
+          enabled: true,
+          last_status: "syncing",
+          portal_listing_id: configByKey.get(portal.key)?.portal_listing_id,
+          log_export: true,
+          last_message: "Bulk push queued — manual syndication",
+        });
+        ok++;
+      } catch {
+        /* continue */
+      }
+    }
+    toast({
+      title: ok > 0 ? `${ok} portal${ok !== 1 ? "s" : ""} queued` : "Push failed",
+      description: "Feed log updated. Connect live APIs when credentials are available.",
+    });
+  };
+
   const setStatus = async (portalKey: ListingPortalKey, status: PortalStatus) => {
     const cur = configByKey.get(portalKey);
     try {
@@ -236,7 +297,18 @@ export function ListingPortalExportsPanel({
             {enabledCount} portal{enabledCount !== 1 ? "s" : ""} enabled · {hitsTotal12m.toLocaleString()} hits logged
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            className="gap-1 h-8"
+            disabled={upsert.isPending || enabledCount === 0}
+            onClick={() => void pushAllEnabled()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Push enabled
+          </Button>
           <Button type="button" size="sm" variant="outline" className="gap-1 h-8" onClick={() => setHitsOpen(true)}>
             <Plus className="h-3.5 w-3.5" /> Log hits
           </Button>
@@ -337,6 +409,30 @@ export function ListingPortalExportsPanel({
                       <Badge variant="outline" className={cn("text-[10px]", statusClass(status))}>
                         {portalStatusLabel(status)}
                       </Badge>
+                      {enabled ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            disabled={upsert.isPending}
+                            onClick={() => void pushPortal(portal.key, "syncing")}
+                          >
+                            Push
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            disabled={upsert.isPending}
+                            onClick={() => void pushPortal(portal.key, "live")}
+                          >
+                            Live
+                          </Button>
+                        </>
+                      ) : null}
                       <Select
                         value={status}
                         onValueChange={(v) => void setStatus(portal.key, v as PortalStatus)}

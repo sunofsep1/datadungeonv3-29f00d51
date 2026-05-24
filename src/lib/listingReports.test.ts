@@ -7,6 +7,12 @@ import {
   buildListingsSalesSummaryReport,
   buildSalesByRegionReport,
   buildUpcomingUnconditionalReport,
+  buildAuctionClearanceSummary,
+  buildAuctionsBookedReport,
+  buildDatabaseUsageMetrics,
+  buildDetailedListingsReport,
+  buildGrossNetCommissionReport,
+  buildListToSellClearanceReport,
   buildDaysOnMarketReport,
   buildOffersPipelineReport,
   buildPipelineMonitor,
@@ -236,6 +242,41 @@ describe("buildAppraisalListingContactsReport", () => {
     ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.contactName).toBe("Vendor Co");
+  });
+});
+
+describe("buildDatabaseUsageMetrics", () => {
+  it("returns footprint counts", () => {
+    const rows = buildDatabaseUsageMetrics({
+      contactCount: 10,
+      listingCount: 5,
+      propertyCount: 3,
+      requirementCount: 2,
+      listings: [{ ...baseListing, pipeline_stage: "listing" }],
+    });
+    expect(rows.find((r) => r.metric === "Contacts")?.value).toBe(10);
+  });
+});
+
+describe("buildAuctionClearanceSummary", () => {
+  it("computes clearance", () => {
+    const s = buildAuctionClearanceSummary([
+      { ...baseListing, listed_as_auction: true, pipeline_stage: "settled" },
+      { ...baseListing, id: "2", listed_as_auction: true, pipeline_stage: "listing" },
+    ] as Parameters<typeof buildAuctionClearanceSummary>[0]);
+    expect(s.auctionStock).toBe(2);
+    expect(s.clearancePct).toBe(50);
+  });
+});
+
+describe("buildGrossNetCommissionReport", () => {
+  it("includes GST split for contract stages", () => {
+    const rows = buildGrossNetCommissionReport(
+      [{ ...baseListing, pipeline_stage: "under_contract", search_price: 1_000_000 }],
+      2.5,
+    );
+    expect(rows[0]?.grossExGst).toBe(25_000);
+    expect(rows[0]?.grossIncGst).toBeGreaterThan(rows[0]!.grossExGst);
   });
 });
 

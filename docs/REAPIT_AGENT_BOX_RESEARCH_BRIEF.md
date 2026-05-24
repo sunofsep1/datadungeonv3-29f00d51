@@ -511,3 +511,5 @@ After these three, evaluate whether to push into Marketing Funds, Portal Exports
 | 2026-05-24 | **CSV import** — duplicate preview; saved views class/subscription filters | Contacts → Import CSV |
 | 2026-05-24 | **Reports** — Unsubscribed, suburb breakdown, anniversaries, property contacts, contract conditions due | `/reports?tab=unsubscribed` · `suburb` · `anniversaries` · `property-contacts` · `contract-conditions` |
 | 2026-05-24 | **Reports** — Unconditional sales, sales by region, listings/sales summary, appraisal contacts | `?tab=unconditional` · `sales-region` · `sales-summary` · `appraisal-contacts` |
+| 2026-05-24 | **Brief v1 completion** — database usage, detailed listings/sales, gross/net GCI, auctions booked/clearance, list-to-sell; portal Push/Live workflow | `/reports?tab=database` · `detailed-listings` · `sales-analysis` · `commission-summary` · listing → Portal exports |
+| 2026-05-24 | **Reapit brief v1** — P0–P4 and §9 reports complete for single-agent CRM; live portal APIs + multi-agent reports out of scope | See §13 gaps for post-v1 |
