@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildContactSourceReport, buildGciByListingReport } from "./contactReports";
+import {
+  buildContactSourceReport,
+  buildContactUnsubscribedReport,
+  buildGciByListingReport,
+} from "./contactReports";
+import type { ContactSubscriptionKind } from "./contactSubscriptions";
 
 describe("buildContactSourceReport", () => {
   it("groups by source", () => {
@@ -10,6 +15,26 @@ describe("buildContactSourceReport", () => {
     ]);
     expect(rows.find((r) => r.source === "Referral")?.count).toBe(2);
     expect(rows.find((r) => r.source === "Unknown")?.count).toBe(1);
+  });
+});
+
+describe("buildContactUnsubscribedReport", () => {
+  it("lists contacts with explicit opt-outs", () => {
+    const index = new Map<string, Map<ContactSubscriptionKind, boolean>>([
+      [
+        "c1",
+        new Map([
+          ["newsletters", false],
+          ["property_updates", true],
+        ] as [ContactSubscriptionKind, boolean][]),
+      ],
+    ]);
+    const rows = buildContactUnsubscribedReport(
+      [{ id: "c1", name: "Ann", email: "a@x.com" }],
+      index,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.unsubscribedKinds).toEqual(["Newsletters"]);
   });
 });
 

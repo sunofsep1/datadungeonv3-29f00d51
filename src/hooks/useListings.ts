@@ -14,6 +14,7 @@ import {
 } from "@/lib/supabaseErrorMessage";
 import { invokeListingStageAutomation } from "@/lib/listingStageAutomation";
 import { logEntityFieldChanges, listingAuditFieldMap } from "@/lib/entityAuditLog";
+import { buildListingClonePayload } from "@/lib/cloneListing";
 
 export type Listing = Tables<"listings">;
 export type ListingInsert = TablesInsert<"listings">;
@@ -164,6 +165,29 @@ export function useCreateListing() {
         queryClient.invalidateQueries({ queryKey: ["listing", data.id] });
         queryClient.invalidateQueries({ queryKey: ["contacts"] });
         queryClient.invalidateQueries({ queryKey: ["nurture_sequence_enrollments"] });
+      }
+    },
+  });
+}
+
+export function useCloneListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (source: Listing) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const payload = { ...buildListingClonePayload(source), user_id: user.id };
+      const { data, error } = await supabase.from("listings").insert(payload as never).select().single();
+      if (error) throw error;
+      return data as Listing;
+    },
+    onSuccess: async (data) => {
+      queryClient.invalidateQueries({ queryKey: ["listings"] });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: ["listing", data.id] });
       }
     },
   });

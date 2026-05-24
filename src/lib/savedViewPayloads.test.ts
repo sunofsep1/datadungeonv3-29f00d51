@@ -27,6 +27,11 @@ describe("savedViewPayloads", () => {
       filterAutomationBlocked: false,
       filterBirthdaysUpcoming: false,
       filterAnnualReviewCandidates: true,
+      filterIncludeClassIds: ["cls-1"],
+      filterExcludeClassIds: [],
+      filterClassIncludeMatch: "all",
+      filterSubscriptionKind: "newsletters",
+      filterSubscriptionMode: "not_subscribed",
       contactView: "grid",
       itemsPerPage: 50,
     };
@@ -36,6 +41,33 @@ describe("savedViewPayloads", () => {
     expect(p!.filterTagIds).toEqual(["a", "b"]);
     expect(p!.itemsPerPage).toBe(50);
     expect(p!.contactView).toBe("grid");
+    expect(p!.filterIncludeClassIds).toEqual(["cls-1"]);
+    expect(p!.filterSubscriptionMode).toBe("not_subscribed");
+  });
+
+  it("defaults class and subscription filters when omitted", () => {
+    const p = parseContactsSavedViewPayload({
+      v: CONTACTS_SAVED_VIEW_V,
+      smart: null,
+      searchQuery: "",
+      filterTagIds: [],
+      filterSource: "all",
+      sortBy: "name-asc",
+      filterHasProperty: null,
+      filterLastTouched: "all",
+      filterLeadTemperature: "all",
+      filterTimeframeCategory: "all",
+      filterRoleCategory: "all",
+      filterContactClassification: "all",
+      filterNoNextTouch: false,
+      filterAutomationBlocked: false,
+      filterBirthdaysUpcoming: false,
+      filterAnnualReviewCandidates: false,
+      contactView: "list",
+      itemsPerPage: 25,
+    });
+    expect(p!.filterIncludeClassIds).toEqual([]);
+    expect(p!.filterSubscriptionMode).toBe("any");
   });
 
   it("rejects wrong contacts version", () => {
@@ -60,6 +92,11 @@ describe("savedViewPayloads", () => {
       filterAutomationBlocked: false,
       filterBirthdaysUpcoming: true,
       filterAnnualReviewCandidates: false,
+      filterIncludeClassIds: [] as string[],
+      filterExcludeClassIds: [] as string[],
+      filterClassIncludeMatch: "any" as const,
+      filterSubscriptionKind: "all",
+      filterSubscriptionMode: "any" as const,
       contactView: "list" as const,
       itemsPerPage: 25,
     };

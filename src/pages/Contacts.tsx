@@ -529,6 +529,11 @@ export default function Contacts() {
       filterAutomationBlocked,
       filterBirthdaysUpcoming,
       filterAnnualReviewCandidates,
+      filterIncludeClassIds: [...filterIncludeClassIds],
+      filterExcludeClassIds: [...filterExcludeClassIds],
+      filterClassIncludeMatch,
+      filterSubscriptionKind,
+      filterSubscriptionMode,
       contactView,
       itemsPerPage,
     };
@@ -548,6 +553,11 @@ export default function Contacts() {
     filterAutomationBlocked,
     filterBirthdaysUpcoming,
     filterAnnualReviewCandidates,
+    filterIncludeClassIds,
+    filterExcludeClassIds,
+    filterClassIncludeMatch,
+    filterSubscriptionKind,
+    filterSubscriptionMode,
     contactView,
     itemsPerPage,
   ]);
@@ -571,6 +581,15 @@ export default function Contacts() {
       setFilterAutomationBlocked(p.filterAutomationBlocked);
       setFilterBirthdaysUpcoming(p.filterBirthdaysUpcoming);
       setFilterAnnualReviewCandidates(p.filterAnnualReviewCandidates);
+      setFilterIncludeClassIds([...p.filterIncludeClassIds]);
+      setFilterExcludeClassIds([...p.filterExcludeClassIds]);
+      setFilterClassIncludeMatch(p.filterClassIncludeMatch);
+      setFilterSubscriptionKind(
+        p.filterSubscriptionKind === "all"
+          ? "all"
+          : (p.filterSubscriptionKind as ContactSubscriptionKind),
+      );
+      setFilterSubscriptionMode(p.filterSubscriptionMode);
       setContactView(p.contactView);
       setItemsPerPage(p.itemsPerPage);
     },

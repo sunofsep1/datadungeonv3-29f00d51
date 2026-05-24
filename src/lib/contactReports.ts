@@ -1,4 +1,9 @@
 import { format, parseISO } from "date-fns";
+import {
+  CONTACT_SUBSCRIPTION_KINDS,
+  CONTACT_SUBSCRIPTION_LABELS,
+  type ContactSubscriptionKind,
+} from "@/lib/contactSubscriptions";
 
 export type ContactSourceRow = {
   source: string;
@@ -161,6 +166,37 @@ export function buildAuctionStatusReport(
         "—",
     }))
     .sort((a, b) => a.address.localeCompare(b.address));
+}
+
+export type ContactUnsubscribedRow = {
+  contactId: string;
+  name: string;
+  email: string;
+  unsubscribedKinds: string[];
+};
+
+/** §9 Contact Unsubscribed — contacts with explicit opt-outs per subscription kind. */
+export function buildContactUnsubscribedReport(
+  contacts: { id: string; name: string | null; email?: string | null }[],
+  subscriptionIndex: Map<string, Map<ContactSubscriptionKind, boolean>>,
+): ContactUnsubscribedRow[] {
+  const rows: ContactUnsubscribedRow[] = [];
+  for (const c of contacts) {
+    const subs = subscriptionIndex.get(c.id);
+    if (!subs?.size) continue;
+    const kinds: string[] = [];
+    for (const kind of CONTACT_SUBSCRIPTION_KINDS) {
+      if (subs.get(kind) === false) kinds.push(CONTACT_SUBSCRIPTION_LABELS[kind]);
+    }
+    if (kinds.length === 0) continue;
+    rows.push({
+      contactId: c.id,
+      name: c.name?.trim() || "Unnamed",
+      email: c.email?.trim() || "—",
+      unsubscribedKinds: kinds,
+    });
+  }
+  return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function formatContactCreatedMonth(iso: string | null | undefined): string {

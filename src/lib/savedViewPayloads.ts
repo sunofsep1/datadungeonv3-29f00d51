@@ -22,6 +22,11 @@ export type ContactsSavedViewPayloadV1 = {
   filterAutomationBlocked: boolean;
   filterBirthdaysUpcoming: boolean;
   filterAnnualReviewCandidates: boolean;
+  filterIncludeClassIds: string[];
+  filterExcludeClassIds: string[];
+  filterClassIncludeMatch: "any" | "all";
+  filterSubscriptionKind: string;
+  filterSubscriptionMode: "any" | "subscribed" | "not_subscribed";
   contactView: "list" | "grid";
   itemsPerPage: number;
 };
@@ -81,6 +86,18 @@ export function parseContactsSavedViewPayload(raw: unknown): ContactsSavedViewPa
     filterAutomationBlocked: Boolean(o.filterAutomationBlocked),
     filterBirthdaysUpcoming: Boolean(o.filterBirthdaysUpcoming),
     filterAnnualReviewCandidates: Boolean(o.filterAnnualReviewCandidates),
+    filterIncludeClassIds: Array.isArray(o.filterIncludeClassIds)
+      ? o.filterIncludeClassIds.filter((x): x is string => typeof x === "string")
+      : [],
+    filterExcludeClassIds: Array.isArray(o.filterExcludeClassIds)
+      ? o.filterExcludeClassIds.filter((x): x is string => typeof x === "string")
+      : [],
+    filterClassIncludeMatch: o.filterClassIncludeMatch === "all" ? "all" : "any",
+    filterSubscriptionKind: typeof o.filterSubscriptionKind === "string" ? o.filterSubscriptionKind : "all",
+    filterSubscriptionMode:
+      o.filterSubscriptionMode === "subscribed" || o.filterSubscriptionMode === "not_subscribed"
+        ? o.filterSubscriptionMode
+        : "any",
     contactView,
     itemsPerPage,
   };

@@ -30,6 +30,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Share2,
+  Copy,
+  ExternalLink,
   ImagePlus,
   Bed,
   Bath,
@@ -43,7 +45,7 @@ import {
 } from "lucide-react";
 import { formatPhoneDisplay, phoneToTelHref } from "@/lib/formatPhone";
 import { format, differenceInCalendarDays } from "date-fns";
-import { useListing, useUpdateListing, type Listing } from "@/hooks/useListings";
+import { useListing, useUpdateListing, useCloneListing, type Listing } from "@/hooks/useListings";
 import { useContact } from "@/hooks/useContact";
 import { useProperty, useUpdateProperty } from "@/hooks/useProperties";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
@@ -182,6 +184,7 @@ export default function ListingDetail() {
   const { data: linkedContact } = useContact(contactId);
   const { data: linkedProperty } = useProperty(listing?.property_id ?? undefined);
   const updateListing = useUpdateListing();
+  const cloneListing = useCloneListing();
   const updateProperty = useUpdateProperty();
   const { data: recentActivity = [] } = useActivityLogByListing(id ?? null, 4);
   const createActivityLog = useCreateActivityLog();
@@ -710,6 +713,21 @@ export default function ListingDetail() {
     }
   }, [listing?.address, toast]);
 
+  const handleCloneListing = async () => {
+    if (!listing) return;
+    try {
+      const created = await cloneListing.mutateAsync(listing);
+      toast({ title: "Listing cloned", description: created.address ?? "New copy created" });
+      navigate(`/listings/${created.id}`);
+    } catch (e) {
+      toast({
+        title: "Could not clone",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleHeroFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id || !user || !listing) {
@@ -831,6 +849,22 @@ export default function ListingDetail() {
                 <Button variant="outline" size="sm" onClick={() => void handleShare()} className="gap-1.5 h-8 text-xs">
                   <Share2 className="w-3.5 h-3.5" />
                   Share
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  disabled={cloneListing.isPending}
+                  onClick={() => void handleCloneListing()}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Clone
+                </Button>
+                <Button variant="outline" size="sm" asChild className="gap-1.5 h-8 text-xs">
+                  <Link to={`/listings/${listing.id}/vendor-preview`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Vendor preview
+                  </Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={openEdit} className="gap-1.5 h-8 text-xs">
                   <Pencil className="w-3.5 h-3.5" />

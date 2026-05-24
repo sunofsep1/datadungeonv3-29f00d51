@@ -55,6 +55,7 @@ const TouchReport = lazy(() => import("./pages/TouchReport"));
 const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
 const MatchBuyersLettersPrintPage = lazy(() => import("./pages/MatchBuyersLettersPrintPage"));
 const OfferLettersPrintPage = lazy(() => import("./pages/OfferLettersPrintPage"));
+const ListingVendorPreviewPage = lazy(() => import("./pages/ListingVendorPreviewPage"));
 const Reports = lazy(() => import("./pages/Reports"));
 const InvoicePrintPage = lazy(() => import("./pages/InvoicePrintPage"));
 const Invoices = lazy(() => import("./pages/Invoices"));
@@ -103,6 +104,10 @@ const App = () => (
                 <Route path="/appointments" element={<ProtectedRoute><MainLayout><ErrorBoundary><Appointments /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/calendar" element={<ProtectedRoute><MainLayout><ErrorBoundary><Calendar /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/listings/:id" element={<ProtectedRoute><MainLayout><ListingDetail /></MainLayout></ProtectedRoute>} />
+                <Route
+                  path="/listings/:id/vendor-preview"
+                  element={<ProtectedRoute><ListingVendorPreviewPage /></ProtectedRoute>}
+                />
                 <Route path="/listings" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
                 <Route path="/pricing" element={<ProtectedRoute><MainLayout><PricingIntelligence /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings-sales" element={<Navigate to="/listings" replace />} />

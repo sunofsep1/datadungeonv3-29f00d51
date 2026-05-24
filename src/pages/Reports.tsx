@@ -48,11 +48,13 @@ import {
   buildContactClassStatistics,
   buildContactSourceReport,
   buildContactsCreatedByMonth,
+  buildContactUnsubscribedReport,
   buildGciByListingReport,
 } from "@/lib/contactReports";
 import {
   useContactClasses,
   useContactClassAssignmentIndex,
+  useContactSubscriptionIndex,
 } from "@/hooks/useContactClasses";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +69,8 @@ type ReportTab =
   | "gci"
   | "created"
   | "auctions"
-  | "class-stats";
+  | "class-stats"
+  | "unsubscribed";
 
 const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
   { id: "pipeline", label: "Pipeline monitor", icon: BarChart3 },
@@ -81,6 +84,7 @@ const REPORT_TABS: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = 
   { id: "sources", label: "Contact source", icon: Users },
   { id: "created", label: "Contacts created", icon: Users },
   { id: "class-stats", label: "Contact classes", icon: Users },
+  { id: "unsubscribed", label: "Unsubscribed", icon: Users },
 ];
 
 function ReportTable({
@@ -144,7 +148,8 @@ export default function Reports() {
     tabParam === "gci" ||
     tabParam === "created" ||
     tabParam === "auctions" ||
-    tabParam === "class-stats"
+    tabParam === "class-stats" ||
+    tabParam === "unsubscribed"
       ? tabParam
       : "pipeline";
   const [expiryWindow, setExpiryWindow] = useState(90);
@@ -155,6 +160,7 @@ export default function Reports() {
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: contactClasses = [] } = useContactClasses();
   const { data: classAssignmentIndex = new Map() } = useContactClassAssignmentIndex();
+  const { data: subscriptionIndex = new Map() } = useContactSubscriptionIndex();
   const { commissionRate } = useCommissionRate();
 
   const reportRows = listings as ListingReportRow[];
@@ -208,6 +214,19 @@ export default function Reports() {
     }
     return buildContactClassStatistics(contactClasses, assignments);
   }, [contactClasses, classAssignmentIndex]);
+
+  const unsubscribedRows = useMemo(
+    () =>
+      buildContactUnsubscribedReport(
+        contacts.map((c) => ({
+          id: c.id,
+          name: getContactDisplayName(c),
+          email: c.email,
+        })),
+        subscriptionIndex,
+      ),
+    [contacts, subscriptionIndex],
+  );
 
   const auctionRows = useMemo(
     () =>
@@ -968,6 +987,60 @@ export default function Reports() {
                   <span key="c" className="tabular-nums">
                     {row.contactCount}
                   </span>,
+                ])}
+              />
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="unsubscribed" className="space-y-4 mt-4">
+          <Card className="zoho-card p-4 border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold">Contact unsubscribed</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Contacts who opted out of one or more subscription types (§9)
+                </p>
+              </div>
+              <ExportReportButton
+                filename="contact-unsubscribed"
+                columns={[
+                  { key: "name", label: "Contact" },
+                  { key: "email", label: "Email" },
+                  { key: "kinds", label: "Unsubscribed from" },
+                ]}
+                data={unsubscribedRows.map((r) => ({
+                  name: r.name,
+                  email: r.email,
+                  kinds: r.unsubscribedKinds.join("; "),
+                }))}
+              />
+            </div>
+            {contactsLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <ReportTable
+                headers={["Contact", "Email", "Unsubscribed from", ""]}
+                emptyMessage="No explicit subscription opt-outs recorded."
+                rows={unsubscribedRows.map((row) => [
+                  <Link
+                    key="n"
+                    to={`/contacts/${row.contactId}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {row.name}
+                  </Link>,
+                  <span key="e" className="text-sm">
+                    {row.email}
+                  </span>,
+                  <span key="k" className="text-sm text-muted-foreground">
+                    {row.unsubscribedKinds.join(" · ")}
+                  </span>,
+                  <Button key="open" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link to={`/contacts/${row.contactId}`} aria-label="Open contact">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>,
                 ])}
               />
             )}

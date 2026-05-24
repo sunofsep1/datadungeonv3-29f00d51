@@ -26,6 +26,7 @@ import {
   mergeCsvFieldValue,
   parseCsvYesNo,
 } from "@/lib/csvContactImport";
+import { findContactDuplicates } from "@/lib/contactConflictDetection";
 
 interface CSVImportDialogProps {
   open: boolean;
@@ -90,12 +91,6 @@ function parseCSV(text: string): string[][] {
   });
 }
 
-function normalizeEmail(s: string): string {
-  return s.trim().toLowerCase().replace(/\s/g, "");
-}
-function normalizePhone(s: string): string {
-  return s.trim().replace(/\s/g, "").replace(/^\+61/, "0");
-}
 function normalizeAddressKey(addr: { address_line1: string; city?: string; state?: string; postcode?: string }): string {
   const a = (addr.address_line1 || "").trim().toLowerCase().replace(/\s+/g, " ");
   const c = (addr.city || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -129,23 +124,6 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const [propertiesCreated, setPropertiesCreated] = useState(0);
   const [linksCreated, setLinksCreated] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
-
-  const emailToContact = useMemo(() => {
-    const m = new Map<string, ContactWithMeta>();
-    (existingContacts as ContactWithMeta[]).forEach((c) => {
-      const e = getPrimaryEmail(c) ?? c.email;
-      if (e) m.set(normalizeEmail(e), c);
-    });
-    return m;
-  }, [existingContacts]);
-  const phoneToContact = useMemo(() => {
-    const m = new Map<string, ContactWithMeta>();
-    (existingContacts as ContactWithMeta[]).forEach((c) => {
-      const p = getPrimaryPhone(c) ?? c.phone;
-      if (p) m.set(normalizePhone(p), c);
-    });
-    return m;
-  }, [existingContacts]);
 
   const tagNameToId = useMemo(() => {
     const m = new Map<string, string>();
@@ -231,6 +209,48 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   }, [mappedRows]);
 
   const hasName = Object.values(mapping).includes("name");
+
+  const duplicateCandidates = useMemo(
+    () =>
+      (existingContacts as ContactWithMeta[]).map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: getPrimaryEmail(c) ?? c.email,
+        phone: getPrimaryPhone(c) ?? c.phone,
+        mobile: (c as { mobile?: string | null }).mobile ?? null,
+      })),
+    [existingContacts],
+  );
+
+  const importDuplicateSummary = useMemo(() => {
+    let willUpdate = 0;
+    let willCreate = 0;
+    const samples: { row: number; name: string; matchName: string; reasons: string[] }[] = [];
+    for (let i = 0; i < mappedRows.length; i++) {
+      const r = mappedRows[i];
+      if (!r.name?.trim()) continue;
+      const dupes = findContactDuplicates(duplicateCandidates, {
+        email: r.email,
+        phone: r.phone,
+        mobile: r.mobile,
+      });
+      if (dupes.length > 0) {
+        willUpdate++;
+        if (samples.length < 8) {
+          samples.push({
+            row: i + 2,
+            name: r.name,
+            matchName: dupes[0]!.name ?? "Existing contact",
+            reasons: dupes[0]!.matchReasons,
+          });
+        }
+      } else {
+        willCreate++;
+      }
+    }
+    return { willUpdate, willCreate, samples };
+  }, [mappedRows, duplicateCandidates]);
+
   const previewRows = mappedRows.slice(0, PREVIEW_ROWS);
   const mappedFields = Object.entries(mapping)
     .filter(([, v]) => v !== "skip")
@@ -249,13 +269,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     const total = mappedRows.length;
     const tagMap = new Map(tagNameToId);
 
-    // Track contacts created/updated in this batch to prevent duplicates within the CSV
-    const batchEmailToContact = new Map<string, { id: string }>(
-      Array.from(emailToContact.entries()).map(([k, c]) => [k, { id: c.id }])
-    );
-    const batchPhoneToContact = new Map<string, { id: string }>(
-      Array.from(phoneToContact.entries()).map(([k, c]) => [k, { id: c.id }])
-    );
+    const batchCandidates = [...duplicateCandidates];
     // Track properties by address to prevent duplicate properties from same CSV or existing DB
     const batchAddressToProperty = new Map<string, string>(addressToProperty);
 
@@ -281,14 +295,12 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
         continue;
       }
 
-      const emailNorm = r.email ? normalizeEmail(r.email) : null;
-      const phoneNorm = r.phone ? normalizePhone(r.phone) : null;
-      const mobileNorm = r.mobile ? normalizePhone(r.mobile) : null;
-      const match =
-        (emailNorm && batchEmailToContact.get(emailNorm)) ??
-        (phoneNorm && batchPhoneToContact.get(phoneNorm)) ??
-        (mobileNorm && batchPhoneToContact.get(mobileNorm)) ??
-        null;
+      const dupes = findContactDuplicates(batchCandidates, {
+        email: r.email,
+        phone: r.phone,
+        mobile: r.mobile,
+      });
+      const match = dupes[0] ? { id: dupes[0].id } : null;
 
       let contactId: string;
       try {
@@ -380,11 +392,16 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           cr++;
         }
 
-        // Add to batch maps so duplicate rows in this CSV update instead of creating
-        const ref = { id: contactId };
-        if (emailNorm) batchEmailToContact.set(emailNorm, ref);
-        if (phoneNorm) batchPhoneToContact.set(phoneNorm, ref);
-        if (mobileNorm) batchPhoneToContact.set(mobileNorm, ref);
+        const existingIdx = batchCandidates.findIndex((c) => c.id === contactId);
+        const batchRow = {
+          id: contactId,
+          name: r.name,
+          email: r.email || null,
+          phone: r.phone || null,
+          mobile: r.mobile || null,
+        };
+        if (existingIdx >= 0) batchCandidates[existingIdx] = batchRow;
+        else batchCandidates.push(batchRow);
 
         if (contactId && r.tags) {
           const tagNames = r.tags.split(",").map((t) => t.trim()).filter(Boolean);
@@ -589,6 +606,25 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
             <p className="text-sm text-muted-foreground">
               First {PREVIEW_ROWS} rows (mapped). Clean and validate, then import.
             </p>
+            {(importDuplicateSummary.willUpdate > 0 || importDuplicateSummary.willCreate > 0) && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-sm font-medium">Duplicate detection</p>
+                <p className="text-xs text-muted-foreground">
+                  ~{importDuplicateSummary.willCreate} new · ~{importDuplicateSummary.willUpdate} will update existing
+                  (matched by email or phone)
+                </p>
+                {importDuplicateSummary.samples.length > 0 && (
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {importDuplicateSummary.samples.map((s) => (
+                      <li key={s.row}>
+                        Row {s.row}: <span className="text-foreground">{s.name}</span> → {s.matchName} (
+                        {s.reasons.join(", ")})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             {validationErrors.length > 0 && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
