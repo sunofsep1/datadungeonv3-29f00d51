@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Plug, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAgentboxSyncContacts, useAgentboxSyncStatus } from "@/hooks/useAgentboxSync";
-import { useReapitSyncContacts, useReapitSyncStatus } from "@/hooks/useReapitSync";
+import { useAgentboxSyncContacts, useAgentboxSyncListings, useAgentboxSyncStatus } from "@/hooks/useAgentboxSync";
+import { useReapitSyncContacts, useReapitSyncListings, useReapitSyncStatus } from "@/hooks/useReapitSync";
 import { toast } from "sonner";
 
 function IntegrationRow({
@@ -17,6 +18,9 @@ function IntegrationRow({
   syncLabel,
   syncing,
   checkPending,
+  onSecondarySync,
+  secondarySyncLabel,
+  secondarySyncing,
 }: {
   name: string;
   description: string;
@@ -27,6 +31,9 @@ function IntegrationRow({
   syncLabel: string;
   syncing: boolean;
   checkPending: boolean;
+  onSecondarySync?: () => void;
+  secondarySyncLabel?: string;
+  secondarySyncing?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -57,16 +64,30 @@ function IntegrationRow({
         <Button type="button" size="sm" disabled={!configured || syncing} onClick={onSync}>
           {syncing ? "Syncing…" : syncLabel}
         </Button>
+        {onSecondarySync ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={!configured || secondarySyncing}
+            onClick={onSecondarySync}
+          >
+            {secondarySyncing ? "Syncing…" : secondarySyncLabel}
+          </Button>
+        ) : null}
       </div>
     </div>
   );
 }
 
 export function CrmIntegrationsCard() {
+  const qc = useQueryClient();
   const agentboxStatus = useAgentboxSyncStatus();
   const agentboxSync = useAgentboxSyncContacts();
+  const agentboxListingsSync = useAgentboxSyncListings();
   const reapitStatus = useReapitSyncStatus();
   const reapitSync = useReapitSyncContacts();
+  const reapitListingsSync = useReapitSyncListings();
 
   const [agentboxConfigured, setAgentboxConfigured] = useState<boolean | null>(null);
   const [reapitConfigured, setReapitConfigured] = useState<boolean | null>(null);
@@ -90,7 +111,7 @@ export function CrmIntegrationsCard() {
         <div>
           <p className="text-sm font-medium text-foreground">CRM sync</p>
           <p className="text-xs text-muted-foreground">
-            Import contacts from AgentBox or Reapit Foundations. Upsert keys:{" "}
+            Import contacts and listings from AgentBox or Reapit Foundations. Upsert keys:{" "}
             <code className="text-[10px]">agentbox_id</code>, <code className="text-[10px]">reapit_id</code>.
           </p>
         </div>
@@ -105,6 +126,23 @@ export function CrmIntegrationsCard() {
           checkPending={agentboxStatus.isPending}
           syncing={agentboxSync.isPending}
           syncLabel="Sync contacts"
+          secondarySyncLabel="Sync listings"
+          secondarySyncing={agentboxListingsSync.isPending}
+          onSecondarySync={() =>
+            agentboxListingsSync.mutate(100, {
+              onSuccess: (data) => {
+                if (!data.ok) {
+                  toast.error(data.error ?? "AgentBox listing sync failed");
+                  return;
+                }
+                void qc.invalidateQueries({ queryKey: ["listings"] });
+                toast.success(
+                  `AgentBox listings — ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`,
+                );
+              },
+              onError: (e) => toast.error(e instanceof Error ? e.message : "Sync failed"),
+            })
+          }
           onCheckStatus={() =>
             agentboxStatus.mutate(undefined, {
               onSuccess: (data) => {
@@ -121,6 +159,7 @@ export function CrmIntegrationsCard() {
                   toast.error(data.error ?? "AgentBox sync failed");
                   return;
                 }
+                void qc.invalidateQueries({ queryKey: ["contacts"] });
                 toast.success(
                   `AgentBox — ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`,
                 );
@@ -139,6 +178,23 @@ export function CrmIntegrationsCard() {
             checkPending={reapitStatus.isPending}
             syncing={reapitSync.isPending}
             syncLabel="Sync contacts"
+            secondarySyncLabel="Sync listings"
+            secondarySyncing={reapitListingsSync.isPending}
+            onSecondarySync={() =>
+              reapitListingsSync.mutate(100, {
+                onSuccess: (data) => {
+                  if (!data.ok) {
+                    toast.error(data.error ?? "Reapit listing sync failed");
+                    return;
+                  }
+                  void qc.invalidateQueries({ queryKey: ["listings"] });
+                  toast.success(
+                    `Reapit listings — ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`,
+                  );
+                },
+                onError: (e) => toast.error(e instanceof Error ? e.message : "Sync failed"),
+              })
+            }
             onCheckStatus={() =>
               reapitStatus.mutate(undefined, {
                 onSuccess: (data) => {
@@ -155,6 +211,7 @@ export function CrmIntegrationsCard() {
                     toast.error(data.error ?? "Reapit sync failed");
                     return;
                   }
+                  void qc.invalidateQueries({ queryKey: ["contacts"] });
                   toast.success(
                     `Reapit — ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`,
                   );

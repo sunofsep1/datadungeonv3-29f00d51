@@ -110,7 +110,7 @@ function FunnelHeader({
           {variant === "reports" ? "Pipeline value & GCI" : "Current pipeline"}
         </h3>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          Count · search price value · projected GCI at {commissionRate}% commission
+          Count · search price value · projected OCI at {commissionRate}% commission
         </p>
       </div>
       <Button
@@ -149,7 +149,7 @@ function FunnelTotals({
         <p className="text-sm font-bold tabular-nums">{totals.count}</p>
       </div>
       <FunnelTotalCell label="Value" value={formatFunnelAud(totals.totalValue)} />
-      <FunnelTotalCell label="GCI" value={formatFunnelAud(totals.projectedGci)} emphasize />
+      <FunnelTotalCell label="OCI" value={formatFunnelAud(totals.projectedGci)} emphasize />
     </div>
   );
 }
@@ -197,7 +197,7 @@ function FunnelStageRow({
       </div>
       <div className="flex justify-between mt-0.5 text-[10px] text-muted-foreground tabular-nums">
         <span>{formatFunnelAud(row.totalValue)}</span>
-        <span className="text-primary/90">{formatFunnelAud(row.projectedGci)} GCI</span>
+        <span className="text-primary/90">{formatFunnelAud(row.projectedGci)} OCI</span>
       </div>
     </div>
   );
@@ -215,7 +215,7 @@ function FunnelStageTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left">
-            {["Stage", "Count", "Value", "Projected GCI"].map((h) => (
+            {["Stage", "Count", "Value", "Projected OCI"].map((h) => (
               <th
                 key={h}
                 className="pb-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide"

@@ -1,13 +1,17 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
-import { Bed, Bath, CarFront, Home, Ruler } from "lucide-react";
+import { Bed, Bath, CarFront, CalendarClock, FileSignature, Home, Ruler, Users } from "lucide-react";
+import { useMemo } from "react";
 import { useListing } from "@/hooks/useListings";
 import { useProperty } from "@/hooks/useProperties";
+import { useListingOffers } from "@/hooks/useListingOffers";
+import { useListingOpenInspections } from "@/hooks/useListingOpenInspections";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listingPublicPriceLabel, listingSearchPrice } from "@/lib/listingPriceFields";
 import { collectListingHeroUrls } from "@/lib/listingFromProperty";
+import { buildListingVendorCampaignStats } from "@/lib/listingVendorReport";
 import { PrintReportLayout } from "@/components/print/PrintReportLayout";
 
 /** Reapit-style vendor preview — read-only summary for sharing with vendors. */
@@ -17,6 +21,16 @@ export default function ListingVendorPreviewPage() {
   const { data: listing, isLoading } = useListing(id);
   const propertyId = (listing as { property_id?: string | null } | null)?.property_id;
   const { data: property } = useProperty(propertyId ?? undefined);
+  const { data: offers = [] } = useListingOffers(id);
+  const { data: inspections = [] } = useListingOpenInspections(id);
+
+  const campaign = useMemo(
+    () =>
+      listing
+        ? buildListingVendorCampaignStats(listing, offers, inspections)
+        : null,
+    [listing, offers, inspections],
+  );
 
   const heroUrls = listing
     ? collectListingHeroUrls(listing.listing_image_url, property?.images ?? null)
@@ -73,6 +87,33 @@ export default function ListingVendorPreviewPage() {
               Prepared {format(new Date(), "d MMMM yyyy")}
             </p>
           </header>
+
+          {campaign ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <CampaignStat
+                icon={CalendarClock}
+                label="Days on market"
+                value={campaign.daysOnMarket != null ? String(campaign.daysOnMarket) : "—"}
+              />
+              <CampaignStat
+                icon={Users}
+                label="OFI attendees"
+                value={String(campaign.attendeeCount)}
+                detail={`${campaign.openInspectionCount} inspections`}
+              />
+              <CampaignStat
+                icon={FileSignature}
+                label="Offers"
+                value={String(campaign.activeOfferCount)}
+                detail={campaign.offerCount !== campaign.activeOfferCount ? `${campaign.offerCount} total` : undefined}
+              />
+              <CampaignStat
+                icon={Home}
+                label="Stage"
+                value={(listing.pipeline_stage ?? "—").replace(/_/g, " ")}
+              />
+            </div>
+          ) : null}
 
           {hero ? (
             <div className="rounded-xl overflow-hidden border border-border aspect-[16/10] bg-muted">
@@ -144,5 +185,28 @@ export default function ListingVendorPreviewPage() {
         </div>
       </div>
     </PrintReportLayout>
+  );
+}
+
+function CampaignStat({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof Home;
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <Card className="p-3 border-border bg-muted/20">
+      <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+        <Icon className="h-3.5 w-3.5" />
+        <p className="text-[10px] uppercase tracking-wide">{label}</p>
+      </div>
+      <p className="text-lg font-bold tabular-nums capitalize">{value}</p>
+      {detail ? <p className="text-[10px] text-muted-foreground mt-0.5">{detail}</p> : null}
+    </Card>
   );
 }

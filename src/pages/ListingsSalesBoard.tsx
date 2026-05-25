@@ -99,7 +99,10 @@ export default function ListingsSalesBoard() {
 
   const visibleListings = useMemo(() => {
     if (!mineOnly || !user?.id) return listings;
-    return listings.filter((l) => (l as Listing & { user_id?: string }).user_id === user.id);
+    return listings.filter((l) => {
+      const ext = l as Listing & { user_id?: string; negotiator_id?: string | null };
+      return ext.user_id === user.id || ext.negotiator_id === user.id;
+    });
   }, [listings, mineOnly, user?.id]);
 
   const contactMap = useMemo(() => {
@@ -418,12 +421,19 @@ export default function ListingsSalesBoard() {
               </div>
               <div className="min-h-[min(7rem,22vh)] max-h-[calc(100vh-12rem)] space-y-2 overflow-y-auto overscroll-y-contain p-2 [scrollbar-gutter:stable]">
                 {stageListings.map((listing) => {
+                  const ext = listing as Listing & {
+                    negotiator_id?: string | null;
+                    reapit_id?: string | null;
+                    agentbox_id?: number | null;
+                  };
                   const contact =
                     (listing as ListingWithContact).contacts ||
                     (listing.contact_id ? contactMap.get(listing.contact_id) : null);
                   const daysInStage = getDaysInStage(listing);
                   const daysOnMarket = getDaysOnMarket(listing);
                   const warning = getStageWarning(listing);
+                  const isMyNegotiation = Boolean(user?.id && ext.negotiator_id === user.id);
+                  const hasExternalId = Boolean(ext.reapit_id?.trim() || ext.agentbox_id != null);
                   return (
                     <Card
                       key={listing.id}
@@ -481,6 +491,16 @@ export default function ListingsSalesBoard() {
                                 {warning === "critical" ? "Stale" : "Check in"}
                               </Badge>
                             )}
+                            {isMyNegotiation ? (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                                Negotiator
+                              </Badge>
+                            ) : null}
+                            {hasExternalId ? (
+                              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-normal">
+                                {ext.reapit_id?.trim() ? "Reapit" : "AgentBox"}
+                              </Badge>
+                            ) : null}
                           </div>
                           {daysOnMarket != null && (
                             <p className="mt-0.5 text-[10px] text-muted-foreground">DOM {daysOnMarket}d</p>

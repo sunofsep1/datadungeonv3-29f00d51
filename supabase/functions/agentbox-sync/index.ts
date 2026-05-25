@@ -28,6 +28,21 @@ type AgentboxContact = {
   jobTitle?: string;
 };
 
+type AgentboxListing = {
+  id?: number | string;
+  address?: string | null;
+  street?: string | null;
+  suburb?: string | null;
+  state?: string | null;
+  postcode?: string | null;
+  price?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  status?: string | null;
+  headline?: string | null;
+  description?: string | null;
+};
+
 function isConfigured(): boolean {
   return Boolean(AGENTBOX_API_KEY && AGENTBOX_CLIENT_ID);
 }
@@ -56,6 +71,32 @@ function normalizeContactsPayload(payload: unknown): AgentboxContact[] {
     }
   }
   return [];
+}
+
+function normalizeListingsPayload(payload: unknown): AgentboxListing[] {
+  if (Array.isArray(payload)) return payload as AgentboxListing[];
+  if (payload && typeof payload === "object") {
+    const o = payload as Record<string, unknown>;
+    for (const key of ["listings", "properties", "data", "results", "items"]) {
+      if (Array.isArray(o[key])) return o[key] as AgentboxListing[];
+    }
+  }
+  return [];
+}
+
+function listingAddress(l: AgentboxListing): string {
+  if (l.address?.trim()) return l.address.trim();
+  const parts = [l.street, l.suburb, l.state, l.postcode].map((v) => v?.trim()).filter(Boolean);
+  return parts.join(", ") || "AgentBox listing";
+}
+
+function mapAgentboxPipelineStage(status: string | null | undefined): string {
+  const s = status?.toLowerCase() ?? "";
+  if (s.includes("sold") || s.includes("settled")) return "settled";
+  if (s.includes("under contract") || s.includes("under_offer")) return "under_contract";
+  if (s.includes("unconditional")) return "unconditional";
+  if (s.includes("current") || s.includes("available") || s.includes("active")) return "listing";
+  return "appraisal";
 }
 
 function contactDisplayName(c: AgentboxContact): string {
@@ -166,6 +207,76 @@ Deno.serve(async (req) => {
           updated += 1;
         } else {
           const { error } = await admin.from("contacts").insert(row);
+          if (error) {
+            skipped += 1;
+            continue;
+          }
+          imported += 1;
+        }
+      }
+
+      return json({
+        ok: true,
+        action,
+        configured: true,
+        imported,
+        updated,
+        skipped,
+        total: remote.length,
+      });
+    }
+
+    if (action === "sync_listings") {
+      const limit = Math.min(Math.max(body.limit ?? 100, 1), 500);
+      const raw = await fetchAgentbox(`/listings?limit=${limit}`);
+      const remote = normalizeListingsPayload(raw);
+      const admin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      for (const remoteListing of remote) {
+        const agentboxId = Number(remoteListing.id);
+        if (!Number.isFinite(agentboxId) || agentboxId <= 0) {
+          skipped += 1;
+          continue;
+        }
+
+        const row = {
+          user_id: user.id,
+          agentbox_id: agentboxId,
+          agentbox_synced_at: new Date().toISOString(),
+          address: listingAddress(remoteListing),
+          pipeline_stage: mapAgentboxPipelineStage(remoteListing.status),
+          status: "active" as const,
+          price:
+            remoteListing.price != null && Number.isFinite(Number(remoteListing.price))
+              ? Number(remoteListing.price)
+              : null,
+          bedrooms: remoteListing.bedrooms ?? null,
+          bathrooms: remoteListing.bathrooms ?? null,
+          headline: remoteListing.headline?.trim() || null,
+          notes: remoteListing.description?.trim() || null,
+          negotiator_id: user.id,
+        };
+
+        const { data: existing } = await admin
+          .from("listings")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("agentbox_id", agentboxId)
+          .maybeSingle();
+
+        if (existing?.id) {
+          const { error } = await admin.from("listings").update(row).eq("id", existing.id);
+          if (error) {
+            skipped += 1;
+            continue;
+          }
+          updated += 1;
+        } else {
+          const { error } = await admin.from("listings").insert(row);
           if (error) {
             skipped += 1;
             continue;

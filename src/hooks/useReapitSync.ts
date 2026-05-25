@@ -32,3 +32,9 @@ export function useReapitSyncContacts() {
     mutationFn: (pageSize = 100) => invokeReapitSync({ action: "sync_contacts", pageSize }),
   });
 }
+
+export function useReapitSyncListings() {
+  return useMutation({
+    mutationFn: (pageSize = 100) => invokeReapitSync({ action: "sync_properties", pageSize }),
+  });
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Landmark, Scale, Wallet } from "lucide-react";
+import { Building2, Landmark, Scale, UserCheck, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateListing } from "@/hooks/useListings";
 import {
   AUTHORITY_TYPE_OPTIONS,
@@ -40,6 +42,7 @@ function moneyStr(v: number | null | undefined): string {
 
 export function ListingGeneralPanel({ listing, onUpdated }: Props) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const updateListing = useUpdateListing();
 
   const [forSaleOrLease, setForSaleOrLease] = useState("for_sale");
@@ -147,6 +150,46 @@ export function ListingGeneralPanel({ listing, onUpdated }: Props) {
             <p className="text-xs text-muted-foreground mt-0.5">
               Authority, sale method, and listing flags (Reapit General tab).
             </p>
+          </div>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-border/70 bg-muted/20 p-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              Negotiator
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {listing.negotiator_id
+                ? listing.negotiator_id === user?.id
+                  ? "Assigned to you"
+                  : "Assigned (another user)"
+                : "Not assigned"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              disabled={pending || !user?.id || listing.negotiator_id === user.id}
+              onClick={() => void save({ negotiator_id: user!.id })}
+            >
+              Assign to me
+            </Button>
+            {listing.negotiator_id ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                disabled={pending}
+                onClick={() => void save({ negotiator_id: null })}
+              >
+                Clear
+              </Button>
+            ) : null}
           </div>
         </div>
 

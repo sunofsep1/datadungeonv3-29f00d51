@@ -2,6 +2,8 @@ import { format } from "date-fns";
 import { Calendar, Clock, DollarSign } from "lucide-react";
 import { ProspectiveBuyersPanel } from "@/components/listings/ProspectiveBuyersPanel";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 import { ListingCommunicationsRail } from "@/components/listings/ListingCommunicationsRail";
 import { EntityActivitySchedulesPanel } from "@/components/shared/EntityActivitySchedulesPanel";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
@@ -33,12 +35,20 @@ export function ListingDetailRightRail({
   onMatchBuyers,
   formatAud,
 }: Props) {
+  const { user } = useAuth();
   const { data: inspections = [] } = useListingOpenInspections(listingId);
 
   const { upcoming } = partitionInspections(inspections);
   const nextOfi = upcoming[0] ?? null;
 
-  const ext = listing as Listing & { display_price?: string | null; search_price?: number | null };
+  const ext = listing as Listing & {
+    display_price?: string | null;
+    search_price?: number | null;
+    reapit_id?: string | null;
+    agentbox_id?: number | null;
+    negotiator_id?: string | null;
+  };
+  const isNegotiator = ext.negotiator_id && user?.id && ext.negotiator_id === user.id;
 
   return (
     <aside className="hidden xl:block space-y-4">
@@ -75,6 +85,28 @@ export function ListingDetailRightRail({
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">Listed</dt>
               <dd className="font-medium">{format(new Date(listing.created_at), "d MMM yyyy")}</dd>
+            </div>
+          ) : null}
+          {isNegotiator ? (
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted-foreground">Negotiator</dt>
+              <dd>
+                <Badge variant="secondary" className="text-[10px] font-normal">
+                  You
+                </Badge>
+              </dd>
+            </div>
+          ) : null}
+          {ext.reapit_id?.trim() ? (
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted-foreground">Reapit</dt>
+              <dd className="text-xs font-mono truncate max-w-[140px]">{ext.reapit_id}</dd>
+            </div>
+          ) : null}
+          {ext.agentbox_id != null ? (
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted-foreground">AgentBox</dt>
+              <dd className="text-xs tabular-nums">#{ext.agentbox_id}</dd>
             </div>
           ) : null}
         </dl>

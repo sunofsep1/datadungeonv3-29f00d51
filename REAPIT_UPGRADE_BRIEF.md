@@ -1634,4 +1634,6 @@ To get Reapit API access for the `qldsir` (Queensland Sotheby's) customer:
 | 2026-05-25 | **Phase 2–3** — OFI interest level + working-with-agent on check-in; `ProspectiveBuyersPanel` with match scores; `ContactBuyerActivityPanel`; contact professional fields + AgentBox ID; contract conditions report from `offer_conditions` | Migration `20260525120000_reapit_upgrade_phase2_3.sql` |
 | 2026-05-25 | **Phase 2 + 4 + 6 scaffold** — OFI A4 brochure print; pipeline OCI on kanban columns + Mine/All filter; contact professional field edits; `agentbox-sync` edge function + Settings UI | `OfiBrochurePrintPage`, `agentbox-sync` |
 | 2026-05-25 | **Phase 5 scaffold** — `reapit-sync` edge function + `reapit_id`/`negotiator_id` migration; Reapit row in Settings; OFI attendee interest badges | Migration `20260525140000`, `reapit-sync` |
-| | Phase 5 OAuth/webhooks, Phase 7 CMA/vendor reports | Pending — see §8 priority order |
+| 2026-05-25 | **Phase 4–5 + 7 lite** — negotiator assign on listing; Reapit property sync; vendor preview campaign KPIs; pipeline funnel OCI labelling | `sync_properties`, `listingVendorReport` |
+| 2026-05-25 | **Phase 6** — AgentBox listing sync + `listings.agentbox_id`; CRM sync cache invalidation; listing sidebar external IDs | Migration `20260525150000`, `sync_listings` |
+| | Phase 5 OAuth/webhooks, full CMA module | Pending — see §8 priority order |

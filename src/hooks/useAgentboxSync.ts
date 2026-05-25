@@ -31,3 +31,9 @@ export function useAgentboxSyncContacts() {
     mutationFn: (limit = 100) => invokeAgentboxSync({ action: "sync_contacts", limit }),
   });
 }
+
+export function useAgentboxSyncListings() {
+  return useMutation({
+    mutationFn: (limit = 100) => invokeAgentboxSync({ action: "sync_listings", limit }),
+  });
+}

@@ -76,6 +76,7 @@ export type ListingGeneralFields = ListingOutgoingsFields & {
   legal_folio?: string | null;
   legal_section?: string | null;
   legal_zoning?: string | null;
+  negotiator_id?: string | null;
 };
 
 export function annualizeOutgoingAmount(

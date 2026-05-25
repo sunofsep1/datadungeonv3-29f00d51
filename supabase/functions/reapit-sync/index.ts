@@ -28,6 +28,24 @@ type ReapitContact = {
   jobTitle?: string | null;
 };
 
+type ReapitProperty = {
+  id?: string;
+  address?: {
+    buildingName?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    postcode?: string | null;
+  } | null;
+  bedroomMax?: number | null;
+  bathroomMax?: number | null;
+  parkingSpacesMax?: number | null;
+  price?: number | null;
+  selling?: { status?: string | null; price?: number | null } | null;
+  marketingMode?: string | null;
+  description?: string | null;
+  strapline?: string | null;
+};
+
 function isConfigured(): boolean {
   return Boolean(REAPIT_CLIENT_ID && REAPIT_CLIENT_SECRET && REAPIT_CUSTOMER_ID);
 }
@@ -83,9 +101,50 @@ function normalizeContactsPayload(payload: unknown): ReapitContact[] {
   return [];
 }
 
+function normalizePropertiesPayload(payload: unknown): ReapitProperty[] {
+  if (Array.isArray(payload)) return payload as ReapitProperty[];
+  if (payload && typeof payload === "object") {
+    const o = payload as Record<string, unknown>;
+    const embedded = o._embedded;
+    if (embedded && typeof embedded === "object" && !Array.isArray(embedded)) {
+      const properties = (embedded as Record<string, unknown>).properties;
+      if (Array.isArray(properties)) return properties as ReapitProperty[];
+    }
+    for (const key of ["properties", "data", "results", "items"]) {
+      if (Array.isArray(o[key])) return o[key] as ReapitProperty[];
+    }
+  }
+  return [];
+}
+
 function contactName(c: ReapitContact): string {
   const combined = [c.forename, c.surname].filter(Boolean).join(" ").trim();
   return combined || "Reapit contact";
+}
+
+function propertyAddress(p: ReapitProperty): string {
+  const parts = [
+    p.address?.buildingName,
+    p.address?.line1,
+    p.address?.line2,
+    p.address?.postcode,
+  ]
+    .map((v) => v?.trim())
+    .filter(Boolean);
+  return parts.join(", ") || "Reapit property";
+}
+
+function mapReapitPipelineStage(p: ReapitProperty): string {
+  const status = p.selling?.status?.toLowerCase() ?? "";
+  if (status.includes("completed") || status.includes("exchanged") || status.includes("sold")) {
+    return "settled";
+  }
+  if (status.includes("under offer") || status.includes("under_offer")) return "under_contract";
+  if (status.includes("unconditional")) return "unconditional";
+  if (status.includes("for sale") || status.includes("marketing") || p.marketingMode === "selling") {
+    return "listing";
+  }
+  return "appraisal";
 }
 
 Deno.serve(async (req) => {
@@ -192,6 +251,80 @@ Deno.serve(async (req) => {
           updated += 1;
         } else {
           const { error } = await admin.from("contacts").insert(row);
+          if (error) {
+            skipped += 1;
+            continue;
+          }
+          imported += 1;
+        }
+      }
+
+      return json({
+        ok: true,
+        action,
+        configured: true,
+        customerId: REAPIT_CUSTOMER_ID,
+        imported,
+        updated,
+        skipped,
+        total: remote.length,
+      });
+    }
+
+    if (action === "sync_properties") {
+      const pageSize = Math.min(Math.max(body.pageSize ?? 100, 1), 250);
+      const reapitToken = await getReapitToken();
+      const raw = await fetchReapit(reapitToken, `/properties?pageSize=${pageSize}`);
+      const remote = normalizePropertiesPayload(raw);
+      const admin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      for (const remoteProperty of remote) {
+        const reapitId = remoteProperty.id?.trim();
+        if (!reapitId) {
+          skipped += 1;
+          continue;
+        }
+
+        const price =
+          remoteProperty.selling?.price ??
+          remoteProperty.price ??
+          null;
+
+        const row = {
+          user_id: user.id,
+          reapit_id: reapitId,
+          reapit_synced_at: new Date().toISOString(),
+          address: propertyAddress(remoteProperty),
+          pipeline_stage: mapReapitPipelineStage(remoteProperty),
+          status: "active" as const,
+          price: price != null && Number.isFinite(Number(price)) ? Number(price) : null,
+          bedrooms: remoteProperty.bedroomMax ?? null,
+          bathrooms: remoteProperty.bathroomMax ?? null,
+          notes: remoteProperty.description?.trim() || null,
+          headline: remoteProperty.strapline?.trim() || null,
+          negotiator_id: user.id,
+        };
+
+        const { data: existing } = await admin
+          .from("listings")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("reapit_id", reapitId)
+          .maybeSingle();
+
+        if (existing?.id) {
+          const { error } = await admin.from("listings").update(row).eq("id", existing.id);
+          if (error) {
+            skipped += 1;
+            continue;
+          }
+          updated += 1;
+        } else {
+          const { error } = await admin.from("listings").insert(row);
           if (error) {
             skipped += 1;
             continue;
