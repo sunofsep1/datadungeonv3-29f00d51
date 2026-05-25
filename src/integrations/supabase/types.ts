@@ -3561,6 +3561,8 @@ export type Database = {
           action_plan_progress: number
           address: string
           address_display_mode: string
+          agentbox_id: number | null
+          agentbox_synced_at: string | null
           authority_type: string | null
           bathrooms: number | null
           bedrooms: number | null
@@ -3662,6 +3664,8 @@ export type Database = {
           action_plan_progress?: number
           address: string
           address_display_mode?: string
+          agentbox_id?: number | null
+          agentbox_synced_at?: string | null
           authority_type?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
@@ -3763,6 +3767,8 @@ export type Database = {
           action_plan_progress?: number
           address?: string
           address_display_mode?: string
+          agentbox_id?: number | null
+          agentbox_synced_at?: string | null
           authority_type?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
