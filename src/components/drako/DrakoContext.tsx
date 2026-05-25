@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -145,8 +146,11 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
   // Refs so idle callbacks always see current values without re-subscribing
   const dispatchRef = useRef(dispatch);
   const stateRef = useRef(state);
-  dispatchRef.current = dispatch;
-  stateRef.current = state;
+
+  useLayoutEffect(() => {
+    dispatchRef.current = dispatch;
+    stateRef.current = state;
+  });
 
   // 60-second idle easter egg: sleeping → wave → idle on next interaction
   useEffect(() => {
