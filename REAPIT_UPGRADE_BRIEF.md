@@ -1636,4 +1636,5 @@ To get Reapit API access for the `qldsir` (Queensland Sotheby's) customer:
 | 2026-05-25 | **Phase 5 scaffold** — `reapit-sync` edge function + `reapit_id`/`negotiator_id` migration; Reapit row in Settings; OFI attendee interest badges | Migration `20260525140000`, `reapit-sync` |
 | 2026-05-25 | **Phase 4–5 + 7 lite** — negotiator assign on listing; Reapit property sync; vendor preview campaign KPIs; pipeline funnel OCI labelling | `sync_properties`, `listingVendorReport` |
 | 2026-05-25 | **Phase 6** — AgentBox listing sync + `listings.agentbox_id`; CRM sync cache invalidation; listing sidebar external IDs | Migration `20260525150000`, `sync_listings` |
+| 2026-05-25 | **Phase 3 UI** — `ContactProfileHero` redesign with Reapit-style M/H/W/E/F slots, social links, integration IDs | Migration `20260525160000` |
 | | Phase 5 OAuth/webhooks, full CMA module | Pending — see §8 priority order |

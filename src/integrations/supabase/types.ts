@@ -1676,10 +1676,12 @@ export type Database = {
           do_not_contact: boolean | null
           email: string | null
           email_opt_out: boolean | null
+          facebook_url: string | null
           facsimile: string | null
           first_name: string | null
           home_phone: string | null
           id: string
+          instagram_url: string | null
           job_title: string | null
           journey_stage: string | null
           last_activity_at: string | null
@@ -1719,6 +1721,7 @@ export type Database = {
           tags: string[] | null
           timeframe_category: string
           title: string | null
+          twitter_handle: string | null
           updated_at: string | null
           user_id: string | null
           website: string | null
@@ -1757,10 +1760,12 @@ export type Database = {
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
+          facebook_url?: string | null
           facsimile?: string | null
           first_name?: string | null
           home_phone?: string | null
           id?: string
+          instagram_url?: string | null
           job_title?: string | null
           journey_stage?: string | null
           last_activity_at?: string | null
@@ -1800,6 +1805,7 @@ export type Database = {
           tags?: string[] | null
           timeframe_category?: string
           title?: string | null
+          twitter_handle?: string | null
           updated_at?: string | null
           user_id?: string | null
           website?: string | null
@@ -1838,10 +1844,12 @@ export type Database = {
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
+          facebook_url?: string | null
           facsimile?: string | null
           first_name?: string | null
           home_phone?: string | null
           id?: string
+          instagram_url?: string | null
           job_title?: string | null
           journey_stage?: string | null
           last_activity_at?: string | null
@@ -1881,6 +1889,7 @@ export type Database = {
           tags?: string[] | null
           timeframe_category?: string
           title?: string | null
+          twitter_handle?: string | null
           updated_at?: string | null
           user_id?: string | null
           website?: string | null

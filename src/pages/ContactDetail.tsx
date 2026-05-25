@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -23,7 +22,6 @@ import {
   Edit,
   Trash2,
   MapPin,
-  Tag,
   Building2,
   ExternalLink,
   ChevronLeft,
@@ -41,7 +39,6 @@ import {
   getPrimaryPhone,
   getAllEmails,
   getAllPhones,
-  getTagNames,
   formatContactAddress,
   getContactDisplayName,
 } from "@/hooks/useContacts";
@@ -58,8 +55,9 @@ import { useInteractions, useCreateInteraction } from "@/hooks/useInteractions";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
-import { ContactCardChannelRows } from "@/components/contacts/ContactCardChannelRows";
-import { ContactDetailMetaStrip } from "@/components/contacts/ContactDetailMetaStrip";
+import { ContactProfileHero } from "@/components/contacts/ContactProfileHero";
+import { ContactQuickActionsBar } from "@/components/contacts/ContactQuickActionsBar";
+import { ContactCrmSettingsPanel } from "@/components/contacts/ContactCrmSettingsPanel";
 import { ContactBuyerActivityPanel } from "@/components/contacts/ContactBuyerActivityPanel";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
@@ -68,17 +66,11 @@ import { ContactNurtureSummaryStrip } from "@/components/contacts/ContactNurture
 import { ContactActivitySummaryStrip } from "@/components/contacts/ContactActivitySummaryStrip";
 import { ContactRelationshipBrief } from "@/components/contacts/ContactRelationshipBrief";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
-import { LeadClassificationPanel } from "@/components/contacts/LeadClassificationPanel";
-import { ContactScorePanel } from "@/components/contacts/ContactScorePanel";
-import { ContactWorkspaceRail } from "@/components/contacts/ContactWorkspaceRail";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
-import { ContactAmlPanel } from "@/components/contacts/ContactAmlPanel";
-import { ContactClassesSubscriptionsPanel } from "@/components/contacts/ContactClassesSubscriptionsPanel";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
 import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatchingListingsPanel";
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
 import { ContactRequirementsPreview } from "@/components/contacts/ContactRequirementsPreview";
-import { ContactOutreachPreferences } from "@/components/contacts/ContactOutreachPreferences";
 import { EntityActivitySchedulesPanel } from "@/components/shared/EntityActivitySchedulesPanel";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import { PrintNotesBody } from "@/components/contacts/ContactPrintLayout";
@@ -200,7 +192,7 @@ export default function ContactDetail() {
   const { toast } = useToast();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const nurtureFocus = searchParams.get("nurtureFocus");
-  const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties"] as const;
+  const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties", "crm"] as const;
   type ContactTab = (typeof CONTACT_TABS)[number];
   const tabParam = searchParams.get("tab");
   const contactTab: ContactTab = CONTACT_TABS.includes(tabParam as ContactTab)
@@ -226,22 +218,8 @@ export default function ContactDetail() {
 
   const heroSubtitle = useMemo(() => {
     if (!contact) return "";
-    const cc = (contact as { contact_category?: string | null }).contact_category?.trim();
-    const parts: string[] = [];
-    if (cc) {
-      const key = cc.toLowerCase();
-      const labels: Record<string, string> = {
-        top_100: "Top 100",
-        past_client: "Past client",
-        referral_partner: "Referral partner",
-        hot_lead: "Hot lead",
-        warm_lead: "Warm lead",
-        seller_nurture: "Seller nurture",
-      };
-      parts.push(labels[key] ?? cc.replace(/_/g, " "));
-    }
-    if (contact.source?.trim()) parts.push(`Source: ${contact.source.trim()}`);
-    return parts.join(" · ");
+    if (contact.source?.trim()) return `Source: ${contact.source.trim()}`;
+    return "";
   }, [contact]);
 
   const birthdayChip = useMemo(() => {
@@ -375,6 +353,9 @@ export default function ContactDetail() {
         job_title: (contact as { job_title?: string | null }).job_title ?? "",
         website: (contact as { website?: string | null }).website ?? "",
         linkedin_url: (contact as { linkedin_url?: string | null }).linkedin_url ?? "",
+        twitter_handle: (contact as { twitter_handle?: string | null }).twitter_handle ?? "",
+        instagram_url: (contact as { instagram_url?: string | null }).instagram_url ?? "",
+        facebook_url: (contact as { facebook_url?: string | null }).facebook_url ?? "",
         client_ref: (contact as { client_ref?: string | null }).client_ref ?? "",
       });
       setIsEditing(true);
@@ -420,6 +401,9 @@ export default function ContactDetail() {
         job_title: editFormData.job_title?.trim() || null,
         website: editFormData.website?.trim() || null,
         linkedin_url: editFormData.linkedin_url?.trim() || null,
+        twitter_handle: editFormData.twitter_handle?.trim() || null,
+        instagram_url: editFormData.instagram_url?.trim() || null,
+        facebook_url: editFormData.facebook_url?.trim() || null,
         client_ref: editFormData.client_ref?.trim() || null,
       };
       await updateContact.mutateAsync(payload as any);
@@ -885,125 +869,48 @@ export default function ContactDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:gap-5 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] print-contact-grid">
-        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-          {id && <ContactWorkspaceRail contact={contact} contactId={id} />}
-          {id && <ContactScorePanel contactId={id} />}
-          {id && <LeadClassificationPanel mode="contact" entityId={id} record={contact} />}
-          {id && contact ? (
-            <ContactAmlPanel
-              contact={{
-                id: contact.id,
-                aml_id_verified: (contact as { aml_id_verified?: boolean }).aml_id_verified,
-                aml_verified_at: (contact as { aml_verified_at?: string | null }).aml_verified_at,
-                aml_pep_clear: (contact as { aml_pep_clear?: boolean }).aml_pep_clear,
-                aml_notes: (contact as { aml_notes?: string | null }).aml_notes,
-              }}
-            />
-          ) : null}
-        </div>
+      <div className="space-y-5 print-contact-grid">
+        {id && contact ? (
+          <ContactProfileHero
+            contactId={id}
+            contact={contact}
+            displayName={displayNameLabel}
+            displayInitials={getInitials(undefined, undefined, displayName === "—" ? undefined : displayName)}
+            heroSubtitle={heroSubtitle}
+            birthdayChip={birthdayChip}
+            urgencyBadge={
+              <Badge
+                variant="outline"
+                className={`rounded-full border px-2.5 py-1 text-xs sm:px-3 sm:text-sm font-semibold ${urgencyBadgeClass(contactUrgency)}`}
+              >
+                {urgencyLabel(contactUrgency)}
+              </Badge>
+            }
+          />
+        ) : null}
 
-        <div className="space-y-5 print-contact-main">
-          {id ? (
-            <ContactRelationshipBrief
-              contact={contact}
-              className="print:hidden"
-            />
-          ) : null}
+        {id ? (
+          <ContactQuickActionsBar contact={contact} contactId={id} />
+        ) : null}
 
-          {/* Overview */}
-          <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
-            <div className="flex items-start gap-4">
-              <AvatarCircle
-                name={displayName === "—" ? undefined : displayName}
-                size="lg"
-                initials={getInitials(undefined, undefined, displayName === "—" ? undefined : displayName)}
-              />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{displayNameLabel}</h1>
-                {heroSubtitle ? (
-                  <p className="mt-1 text-sm text-muted-foreground">{heroSubtitle}</p>
-                ) : null}
-                <div className="mt-2.5 mb-2.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <span className="hidden text-[11px] uppercase tracking-wide text-muted-foreground sm:inline">Urgency</span>
-                  <Badge
-                    variant="outline"
-                    className={`rounded-full border px-2.5 py-1 text-xs sm:px-3 sm:text-sm font-semibold ${urgencyBadgeClass(contactUrgency)}`}
-                  >
-                    {urgencyLabel(contactUrgency)}
-                  </Badge>
-                  {(contact as { contact_category?: string | null }).contact_category && (
-                    <Badge variant="secondary" className="text-xs">
-                      {normalizeContactClassificationCategory(
-                        (contact as { contact_category?: string | null }).contact_category
-                      ).replace(/_/g, " ")}
-                    </Badge>
-                  )}
-                  {contact.lead_score != null && (
-                    <Badge variant="secondary" className="tabular-nums text-xs sm:text-sm">
-                      <span className="sm:hidden">Score {contact.lead_score}</span>
-                      <span className="hidden sm:inline">Lead score {contact.lead_score}</span>
-                    </Badge>
-                  )}
-                  {birthdayChip ? (
-                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/35">
-                      {birthdayChip}
-                    </span>
-                  ) : null}
-                  {(contact as { do_not_contact?: boolean | null }).do_not_contact ? (
-                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-destructive/15 text-destructive border border-destructive/35">
-                      Do not contact
-                    </span>
-                  ) : null}
-                  {(() => {
-                    const raw = (contact as { next_touch_date?: string | null }).next_touch_date?.trim();
-                    if (!raw) return null;
-                    const d = parseISO(`${raw.slice(0, 10)}T12:00:00`);
-                    if (!isValid(d)) return null;
-                    return (
-                      <span className="text-xs text-muted-foreground">
-                        Next touch <span className="text-foreground font-medium">{format(d, "d MMM yyyy")}</span>
-                      </span>
-                    );
-                  })()}
-                </div>
-                {id ? <ContactDetailMetaStrip contactId={id} contact={contact} /> : null}
-                {id ? <ContactCardChannelRows contactId={id} contact={contact} /> : null}
-                {getTagNames(contact).length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                    <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    {getTagNames(contact).map((t, index) => (
-                      <Badge
-                        key={t}
-                        variant="secondary"
-                        className={`font-normal ${index >= 3 ? "hidden sm:inline-flex" : ""}`}
-                      >
-                        {t}
-                      </Badge>
-                    ))}
-                    {getTagNames(contact).length > 3 ? (
-                      <Badge variant="outline" className="font-normal sm:hidden">
-                        +{getTagNames(contact).length - 3}
-                      </Badge>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
+        {id ? (
+          <ContactRelationshipBrief contact={contact} className="print:hidden" />
+        ) : null}
 
+        <div className="min-w-0 space-y-5 print-contact-main">
           {id ? (
             <Tabs
               value={contactTab}
               onValueChange={(v) => setContactTab(v as ContactTab)}
               className="print:hidden"
             >
-              <SegmentedTabsList className="grid-cols-2 sm:grid-cols-5">
+              <SegmentedTabsList className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
                 <SegmentedTabsTrigger value="overview">Overview</SegmentedTabsTrigger>
                 <SegmentedTabsTrigger value="card">Contact card</SegmentedTabsTrigger>
                 <SegmentedTabsTrigger value="requirements">Requirements</SegmentedTabsTrigger>
                 <SegmentedTabsTrigger value="people">Related</SegmentedTabsTrigger>
                 <SegmentedTabsTrigger value="properties">Properties</SegmentedTabsTrigger>
+                <SegmentedTabsTrigger value="crm">CRM</SegmentedTabsTrigger>
               </SegmentedTabsList>
 
               <TabsContent value="overview" className="mt-4 space-y-5">
@@ -1096,13 +1003,6 @@ export default function ContactDetail() {
             )}
           </Card>
 
-              {contact ? (
-                <ContactOutreachPreferences contact={contact} onUpdated={() => void refetch()} />
-              ) : null}
-
-              {id ? <ContactClassesSubscriptionsPanel contactId={id} /> : null}
-
-          {/* Pain & Pleasure */}
           <Card className="zoho-card p-5 sm:p-6 border-border print:border print:border-gray-300 print-section">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-4">Pain & pleasure points</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1281,6 +1181,10 @@ export default function ContactDetail() {
             />
           </div>
               </TabsContent>
+
+              <TabsContent value="crm" className="mt-4 space-y-5">
+                <ContactCrmSettingsPanel contactId={id} contact={contact} onUpdated={() => void refetch()} />
+              </TabsContent>
             </Tabs>
           ) : null}
         </div>
@@ -1410,6 +1314,34 @@ export default function ContactDetail() {
                 className="bg-input"
                 value={editFormData.linkedin_url || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, linkedin_url: e.target.value })}
+                placeholder="https://linkedin.com/in/…"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>X / Twitter</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.twitter_handle || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, twitter_handle: e.target.value })}
+                placeholder="@handle"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Instagram</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.instagram_url || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, instagram_url: e.target.value })}
+                placeholder="@handle or URL"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Facebook</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.facebook_url || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, facebook_url: e.target.value })}
+                placeholder="Page name or URL"
               />
             </div>
             <div className="space-y-2">
