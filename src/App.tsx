@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PageFallbackSkeleton } from "@/components/PageFallbackSkeleton";
+import { DrakoProvider, DrakoCompanion } from "@/components/drako";
 
 // Route-level splits to avoid one oversized "core pages" bundle.
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -60,11 +61,12 @@ const Reports = lazy(() => import("./pages/Reports"));
 const InvoicePrintPage = lazy(() => import("./pages/InvoicePrintPage"));
 const Invoices = lazy(() => import("./pages/Invoices"));
 const OfiCheckInPage = lazy(() => import("./pages/OfiCheckInPage"));
-const OfiBrochurePrintPage = lazy(() => import("./pages/OfiBrochurePrintPage"));
+const DrakoDemo = lazy(() => import("./pages/DrakoDemo"));
 
 const queryClient = new QueryClient();
 
 const App = () => (
+  <DrakoProvider>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
@@ -77,8 +79,8 @@ const App = () => (
                 <Route path="/" element={<Navigate to="/attention-hub" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/drako-demo" element={<DrakoDemo />} />
                 <Route path="/ofi/check-in/:token" element={<OfiCheckInPage />} />
-                <Route path="/ofi/brochure/:token/print" element={<ProtectedRoute><OfiBrochurePrintPage /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/attention-hub" element={<ProtectedRoute><MainLayout><ErrorBoundary><AttentionHub /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />
@@ -141,6 +143,8 @@ const App = () => (
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
+    <DrakoCompanion />
+  </DrakoProvider>
 );
 
 export default App;
