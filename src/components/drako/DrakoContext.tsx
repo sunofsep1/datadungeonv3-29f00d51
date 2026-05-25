@@ -13,20 +13,58 @@ import type {
   DrakoContextValue,
   DrakoMood,
 } from "./types";
+import { layout } from "@/lib/designTokens";
 import { COMPANION_PX } from "./types";
+
+function parseSidebarWidthPx(): number {
+  if (typeof window === "undefined") return 248;
+  if (window.innerWidth < 768) return 0;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--dd-sidebar-width").trim();
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : 248;
+}
 
 export function getAnchorPosition(anchor: DrakoAnchor): { x: number; y: number } {
   if (typeof window === "undefined") return { x: 0, y: 0 };
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const S = COMPANION_PX;
+  const spriteH = Math.round(S * 0.75);
+  const isDesktop = vw >= 768;
+  const sidebarPx = parseSidebarWidthPx();
+  const sidebarLeft = isDesktop ? sidebarPx + 12 : 12;
+  const bottomInset = isDesktop ? 32 : 96;
+
+  const headerH = 60;
+
   switch (anchor) {
-    case "sidebar":      return { x: 20, y: Math.round(vh * 0.5 - S / 2) };
-    case "header":       return { x: Math.round(vw * 0.5 - S / 2), y: 12 };
-    case "center":       return { x: Math.round(vw * 0.5 - S / 2), y: Math.round(vh * 0.5 - S / 2) };
-    case "table":        return { x: Math.round(vw * 0.65), y: Math.round(vh * 0.38) };
-    case "empty-state":  return { x: Math.round(vw * 0.5 - S / 2), y: Math.round(vh * 0.65) };
-    case "bottom-right": return { x: vw - S - 20, y: vh - S - 20 };
+    case "sidebar":
+      return { x: 20, y: Math.round(vh * 0.5 - S / 2) };
+    case "sidebar-dock":
+      return { x: sidebarLeft, y: vh - S - bottomInset };
+    case "top-right":
+      return { x: vw - S - 16, y: headerH + 8 };
+    case "stage": {
+      const contentLeft = sidebarPx;
+      const contentW = vw - contentLeft;
+      const centerX = contentLeft + contentW * 0.56 - S / 2;
+      const minX = contentLeft + Math.min(48, contentW * 0.08);
+      const contentH = vh - headerH;
+      return {
+        x: Math.round(Math.max(minX, centerX)),
+        y: Math.round(headerH + contentH * 0.16 - spriteH / 2),
+      };
+    }
+    case "header":
+      return { x: Math.round(vw * 0.5 - S / 2), y: 12 };
+    case "center":
+      return { x: Math.round(vw * 0.5 - S / 2), y: Math.round(vh * 0.5 - S / 2) };
+    case "table":
+      return { x: Math.round(vw * 0.65), y: Math.round(vh * 0.38) };
+    case "empty-state":
+      return { x: Math.round(vw * 0.5 - S / 2), y: Math.round(vh * 0.65) };
+    case "bottom-right":
+      return { x: vw - S - 20, y: vh - S - bottomInset };
   }
 }
 
@@ -35,10 +73,10 @@ const IDLE_TIMEOUT_MS = 60_000;
 const initialState: DrakoCompanionState = {
   mood: "idle",
   pendingMood: "idle",
-  anchor: "bottom-right",
+  anchor: "stage",
   position:
     typeof window !== "undefined"
-      ? getAnchorPosition("bottom-right")
+      ? getAnchorPosition("stage")
       : { x: 0, y: 0 },
   isWalking: false,
   isVisible: false,
@@ -47,12 +85,17 @@ const initialState: DrakoCompanionState = {
 
 type Action =
   | { type: "MOVE_TO"; anchor: DrakoAnchor; position: { x: number; y: number }; pendingMood: DrakoMood; caption: string | null }
+  | { type: "GLIDE_TO"; anchor: DrakoAnchor; position: { x: number; y: number }; pendingMood: DrakoMood; caption: string | null }
   | { type: "ARRIVED" }
   | { type: "SET_MOOD"; mood: DrakoMood; caption: string | null }
   | { type: "SHOW" }
   | { type: "HIDE" }
   | { type: "SLEEP" }
-  | { type: "WAKE" };
+  | { type: "WAKE" }
+  | { type: "REPOSITION"; position: { x: number; y: number } };
+
+const POSITION_EPS = 12;
+const GLIDE_MAX_PX = 56;
 
 function reducer(state: DrakoCompanionState, action: Action): DrakoCompanionState {
   switch (action.type) {
@@ -64,6 +107,16 @@ function reducer(state: DrakoCompanionState, action: Action): DrakoCompanionStat
         pendingMood: action.pendingMood,
         caption: action.caption,
         isWalking: true,
+      };
+    case "GLIDE_TO":
+      return {
+        ...state,
+        anchor: action.anchor,
+        position: action.position,
+        mood: action.pendingMood,
+        pendingMood: action.pendingMood,
+        caption: action.caption,
+        isWalking: false,
       };
     case "ARRIVED":
       return { ...state, mood: state.pendingMood, isWalking: false };
@@ -77,6 +130,8 @@ function reducer(state: DrakoCompanionState, action: Action): DrakoCompanionStat
       return { ...state, mood: "sleeping", pendingMood: "sleeping", isWalking: false };
     case "WAKE":
       return { ...state, mood: "wave", pendingMood: "idle" };
+    case "REPOSITION":
+      return { ...state, position: action.position, isWalking: false };
     default:
       return state;
   }
@@ -123,11 +178,45 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Keep position correct on resize and sidebar collapse/expand
+  useEffect(() => {
+    const reposition = () => {
+      const anchor = stateRef.current.anchor;
+      dispatchRef.current({
+        type: "REPOSITION",
+        position: getAnchorPosition(anchor),
+      });
+    };
+    window.addEventListener("resize", reposition, { passive: true });
+    const observer = new MutationObserver(reposition);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+    return () => {
+      window.removeEventListener("resize", reposition);
+      observer.disconnect();
+    };
+  }, []);
+
   const moveTo = useCallback(
     (anchor: DrakoAnchor, opts?: { mood?: DrakoMood; caption?: string }) => {
       const position = getAnchorPosition(anchor);
       const pendingMood = opts?.mood ?? stateRef.current.mood;
-      dispatch({ type: "MOVE_TO", anchor, position, pendingMood, caption: opts?.caption ?? null });
+      const caption = opts?.caption ?? null;
+      const cur = stateRef.current;
+      const dist = Math.hypot(position.x - cur.position.x, position.y - cur.position.y);
+
+      if (cur.anchor === anchor && dist < POSITION_EPS) {
+        if (cur.mood !== pendingMood || cur.caption !== caption) {
+          dispatch({ type: "SET_MOOD", mood: pendingMood, caption });
+        }
+        return;
+      }
+
+      if (dist < GLIDE_MAX_PX) {
+        dispatch({ type: "GLIDE_TO", anchor, position, pendingMood, caption });
+        return;
+      }
+
+      dispatch({ type: "MOVE_TO", anchor, position, pendingMood, caption });
     },
     [],
   );

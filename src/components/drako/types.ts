@@ -16,6 +16,9 @@ export type DrakoMood =
 
 export type DrakoAnchor =
   | 'sidebar'
+  | 'sidebar-dock'
+  | 'top-right'
+  | 'stage'
   | 'header'
   | 'center'
   | 'table'
@@ -42,7 +45,7 @@ export const DRAKO_ALT: Record<DrakoMood, string> = {
 };
 
 export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
-  sm: 48,
+  sm: 64,
   md: 96,
   lg: 192,
   xl: 384,
@@ -52,7 +55,7 @@ export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
 // to idle+working until walk sprites are dropped into public/drako/.
 export const WALK_FRAMES: DrakoMood[] = ['idle', 'working'];
 
-export const COMPANION_PX = 128; // fixed size for the floating companion
+export const COMPANION_PX = 168; // live-action video display width
 
 export interface DrakoCompanionState {
   mood: DrakoMood;

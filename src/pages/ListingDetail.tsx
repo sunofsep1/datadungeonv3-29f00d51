@@ -85,6 +85,7 @@ import {
 } from "@/lib/contactConflictDetection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDrako } from "@/components/drako";
 import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
@@ -178,6 +179,7 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { moveTo, setMood } = useDrako();
   const { data: listing, isLoading, isError, refetch } = useListing(id);
   const listingWithContact = listing as (Listing & { contact_id?: string | null }) | null;
   const contactId = listingWithContact?.contact_id ?? undefined;
@@ -335,6 +337,10 @@ export default function ListingDetail() {
       await updateListing.mutateAsync({ id, status });
       toast({ title: "Updated", description: `Status set to ${status}` });
       refetch();
+      if (status === "sold") {
+        moveTo("center", { mood: "fire-breath" });
+        setTimeout(() => setMood("celebrate", { caption: "DEAL. CLOSED. 🔥" }), 1200);
+      }
     } catch (e) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Update failed", variant: "destructive" });
     }

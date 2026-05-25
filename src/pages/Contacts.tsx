@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { format, isValid, parseISO } from "date-fns";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
@@ -438,6 +440,7 @@ function buildNormalizedExistingContact(contact: ContactWithMeta): Record<string
 
 export default function Contacts() {
   const navigate = useNavigate();
+  const { moveTo } = useDrako();
   const [searchParams, setSearchParams] = useSearchParams();
   const smartParam = searchParams.get("smart");
   const { data: contacts, isLoading, isError, refetch } = useContacts();
@@ -959,6 +962,14 @@ export default function Contacts() {
   }, [filteredAndSortedContacts, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredAndSortedContacts.length / itemsPerPage);
+
+  useEffect(() => {
+    if (filteredAndSortedContacts.length === 0) {
+      moveTo("empty-state", { mood: "sleeping", caption: pickDrakoLine("empty") });
+    } else if (filteredAndSortedContacts.length > 0) {
+      moveTo("stage", { mood: "idle" });
+    }
+  }, [filteredAndSortedContacts.length === 0, moveTo]);
 
   // Reset to page 1 when filters change
   useEffect(() => {

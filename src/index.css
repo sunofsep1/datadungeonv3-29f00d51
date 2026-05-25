@@ -2350,8 +2350,68 @@ html:not(.light) .dashboard-clock-glow {
   }
 }
 
+@keyframes drako-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes drako-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes drako-waddle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
 .dashboard-clock-progress {
   box-shadow: 0 0 8px hsl(var(--primary) / 0.45);
+}
+
+/* Drako pixel sprites — grounded glow, no white-box paste look */
+.drako-sprite {
+  isolation: isolate;
+}
+
+.drako-sprite-img {
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 8px hsl(var(--primary) / 0.28));
+}
+
+.drako-caption-bubble {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Live-action loops — canvas chroma key (OpenArt mattes) */
+.drako-sprite-video {
+  isolation: isolate;
+}
+
+.drako-video-img {
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 12px hsl(var(--primary) / 0.25));
 }
 
 /* Density: compact reduces spacing */

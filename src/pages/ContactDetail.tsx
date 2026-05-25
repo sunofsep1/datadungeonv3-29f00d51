@@ -31,6 +31,7 @@ import {
   Handshake,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDrako } from "@/components/drako";
 import { useContact } from "@/hooks/useContact";
 import {
   useContacts,
@@ -190,6 +191,7 @@ export default function ContactDetail() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const { setMood } = useDrako();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const nurtureFocus = searchParams.get("nurtureFocus");
   const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties", "crm"] as const;
@@ -422,6 +424,7 @@ export default function ContactDetail() {
         }
       }
       toast({ title: "Success", description: "Contact updated!" });
+      setMood("wave", { caption: "Contact locked in, mate." });
       setIsEditing(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

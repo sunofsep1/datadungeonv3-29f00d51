@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
+import { useDrako } from "@/components/drako";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ export default function ListingsSalesBoard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<Listing | null>(null);
   const { toast } = useToast();
+  const { setMood } = useDrako();
   const [searchParams, setSearchParams] = useSearchParams();
   const showTable = searchParams.get("view") === "table";
   const mineOnly = searchParams.get("scope") === "mine";
@@ -144,6 +146,7 @@ export default function ListingsSalesBoard() {
         /* activity optional */
       }
       toast({ title: "Stage updated", description: `Moved to ${label}` });
+      setMood("growth-chart", { caption: "Moving on up. Keep it going." });
     } catch (error) {
       toast({
         title: "Error",

@@ -7,7 +7,6 @@ import {
   Megaphone,
   Menu,
   X,
-  Database,
   FileText,
   Settings,
   LogOut,
@@ -49,6 +48,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { layout } from "@/lib/designTokens";
+import { DataDungeonBrand } from "@/components/brand/DataDungeonBrand";
 
 type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
@@ -191,18 +191,10 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         )}
         style={{ width: desktopWidth }}
       >
-        {/* Logo / brand — teal to match main page (dashboard clock, KPIs) */}
+        {/* Logo / brand — pixel wordmark (no graphic) */}
         <div className="flex h-[60px] shrink-0 items-center border-b border-sidebar-border px-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal">
-              <Database className="h-5 w-5 text-teal-foreground" />
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 flex flex-col">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/70">Data</span>
-                <span className="text-sm font-semibold text-teal truncate">Dungeon</span>
-              </div>
-            )}
+          <div className="flex min-w-0 flex-1 items-center">
+            <DataDungeonBrand collapsed={collapsed} />
           </div>
           {!collapsed && (
             <Tooltip>
@@ -396,10 +388,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         )}
       >
         <div className="flex h-14 items-center gap-3 border-b border-sidebar-border px-4 mt-12">
-          <div className="h-9 w-9 rounded-lg bg-teal flex items-center justify-center">
-            <Database className="h-5 w-5 text-teal-foreground" />
-          </div>
-          <span className="text-sm font-semibold text-teal">Data Dungeon</span>
+          <DataDungeonBrand collapsed={false} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
           <nav className="space-y-1 p-3" aria-label="Main navigation">

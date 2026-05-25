@@ -2,19 +2,17 @@
  * DrakoCompanion — the floating, walking, animated mascot.
  * Renders as a fixed-position overlay at the app root.
  * Controlled entirely through DrakoContext (useDrako / useDrakoInternal).
- *
- * Walk frames: currently uses idle↔working as a 2-frame stand-in.
- * Drop drako-walk-1.webp + drako-walk-2.webp in public/drako/ and update
- * WALK_FRAMES in types.ts to use them.
  */
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useDrakoInternal } from "./DrakoContext";
-import { COMPANION_PX, DRAKO_ALT, WALK_FRAMES } from "./types";
-import type { DrakoMood } from "./types";
+import { COMPANION_PX, DRAKO_ALT } from "./types";
+import { DrakoSpriteImage } from "./DrakoSpriteImage";
+import { getDrakoVideoAsset, getDrakoVideoSrcKey } from "./drakoVideos";
 
 const POS_SPRING = { type: "spring", stiffness: 80, damping: 18 } as const;
 const POP_SPRING = { type: "spring", stiffness: 300, damping: 22 } as const;
+const GLIDE_SPRING = { type: "spring", stiffness: 120, damping: 22 } as const;
 
 function DrakoBubble({ text }: { text: string }) {
   return (
@@ -28,16 +26,17 @@ function DrakoBubble({ text }: { text: string }) {
         bottom: "calc(100% + 10px)",
         left: "50%",
         transform: "translateX(-50%)",
-        background: "white",
-        color: "#1a1a1a",
+        background: "hsl(var(--card))",
+        color: "hsl(var(--foreground))",
+        border: "1px solid hsl(var(--border))",
         borderRadius: 12,
         padding: "7px 13px",
         fontSize: 11,
         fontWeight: 500,
         whiteSpace: "nowrap",
-        maxWidth: 200,
+        maxWidth: 220,
         textAlign: "center",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.45), 0 0 16px hsl(var(--primary) / 0.15)",
         pointerEvents: "none",
         zIndex: 1,
       }}
@@ -51,7 +50,7 @@ function DrakoBubble({ text }: { text: string }) {
           transform: "translateX(-50%)",
           borderLeft: "6px solid transparent",
           borderRight: "6px solid transparent",
-          borderTop: "6px solid white",
+          borderTop: "6px solid hsl(var(--card))",
         }}
       />
     </motion.div>
@@ -61,27 +60,13 @@ function DrakoBubble({ text }: { text: string }) {
 export function DrakoCompanion() {
   const { state, arrive } = useDrakoInternal();
   const prefersReduced = useReducedMotion();
-
-  const [walkFrame, setWalkFrame] = useState<0 | 1>(0);
   const isWalkingRef = useRef(false);
   const fallbackRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Keep ref current so callbacks avoid stale closures
   useEffect(() => {
     isWalkingRef.current = state.isWalking;
   }, [state.isWalking]);
 
-  // 2-frame walk cycle: alternate at ~5fps while walking
-  useEffect(() => {
-    if (!state.isWalking || prefersReduced) {
-      setWalkFrame(0);
-      return;
-    }
-    const id = setInterval(() => setWalkFrame((f) => (f === 0 ? 1 : 0)), 200);
-    return () => clearInterval(id);
-  }, [state.isWalking, prefersReduced]);
-
-  // Fallback: if spring onAnimationComplete doesn't fire, force arrival after 1.8s
   useEffect(() => {
     if (!state.isWalking) return;
     fallbackRef.current = setTimeout(() => {
@@ -95,9 +80,11 @@ export function DrakoCompanion() {
     if (isWalkingRef.current) arrive();
   }, [arrive]);
 
-  const displayMood: DrakoMood = state.isWalking
-    ? (WALK_FRAMES[walkFrame] as DrakoMood)
-    : state.mood;
+  const displayMood = state.isWalking ? state.pendingMood : state.mood;
+  const videoSrcKey = getDrakoVideoSrcKey(displayMood);
+  const usesVideo = Boolean(getDrakoVideoAsset(displayMood));
+  const idleBob = !prefersReduced && !state.isWalking && !usesVideo;
+  const walkWaddle = !prefersReduced && state.isWalking;
 
   return (
     <div
@@ -110,13 +97,17 @@ export function DrakoCompanion() {
         overflow: "visible",
       }}
     >
-      {/* ── Position layer: spring-animated x/y ── */}
       <motion.div
         animate={{ x: state.position.x, y: state.position.y }}
-        transition={prefersReduced ? { duration: 0 } : POS_SPRING}
+        transition={
+          prefersReduced
+            ? { duration: 0 }
+            : state.isWalking
+              ? POS_SPRING
+              : GLIDE_SPRING
+        }
         onAnimationComplete={handleArrival}
       >
-        {/* ── Mount / unmount: slide-pop in from below, shrink out ── */}
         <AnimatePresence>
           {state.isVisible && (
             <motion.div
@@ -127,57 +118,31 @@ export function DrakoCompanion() {
               transition={prefersReduced ? { duration: 0 } : POP_SPRING}
               style={{ position: "relative", width: COMPANION_PX }}
             >
-              {/* Caption speech bubble */}
               <AnimatePresence>
                 {state.caption && <DrakoBubble key={state.caption} text={state.caption} />}
               </AnimatePresence>
 
-              {/* ── Bob (idle) or waddle (walking) ── */}
               <div
                 style={{
-                  animation:
-                    prefersReduced
-                      ? "none"
-                      : state.isWalking
-                        ? "drako-waddle 0.35s ease-in-out infinite"
-                        : "drako-bob 3s ease-in-out infinite",
-                  willChange: "transform",
+                  animation: walkWaddle
+                    ? "drako-waddle 0.35s ease-in-out infinite"
+                    : idleBob
+                      ? "drako-bob 3s ease-in-out infinite"
+                      : "none",
+                  willChange: walkWaddle || idleBob ? "transform" : undefined,
                 }}
               >
-                {/* ── Breathing (idle only) ── */}
                 <div
                   style={{
-                    animation:
-                      prefersReduced || state.isWalking
-                        ? "none"
-                        : "drako-breathe 4s ease-in-out infinite",
+                    animation: idleBob ? "drako-breathe 4s ease-in-out infinite" : "none",
                   }}
                 >
-                  {/* ── Mood crossfade ── */}
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={displayMood}
-                      initial={{ opacity: 0, scale: 0.88 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.06 }}
-                      transition={{ duration: prefersReduced ? 0 : 0.18 }}
-                    >
-                      <picture>
-                        <source
-                          type="image/webp"
-                          srcSet={`/drako/drako-${displayMood}.webp`}
-                        />
-                        <img
-                          src={`/drako/drako-${displayMood}.png`}
-                          srcSet={`/drako/drako-${displayMood}@2x.png 2x`}
-                          alt={DRAKO_ALT[displayMood]}
-                          width={COMPANION_PX}
-                          draggable={false}
-                          style={{ imageRendering: "pixelated", display: "block" }}
-                        />
-                      </picture>
-                    </motion.div>
-                  </AnimatePresence>
+                  <DrakoSpriteImage
+                    key={videoSrcKey}
+                    mood={displayMood}
+                    width={COMPANION_PX}
+                    alt={DRAKO_ALT[displayMood]}
+                  />
                 </div>
               </div>
             </motion.div>

@@ -8,8 +8,13 @@ import {
   parseISO,
 } from "date-fns";
 
-const BRISBANE_TZ = "Australia/Brisbane";
 const MONO = "'Share Tech Mono', monospace";
+const BRISBANE_TZ = "Australia/Brisbane";
+
+const OTHER_ZONES = [
+  { label: "Melbourne", timeZone: "Australia/Melbourne", abbr: "MEL" },
+  { label: "Amsterdam", timeZone: "Europe/Amsterdam", abbr: "AMS" },
+] as const;
 
 function getGreeting(hour24: number): string {
   if (hour24 < 12) return "Good morning";
@@ -44,6 +49,7 @@ type BrisbaneClock = {
   day: string;
   calendarDate: Date;
   isWeekend: boolean;
+  tzShort: string;
 };
 
 function readBrisbaneClock(now: Date): BrisbaneClock {
@@ -57,6 +63,7 @@ function readBrisbaneClock(now: Date): BrisbaneClock {
     month: "long",
     year: "numeric",
     hour12: true,
+    timeZoneName: "short",
   }).formatToParts(now);
 
   const get = (type: Intl.DateTimeFormatPartTypes) =>
@@ -95,12 +102,65 @@ function readBrisbaneClock(now: Date): BrisbaneClock {
     day,
     calendarDate,
     isWeekend,
+    tzShort: get("timeZoneName"),
+  };
+}
+
+type MiniZoneTime = {
+  hours12: string;
+  minutes: string;
+  ampm: string;
+  tzShort: string;
+};
+
+function readMiniZoneTime(now: Date, timeZone: string): MiniZoneTime {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).formatToParts(now);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  return {
+    hours12: get("hour").padStart(2, "0"),
+    minutes: get("minute"),
+    ampm: get("dayPeriod").toLowerCase(),
+    tzShort: get("timeZoneName"),
   };
 }
 
 function dayProgressPercent(hour24: number, minute: number, second: number): number {
   const elapsed = hour24 * 3600 + minute * 60 + second;
   return Math.round((elapsed / 86400) * 100);
+}
+
+function MiniZoneClock({
+  abbr,
+  label,
+  time,
+}: {
+  abbr: string;
+  label: string;
+  time: MiniZoneTime;
+}) {
+  return (
+    <div
+      className="flex items-baseline gap-1.5 text-[10px] text-muted-foreground/80 sm:text-[11px]"
+      style={{ fontFamily: MONO }}
+      title={`${label} (${time.tzShort})`}
+      aria-label={`${label} ${time.hours12}:${time.minutes} ${time.ampm}`}
+    >
+      <span className="w-7 shrink-0 font-medium uppercase tracking-wider text-muted-foreground/60">{abbr}</span>
+      <span className="tabular-nums text-muted-foreground/90">
+        {time.hours12}:{time.minutes}
+        <span className="ml-0.5 lowercase">{time.ampm}</span>
+      </span>
+    </div>
+  );
 }
 
 export function DashboardWelcomeHeader() {
@@ -113,6 +173,15 @@ export function DashboardWelcomeHeader() {
   }, []);
 
   const clock = useMemo(() => readBrisbaneClock(now), [now]);
+  const otherTimes = useMemo(
+    () =>
+      OTHER_ZONES.map((zone) => ({
+        ...zone,
+        time: readMiniZoneTime(now, zone.timeZone),
+      })),
+    [now],
+  );
+
   const firstName = getFirstName(user);
   const greeting = getGreeting(clock.hour24);
   const displayName = firstName ? firstName : "there";
@@ -129,7 +198,7 @@ export function DashboardWelcomeHeader() {
   const ariaTime = `${clock.hours12}:${clock.minutes}:${clock.seconds} ${clock.ampm}, ${clock.dayMonthYear}, Brisbane`;
 
   return (
-    <div className="w-full max-w-xl">
+    <div className="w-full min-w-0">
       <div
         className="dashboard-clock-panel relative overflow-hidden rounded-xl border border-border bg-card px-6 py-5 sm:px-8 sm:py-6 shadow-inner"
         style={{ boxShadow: "inset 0 2px 8px rgba(0,0,0,0.18)" }}
@@ -139,24 +208,24 @@ export function DashboardWelcomeHeader() {
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div
-              className="font-mono font-bold tabular-nums tracking-[0.08em] text-teal dashboard-clock-glow flex flex-wrap items-baseline gap-x-1 gap-y-0"
+              className="dashboard-clock-glow flex flex-wrap items-baseline gap-x-1 gap-y-0 font-mono text-5xl font-bold tabular-nums tracking-[0.08em] text-teal sm:text-6xl lg:text-7xl"
               style={{ fontFamily: MONO }}
               aria-live="polite"
               aria-label={`Current time ${ariaTime}`}
             >
-              <span className="text-5xl sm:text-6xl lg:text-7xl leading-none">
+              <span className="leading-none">
                 {clock.hours12}:{clock.minutes}
               </span>
-              <span className="text-3xl sm:text-4xl lg:text-5xl leading-none text-teal/90 dashboard-clock-seconds">
+              <span className="dashboard-clock-seconds text-3xl leading-none text-teal/90 sm:text-4xl lg:text-5xl">
                 :{clock.seconds}
               </span>
-              <span className="text-xl sm:text-2xl lg:text-3xl font-semibold ml-1 sm:ml-2 text-teal/80">
+              <span className="ml-1 text-xl font-semibold text-teal/80 sm:ml-2 sm:text-2xl lg:text-3xl">
                 {clock.ampm}
               </span>
             </div>
 
             <p
-              className="mt-3 text-sm sm:text-base font-medium tracking-wide text-foreground/90"
+              className="mt-3 text-sm font-medium tracking-wide text-foreground/90 sm:text-base"
               style={{ fontFamily: MONO }}
             >
               {clock.dayMonthYear}
@@ -164,21 +233,31 @@ export function DashboardWelcomeHeader() {
           </div>
 
           <div
-            className="shrink-0 text-right text-[11px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground"
+            className="flex shrink-0 flex-col items-start gap-2 sm:items-end sm:pt-1"
             style={{ fontFamily: MONO }}
           >
-            <p className="text-primary/90 font-semibold text-sm sm:text-base tracking-[0.12em] normal-case">
-              Brisbane
-            </p>
-            <p className="mt-0.5">AEST · UTC+10</p>
-            <p className="mt-2 text-[10px] tracking-[0.16em]">
-              {clock.isWeekend ? "Weekend" : "Business day"}
-            </p>
+            <div className="flex flex-col gap-1 sm:items-end">
+              {otherTimes.map(({ abbr, label, time }) => (
+                <MiniZoneClock key={abbr} abbr={abbr} label={label} time={time} />
+              ))}
+            </div>
+
+            <div className="mt-1 border-t border-border/50 pt-2 text-right sm:mt-2">
+              <p className="text-sm font-semibold tracking-[0.12em] text-primary/90 normal-case sm:text-base">
+                Brisbane
+              </p>
+              <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                {clock.tzShort}
+              </p>
+              <p className="mt-1 text-[10px] tracking-[0.16em] text-muted-foreground/70">
+                {clock.isWeekend ? "Weekend" : "Business day"}
+              </p>
+            </div>
           </div>
         </div>
 
         <div
-          className="relative mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 border-t border-border/70 pt-4"
+          className="relative mt-4 grid grid-cols-2 gap-2 border-t border-border/70 pt-4 sm:grid-cols-4 sm:gap-3"
           style={{ fontFamily: MONO }}
         >
           <ClockStat label="ISO week" value={`W${isoWeek}`} />
@@ -188,13 +267,13 @@ export function DashboardWelcomeHeader() {
         </div>
 
         <div className="relative mt-4">
-          <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
+          <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
             <span>Day progress</span>
             <span className="tabular-nums">{dayProgress}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-muted/80 overflow-hidden">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-teal/70 via-primary to-primary/80 transition-[width] duration-1000 ease-linear dashboard-clock-progress"
+              className="dashboard-clock-progress h-full rounded-full bg-gradient-to-r from-teal/70 via-primary to-primary/80 transition-[width] duration-1000 ease-linear"
               style={{ width: `${dayProgress}%` }}
             />
           </div>
@@ -202,7 +281,7 @@ export function DashboardWelcomeHeader() {
       </div>
 
       <p
-        className="mt-3 text-[15px] sm:text-base font-normal tracking-tight text-muted-foreground/90"
+        className="mt-3 text-[15px] font-normal tracking-tight text-muted-foreground/90 sm:text-base"
         style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
         aria-label={firstName ? `${greeting}, ${displayName}` : greeting}
       >
@@ -221,8 +300,8 @@ export function DashboardWelcomeHeader() {
 function ClockStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border/60 bg-muted/20 px-2.5 py-2 text-center">
-      <p className="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm sm:text-base font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground sm:text-base">{value}</p>
     </div>
   );
 }

@@ -82,7 +82,7 @@ function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/touch-report")) return "Touch report";
   if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
   if (pathname.startsWith("/attention-hub")) return "Daily Hub";
-  return MODULE_TITLES[pathname] ?? "Data Dungeon";
+  return MODULE_TITLES[pathname] ?? "DataDungeon";
 }
 
 interface HeaderBarProps {
