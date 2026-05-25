@@ -22,6 +22,8 @@ export type InspectionAttendee = {
   guest_name: string | null;
   guest_phone: string | null;
   guest_email: string | null;
+  interest_level?: string | null;
+  working_with_agent?: boolean | null;
   checked_in_at: string;
   created_at: string;
   contacts?: { id: string; name: string | null; first_name: string | null; last_name: string | null } | null;

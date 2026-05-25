@@ -513,3 +513,4 @@ After these three, evaluate whether to push into Marketing Funds, Portal Exports
 | 2026-05-24 | **Reports** — Unconditional sales, sales by region, listings/sales summary, appraisal contacts | `?tab=unconditional` · `sales-region` · `sales-summary` · `appraisal-contacts` |
 | 2026-05-24 | **Brief v1 completion** — database usage, detailed listings/sales, gross/net GCI, auctions booked/clearance, list-to-sell; portal Push/Live workflow | `/reports?tab=database` · `detailed-listings` · `sales-analysis` · `commission-summary` · listing → Portal exports |
 | 2026-05-24 | **Reapit brief v1** — P0–P4 and §9 reports complete for single-agent CRM; live portal APIs + multi-agent reports out of scope | See §13 gaps for post-v1 |
+| 2026-05-25 | **Upgrade brief Phase 1** — `offer_conditions` table, IBD/trust/portal fields on offers, contract edit dialog, Unconditional/Fallen over actions | `20260525100000_offer_contract_depth.sql` — run `npm run db:push` |

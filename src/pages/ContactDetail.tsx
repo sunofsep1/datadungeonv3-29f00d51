@@ -59,6 +59,8 @@ import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { ContactChannelsEdit } from "@/components/contacts/ContactChannelsEdit";
 import { ContactCardChannelRows } from "@/components/contacts/ContactCardChannelRows";
+import { ContactDetailMetaStrip } from "@/components/contacts/ContactDetailMetaStrip";
+import { ContactBuyerActivityPanel } from "@/components/contacts/ContactBuyerActivityPanel";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
 import { ContactExpandableSection } from "@/components/contacts/ContactExpandableSection";
@@ -196,6 +198,7 @@ export default function ContactDetail() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const nurtureFocus = searchParams.get("nurtureFocus");
   const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties"] as const;
   type ContactTab = (typeof CONTACT_TABS)[number];
@@ -316,7 +319,6 @@ export default function ContactDetail() {
   const [printIncludeDob, setPrintIncludeDob] = useState(false);
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [activitySectionOpen, setActivitySectionOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const linkedProperties = useMemo(() => {
     if (!contact?.contact_property_links) return [];
@@ -365,6 +367,15 @@ export default function ContactDetail() {
         postcode: contact.postcode ?? "",
         country: contact.country ?? "Australia",
         date_of_birth: String((contact as { date_of_birth?: string | null }).date_of_birth ?? "").slice(0, 10),
+        title: (contact as { title?: string | null }).title ?? "",
+        salutation: (contact as { salutation?: string | null }).salutation ?? "",
+        home_phone: (contact as { home_phone?: string | null }).home_phone ?? "",
+        work_phone: (contact as { work_phone?: string | null }).work_phone ?? "",
+        company_name: (contact as { company_name?: string | null }).company_name ?? "",
+        job_title: (contact as { job_title?: string | null }).job_title ?? "",
+        website: (contact as { website?: string | null }).website ?? "",
+        linkedin_url: (contact as { linkedin_url?: string | null }).linkedin_url ?? "",
+        client_ref: (contact as { client_ref?: string | null }).client_ref ?? "",
       });
       setIsEditing(true);
     }
@@ -401,6 +412,15 @@ export default function ContactDetail() {
         date_of_birth: editFormData.date_of_birth?.trim()
           ? editFormData.date_of_birth.trim()
           : null,
+        title: editFormData.title?.trim() || null,
+        salutation: editFormData.salutation?.trim() || null,
+        home_phone: editFormData.home_phone?.trim() || null,
+        work_phone: editFormData.work_phone?.trim() || null,
+        company_name: editFormData.company_name?.trim() || null,
+        job_title: editFormData.job_title?.trim() || null,
+        website: editFormData.website?.trim() || null,
+        linkedin_url: editFormData.linkedin_url?.trim() || null,
+        client_ref: editFormData.client_ref?.trim() || null,
       };
       await updateContact.mutateAsync(payload as any);
       if (categoryChanged) {
@@ -947,6 +967,7 @@ export default function ContactDetail() {
                     );
                   })()}
                 </div>
+                {id ? <ContactDetailMetaStrip contactId={id} contact={contact} /> : null}
                 {id ? <ContactCardChannelRows contactId={id} contact={contact} /> : null}
                 {getTagNames(contact).length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-3">
@@ -1108,6 +1129,8 @@ export default function ContactDetail() {
               </div>
             </Card>
           ) : null}
+
+              <ContactBuyerActivityPanel contactId={id} compact />
 
               <EntityActivitySchedulesPanel appliesTo="contact" contactId={id} />
               <EntityModificationsPanel entityType="contact" entityId={id} />
@@ -1320,6 +1343,82 @@ export default function ContactDetail() {
                 onChange={(e) => setEditFormData({ ...editFormData, date_of_birth: e.target.value })}
               />
               <p className="text-[11px] text-muted-foreground">Optional — birthday list & reminders.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.title || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                placeholder="Mr, Mrs, Dr…"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Salutation</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.salutation || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, salutation: e.target.value })}
+                placeholder="Dear John"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Home phone</Label>
+              <Input
+                className="bg-input"
+                type="tel"
+                value={editFormData.home_phone || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, home_phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Work phone</Label>
+              <Input
+                className="bg-input"
+                type="tel"
+                value={editFormData.work_phone || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, work_phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Company</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.company_name || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, company_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Job title</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.job_title || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, job_title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Website</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.website || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, website: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>LinkedIn</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.linkedin_url || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, linkedin_url: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Client ref</Label>
+              <Input
+                className="bg-input"
+                value={editFormData.client_ref || ""}
+                onChange={(e) => setEditFormData({ ...editFormData, client_ref: e.target.value })}
+              />
             </div>
             {id && (
               <div className="col-span-2 border-t border-border pt-4 mt-2">

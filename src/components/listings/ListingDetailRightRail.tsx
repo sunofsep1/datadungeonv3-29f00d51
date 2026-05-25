@@ -1,13 +1,10 @@
-import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { Calendar, Clock, DollarSign, Users } from "lucide-react";
+import { Calendar, Clock, DollarSign } from "lucide-react";
+import { ProspectiveBuyersPanel } from "@/components/listings/ProspectiveBuyersPanel";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ListingCommunicationsRail } from "@/components/listings/ListingCommunicationsRail";
 import { EntityActivitySchedulesPanel } from "@/components/shared/EntityActivitySchedulesPanel";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
-import { useListingContactLinks } from "@/hooks/useListingContactLinks";
 import { useListingOpenInspections } from "@/hooks/useListingOpenInspections";
 import type { Listing } from "@/hooks/useListings";
 import { listingKanbanColumnId, LISTING_PIPELINE_STAGE_OPTIONS } from "@/lib/listingKanbanStages";
@@ -36,10 +33,8 @@ export function ListingDetailRightRail({
   onMatchBuyers,
   formatAud,
 }: Props) {
-  const { data: links = [] } = useListingContactLinks(listingId);
   const { data: inspections = [] } = useListingOpenInspections(listingId);
 
-  const prospectiveBuyers = links.filter((l) => l.role === "prospective_buyer" || l.role === "key_buyer");
   const { upcoming } = partitionInspections(inspections);
   const nextOfi = upcoming[0] ?? null;
 
@@ -85,38 +80,7 @@ export function ListingDetailRightRail({
         </dl>
       </Card>
 
-      <Card className="zoho-card p-4 border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            Prospective buyers
-          </h3>
-          <Badge variant="secondary" className="tabular-nums">
-            {prospectiveBuyers.length}
-          </Badge>
-        </div>
-        {prospectiveBuyers.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No buyers linked yet. OFI check-ins add them automatically.</p>
-        ) : (
-          <ul className="space-y-1.5 mb-3">
-            {prospectiveBuyers.slice(0, 4).map((link) => (
-              <li key={link.id}>
-                <Link
-                  to={`/contacts/${link.contact_id}`}
-                  className="text-sm text-primary hover:underline line-clamp-1"
-                >
-                  {link.contacts?.name ??
-                    [link.contacts?.first_name, link.contacts?.last_name].filter(Boolean).join(" ") ??
-                    "Contact"}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Button type="button" variant="outline" size="sm" className="w-full h-8 text-xs" onClick={onMatchBuyers}>
-          Match buyers
-        </Button>
-      </Card>
+      <ProspectiveBuyersPanel listing={listing} listingId={listingId} onMatchBuyers={onMatchBuyers} />
 
       <Card className="zoho-card p-4 border-border">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">

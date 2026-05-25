@@ -31,6 +31,8 @@ import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 import { AddListingDialog } from "@/components/listings/AddListingDialog";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
+import { computeStageOci, formatOciCompact } from "@/lib/listingPipelineOci";
 import { supabaseErrorMessage } from "@/lib/supabaseErrorMessage";
 
 const ListingsTable = lazy(() => import("./Listings"));
@@ -58,6 +60,7 @@ const STAGE_WARNINGS: Record<string, number> = {
 };
 
 export default function ListingsSalesBoard() {
+  const { user } = useAuth();
   const { data: listings = [], isLoading } = useListings();
   const { data: contacts = [] } = useContacts();
   const { commissionRate } = useCommissionRate();
@@ -68,6 +71,7 @@ export default function ListingsSalesBoard() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const showTable = searchParams.get("view") === "table";
+  const mineOnly = searchParams.get("scope") === "mine";
 
   const setShowTable = (table: boolean) => {
     setSearchParams(
@@ -81,6 +85,23 @@ export default function ListingsSalesBoard() {
     );
   };
 
+  const setMineOnly = (mine: boolean) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (mine) next.set("scope", "mine");
+        else next.delete("scope");
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const visibleListings = useMemo(() => {
+    if (!mineOnly || !user?.id) return listings;
+    return listings.filter((l) => (l as Listing & { user_id?: string }).user_id === user.id);
+  }, [listings, mineOnly, user?.id]);
+
   const contactMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
     contacts.forEach((c) => map.set(c.id, { id: c.id, name: c.name ?? "Contact" }));
@@ -88,7 +109,7 @@ export default function ListingsSalesBoard() {
   }, [contacts]);
 
   const getListingsByColumn = (columnId: string) =>
-    listings.filter((l) => listingKanbanColumnId(l.pipeline_stage) === columnId);
+    visibleListings.filter((l) => listingKanbanColumnId(l.pipeline_stage) === columnId);
 
   const handleDragStart = (e: React.DragEvent, listing: Listing) => {
     setDraggedItem(listing);
@@ -161,7 +182,7 @@ export default function ListingsSalesBoard() {
     new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0, notation: "compact", compactDisplay: "short" }).format(n);
 
   const kpi = useMemo(() => {
-    const dealRows = listings.filter((l) => l.status !== "withdrawn");
+    const dealRows = visibleListings.filter((l) => l.status !== "withdrawn");
     const sumPrice = (rows: Listing[]) => rows.reduce((s, l) => s + (Number(l.price) || 0), 0);
 
     const col = (l: Listing) => listingKanbanColumnId(l.pipeline_stage);
@@ -190,7 +211,7 @@ export default function ListingsSalesBoard() {
       settlementRate,
       projectedGci: (sumPrice(activePipeline) * commissionRate) / 100,
     };
-  }, [listings, commissionRate]);
+  }, [visibleListings, commissionRate]);
 
   return (
     <div className="animate-fade-in min-h-[60vh]">
@@ -199,6 +220,34 @@ export default function ListingsSalesBoard() {
         description="Pipeline board for stages, or table view for filters, export, and bulk actions."
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <div
+              className="flex rounded-lg border border-border bg-muted/50 p-0.5"
+              role="group"
+              aria-label="Listing scope"
+            >
+              <button
+                type="button"
+                aria-pressed={!mineOnly}
+                onClick={() => setMineOnly(false)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  !mineOnly ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                aria-pressed={mineOnly}
+                onClick={() => setMineOnly(true)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  mineOnly ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Mine
+              </button>
+            </div>
             <div
               className="flex rounded-lg border border-border bg-muted/50 p-0.5"
               role="group"
@@ -251,7 +300,7 @@ export default function ListingsSalesBoard() {
         </Suspense>
       ) : null}
 
-      {!showTable && listings.length > 0 && (
+      {!showTable && visibleListings.length > 0 && (
         <section className="mb-6" aria-label="Pipeline KPIs">
           <h2 className="text-sm font-semibold text-foreground mb-3">Performance</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
@@ -346,7 +395,7 @@ export default function ListingsSalesBoard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 overflow-x-auto pb-4">
         {SALES_KANBAN_STAGES.map((stage) => {
           const stageListings = getListingsByColumn(stage.id);
-          const stageValue = stageListings.reduce((sum, l) => sum + (l.price || 0), 0);
+          const stageSummary = computeStageOci(stageListings, commissionRate);
           return (
             <div
               key={stage.id}
@@ -361,8 +410,11 @@ export default function ListingsSalesBoard() {
                 </div>
                 <span className="text-xs text-muted-foreground tabular-nums">{stageListings.length}</span>
               </div>
-              <div className="shrink-0 border-b border-border/60 px-3 py-2 text-[11px] text-muted-foreground">
-                {formatCurrency(stageValue)}
+              <div className="shrink-0 border-b border-border/60 px-3 py-2 text-[11px] text-muted-foreground space-y-0.5">
+                <p className="tabular-nums">{formatCurrency(stageSummary.totalValue)}</p>
+                <p className="tabular-nums text-primary/90">
+                  OCI {formatOciCompact(stageSummary.oci)} · {commissionRate.toFixed(1)}%
+                </p>
               </div>
               <div className="min-h-[min(7rem,22vh)] max-h-[calc(100vh-12rem)] space-y-2 overflow-y-auto overscroll-y-contain p-2 [scrollbar-gutter:stable]">
                 {stageListings.map((listing) => {
@@ -451,7 +503,7 @@ export default function ListingsSalesBoard() {
       </div>
       ) : null}
 
-      {!showTable && listings.length === 0 && !isLoading && (
+      {!showTable && visibleListings.length === 0 && !isLoading && (
         <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-lg mt-6">
           <Home className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="font-medium text-foreground mb-1">No listings yet</p>

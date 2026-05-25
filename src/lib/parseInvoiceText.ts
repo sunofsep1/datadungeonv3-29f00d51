@@ -147,8 +147,8 @@ function extractPropertyAddress(text: string): string | undefined {
 
 function extractIssueDate(text: string): string | undefined {
   const patterns = [
-    new RegExp(`Issue\\s*Date\\s*[:\s]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
-    new RegExp(`Date\\s*[:\s]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
+    new RegExp(`Issue\\s*Date\\s*[\\s:]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
+    new RegExp(`Date\\s*[\\s:]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
     new RegExp(`((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4}))`, "i"),
   ];
   for (const p of patterns) {
@@ -161,8 +161,8 @@ function extractIssueDate(text: string): string | undefined {
 
 function extractDueDate(text: string): string | undefined {
   const patterns = [
-    new RegExp(`Due\\s*(?:Date)?\\s*[:\s]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
-    new RegExp(`Payment\\s*Due\\s*[:\s]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
+    new RegExp(`Due\\s*(?:Date)?\\s*[\\s:]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
+    new RegExp(`Payment\\s*Due\\s*[\\s:]*((?:\\d{1,2}\\s+(?:${MONTHS})\\s+\\d{4})|\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4})`, "i"),
   ];
   for (const p of patterns) {
     const m = text.match(p);

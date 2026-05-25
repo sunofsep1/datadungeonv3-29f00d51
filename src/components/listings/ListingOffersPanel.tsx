@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { FileText, Mail, Plus, Trash2 } from "lucide-react";
+import { FileText, Mail, Plus, Pencil, Trash2 } from "lucide-react";
 import { OfferLetterDialog } from "@/components/listings/OfferLetterDialog";
+import { ContractEditDialog } from "@/components/listings/ContractEditDialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +59,9 @@ import {
   type ListingOffersTab,
   type ListingOfferStatus,
 } from "@/lib/listingOffers";
+import { isContractOfferStatus } from "@/lib/offerConditions";
+import { useCompleteAllOfferConditions } from "@/hooks/useOfferConditions";
+import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { useCreateActivityLog } from "@/hooks/useActivityLog";
 import { cn } from "@/lib/utils";
 
@@ -77,9 +91,14 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
   const updateOffer = useUpdateListingOffer();
   const deleteOffer = useDeleteListingOffer();
   const createActivityLog = useCreateActivityLog();
+  const completeAllConditions = useCompleteAllOfferConditions();
+  const { commissionRate } = useCommissionRate();
 
   const [tab, setTab] = useState<ListingOffersTab>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [contractEditOffer, setContractEditOffer] = useState<ListingOffer | null>(null);
+  const [fallenOffer, setFallenOffer] = useState<ListingOffer | null>(null);
+  const [unconditionalOffer, setUnconditionalOffer] = useState<ListingOffer | null>(null);
   const [offerDate, setOfferDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [offerPrice, setOfferPrice] = useState("");
   const [buyerId, setBuyerId] = useState("");
@@ -188,6 +207,60 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
     }
   };
 
+  const markUnconditional = async (offer: ListingOffer) => {
+    try {
+      await completeAllConditions.mutateAsync({ offer_id: offer.id });
+      await updateOffer.mutateAsync({
+        id: offer.id,
+        listing_id: listingId,
+        status: "unconditional",
+        expected_unconditional_date: format(new Date(), "yyyy-MM-dd"),
+        portal_status: "under_contract",
+      });
+      await createActivityLog.mutateAsync({
+        activity_type: "offer",
+        title: `${offer.ref_code}: Unconditional`,
+        description: formatOfferPrice(offer.offer_price),
+        listing_id: listingId,
+        contact_id: offer.buyer_contact_id,
+      });
+      toast({ title: "Marked unconditional", description: "All pending conditions cleared." });
+      setUnconditionalOffer(null);
+    } catch (e) {
+      toast({
+        title: "Could not update",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const markFallenOver = async (offer: ListingOffer) => {
+    try {
+      await updateOffer.mutateAsync({
+        id: offer.id,
+        listing_id: listingId,
+        status: "fallen_through",
+        portal_status: "available",
+      });
+      await createActivityLog.mutateAsync({
+        activity_type: "offer",
+        title: `${offer.ref_code}: Fallen over`,
+        description: formatOfferPrice(offer.offer_price),
+        listing_id: listingId,
+        contact_id: offer.buyer_contact_id,
+      });
+      toast({ title: "Contract fallen over" });
+      setFallenOffer(null);
+    } catch (e) {
+      toast({
+        title: "Could not update",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="zoho-card p-4 sm:p-5 border-border">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -245,6 +318,9 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
                     setLetterOffer(offer);
                     setLetterOpen(true);
                   }}
+                  onEditContract={() => setContractEditOffer(offer)}
+                  onUnconditional={() => setUnconditionalOffer(offer)}
+                  onFallenOver={() => setFallenOffer(offer)}
                 />
               ))}
             </ul>
@@ -303,6 +379,51 @@ export function ListingOffersPanel({ listingId, listingAddress }: Props) {
         </DialogContent>
       </Dialog>
 
+      <ContractEditDialog
+        open={!!contractEditOffer}
+        onOpenChange={(o) => !o && setContractEditOffer(null)}
+        offer={contractEditOffer}
+        listingId={listingId}
+        commissionPct={commissionRate}
+      />
+
+      <AlertDialog open={!!unconditionalOffer} onOpenChange={(o) => !o && setUnconditionalOffer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark unconditional?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This clears all pending contract conditions and stamps today as the unconditional date.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => unconditionalOffer && void markUnconditional(unconditionalOffer)}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!fallenOffer} onOpenChange={(o) => !o && setFallenOffer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark contract fallen over?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The contract will be closed and portal status reset to available.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => fallenOffer && void markFallenOver(fallenOffer)}
+            >
+              Fallen over
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <OfferLetterDialog
         open={letterOpen}
         onOpenChange={setLetterOpen}
@@ -324,14 +445,22 @@ function OfferRow({
   onStatus,
   onDelete,
   onLetter,
+  onEditContract,
+  onUnconditional,
+  onFallenOver,
 }: {
   offer: ListingOffer;
   buyerName: string | null;
   onStatus: (s: ListingOfferStatus) => void;
   onDelete: () => void;
   onLetter: () => void;
+  onEditContract: () => void;
+  onUnconditional: () => void;
+  onFallenOver: () => void;
 }) {
   const actions = offerStatusActions(offer.status);
+  const isContract = isContractOfferStatus(offer.status);
+  const ext = offer as ListingOffer & { portal_status?: string | null; display_price?: string | null };
 
   return (
     <li className="rounded-lg border border-border/70 bg-muted/10 p-3">
@@ -343,6 +472,11 @@ function OfferRow({
               {offerStatusLabel(offer.status)}
             </Badge>
             <span className="text-xs text-muted-foreground">{offer.ref_code}</span>
+            {ext.portal_status === "under_contract" ? (
+              <Badge variant="outline" className="text-[10px] bg-amber-500/10">
+                Portal: under contract
+              </Badge>
+            ) : null}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {format(new Date(offer.offer_date), "d MMM yyyy")}
@@ -371,8 +505,34 @@ function OfferRow({
           {offer.special_conditions ? (
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{offer.special_conditions}</p>
           ) : null}
+          {ext.display_price ? (
+            <p className="text-xs text-muted-foreground mt-0.5">Display: {ext.display_price}</p>
+          ) : null}
         </div>
-        <div className="flex shrink-0 gap-1">
+        <div className="flex shrink-0 flex-wrap gap-1 justify-end max-w-[200px]">
+          {isContract ? (
+            <>
+              <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onEditContract}>
+                <Pencil className="h-3 w-3 mr-1" /> Contract
+              </Button>
+              {offer.status === "conditional" ? (
+                <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onUnconditional}>
+                  Unconditional
+                </Button>
+              ) : null}
+              {offer.status !== "fallen_through" && offer.status !== "settled" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs text-destructive border-destructive/40"
+                  onClick={onFallenOver}
+                >
+                  Fallen over
+                </Button>
+              ) : null}
+            </>
+          ) : null}
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Offer letter" onClick={onLetter}>
             <Mail className="h-3.5 w-3.5" />
           </Button>

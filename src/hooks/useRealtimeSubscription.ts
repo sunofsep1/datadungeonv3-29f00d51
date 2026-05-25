@@ -30,7 +30,9 @@ export function useRealtimeSubscription(
 ) {
   const queryClient = useQueryClient();
   const queryKeysRef = useRef(queryKeys);
-  queryKeysRef.current = queryKeys;
+  useEffect(() => {
+    queryKeysRef.current = queryKeys;
+  });
 
   useEffect(() => {
     /** New id every subscribe: Supabase dedupes `channel(name)`; reuse after StrictMode cleanup can return an already-subscribed channel and `.on()` throws. */
@@ -55,6 +57,6 @@ export function useRealtimeSubscription(
     return () => {
       void supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [tableName, queryClient]);
 }

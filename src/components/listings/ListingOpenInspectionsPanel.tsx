@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarPlus, Copy, Download, QrCode, Trash2, UserPlus, Users } from "lucide-react";
+import { CalendarPlus, Copy, Download, Printer, QrCode, Trash2, UserPlus, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
   DEFAULT_OFI_DURATION_MINUTES,
   addMinutesToIso,
   buildOfiCheckInUrl,
+  buildOfiBrochurePrintUrl,
   ofiQrImageUrl,
   partitionInspections,
 } from "@/lib/ofiInspection";
@@ -301,6 +302,12 @@ function InspectionRow({
           <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => onCopy(row.check_in_token)}>
             <Copy className="w-3 h-3 mr-1" />
             Link
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-8 text-xs" asChild>
+            <a href={buildOfiBrochurePrintUrl(row.check_in_token) + "?auto=1"} target="_blank" rel="noreferrer">
+              <Printer className="w-3 h-3 mr-1" />
+              Brochure
+            </a>
           </Button>
           <Button type="button" variant="outline" size="sm" className="h-8 text-xs" asChild>
             <a href={ofiQrImageUrl(checkInUrl)} download={`ofi-${row.id}.png`} target="_blank" rel="noreferrer">

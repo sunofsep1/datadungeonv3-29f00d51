@@ -19,6 +19,23 @@ export type ListingOffer = {
   status: string;
   exchange_date: string | null;
   settlement_date: string | null;
+  expected_unconditional_date?: string | null;
+  expected_settlement_date?: string | null;
+  display_price?: string | null;
+  portal_status?: string | null;
+  vendor_solicitor_contact_id?: string | null;
+  deposit_type?: string | null;
+  deposit_amount?: number | null;
+  commission_type?: string | null;
+  gross_comm_incgst?: number | null;
+  gross_comm_exgst?: number | null;
+  balance_held_trust?: number | null;
+  balance_held_ibd?: number | null;
+  ibd_account_name?: string | null;
+  ibd_account_number?: string | null;
+  ibd_bsb?: string | null;
+  ibd_bank?: string | null;
+  ibd_branch?: string | null;
   created_at: string;
   updated_at: string;
   buyer?: { id: string; name: string | null; first_name: string | null; last_name: string | null } | null;
@@ -128,15 +145,55 @@ export function useUpdateListingOffer() {
       status?: ListingOfferStatus;
       exchange_date?: string | null;
       settlement_date?: string | null;
+      expected_unconditional_date?: string | null;
+      expected_settlement_date?: string | null;
       offer_price?: number;
       notes?: string | null;
+      display_price?: string | null;
+      portal_status?: string | null;
+      vendor_solicitor_contact_id?: string | null;
+      deposit_type?: string | null;
+      deposit_amount?: number | null;
+      commission_type?: string | null;
+      gross_comm_incgst?: number | null;
+      gross_comm_exgst?: number | null;
+      balance_held_trust?: number | null;
+      balance_held_ibd?: number | null;
+      ibd_account_name?: string | null;
+      ibd_account_number?: string | null;
+      ibd_bsb?: string | null;
+      ibd_bank?: string | null;
+      ibd_branch?: string | null;
     }) => {
       const patch: Record<string, unknown> = {};
       if (input.status != null) patch.status = input.status;
       if (input.exchange_date !== undefined) patch.exchange_date = input.exchange_date;
       if (input.settlement_date !== undefined) patch.settlement_date = input.settlement_date;
+      if (input.expected_unconditional_date !== undefined) {
+        patch.expected_unconditional_date = input.expected_unconditional_date;
+      }
+      if (input.expected_settlement_date !== undefined) {
+        patch.expected_settlement_date = input.expected_settlement_date;
+      }
       if (input.offer_price != null) patch.offer_price = input.offer_price;
       if (input.notes !== undefined) patch.notes = input.notes;
+      if (input.display_price !== undefined) patch.display_price = input.display_price;
+      if (input.portal_status != null) patch.portal_status = input.portal_status;
+      if (input.vendor_solicitor_contact_id !== undefined) {
+        patch.vendor_solicitor_contact_id = input.vendor_solicitor_contact_id;
+      }
+      if (input.deposit_type != null) patch.deposit_type = input.deposit_type;
+      if (input.deposit_amount !== undefined) patch.deposit_amount = input.deposit_amount;
+      if (input.commission_type != null) patch.commission_type = input.commission_type;
+      if (input.gross_comm_incgst !== undefined) patch.gross_comm_incgst = input.gross_comm_incgst;
+      if (input.gross_comm_exgst !== undefined) patch.gross_comm_exgst = input.gross_comm_exgst;
+      if (input.balance_held_trust !== undefined) patch.balance_held_trust = input.balance_held_trust;
+      if (input.balance_held_ibd !== undefined) patch.balance_held_ibd = input.balance_held_ibd;
+      if (input.ibd_account_name !== undefined) patch.ibd_account_name = input.ibd_account_name;
+      if (input.ibd_account_number !== undefined) patch.ibd_account_number = input.ibd_account_number;
+      if (input.ibd_bsb !== undefined) patch.ibd_bsb = input.ibd_bsb;
+      if (input.ibd_bank !== undefined) patch.ibd_bank = input.ibd_bank;
+      if (input.ibd_branch !== undefined) patch.ibd_branch = input.ibd_branch;
 
       const { data, error } = await supabase
         .from("listing_offers")

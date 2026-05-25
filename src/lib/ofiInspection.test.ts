@@ -3,6 +3,7 @@ import {
   addMinutesToIso,
   buildOfiCheckInPath,
   buildOfiCheckInUrl,
+  buildOfiBrochurePrintPath,
   partitionInspections,
 } from "./ofiInspection";
 
@@ -17,6 +18,7 @@ describe("ofiInspection", () => {
     expect(buildOfiCheckInUrl("tok", "https://app.example.com")).toBe(
       "https://app.example.com/ofi/check-in/tok",
     );
+    expect(buildOfiBrochurePrintPath("abc")).toBe("/ofi/brochure/abc/print");
   });
 
   it("partitions upcoming vs past", () => {

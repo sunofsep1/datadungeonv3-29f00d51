@@ -60,6 +60,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const InvoicePrintPage = lazy(() => import("./pages/InvoicePrintPage"));
 const Invoices = lazy(() => import("./pages/Invoices"));
 const OfiCheckInPage = lazy(() => import("./pages/OfiCheckInPage"));
+const OfiBrochurePrintPage = lazy(() => import("./pages/OfiBrochurePrintPage"));
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/ofi/check-in/:token" element={<OfiCheckInPage />} />
+                <Route path="/ofi/brochure/:token/print" element={<ProtectedRoute><OfiBrochurePrintPage /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/attention-hub" element={<ProtectedRoute><MainLayout><ErrorBoundary><AttentionHub /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />

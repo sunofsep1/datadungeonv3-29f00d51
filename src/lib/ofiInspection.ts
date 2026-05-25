@@ -24,6 +24,17 @@ export function buildOfiCheckInUrl(token: string, origin = typeof window !== "un
   return `${origin.replace(/\/$/, "")}${buildOfiCheckInPath(token)}`;
 }
 
+export function buildOfiBrochurePrintPath(token: string): string {
+  return `/ofi/brochure/${encodeURIComponent(token)}/print`;
+}
+
+export function buildOfiBrochurePrintUrl(
+  token: string,
+  origin = typeof window !== "undefined" ? window.location.origin : "",
+): string {
+  return `${origin.replace(/\/$/, "")}${buildOfiBrochurePrintPath(token)}`;
+}
+
 /** Third-party QR image (no extra npm dep). */
 export function ofiQrImageUrl(checkInUrl: string, size = 240): string {
   const q = encodeURIComponent(checkInUrl);

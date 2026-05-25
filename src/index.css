@@ -2326,9 +2326,32 @@ html.theme-retro-wave-dusk #root {
   }
 }
 
-/* Dashboard clock: theme-aware glow (dark themes only) */
+/* Dashboard clock: theme-aware glow */
+.dashboard-clock-glow {
+  text-shadow: 0 0 8px hsl(var(--teal) / 0.55), 0 0 16px hsl(var(--teal) / 0.25);
+}
+
 html:not(.light) .dashboard-clock-glow {
-  text-shadow: 0 0 6px hsl(var(--teal) / 0.8), 0 0 12px hsl(var(--teal) / 0.4);
+  text-shadow: 0 0 10px hsl(var(--teal) / 0.85), 0 0 22px hsl(var(--teal) / 0.45), 0 0 36px hsl(var(--teal) / 0.2);
+}
+
+.dashboard-clock-seconds {
+  animation: dashboard-clock-tick 1s step-end infinite;
+}
+
+@keyframes dashboard-clock-tick {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.72;
+  }
+}
+
+.dashboard-clock-progress {
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.45);
 }
 
 /* Density: compact reduces spacing */
@@ -3744,4 +3767,105 @@ html {
 /* Fix Google Places autocomplete z-index so suggestions are clickable in modals */
 .pac-container {
   z-index: 10000 !important;
+}
+
+/* OFI check-in brochure — A4 print layout */
+.ofi-brochure-print {
+  background: #f4f4f5;
+  min-height: 100vh;
+  padding: 1rem 0 2rem;
+}
+
+.ofi-brochure-sheet {
+  width: min(210mm, 100%);
+  min-height: 297mm;
+  background: #fff;
+  color: #111;
+  padding: 18mm 16mm;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.ofi-brochure-kicker {
+  font-size: 11pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0891b2;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+
+.ofi-brochure-address {
+  font-size: 22pt;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ofi-brochure-when {
+  font-size: 14pt;
+  margin: 0;
+  font-weight: 600;
+}
+
+.ofi-brochure-time {
+  font-size: 12pt;
+  margin: 0.35rem 0 0;
+  color: #52525b;
+}
+
+.ofi-brochure-qr-block {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.ofi-brochure-qr {
+  width: 280px;
+  height: 280px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.ofi-brochure-scan {
+  font-size: 14pt;
+  font-weight: 600;
+  margin: 1rem 0 0.35rem;
+}
+
+.ofi-brochure-url {
+  font-size: 9pt;
+  color: #71717a;
+  word-break: break-all;
+  margin: 0;
+}
+
+.ofi-brochure-footer {
+  border-top: 1px solid #e4e4e7;
+  padding-top: 1rem;
+  font-size: 10pt;
+  color: #52525b;
+  text-align: center;
+}
+
+.ofi-brochure-agency {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: #0891b2;
+}
+
+@media print {
+  .ofi-brochure-print {
+    background: #fff;
+    padding: 0;
+  }
+
+  .ofi-brochure-sheet {
+    box-shadow: none;
+    width: 100%;
+    min-height: auto;
+    page-break-after: avoid;
+  }
 }

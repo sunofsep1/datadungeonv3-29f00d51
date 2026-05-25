@@ -108,8 +108,10 @@ export function AddressAutocomplete({
   const noKeyHintId = React.useId();
   const onChangeRef = React.useRef(onChange);
   const onPlaceSelectedRef = React.useRef(onPlaceSelected);
-  onChangeRef.current = onChange;
-  onPlaceSelectedRef.current = onPlaceSelected;
+  React.useEffect(() => {
+    onChangeRef.current = onChange;
+    onPlaceSelectedRef.current = onPlaceSelected;
+  });
 
   const enabled = Boolean(GOOGLE_MAPS_API_KEY?.trim());
 

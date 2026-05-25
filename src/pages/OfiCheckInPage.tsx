@@ -8,6 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabaseErrorMessage } from "@/lib/supabaseErrorMessage";
 
 type OfiPreview = {
@@ -23,6 +31,8 @@ export default function OfiCheckInPage() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const [interestLevel, setInterestLevel] = useState("warm");
+  const [workingWithAgent, setWorkingWithAgent] = useState(false);
   const [done, setDone] = useState(false);
 
   const preview = useQuery({
@@ -48,6 +58,8 @@ export default function OfiCheckInPage() {
         p_guest_name: name,
         p_guest_phone: guestPhone.trim() || undefined,
         p_guest_email: guestEmail.trim() || undefined,
+        p_interest_level: interestLevel,
+        p_working_with_agent: workingWithAgent,
       });
       if (error) throw new Error(supabaseErrorMessage(error));
     },
@@ -143,6 +155,30 @@ export default function OfiCheckInPage() {
                 className="mt-1"
                 autoComplete="email"
               />
+            </div>
+            <div>
+              <Label htmlFor="interest-level">Interest level</Label>
+              <Select value={interestLevel} onValueChange={setInterestLevel}>
+                <SelectTrigger id="interest-level" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hot">Hot — very interested</SelectItem>
+                  <SelectItem value="warm">Warm — considering</SelectItem>
+                  <SelectItem value="cold">Cold — early stage</SelectItem>
+                  <SelectItem value="not_interested">Not interested</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="working-with-agent"
+                checked={workingWithAgent}
+                onCheckedChange={(v) => setWorkingWithAgent(v === true)}
+              />
+              <Label htmlFor="working-with-agent" className="font-normal cursor-pointer">
+                I am already working with an agent
+              </Label>
             </div>
             {checkIn.isError && (
               <p className="text-sm text-destructive">{checkIn.error instanceof Error ? checkIn.error.message : "Check-in failed"}</p>

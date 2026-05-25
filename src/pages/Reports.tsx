@@ -27,6 +27,7 @@ import { ReportsSnapshotCards } from "@/components/reports/ReportsSnapshotCards"
 import { useCommissionRate } from "@/hooks/useCommissionRate";
 import { useListings } from "@/hooks/useListings";
 import { useAllListingOffers } from "@/hooks/useListingOffers";
+import { useAllOfferConditions } from "@/hooks/useAllOfferConditions";
 import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
 import { useAllListingContactLinks } from "@/hooks/useListingContactLinks";
@@ -79,6 +80,7 @@ import {
   useContactSubscriptionIndex,
 } from "@/hooks/useContactClasses";
 import { cn } from "@/lib/utils";
+import { buildOfferConditionsDueReport } from "@/lib/offerConditions";
 
 type ReportTab =
   | "pipeline"
@@ -229,6 +231,7 @@ export default function Reports() {
   const { data: properties = [] } = useProperties();
   const { data: allListingContactLinks = [], isLoading: listingLinksLoading } = useAllListingContactLinks();
   const { data: allOffers = [], isLoading: offersLoading } = useAllListingOffers();
+  const { data: allOfferConditions = [] } = useAllOfferConditions();
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: contactClasses = [] } = useContactClasses();
   const { data: classAssignmentIndex = new Map() } = useContactClassAssignmentIndex();
@@ -406,33 +409,53 @@ export default function Reports() {
 
   const listToSellRows = useMemo(() => buildListToSellClearanceReport(reportRows), [reportRows]);
 
-  const contractConditionRows = useMemo(
-    () =>
-      buildContractConditionsDueReport(
-        reportRows.map((l) => {
-          const row = l as ListingReportRow & {
-            key_date_contract?: string | null;
-            contract_finance_days?: number | null;
-            contract_building_pest_days?: number | null;
-            contract_due_diligence_days?: number | null;
-            contract_subject_sale_days?: number | null;
-            contract_body_corporate_days?: number | null;
-          };
-          return {
-            id: row.id,
-            address: row.address,
-            key_date_contract: row.key_date_contract,
-            contract_finance_days: row.contract_finance_days,
-            contract_building_pest_days: row.contract_building_pest_days,
-            contract_due_diligence_days: row.contract_due_diligence_days,
-            contract_subject_sale_days: row.contract_subject_sale_days,
-            contract_body_corporate_days: row.contract_body_corporate_days,
-          };
-        }),
-        { withinDays: contractConditionWindow, includeOverdue: true },
-      ),
-    [reportRows, contractConditionWindow],
-  );
+  const contractConditionRows = useMemo(() => {
+    const addressByListingId = new Map(reportRows.map((l) => [l.id, l.address]));
+    const offerRefByOfferId = new Map(allOffers.map((o) => [o.id, o.ref_code]));
+
+    const fromOffers = buildOfferConditionsDueReport(
+      allOfferConditions,
+      addressByListingId,
+      offerRefByOfferId,
+      { withinDays: contractConditionWindow, includeOverdue: true },
+    );
+
+    if (fromOffers.length > 0) {
+      return fromOffers.map((r) => ({
+        listingId: r.listingId,
+        address: r.address,
+        conditionLabel: r.offerRef ? `${r.conditionLabel} (${r.offerRef})` : r.conditionLabel,
+        dueDateIso: r.dueDateIso,
+        dueDateLabel: r.dueDateLabel,
+        daysUntil: r.daysUntil,
+        contractDateLabel: r.contractDateLabel,
+      }));
+    }
+
+    return buildContractConditionsDueReport(
+      reportRows.map((l) => {
+        const row = l as ListingReportRow & {
+          key_date_contract?: string | null;
+          contract_finance_days?: number | null;
+          contract_building_pest_days?: number | null;
+          contract_due_diligence_days?: number | null;
+          contract_subject_sale_days?: number | null;
+          contract_body_corporate_days?: number | null;
+        };
+        return {
+          id: row.id,
+          address: row.address,
+          key_date_contract: row.key_date_contract,
+          contract_finance_days: row.contract_finance_days,
+          contract_building_pest_days: row.contract_building_pest_days,
+          contract_due_diligence_days: row.contract_due_diligence_days,
+          contract_subject_sale_days: row.contract_subject_sale_days,
+          contract_body_corporate_days: row.contract_body_corporate_days,
+        };
+      }),
+      { withinDays: contractConditionWindow, includeOverdue: true },
+    );
+  }, [reportRows, contractConditionWindow, allOfferConditions, allOffers]);
 
   const auctionRows = useMemo(
     () =>
