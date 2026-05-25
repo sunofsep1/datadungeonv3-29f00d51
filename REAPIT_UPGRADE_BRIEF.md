@@ -1633,4 +1633,5 @@ To get Reapit API access for the `qldsir` (Queensland Sotheby's) customer:
 | 2026-05-25 | **Phase 1** — `offer_conditions`, IBD/trust/portal columns, `ContractEditDialog`, Unconditional/Fallen over | Migration `20260525100000_offer_contract_depth.sql` |
 | 2026-05-25 | **Phase 2–3** — OFI interest level + working-with-agent on check-in; `ProspectiveBuyersPanel` with match scores; `ContactBuyerActivityPanel`; contact professional fields + AgentBox ID; contract conditions report from `offer_conditions` | Migration `20260525120000_reapit_upgrade_phase2_3.sql` |
 | 2026-05-25 | **Phase 2 + 4 + 6 scaffold** — OFI A4 brochure print; pipeline OCI on kanban columns + Mine/All filter; contact professional field edits; `agentbox-sync` edge function + Settings UI | `OfiBrochurePrintPage`, `agentbox-sync` |
-| | Phase 5 Reapit sync, Phase 7 CMA/vendor reports | Pending — see §8 priority order |
+| 2026-05-25 | **Phase 5 scaffold** — `reapit-sync` edge function + `reapit_id`/`negotiator_id` migration; Reapit row in Settings; OFI attendee interest badges | Migration `20260525140000`, `reapit-sync` |
+| | Phase 5 OAuth/webhooks, Phase 7 CMA/vendor reports | Pending — see §8 priority order |

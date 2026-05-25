@@ -15,6 +15,7 @@ export function ContactDetailMetaStrip({ contactId, contact }: Props) {
     home_phone?: string | null;
     work_phone?: string | null;
     agentbox_id?: number | null;
+    reapit_id?: string | null;
     aml_id_verified?: boolean | null;
     aml_pep_clear?: boolean | null;
   };
@@ -23,8 +24,9 @@ export function ContactDetailMetaStrip({ contactId, contact }: Props) {
   const hasPhones = Boolean(ext.home_phone?.trim() || ext.work_phone?.trim());
   const hasAml = ext.aml_id_verified || ext.aml_pep_clear;
   const hasAgentBox = ext.agentbox_id != null;
+  const hasReapit = Boolean(ext.reapit_id?.trim());
 
-  if (!hasClasses && !hasPhones && !hasAml && !hasAgentBox) return null;
+  if (!hasClasses && !hasPhones && !hasAml && !hasAgentBox && !hasReapit) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -56,6 +58,11 @@ export function ContactDetailMetaStrip({ contactId, contact }: Props) {
       {hasAgentBox ? (
         <Badge variant="outline" className="text-[10px] font-normal tabular-nums">
           AgentBox #{ext.agentbox_id}
+        </Badge>
+      ) : null}
+      {hasReapit ? (
+        <Badge variant="outline" className="text-[10px] font-normal">
+          Reapit {ext.reapit_id}
         </Badge>
       ) : null}
     </div>

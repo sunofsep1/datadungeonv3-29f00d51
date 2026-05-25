@@ -1069,6 +1069,67 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_class_assignments: {
+        Row: {
+          class_id: string
+          contact_id: string
+          created_at: string
+        }
+        Insert: {
+          class_id: string
+          contact_id: string
+          created_at?: string
+        }
+        Update: {
+          class_id?: string
+          contact_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_class_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "contact_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_class_assignments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_class_assignments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_classes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       contact_companies: {
         Row: {
           company_id: string
@@ -1451,6 +1512,42 @@ export type Database = {
           },
         ]
       }
+      contact_subscriptions: {
+        Row: {
+          contact_id: string
+          subscribed: boolean
+          subscription_kind: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          subscribed?: boolean
+          subscription_kind: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          subscribed?: boolean
+          subscription_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_subscriptions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_subscriptions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_tags: {
         Row: {
           contact_id: string
@@ -1550,17 +1647,22 @@ export type Database = {
           address: string | null
           address_line1: string | null
           address_line2: string | null
+          agentbox_id: number | null
+          agentbox_synced_at: string | null
           aml_id_verified: boolean
           aml_notes: string | null
           aml_pep_clear: boolean
           aml_verified_at: string | null
+          anniversary_date: string | null
           assigned_at: string | null
           buying_budget_max: number | null
           buying_budget_min: number | null
           category: string | null
           city: string | null
           classification_meta: Json
+          client_ref: string | null
           coming_to_market: string | null
+          company_name: string | null
           contact_category: string
           contact_type: string | null
           country: string | null
@@ -1574,8 +1676,11 @@ export type Database = {
           do_not_contact: boolean | null
           email: string | null
           email_opt_out: boolean | null
+          facsimile: string | null
           first_name: string | null
+          home_phone: string | null
           id: string
+          job_title: string | null
           journey_stage: string | null
           last_activity_at: string | null
           last_name: string | null
@@ -1583,6 +1688,7 @@ export type Database = {
           lead_status: string | null
           lead_temperature: string
           lifecycle_stage: string | null
+          linkedin_url: string | null
           mobile: string | null
           name: string | null
           next_follow_up_at: string | null
@@ -1598,8 +1704,11 @@ export type Database = {
           preferred_suburbs: string[] | null
           property_requirements: Json | null
           rating: string | null
+          reapit_id: string | null
+          reapit_synced_at: string | null
           relationship_category: string | null
           role_category: string | null
+          salutation: string | null
           selling_intentions: string | null
           sms_opt_out: boolean | null
           source: string | null
@@ -1609,24 +1718,32 @@ export type Database = {
           suburb: string | null
           tags: string[] | null
           timeframe_category: string
+          title: string | null
           updated_at: string | null
           user_id: string | null
+          website: string | null
+          work_phone: string | null
         }
         Insert: {
           address?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          agentbox_id?: number | null
+          agentbox_synced_at?: string | null
           aml_id_verified?: boolean
           aml_notes?: string | null
           aml_pep_clear?: boolean
           aml_verified_at?: string | null
+          anniversary_date?: string | null
           assigned_at?: string | null
           buying_budget_max?: number | null
           buying_budget_min?: number | null
           category?: string | null
           city?: string | null
           classification_meta?: Json
+          client_ref?: string | null
           coming_to_market?: string | null
+          company_name?: string | null
           contact_category?: string
           contact_type?: string | null
           country?: string | null
@@ -1640,8 +1757,11 @@ export type Database = {
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
+          facsimile?: string | null
           first_name?: string | null
+          home_phone?: string | null
           id?: string
+          job_title?: string | null
           journey_stage?: string | null
           last_activity_at?: string | null
           last_name?: string | null
@@ -1649,6 +1769,7 @@ export type Database = {
           lead_status?: string | null
           lead_temperature?: string
           lifecycle_stage?: string | null
+          linkedin_url?: string | null
           mobile?: string | null
           name?: string | null
           next_follow_up_at?: string | null
@@ -1664,8 +1785,11 @@ export type Database = {
           preferred_suburbs?: string[] | null
           property_requirements?: Json | null
           rating?: string | null
+          reapit_id?: string | null
+          reapit_synced_at?: string | null
           relationship_category?: string | null
           role_category?: string | null
+          salutation?: string | null
           selling_intentions?: string | null
           sms_opt_out?: boolean | null
           source?: string | null
@@ -1675,20 +1799,32 @@ export type Database = {
           suburb?: string | null
           tags?: string[] | null
           timeframe_category?: string
+          title?: string | null
           updated_at?: string | null
           user_id?: string | null
+          website?: string | null
+          work_phone?: string | null
         }
         Update: {
           address?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          agentbox_id?: number | null
+          agentbox_synced_at?: string | null
+          aml_id_verified?: boolean
+          aml_notes?: string | null
+          aml_pep_clear?: boolean
+          aml_verified_at?: string | null
+          anniversary_date?: string | null
           assigned_at?: string | null
           buying_budget_max?: number | null
           buying_budget_min?: number | null
           category?: string | null
           city?: string | null
           classification_meta?: Json
+          client_ref?: string | null
           coming_to_market?: string | null
+          company_name?: string | null
           contact_category?: string
           contact_type?: string | null
           country?: string | null
@@ -1702,8 +1838,11 @@ export type Database = {
           do_not_contact?: boolean | null
           email?: string | null
           email_opt_out?: boolean | null
+          facsimile?: string | null
           first_name?: string | null
+          home_phone?: string | null
           id?: string
+          job_title?: string | null
           journey_stage?: string | null
           last_activity_at?: string | null
           last_name?: string | null
@@ -1711,6 +1850,7 @@ export type Database = {
           lead_status?: string | null
           lead_temperature?: string
           lifecycle_stage?: string | null
+          linkedin_url?: string | null
           mobile?: string | null
           name?: string | null
           next_follow_up_at?: string | null
@@ -1726,8 +1866,11 @@ export type Database = {
           preferred_suburbs?: string[] | null
           property_requirements?: Json | null
           rating?: string | null
+          reapit_id?: string | null
+          reapit_synced_at?: string | null
           relationship_category?: string | null
           role_category?: string | null
+          salutation?: string | null
           selling_intentions?: string | null
           sms_opt_out?: boolean | null
           source?: string | null
@@ -1737,8 +1880,11 @@ export type Database = {
           suburb?: string | null
           tags?: string[] | null
           timeframe_category?: string
+          title?: string | null
           updated_at?: string | null
           user_id?: string | null
+          website?: string | null
+          work_phone?: string | null
         }
         Relationships: []
       }
@@ -2799,6 +2945,8 @@ export type Database = {
           guest_phone: string | null
           id: string
           inspection_id: string
+          interest_level: string | null
+          working_with_agent: boolean
         }
         Insert: {
           checked_in_at?: string
@@ -2809,6 +2957,8 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           inspection_id: string
+          interest_level?: string | null
+          working_with_agent?: boolean
         }
         Update: {
           checked_in_at?: string
@@ -2819,6 +2969,8 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           inspection_id?: string
+          interest_level?: string | null
+          working_with_agent?: boolean
         }
         Relationships: [
           {
@@ -2890,10 +3042,25 @@ export type Database = {
       }
       listing_offers: {
         Row: {
+          balance_held_ibd: number | null
+          balance_held_trust: number | null
           buyer_contact_id: string | null
           buyer_solicitor_contact_id: string | null
+          commission_type: string
           created_at: string
+          deposit_amount: number | null
+          deposit_type: string
+          display_price: string | null
           exchange_date: string | null
+          expected_settlement_date: string | null
+          expected_unconditional_date: string | null
+          gross_comm_exgst: number | null
+          gross_comm_incgst: number | null
+          ibd_account_name: string | null
+          ibd_account_number: string | null
+          ibd_bank: string | null
+          ibd_branch: string | null
+          ibd_bsb: string | null
           id: string
           inclusions: string | null
           investor: boolean
@@ -2901,18 +3068,35 @@ export type Database = {
           notes: string | null
           offer_date: string
           offer_price: number
+          portal_status: string
           ref_code: string
           settlement_date: string | null
           special_conditions: string | null
           status: string
           updated_at: string
           user_id: string
+          vendor_solicitor_contact_id: string | null
         }
         Insert: {
+          balance_held_ibd?: number | null
+          balance_held_trust?: number | null
           buyer_contact_id?: string | null
           buyer_solicitor_contact_id?: string | null
+          commission_type?: string
           created_at?: string
+          deposit_amount?: number | null
+          deposit_type?: string
+          display_price?: string | null
           exchange_date?: string | null
+          expected_settlement_date?: string | null
+          expected_unconditional_date?: string | null
+          gross_comm_exgst?: number | null
+          gross_comm_incgst?: number | null
+          ibd_account_name?: string | null
+          ibd_account_number?: string | null
+          ibd_bank?: string | null
+          ibd_branch?: string | null
+          ibd_bsb?: string | null
           id?: string
           inclusions?: string | null
           investor?: boolean
@@ -2920,18 +3104,35 @@ export type Database = {
           notes?: string | null
           offer_date?: string
           offer_price: number
+          portal_status?: string
           ref_code: string
           settlement_date?: string | null
           special_conditions?: string | null
           status?: string
           updated_at?: string
           user_id: string
+          vendor_solicitor_contact_id?: string | null
         }
         Update: {
+          balance_held_ibd?: number | null
+          balance_held_trust?: number | null
           buyer_contact_id?: string | null
           buyer_solicitor_contact_id?: string | null
+          commission_type?: string
           created_at?: string
+          deposit_amount?: number | null
+          deposit_type?: string
+          display_price?: string | null
           exchange_date?: string | null
+          expected_settlement_date?: string | null
+          expected_unconditional_date?: string | null
+          gross_comm_exgst?: number | null
+          gross_comm_incgst?: number | null
+          ibd_account_name?: string | null
+          ibd_account_number?: string | null
+          ibd_bank?: string | null
+          ibd_branch?: string | null
+          ibd_bsb?: string | null
           id?: string
           inclusions?: string | null
           investor?: boolean
@@ -2939,12 +3140,14 @@ export type Database = {
           notes?: string | null
           offer_date?: string
           offer_price?: number
+          portal_status?: string
           ref_code?: string
           settlement_date?: string | null
           special_conditions?: string | null
           status?: string
           updated_at?: string
           user_id?: string
+          vendor_solicitor_contact_id?: string | null
         }
         Relationships: [
           {
@@ -2980,6 +3183,20 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_offers_vendor_solicitor_contact_id_fkey"
+            columns: ["vendor_solicitor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_offers_vendor_solicitor_contact_id_fkey"
+            columns: ["vendor_solicitor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "stale_contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -3339,10 +3556,12 @@ export type Database = {
       }
       listings: {
         Row: {
+          access_details: string | null
           action_plan_name: string | null
           action_plan_progress: number
           address: string
           address_display_mode: string
+          authority_type: string | null
           bathrooms: number | null
           bedrooms: number | null
           campaign_buyer_matches_count: number
@@ -3363,52 +3582,37 @@ export type Database = {
           contract_due_diligence_days: number | null
           contract_finance_days: number | null
           contract_subject_sale_days: number | null
+          council_rates_amount: number | null
+          council_rates_period: string | null
           created_at: string
           display_price: string | null
           feature_flags: Json
           for_sale_or_lease: string
-          sale_method: string | null
-          listed_as_auction: boolean
-          authority_type: string | null
-          off_market: boolean
-          hidden_listing: boolean
-          quote_price: number | null
           gst_status: string | null
-          access_details: string | null
-          internal_info: string | null
-          water_rates_amount: number | null
-          water_rates_period: string | null
-          council_rates_amount: number | null
-          council_rates_period: string | null
-          other_outgoings_amount: number | null
-          other_outgoings_period: string | null
-          land_tax_amount: number | null
-          land_tax_period: string | null
-          strata_admin_amount: number | null
-          strata_admin_period: string | null
-          strata_sinking_amount: number | null
-          strata_sinking_period: string | null
-          investment_flag: boolean
-          lease_potential_weekly: number | null
-          return_pct: number | null
-          tenanted: boolean
-          legal_description: string | null
-          legal_lot: string | null
-          legal_volume: string | null
-          legal_block: string | null
-          legal_deposited_plan: string | null
-          legal_folio: string | null
-          legal_section: string | null
-          legal_zoning: string | null
+          hidden_listing: boolean
           hide_address_portal: boolean
           id: string
+          internal_info: string | null
+          investment_flag: boolean
           journey_stage: string | null
           key_date_agency_expiry: string | null
           key_date_appraisal: string | null
           key_date_contract: string | null
           key_date_listed: string | null
           key_date_settlement: string | null
+          land_tax_amount: number | null
+          land_tax_period: string | null
           lead_temperature: string
+          lease_potential_weekly: number | null
+          legal_block: string | null
+          legal_deposited_plan: string | null
+          legal_description: string | null
+          legal_folio: string | null
+          legal_lot: string | null
+          legal_section: string | null
+          legal_volume: string | null
+          legal_zoning: string | null
+          listed_as_auction: boolean
           listing_image_url: string | null
           marketing_description: string | null
           marketing_headline: string | null
@@ -3419,28 +3623,46 @@ export type Database = {
           mkt_realestate_status: string
           mkt_social_ads_status: string
           mkt_video_status: string
+          negotiator_id: string | null
           notes: string | null
+          off_market: boolean
+          other_outgoings_amount: number | null
+          other_outgoings_period: string | null
           pipeline_stage: string | null
           price: number | null
           property_id: string | null
           property_type: string | null
+          quote_price: number | null
+          reapit_id: string | null
+          reapit_synced_at: string | null
           relationship_category: string | null
+          return_pct: number | null
           role_category: string | null
+          sale_method: string | null
           search_price: number | null
           search_price_max: number | null
           search_price_min: number | null
           status: string | null
+          strata_admin_amount: number | null
+          strata_admin_period: string | null
+          strata_sinking_amount: number | null
+          strata_sinking_period: string | null
+          tenanted: boolean
           timeframe_category: string
           updated_at: string
           user_id: string
           vendor_update_last_sent_at: string | null
           vendor_update_next_due_at: string | null
+          water_rates_amount: number | null
+          water_rates_period: string | null
         }
         Insert: {
+          access_details?: string | null
           action_plan_name?: string | null
           action_plan_progress?: number
           address: string
           address_display_mode?: string
+          authority_type?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           campaign_buyer_matches_count?: number
@@ -3461,52 +3683,37 @@ export type Database = {
           contract_due_diligence_days?: number | null
           contract_finance_days?: number | null
           contract_subject_sale_days?: number | null
+          council_rates_amount?: number | null
+          council_rates_period?: string | null
           created_at?: string
           display_price?: string | null
           feature_flags?: Json
           for_sale_or_lease?: string
-          sale_method?: string | null
-          listed_as_auction?: boolean
-          authority_type?: string | null
-          off_market?: boolean
-          hidden_listing?: boolean
-          quote_price?: number | null
           gst_status?: string | null
-          access_details?: string | null
-          internal_info?: string | null
-          water_rates_amount?: number | null
-          water_rates_period?: string | null
-          council_rates_amount?: number | null
-          council_rates_period?: string | null
-          other_outgoings_amount?: number | null
-          other_outgoings_period?: string | null
-          land_tax_amount?: number | null
-          land_tax_period?: string | null
-          strata_admin_amount?: number | null
-          strata_admin_period?: string | null
-          strata_sinking_amount?: number | null
-          strata_sinking_period?: string | null
-          investment_flag?: boolean
-          lease_potential_weekly?: number | null
-          return_pct?: number | null
-          tenanted?: boolean
-          legal_description?: string | null
-          legal_lot?: string | null
-          legal_volume?: string | null
-          legal_block?: string | null
-          legal_deposited_plan?: string | null
-          legal_folio?: string | null
-          legal_section?: string | null
-          legal_zoning?: string | null
+          hidden_listing?: boolean
           hide_address_portal?: boolean
           id?: string
+          internal_info?: string | null
+          investment_flag?: boolean
           journey_stage?: string | null
           key_date_agency_expiry?: string | null
           key_date_appraisal?: string | null
           key_date_contract?: string | null
           key_date_listed?: string | null
           key_date_settlement?: string | null
+          land_tax_amount?: number | null
+          land_tax_period?: string | null
           lead_temperature?: string
+          lease_potential_weekly?: number | null
+          legal_block?: string | null
+          legal_deposited_plan?: string | null
+          legal_description?: string | null
+          legal_folio?: string | null
+          legal_lot?: string | null
+          legal_section?: string | null
+          legal_volume?: string | null
+          legal_zoning?: string | null
+          listed_as_auction?: boolean
           listing_image_url?: string | null
           marketing_description?: string | null
           marketing_headline?: string | null
@@ -3517,28 +3724,46 @@ export type Database = {
           mkt_realestate_status?: string
           mkt_social_ads_status?: string
           mkt_video_status?: string
+          negotiator_id?: string | null
           notes?: string | null
+          off_market?: boolean
+          other_outgoings_amount?: number | null
+          other_outgoings_period?: string | null
           pipeline_stage?: string | null
           price?: number | null
           property_id?: string | null
           property_type?: string | null
+          quote_price?: number | null
+          reapit_id?: string | null
+          reapit_synced_at?: string | null
           relationship_category?: string | null
+          return_pct?: number | null
           role_category?: string | null
+          sale_method?: string | null
           search_price?: number | null
           search_price_max?: number | null
           search_price_min?: number | null
           status?: string | null
+          strata_admin_amount?: number | null
+          strata_admin_period?: string | null
+          strata_sinking_amount?: number | null
+          strata_sinking_period?: string | null
+          tenanted?: boolean
           timeframe_category?: string
           updated_at?: string
           user_id: string
           vendor_update_last_sent_at?: string | null
           vendor_update_next_due_at?: string | null
+          water_rates_amount?: number | null
+          water_rates_period?: string | null
         }
         Update: {
+          access_details?: string | null
           action_plan_name?: string | null
           action_plan_progress?: number
           address?: string
           address_display_mode?: string
+          authority_type?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           campaign_buyer_matches_count?: number
@@ -3559,52 +3784,37 @@ export type Database = {
           contract_due_diligence_days?: number | null
           contract_finance_days?: number | null
           contract_subject_sale_days?: number | null
+          council_rates_amount?: number | null
+          council_rates_period?: string | null
           created_at?: string
           display_price?: string | null
           feature_flags?: Json
           for_sale_or_lease?: string
-          sale_method?: string | null
-          listed_as_auction?: boolean
-          authority_type?: string | null
-          off_market?: boolean
-          hidden_listing?: boolean
-          quote_price?: number | null
           gst_status?: string | null
-          access_details?: string | null
-          internal_info?: string | null
-          water_rates_amount?: number | null
-          water_rates_period?: string | null
-          council_rates_amount?: number | null
-          council_rates_period?: string | null
-          other_outgoings_amount?: number | null
-          other_outgoings_period?: string | null
-          land_tax_amount?: number | null
-          land_tax_period?: string | null
-          strata_admin_amount?: number | null
-          strata_admin_period?: string | null
-          strata_sinking_amount?: number | null
-          strata_sinking_period?: string | null
-          investment_flag?: boolean
-          lease_potential_weekly?: number | null
-          return_pct?: number | null
-          tenanted?: boolean
-          legal_description?: string | null
-          legal_lot?: string | null
-          legal_volume?: string | null
-          legal_block?: string | null
-          legal_deposited_plan?: string | null
-          legal_folio?: string | null
-          legal_section?: string | null
-          legal_zoning?: string | null
+          hidden_listing?: boolean
           hide_address_portal?: boolean
           id?: string
+          internal_info?: string | null
+          investment_flag?: boolean
           journey_stage?: string | null
           key_date_agency_expiry?: string | null
           key_date_appraisal?: string | null
           key_date_contract?: string | null
           key_date_listed?: string | null
           key_date_settlement?: string | null
+          land_tax_amount?: number | null
+          land_tax_period?: string | null
           lead_temperature?: string
+          lease_potential_weekly?: number | null
+          legal_block?: string | null
+          legal_deposited_plan?: string | null
+          legal_description?: string | null
+          legal_folio?: string | null
+          legal_lot?: string | null
+          legal_section?: string | null
+          legal_volume?: string | null
+          legal_zoning?: string | null
+          listed_as_auction?: boolean
           listing_image_url?: string | null
           marketing_description?: string | null
           marketing_headline?: string | null
@@ -3615,22 +3825,38 @@ export type Database = {
           mkt_realestate_status?: string
           mkt_social_ads_status?: string
           mkt_video_status?: string
+          negotiator_id?: string | null
           notes?: string | null
+          off_market?: boolean
+          other_outgoings_amount?: number | null
+          other_outgoings_period?: string | null
           pipeline_stage?: string | null
           price?: number | null
           property_id?: string | null
           property_type?: string | null
+          quote_price?: number | null
+          reapit_id?: string | null
+          reapit_synced_at?: string | null
           relationship_category?: string | null
+          return_pct?: number | null
           role_category?: string | null
+          sale_method?: string | null
           search_price?: number | null
           search_price_max?: number | null
           search_price_min?: number | null
           status?: string | null
+          strata_admin_amount?: number | null
+          strata_admin_period?: string | null
+          strata_sinking_amount?: number | null
+          strata_sinking_period?: string | null
+          tenanted?: boolean
           timeframe_category?: string
           updated_at?: string
           user_id?: string
           vendor_update_last_sent_at?: string | null
           vendor_update_next_due_at?: string | null
+          water_rates_amount?: number | null
+          water_rates_period?: string | null
         }
         Relationships: [
           {
@@ -3976,6 +4202,69 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      offer_conditions: {
+        Row: {
+          completed_at: string | null
+          condition_type: string
+          created_at: string
+          due_date: string
+          id: string
+          label: string
+          listing_id: string
+          notes: string | null
+          offer_id: string
+          sort_order: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          condition_type: string
+          created_at?: string
+          due_date: string
+          id?: string
+          label: string
+          listing_id: string
+          notes?: string | null
+          offer_id: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          condition_type?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          label?: string
+          listing_id?: string
+          notes?: string | null
+          offer_id?: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_conditions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_conditions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "listing_offers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipeline_stages: {
         Row: {
@@ -5575,6 +5864,18 @@ export type Database = {
               p_guest_name?: string
               p_guest_phone?: string
               p_token: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_contact_id?: string
+              p_guest_email?: string
+              p_guest_name?: string
+              p_guest_phone?: string
+              p_interest_level?: string
+              p_token: string
+              p_working_with_agent?: boolean
             }
             Returns: string
           }

@@ -28,6 +28,8 @@ import {
   partitionInspections,
 } from "@/lib/ofiInspection";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { ofiInterestBadgeClass, ofiInterestLabel } from "@/lib/ofiInterestLevel";
 
 type Props = { listingId: string; listingAddress?: string | null };
 
@@ -343,14 +345,29 @@ function InspectionRow({
                   ? getContactDisplayName(a.contacts)
                   : a.guest_name?.trim() || "Guest";
                 return (
-                  <li key={a.id} className="text-xs flex justify-between gap-2">
-                    {a.contact_id ? (
-                      <Link to={`/contacts/${a.contact_id}`} className="text-primary hover:underline truncate">
-                        {name}
-                      </Link>
-                    ) : (
-                      <span className="truncate">{name}</span>
-                    )}
+                  <li key={a.id} className="text-xs flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex items-center gap-1.5">
+                      {a.contact_id ? (
+                        <Link to={`/contacts/${a.contact_id}`} className="text-primary hover:underline truncate">
+                          {name}
+                        </Link>
+                      ) : (
+                        <span className="truncate">{name}</span>
+                      )}
+                      {a.working_with_agent ? (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                          Has agent
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {a.interest_level ? (
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[9px] px-1.5 py-0 h-4 shrink-0 capitalize", ofiInterestBadgeClass(a.interest_level))}
+                      >
+                        {ofiInterestLabel(a.interest_level)}
+                      </Badge>
+                    ) : null}
                   </li>
                 );
               })}
