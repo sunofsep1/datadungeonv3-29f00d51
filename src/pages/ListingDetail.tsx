@@ -86,6 +86,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
@@ -339,7 +340,7 @@ export default function ListingDetail() {
       refetch();
       if (status === "sold") {
         moveTo("center", { mood: "fire-breath" });
-        setTimeout(() => setMood("celebrate", { caption: "DEAL. CLOSED. 🔥" }), 1200);
+        setTimeout(() => setMood("celebrate", { caption: pickDrakoLine("dealClosed") }), 1200);
       }
     } catch (e) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Update failed", variant: "destructive" });

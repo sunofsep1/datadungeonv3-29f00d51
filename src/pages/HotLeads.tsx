@@ -22,6 +22,7 @@ import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 
 function getStatusVariant(status: string | null): BadgeVariant {
   switch (status) {
@@ -97,7 +98,7 @@ export default function HotLeads() {
     if (hotLeads.length > 0) {
       moveTo("stage", { mood: "fire-breath" });
       const timer = setTimeout(
-        () => setMood("pointing", { caption: "These ones need you today." }),
+        () => setMood("pointing", { caption: pickDrakoLine("hotLeads") }),
         1600,
       );
       return () => clearTimeout(timer);

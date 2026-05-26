@@ -1,14 +1,13 @@
 /**
- * DrakoCompanion — the floating, walking, animated mascot.
- * Renders as a fixed-position overlay at the app root.
- * Controlled entirely through DrakoContext (useDrako / useDrakoInternal).
+ * DrakoCompanion — draggable, clickable floating mascot.
  */
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDrakoInternal } from "./DrakoContext";
 import { COMPANION_PX, DRAKO_ALT } from "./types";
 import { DrakoSpriteImage } from "./DrakoSpriteImage";
-import { getDrakoVideoAsset, getDrakoVideoSrcKey } from "./drakoVideos";
+import { getDrakoVideoAsset } from "./drakoVideos";
+import { clampDrakoPosition, DRAG_THRESHOLD_PX } from "@/lib/drakoInteractive";
 
 const POS_SPRING = { type: "spring", stiffness: 80, damping: 18 } as const;
 const POP_SPRING = { type: "spring", stiffness: 300, damping: 22 } as const;
@@ -58,10 +57,21 @@ function DrakoBubble({ text }: { text: string }) {
 }
 
 export function DrakoCompanion() {
-  const { state, arrive } = useDrakoInternal();
+  const { state, arrive, placeAt, cycleVideoMood } = useDrakoInternal();
   const prefersReduced = useReducedMotion();
   const isWalkingRef = useRef(false);
   const fallbackRef = useRef<ReturnType<typeof setTimeout>>();
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    pointerId: -1,
+    originX: 0,
+    originY: 0,
+    startClientX: 0,
+    startClientY: 0,
+  });
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     isWalkingRef.current = state.isWalking;
@@ -80,14 +90,82 @@ export function DrakoCompanion() {
     if (isWalkingRef.current) arrive();
   }, [arrive]);
 
+  const finishDrag = useCallback(() => {
+    dragRef.current.active = false;
+    dragPosRef.current = null;
+    setDragPos(null);
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d.active || e.pointerId !== d.pointerId) return;
+
+      const dx = e.clientX - d.startClientX;
+      const dy = e.clientY - d.startClientY;
+      if (!d.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+        d.moved = true;
+      }
+      if (d.moved) {
+        const next = clampDrakoPosition(d.originX + dx, d.originY + dy);
+        dragPosRef.current = next;
+        setDragPos(next);
+      }
+    };
+
+    const onUp = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d.active || e.pointerId !== d.pointerId) return;
+
+      if (d.moved && dragPosRef.current) {
+        placeAt(dragPosRef.current);
+      } else if (!d.moved) {
+        cycleVideoMood();
+      }
+
+      finishDrag();
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [cycleVideoMood, finishDrag, placeAt]);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0 || state.isWalking) return;
+      e.preventDefault();
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      dragRef.current = {
+        active: true,
+        moved: false,
+        pointerId: e.pointerId,
+        originX: state.position.x,
+        originY: state.position.y,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+      };
+    },
+    [state.isWalking, state.position.x, state.position.y],
+  );
+
   const displayMood = state.isWalking ? state.pendingMood : state.mood;
-  const videoSrcKey = getDrakoVideoSrcKey(displayMood);
   const usesVideo = Boolean(getDrakoVideoAsset(displayMood));
-  const idleBob = !prefersReduced && !state.isWalking && !usesVideo;
+  const idleBob = !prefersReduced && !state.isWalking && !usesVideo && !dragPos;
   const walkWaddle = !prefersReduced && state.isWalking;
+  const isDragging = dragPos !== null;
+  const posX = dragPos?.x ?? state.position.x;
+  const posY = dragPos?.y ?? state.position.y;
 
   return (
     <div
+      data-drako-root
       style={{
         position: "fixed",
         top: 0,
@@ -98,9 +176,9 @@ export function DrakoCompanion() {
       }}
     >
       <motion.div
-        animate={{ x: state.position.x, y: state.position.y }}
+        animate={{ x: posX, y: posY }}
         transition={
-          prefersReduced
+          prefersReduced || isDragging
             ? { duration: 0 }
             : state.isWalking
               ? POS_SPRING
@@ -116,14 +194,26 @@ export function DrakoCompanion() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.3, opacity: 0, y: 20 }}
               transition={prefersReduced ? { duration: 0 } : POP_SPRING}
-              style={{ position: "relative", width: COMPANION_PX }}
+              style={{ position: "relative", width: COMPANION_PX, pointerEvents: "auto" }}
             >
               <AnimatePresence>
                 {state.caption && <DrakoBubble key={state.caption} text={state.caption} />}
               </AnimatePresence>
 
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="Drako — drag to move, click to change animation"
+                onPointerDown={onPointerDown}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    cycleVideoMood();
+                  }
+                }}
                 style={{
+                  touchAction: "none",
+                  userSelect: "none",
                   animation: walkWaddle
                     ? "drako-waddle 0.35s ease-in-out infinite"
                     : idleBob
@@ -138,7 +228,6 @@ export function DrakoCompanion() {
                   }}
                 >
                   <DrakoSpriteImage
-                    key={videoSrcKey}
                     mood={displayMood}
                     width={COMPANION_PX}
                     alt={DRAKO_ALT[displayMood]}

@@ -11,7 +11,7 @@ export function DrakoBoot() {
   useEffect(() => {
     const home = drakoRouteHome(pathname);
     show();
-    moveTo(home.anchor, { mood: home.mood, caption: home.caption });
+    moveTo(home.anchor);
   }, [pathname, show, moveTo]);
 
   return null;

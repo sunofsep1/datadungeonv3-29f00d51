@@ -22,9 +22,9 @@ process_green() {
   echo "ok green $name"
 }
 
-process_white drako-fire-breath
 process_white drako-celebrate
 process_white drako-sleeping
+process_green drako-fire-breath
 process_green drako-coffee-break
 cp "$DIR/drako-coffee-break.webm" "$DIR/drako-idle.webm"
 echo "done"

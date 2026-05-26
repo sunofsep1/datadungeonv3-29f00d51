@@ -32,6 +32,7 @@ import { getTasksOpenDefaultSavedView } from "@/lib/savedViewsClientPrefs";
 import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 
 /** Same Embla behavior as Daily Hub — smaller slide width for compact tiles. */
 const TASKS_TODO_CAROUSEL_OPTS = {
@@ -438,7 +439,7 @@ export default function Tasks() {
                       {
                         onSuccess: () => {
                           if (markingComplete) {
-                            setMood("celebrate", { caption: "Ripper! Knocked that one off." });
+                            setMood("celebrate", { caption: pickDrakoLine("taskDone") });
                           }
                         },
                         onError: (e) => toast.error(e.message || "Failed to update"),
@@ -635,7 +636,7 @@ export default function Tasks() {
                                   {
                                     onSuccess: () => {
                                       toast.success("Step completed. Next step scheduled.");
-                                      setMood("wave", { caption: "Nurture step done — sequence rolling." });
+                                      setMood("wave", { caption: pickDrakoLine("nurtureStep") });
                                     },
                                     onError: (e) => {
                                       if (isNurtureNoActiveStepError(e)) {
@@ -734,7 +735,7 @@ export default function Tasks() {
                                     {
                                       onSuccess: () => {
                                         toast.success("Step completed. Next step scheduled.");
-                                        setMood("wave", { caption: "Nurture step done — sequence rolling." });
+                                        setMood("wave", { caption: pickDrakoLine("nurtureStep") });
                                       },
                                       onError: (e) => {
                                         if (isNurtureNoActiveStepError(e)) {

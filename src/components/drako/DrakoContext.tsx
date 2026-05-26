@@ -14,8 +14,9 @@ import type {
   DrakoContextValue,
   DrakoMood,
 } from "./types";
-import { layout } from "@/lib/designTokens";
 import { COMPANION_PX } from "./types";
+import { clampDrakoPosition, nextCycleMood, pickTapLine } from "@/lib/drakoInteractive";
+import { preloadDrakoVideos } from "./drakoVideos";
 
 function parseSidebarWidthPx(): number {
   if (typeof window === "undefined") return 248;
@@ -66,10 +67,12 @@ export function getAnchorPosition(anchor: DrakoAnchor): { x: number; y: number }
       return { x: Math.round(vw * 0.5 - S / 2), y: Math.round(vh * 0.65) };
     case "bottom-right":
       return { x: vw - S - 20, y: vh - S - bottomInset };
+    case "free":
+      return { x: 0, y: 0 };
   }
 }
 
-const IDLE_TIMEOUT_MS = 60_000;
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 const initialState: DrakoCompanionState = {
   mood: "idle",
@@ -93,7 +96,8 @@ type Action =
   | { type: "HIDE" }
   | { type: "SLEEP" }
   | { type: "WAKE" }
-  | { type: "REPOSITION"; position: { x: number; y: number } };
+  | { type: "REPOSITION"; position: { x: number; y: number } }
+  | { type: "PLACE_AT"; position: { x: number; y: number } };
 
 const POSITION_EPS = 12;
 const GLIDE_MAX_PX = 56;
@@ -133,6 +137,13 @@ function reducer(state: DrakoCompanionState, action: Action): DrakoCompanionStat
       return { ...state, mood: "wave", pendingMood: "idle" };
     case "REPOSITION":
       return { ...state, position: action.position, isWalking: false };
+    case "PLACE_AT":
+      return {
+        ...state,
+        anchor: "free",
+        position: action.position,
+        isWalking: false,
+      };
     default:
       return state;
   }
@@ -146,45 +157,71 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
   // Refs so idle callbacks always see current values without re-subscribing
   const dispatchRef = useRef(dispatch);
   const stateRef = useRef(state);
+  const idleSleepTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const wakeFadeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const moodBeforeSleepRef = useRef<DrakoMood>("idle");
 
   useLayoutEffect(() => {
     dispatchRef.current = dispatch;
     stateRef.current = state;
   });
 
-  // 60-second idle easter egg: sleeping → wave → idle on next interaction
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
+  const clearWakeFade = useCallback(() => {
+    clearTimeout(wakeFadeTimerRef.current);
+  }, []);
 
-    const handleActivity = () => {
-      if (stateRef.current.mood === "sleeping" && stateRef.current.isVisible) {
-        dispatchRef.current({ type: "WAKE" });
-        setTimeout(
-          () => dispatchRef.current({ type: "SET_MOOD", mood: "idle", caption: null }),
-          1500,
-        );
+  const resetIdleClock = useCallback(() => {
+    clearTimeout(idleSleepTimerRef.current);
+    idleSleepTimerRef.current = setTimeout(() => {
+      if (stateRef.current.isVisible && stateRef.current.mood !== "sleeping") {
+        moodBeforeSleepRef.current = stateRef.current.mood;
+        dispatchRef.current({ type: "SLEEP" });
       }
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (stateRef.current.isVisible) {
-          dispatchRef.current({ type: "SLEEP" });
-        }
-      }, IDLE_TIMEOUT_MS);
+    }, IDLE_TIMEOUT_MS);
+  }, []);
+
+  // 5-minute idle → sleep. Mood changes only on Drako click (except wake restore).
+  useEffect(() => {
+    const handleActivity = (e?: Event) => {
+      const target = e?.target;
+      const fromDrako = target instanceof HTMLElement && target.closest("[data-drako-root]");
+
+      if (fromDrako) {
+        clearWakeFade();
+        resetIdleClock();
+        return;
+      }
+
+      if (stateRef.current.mood === "sleeping" && stateRef.current.isVisible) {
+        clearWakeFade();
+        dispatchRef.current({
+          type: "SET_MOOD",
+          mood: moodBeforeSleepRef.current,
+          caption: null,
+        });
+      }
+      resetIdleClock();
     };
 
     const events = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
     events.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }));
-    handleActivity(); // start the clock
+    resetIdleClock();
 
     return () => {
       events.forEach((e) => window.removeEventListener(e, handleActivity));
-      clearTimeout(timer);
+      clearTimeout(idleSleepTimerRef.current);
+      clearWakeFade();
     };
+  }, [clearWakeFade, resetIdleClock]);
+
+  useEffect(() => {
+    preloadDrakoVideos();
   }, []);
 
   // Keep position correct on resize and sidebar collapse/expand
   useEffect(() => {
     const reposition = () => {
+      if (stateRef.current.anchor === "free") return;
       const anchor = stateRef.current.anchor;
       dispatchRef.current({
         type: "REPOSITION",
@@ -203,24 +240,33 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
   const moveTo = useCallback(
     (anchor: DrakoAnchor, opts?: { mood?: DrakoMood; caption?: string }) => {
       const position = getAnchorPosition(anchor);
+      const moodChange = opts?.mood !== undefined;
       const pendingMood = opts?.mood ?? stateRef.current.mood;
       const caption = opts?.caption ?? null;
       const cur = stateRef.current;
       const dist = Math.hypot(position.x - cur.position.x, position.y - cur.position.y);
 
       if (cur.anchor === anchor && dist < POSITION_EPS) {
-        if (cur.mood !== pendingMood || cur.caption !== caption) {
+        if (moodChange && cur.mood !== pendingMood) {
           dispatch({ type: "SET_MOOD", mood: pendingMood, caption });
+        } else if (caption !== null && cur.caption !== caption) {
+          dispatch({ type: "SET_MOOD", mood: cur.mood, caption });
         }
         return;
       }
 
       if (dist < GLIDE_MAX_PX) {
-        dispatch({ type: "GLIDE_TO", anchor, position, pendingMood, caption });
+        dispatch({ type: "GLIDE_TO", anchor, position, pendingMood: moodChange ? pendingMood : cur.mood, caption });
         return;
       }
 
-      dispatch({ type: "MOVE_TO", anchor, position, pendingMood, caption });
+      dispatch({
+        type: "MOVE_TO",
+        anchor,
+        position,
+        pendingMood: moodChange ? pendingMood : cur.mood,
+        caption,
+      });
     },
     [],
   );
@@ -229,13 +275,29 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "SET_MOOD", mood, caption: opts?.caption ?? null });
   }, []);
 
+  const placeAt = useCallback(
+    (position: { x: number; y: number }) => {
+      clearWakeFade();
+      resetIdleClock();
+      dispatch({ type: "PLACE_AT", position: clampDrakoPosition(position.x, position.y) });
+    },
+    [clearWakeFade, resetIdleClock],
+  );
+
+  const cycleVideoMood = useCallback(() => {
+    clearWakeFade();
+    resetIdleClock();
+    const next = nextCycleMood(stateRef.current.mood);
+    dispatch({ type: "SET_MOOD", mood: next, caption: pickTapLine(next) });
+  }, [clearWakeFade, resetIdleClock]);
+
   const arrive  = useCallback(() => dispatch({ type: "ARRIVED" }), []);
   const show    = useCallback(() => dispatch({ type: "SHOW" }), []);
   const hide    = useCallback(() => dispatch({ type: "HIDE" }), []);
 
   const value = useMemo<DrakoContextValue>(
-    () => ({ state, moveTo, setMood, arrive, show, hide }),
-    [state, moveTo, setMood, arrive, show, hide],
+    () => ({ state, moveTo, setMood, placeAt, cycleVideoMood, arrive, show, hide }),
+    [state, moveTo, setMood, placeAt, cycleVideoMood, arrive, show, hide],
   );
 
   return <DrakoContext.Provider value={value}>{children}</DrakoContext.Provider>;

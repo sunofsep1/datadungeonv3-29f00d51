@@ -23,7 +23,8 @@ export type DrakoAnchor =
   | 'center'
   | 'table'
   | 'empty-state'
-  | 'bottom-right';
+  | 'bottom-right'
+  | 'free';
 
 export type DrakoSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -71,6 +72,8 @@ export interface DrakoContextValue {
   state: DrakoCompanionState;
   moveTo: (anchor: DrakoAnchor, opts?: { mood?: DrakoMood; caption?: string }) => void;
   setMood: (mood: DrakoMood, opts?: { caption?: string }) => void;
+  placeAt: (position: { x: number; y: number }) => void;
+  cycleVideoMood: () => void;
   arrive: () => void;
   show: () => void;
   hide: () => void;

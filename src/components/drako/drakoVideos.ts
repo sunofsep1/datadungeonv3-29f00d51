@@ -2,20 +2,33 @@ import type { DrakoVideoKey } from "@/lib/drakoVideoKey";
 import type { DrakoMood } from "./types";
 
 const BASE = "/drako/videos";
+/** Bust browser cache when replacing MP4s in public/drako/videos/. */
+const V = "?v=20260526d";
 
-/** OpenArt export uses off-white grey-blue — keyed in canvas at runtime. */
+/** OpenArt near-white export (~#FCFCFC) — luminance key handles H.264 banding. */
 const LIGHT_MATTE: DrakoVideoKey = {
-  key: [233, 243, 249],
-  similarity: 52,
-  blend: 20,
+  key: [252, 252, 252],
+  similarity: 38,
+  blend: 28,
 };
 
-/** Green-screen clip only — idle uses light matte to avoid green flicker. */
-const GREEN_MATTE: DrakoVideoKey = {
-  key: [28, 127, 69],
-  similarity: 85,
-  blend: 22,
+/** Green-screen fire clip — tip soften + standard key. */
+const GREEN_FIRE: DrakoVideoKey = {
+  key: [32, 128, 68],
+  similarity: 78,
+  blend: 10,
   green: true,
+  softenFlameTips: true,
+  loopMarginS: 0.08,
+};
+
+/** Green-screen coffee clip — wider loop margin, defringe in post-pass. */
+const GREEN_COFFEE: DrakoVideoKey = {
+  key: [32, 128, 68],
+  similarity: 78,
+  blend: 10,
+  green: true,
+  loopMarginS: 0.12,
 };
 
 export interface DrakoVideoAsset {
@@ -24,10 +37,10 @@ export interface DrakoVideoAsset {
 }
 
 const ASSETS = {
-  celebrate: { src: `${BASE}/drako-celebrate.mp4`, key: LIGHT_MATTE },
-  fireBreath: { src: `${BASE}/drako-fire-breath.mp4`, key: LIGHT_MATTE },
-  sleeping: { src: `${BASE}/drako-sleeping.mp4`, key: LIGHT_MATTE },
-  coffee: { src: `${BASE}/drako-coffee-break.mp4`, key: GREEN_MATTE },
+  celebrate: { src: `${BASE}/drako-celebrate.mp4${V}`, key: LIGHT_MATTE },
+  fireBreath: { src: `${BASE}/drako-fire-breath.mp4${V}`, key: GREEN_FIRE },
+  sleeping: { src: `${BASE}/drako-sleeping.mp4${V}`, key: LIGHT_MATTE },
+  coffee: { src: `${BASE}/drako-coffee-break.mp4${V}`, key: GREEN_COFFEE },
 } as const satisfies Record<string, DrakoVideoAsset>;
 
 export const DRAKO_VIDEO_BY_MOOD: Partial<Record<DrakoMood, DrakoVideoAsset>> = {
@@ -59,4 +72,19 @@ export function getDrakoVideoSrcKey(mood: DrakoMood): string {
 /** @deprecated Use getDrakoVideoAsset — kept for callers that only need src. */
 export function getDrakoVideoSrc(mood: DrakoMood): string | null {
   return getDrakoVideoAsset(mood)?.src ?? null;
+}
+
+const ALL_VIDEO_SRCS = [...new Set(Object.values(ASSETS).map((a) => a.src))];
+
+/** Warm browser cache so mood switches don't flash empty frames. */
+export function preloadDrakoVideos(): void {
+  if (typeof document === "undefined") return;
+  for (const src of ALL_VIDEO_SRCS) {
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+    video.src = src.split("?")[0];
+    video.load();
+  }
 }

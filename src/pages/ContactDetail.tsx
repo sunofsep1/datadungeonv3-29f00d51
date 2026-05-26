@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { useContact } from "@/hooks/useContact";
 import {
   useContacts,
@@ -424,7 +425,7 @@ export default function ContactDetail() {
         }
       }
       toast({ title: "Success", description: "Contact updated!" });
-      setMood("wave", { caption: "Contact locked in, mate." });
+      setMood("wave", { caption: pickDrakoLine("contactSaved") });
       setIsEditing(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

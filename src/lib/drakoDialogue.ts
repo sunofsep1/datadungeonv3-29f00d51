@@ -1,43 +1,81 @@
-import type { DrakoMood } from "@/components/drako";
+import type { DrakoMood } from "@/components/drako/types";
 
 export type DrakoDialogueCategory =
   | "celebrate"
   | "empty"
   | "loading"
   | "guide"
-  | "urgent";
+  | "urgent"
+  | "taskDone"
+  | "nurtureStep"
+  | "contactSaved"
+  | "dealClosed"
+  | "pipeline"
+  | "hotLeads";
 
+/** Retro 80s arcade / CRT dungeon — no Aussie slang. */
 const LINES: Record<DrakoDialogueCategory, string[]> = {
   celebrate: [
-    "Ripper! That one's gonna feel good on Friday. Who's next?",
-    "Ohhh yeah. You're on a roll, mate.",
-    "DEAL. CLOSED. I'd high-five you but — claws.",
-    "That's what I'm talking about. Now don't let the pipeline go cold.",
-    "Look at ya go. Dungeon's filling up nicely.",
+    "HIGH SCORE! That task just got deleted from the queue.",
+    "Player one wins. Pipeline status: glowing.",
+    "Achievement unlocked. Don't stop now — next level awaits.",
+    "Radical. The dungeon database approves.",
+    "Bonus points! Keep that combo going.",
   ],
   empty: [
-    "Nothin' here but me and some dust. Add your first contact?",
-    "Empty dungeon. Let's fix that — chuck in a contact.",
-    "No tasks. Either you're smashing it or I'm worried about you.",
-    "The pipeline is empty. Drako does not approve.",
-    "Nothing in the calendar. Block some time — the deals won't chase themselves.",
+    "Sector empty. Insert first contact to begin game.",
+    "No data detected. The dungeon echoes… add someone?",
+    "Zero entries in this buffer. Time to populate.",
+    "Blank slate. Even dragons get lonely in an empty ROM.",
+    "Nothing on the radar. Load up your contact roster.",
   ],
   loading: [
-    "Fetching your data... I'm fast, not magic.",
-    "Hold on, digging through the dungeon...",
-    "One sec. Even dragons need a moment.",
-    "Loading... good things take a second.",
+    "Loading… please wait. *disk whir*",
+    "Fetching data from the vault. Stand by.",
+    "Buffering… good bytes take a second.",
+    "Spinning up the dungeon drives…",
+    "One sec — even 8-bit dragons need fetch time.",
   ],
   guide: [
-    "G'day! I'm Drako. I live in here. Let me show you around the dungeon.",
-    "This is your command centre. Everything that needs you is right here.",
-    "Your contacts. These are your people — treat 'em right.",
-    "Your deals, in order. Move 'em forward or Drako gets antsy.",
+    "Welcome, operator. I'm Drako — your dungeon guide.",
+    "Command centre online. Everything urgent lives here.",
+    "Your contact grid. These are your party members.",
+    "Deal pipeline engaged. Move stages or the boss fight gets harder.",
   ],
   urgent: [
-    "Oi. That task is overdue. Sort it out.",
-    "This one's been waiting. Don't leave it hanging.",
-    "This deal hasn't moved in a while. Poke it or drop it.",
+    "Alert! Overdue task in memory bank. Handle it.",
+    "Priority flag raised. This one's been waiting too long.",
+    "Stale deal detected. Advance or archive — your call.",
+  ],
+  taskDone: [
+    "Task cleared. +100 XP to productivity.",
+    "Deleted from the queue. Nice reflexes.",
+    "Objective complete. Save state recommended.",
+  ],
+  nurtureStep: [
+    "Nurture sequence advanced. Auto-pilot engaged.",
+    "Drip campaign ticked forward. Systems green.",
+    "Sequence step sent. The dungeon runs itself.",
+  ],
+  contactSaved: [
+    "Contact saved to permanent memory.",
+    "New entry written to the vault. Solid.",
+    "Profile locked in. Database happy.",
+  ],
+  dealClosed: [
+    "DEAL CLOSED. Insert victory fanfare here.",
+    "Transaction complete. Boss defeated.",
+    "Sale logged. The dungeon celebrates in silence.",
+  ],
+  pipeline: [
+    "Stage advanced. Chart trending upward.",
+    "Pipeline level up. Keep pushing.",
+    "Progress bar moved. Most excellent.",
+  ],
+  hotLeads: [
+    "Hot leads on scope. These need you today.",
+    "Priority targets acquired. Engage now.",
+    "Heat signature detected. Move fast, operator.",
   ],
 };
 
@@ -48,11 +86,16 @@ export function pickDrakoLine(category: DrakoDialogueCategory, seed?: number): s
   return pool[i] ?? pool[0];
 }
 
-/** Map dialogue categories to default moods from the character brief. */
 export const CATEGORY_MOOD: Record<DrakoDialogueCategory, DrakoMood> = {
   celebrate: "celebrate",
   empty: "sleeping",
   loading: "thinking",
-  guide: "pointing",
+  guide: "wave",
   urgent: "confused",
+  taskDone: "celebrate",
+  nurtureStep: "wave",
+  contactSaved: "wave",
+  dealClosed: "fire-breath",
+  pipeline: "growth-chart",
+  hotLeads: "fire-breath",
 };

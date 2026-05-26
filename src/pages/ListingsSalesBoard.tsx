@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -146,7 +147,7 @@ export default function ListingsSalesBoard() {
         /* activity optional */
       }
       toast({ title: "Stage updated", description: `Moved to ${label}` });
-      setMood("growth-chart", { caption: "Moving on up. Keep it going." });
+      setMood("growth-chart", { caption: pickDrakoLine("pipeline") });
     } catch (error) {
       toast({
         title: "Error",

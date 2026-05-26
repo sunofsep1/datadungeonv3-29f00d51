@@ -8,6 +8,25 @@ html {
 body {
   background-color: hsl(222 47% 6%);
 }
+
+/* Clickable UI — standard arrow cursor, no hand/grab pointers */
+@layer base {
+  a,
+  button,
+  [role="button"],
+  label[for],
+  summary {
+    cursor: default;
+  }
+}
+
+@layer utilities {
+  .cursor-pointer,
+  .cursor-grab,
+  .cursor-grabbing {
+    cursor: default;
+  }
+}
 #root {
   min-height: 100vh;
   background-color: hsl(222 47% 6%) !important;
@@ -2410,6 +2429,7 @@ html:not(.light) .dashboard-clock-glow {
 .drako-video-img {
   object-fit: contain;
   pointer-events: none;
+  background: transparent;
   filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.55))
     drop-shadow(0 0 12px hsl(var(--primary) / 0.25));
 }
