@@ -11,7 +11,8 @@ export type DrakoDialogueCategory =
   | "contactSaved"
   | "dealClosed"
   | "pipeline"
-  | "hotLeads";
+  | "hotLeads"
+  | "levelUp";
 
 /** Retro 80s arcade / CRT dungeon — no Aussie slang. */
 const LINES: Record<DrakoDialogueCategory, string[]> = {
@@ -77,6 +78,13 @@ const LINES: Record<DrakoDialogueCategory, string[]> = {
     "Priority targets acquired. Engage now.",
     "Heat signature detected. Move fast, operator.",
   ],
+  levelUp: [
+    "LEVEL UP! New power unlocked. The dungeon bows.",
+    "Rank increase detected. Dragon fire intensifies.",
+    "XP threshold breached. You just got stronger.",
+    "New level achieved. Insert congratulations here.",
+    "Status upgrade complete. Operator clearance elevated.",
+  ],
 };
 
 export function pickDrakoLine(category: DrakoDialogueCategory, seed?: number): string {
@@ -98,4 +106,5 @@ export const CATEGORY_MOOD: Record<DrakoDialogueCategory, DrakoMood> = {
   dealClosed: "fire-breath",
   pipeline: "growth-chart",
   hotLeads: "fire-breath",
+  levelUp: "fire-breath",
 };

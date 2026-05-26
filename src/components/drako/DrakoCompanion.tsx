@@ -8,6 +8,7 @@ import { COMPANION_PX, DRAKO_ALT } from "./types";
 import { DrakoSpriteImage } from "./DrakoSpriteImage";
 import { getDrakoVideoAsset } from "./drakoVideos";
 import { clampDrakoPosition, DRAG_THRESHOLD_PX } from "@/lib/drakoInteractive";
+import { DrakoXpBadge } from "./DrakoXpBadge";
 
 const POS_SPRING = { type: "spring", stiffness: 80, damping: 18 } as const;
 const POP_SPRING = { type: "spring", stiffness: 300, damping: 22 } as const;
@@ -199,6 +200,7 @@ export function DrakoCompanion() {
               <AnimatePresence>
                 {state.caption && <DrakoBubble key={state.caption} text={state.caption} />}
               </AnimatePresence>
+              <DrakoXpBadge visible={state.isVisible} />
 
               <div
                 role="button"
