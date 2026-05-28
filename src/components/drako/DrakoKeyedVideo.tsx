@@ -8,23 +8,27 @@ interface DrakoKeyedVideoProps {
   width: number;
   height: number;
   keyConfig: DrakoVideoKey;
+  loop?: boolean;
   className?: string;
   alt?: string;
   decorative?: boolean;
+  onEnded?: () => void;
 }
 
 const RENDER_SCALE = 2;
 const DEFAULT_LOOP_MARGIN_S = 0.07;
 
-/** Live-action loop with runtime chroma key (OpenArt mattes are not true alpha). */
+/** Live-action loop with runtime chroma key — best quality for OpenArt mattes. */
 export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
   src,
   width,
   height,
   keyConfig,
+  loop = true,
   className,
   alt,
   decorative,
+  onEnded,
 }: DrakoKeyedVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -111,6 +115,14 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
     };
   }, [src, kr, kg, kb, similarity, blend, green]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !onEnded) return;
+    const handleEnded = () => onEnded();
+    video.addEventListener("ended", handleEnded);
+    return () => video.removeEventListener("ended", handleEnded);
+  }, [onEnded, src]);
+
   return (
     <span
       className={cn("drako-sprite drako-sprite-video inline-block leading-none", className)}
@@ -119,7 +131,7 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
       <video
         ref={videoRef}
         src={src}
-        loop
+        loop={loop}
         muted
         playsInline
         preload="auto"

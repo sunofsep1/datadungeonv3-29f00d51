@@ -11,9 +11,10 @@ interface DrakoSpriteImageProps {
   alt?: string;
   decorative?: boolean;
   preferVideo?: boolean;
+  onVideoEnded?: () => void;
 }
 
-/** Renders chroma-keyed live loop or transparent pixel PNG fallback. */
+/** Renders chroma-keyed live loop (MP4) or transparent pixel PNG fallback. */
 export function DrakoSpriteImage({
   mood,
   width,
@@ -21,6 +22,7 @@ export function DrakoSpriteImage({
   alt,
   decorative,
   preferVideo = true,
+  onVideoEnded,
 }: DrakoSpriteImageProps) {
   const videoAsset = getDrakoVideoAsset(mood);
   const height = Math.round(width * 0.75);
@@ -30,11 +32,13 @@ export function DrakoSpriteImage({
       <DrakoKeyedVideo
         src={videoAsset.src}
         keyConfig={videoAsset.key}
+        loop={videoAsset.loop ?? true}
         width={width}
         height={height}
         className={className}
         alt={alt ?? DRAKO_ALT[mood]}
         decorative={decorative}
+        onEnded={onVideoEnded}
       />
     );
   }

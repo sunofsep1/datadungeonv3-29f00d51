@@ -58,7 +58,7 @@ function DrakoBubble({ text }: { text: string }) {
 }
 
 export function DrakoCompanion() {
-  const { state, arrive, placeAt, cycleVideoMood } = useDrakoInternal();
+  const { state, presence, arrive, placeAt, cycleVideoMood } = useDrakoInternal();
   const prefersReduced = useReducedMotion();
   const isWalkingRef = useRef(false);
   const fallbackRef = useRef<ReturnType<typeof setTimeout>>();
@@ -163,6 +163,9 @@ export function DrakoCompanion() {
   const isDragging = dragPos !== null;
   const posX = dragPos?.x ?? state.position.x;
   const posY = dragPos?.y ?? state.position.y;
+
+  // One Drako at a time — Lair Den owns him on /lair
+  if (presence === "lair" || presence === "hidden") return null;
 
   return (
     <div

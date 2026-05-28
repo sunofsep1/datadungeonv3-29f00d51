@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# Strip export mattes → transparent WebM (VP9 + alpha)
+# OpenArt MP4 → WebM VP9 with true alpha (yuva420p)
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/../public/drako/videos" && pwd)"
 
-# OpenArt export matte is off-white/grey-blue (~#ECF0F4), not pure #FFFFFF
 process_white() {
   local name="$1"
-  ffmpeg -y -hide_banner -loglevel error -i "$DIR/${name}.mp4" \
-    -vf "colorkey=0xECF0F4:0.42:0.06,format=rgba" \
+  local input="$DIR/${name}.mp4"
+  if [[ ! -f "$input" ]]; then
+    echo "skip $name (no ${name}.mp4)"
+    return 0
+  fi
+  ffmpeg -y -hide_banner -loglevel error -i "$input" \
+    -vf "colorkey=0xFCFCFC:0.38:0.06,format=rgba" \
     -c:v libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0 -b:v 0 -crf 30 -an \
     "$DIR/${name}.webm"
   echo "ok white $name"
@@ -15,16 +19,26 @@ process_white() {
 
 process_green() {
   local name="$1"
-  ffmpeg -y -hide_banner -loglevel error -i "$DIR/${name}.mp4" \
+  local input="$DIR/${name}.mp4"
+  if [[ ! -f "$input" ]]; then
+    echo "skip $name (no ${name}.mp4)"
+    return 0
+  fi
+  ffmpeg -y -hide_banner -loglevel error -i "$input" \
     -vf "colorkey=0x208245:0.35:0.08,format=rgba" \
     -c:v libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0 -b:v 0 -crf 30 -an \
     "$DIR/${name}.webm"
   echo "ok green $name"
 }
 
-process_white drako-celebrate
-process_white drako-sleeping
-process_green drako-fire-breath
-process_green drako-coffee-break
-cp "$DIR/drako-coffee-break.webm" "$DIR/drako-idle.webm"
+# Off-white matte (OpenArt default for new batches)
+for clip in drako-celebrate drako-sleeping drako-levelup drako-achievement drako-eating drako-working drako-sad drako-bounce; do
+  process_white "$clip"
+done
+
+# Legacy green-screen exports
+for clip in drako-fire-breath drako-coffee-break; do
+  process_green "$clip"
+done
+
 echo "done"

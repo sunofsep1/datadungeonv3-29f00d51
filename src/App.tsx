@@ -63,6 +63,8 @@ const Invoices = lazy(() => import("./pages/Invoices"));
 const OfiCheckInPage = lazy(() => import("./pages/OfiCheckInPage"));
 const OfiBrochurePrintPage = lazy(() => import("./pages/OfiBrochurePrintPage"));
 const DrakoDemo = lazy(() => import("./pages/DrakoDemo"));
+const DrakoLair = lazy(() => import("./pages/DrakoLair"));
+const ContactMarkets = lazy(() => import("./pages/ContactMarkets"));
 
 const queryClient = new QueryClient();
 
@@ -85,6 +87,7 @@ const App = () => (
                 <Route path="/ofi/brochure/:token/print" element={<ProtectedRoute><OfiBrochurePrintPage /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/attention-hub" element={<ProtectedRoute><MainLayout><ErrorBoundary><AttentionHub /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/lair" element={<ProtectedRoute><MainLayout><ErrorBoundary><DrakoLair /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />
                 <Route path="/workshop" element={<ProtectedRoute><MainLayout><Workshop /></MainLayout></ProtectedRoute>} />
                 <Route path="/hot-leads" element={<ProtectedRoute><MainLayout><HotLeads /></MainLayout></ProtectedRoute>} />
@@ -92,6 +95,7 @@ const App = () => (
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/contacts/markets" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactMarkets /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/requirements-search" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactRequirementsSearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture/print" element={<ProtectedRoute><NurtureBacklogPrintPage /></ProtectedRoute>} />

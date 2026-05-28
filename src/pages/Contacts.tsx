@@ -128,6 +128,11 @@ import {
   type ContactClassificationKey,
   type ContactSmartListId,
 } from "@/lib/contactSmartLists";
+import { contactMatchesMarket, findMarketById } from "@/lib/contactMarkets";
+import {
+  CONTACT_MARKETS_EVENT,
+  loadContactMarkets,
+} from "@/lib/contactMarketsPrefs";
 import { isContactUnreachableForAutomation } from "@/lib/contactAutomationReachability";
 import { SavedViewsMenu } from "@/components/saved-views/SavedViewsMenus";
 import {
@@ -443,6 +448,19 @@ export default function Contacts() {
   const { moveTo } = useDrako();
   const [searchParams, setSearchParams] = useSearchParams();
   const smartParam = searchParams.get("smart");
+  const marketParam = searchParams.get("market");
+  const [contactMarkets, setContactMarkets] = useState(() => loadContactMarkets());
+
+  useEffect(() => {
+    const sync = () => setContactMarkets(loadContactMarkets());
+    window.addEventListener(CONTACT_MARKETS_EVENT, sync);
+    return () => window.removeEventListener(CONTACT_MARKETS_EVENT, sync);
+  }, []);
+
+  const activeMarket = useMemo(
+    () => findMarketById(contactMarkets, marketParam),
+    [contactMarkets, marketParam],
+  );
   const { data: contacts, isLoading, isError, refetch } = useContacts();
   const reviewYear = new Date().getFullYear();
   const { data: reviewStatusByContact = new Map<string, string>() } =
@@ -896,6 +914,10 @@ export default function Contacts() {
       );
     }
 
+    if (activeMarket) {
+      list = list.filter((c) => contactMatchesMarket(c, activeMarket));
+    }
+
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
       const name = (c.name || "").trim();
@@ -953,6 +975,7 @@ export default function Contacts() {
     subscriptionIndex,
     reviewStatusByContact,
     sortBy,
+    activeMarket,
   ]);
 
   // Pagination
@@ -1018,9 +1041,17 @@ export default function Contacts() {
     hasActiveSubscriptionFilters({
       kind: filterSubscriptionKind,
       mode: filterSubscriptionMode,
-    });
+    }) ||
+    Boolean(activeMarket);
 
-  const clearSmartListParam = () => setSearchParams({}, { replace: true });
+  const clearSmartListParam = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("smart");
+      next.delete("market");
+      return next;
+    }, { replace: true });
+  };
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -1830,6 +1861,9 @@ export default function Contacts() {
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link to="/contacts/markets">My Markets</Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
               <Link to="/contacts/requirements-search">Requirements search</Link>
             </Button>
             <SavedViewsMenu
@@ -1878,6 +1912,32 @@ export default function Contacts() {
           );
         })}
       </div>
+
+      {activeMarket && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 -mt-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            {activeMarket.label}
+            <span className="text-primary/70">· {filteredAndSortedContacts.length}</span>
+            <button
+              type="button"
+              className="rounded-full p-0.5 hover:bg-primary/20"
+              aria-label="Clear market filter"
+              onClick={() => {
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.delete("market");
+                  return next;
+                }, { replace: true });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Link to="/contacts/markets">All markets</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="mb-5 rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
         <div className="mb-2 flex items-center justify-between gap-2">

@@ -7,12 +7,14 @@ import React, {
   useMemo,
   useReducer,
   useRef,
+  useState,
 } from "react";
 import type {
   DrakoAnchor,
   DrakoCompanionState,
   DrakoContextValue,
   DrakoMood,
+  DrakoPresence,
 } from "./types";
 import { COMPANION_PX } from "./types";
 import { clampDrakoPosition, nextCycleMood, pickTapLine } from "@/lib/drakoInteractive";
@@ -153,6 +155,7 @@ const DrakoContext = createContext<DrakoContextValue | null>(null);
 
 export function DrakoProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [presence, setPresence] = useState<DrakoPresence>("companion");
 
   // Refs so idle callbacks always see current values without re-subscribing
   const dispatchRef = useRef(dispatch);
@@ -296,8 +299,8 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
   const hide    = useCallback(() => dispatch({ type: "HIDE" }), []);
 
   const value = useMemo<DrakoContextValue>(
-    () => ({ state, moveTo, setMood, placeAt, cycleVideoMood, arrive, show, hide }),
-    [state, moveTo, setMood, placeAt, cycleVideoMood, arrive, show, hide],
+    () => ({ state, presence, setPresence, moveTo, setMood, placeAt, cycleVideoMood, arrive, show, hide }),
+    [state, presence, moveTo, setMood, placeAt, cycleVideoMood, arrive, show, hide],
   );
 
   return <DrakoContext.Provider value={value}>{children}</DrakoContext.Provider>;
@@ -312,12 +315,14 @@ export function useDrakoInternal(): DrakoContextValue {
 
 /** Public hook for CRM components: moveTo, setMood, show, hide + read-only state. */
 export function useDrako() {
-  const { state, moveTo, setMood, show, hide } = useDrakoInternal();
+  const { state, presence, setPresence, moveTo, setMood, show, hide } = useDrakoInternal();
   return {
     moveTo,
     setMood,
     show,
     hide,
+    presence,
+    setPresence,
     mood: state.mood,
     anchor: state.anchor,
     isWalking: state.isWalking,

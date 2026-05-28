@@ -12,7 +12,9 @@ export type DrakoMood =
   | 'working'
   | 'coffee-break'
   | 'birthday'
-  | 'growth-chart';
+  | 'growth-chart'
+  | 'levelup'
+  | 'achievement';
 
 export type DrakoAnchor =
   | 'sidebar'
@@ -43,6 +45,8 @@ export const DRAKO_ALT: Record<DrakoMood, string> = {
   'coffee-break': 'Drako taking a coffee break',
   birthday: 'Drako celebrating a birthday',
   'growth-chart': 'Drako with a growth chart',
+  levelup: 'Drako leveling up with a burst of energy',
+  achievement: 'Drako unlocking an achievement',
 };
 
 export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
@@ -58,6 +62,8 @@ export const WALK_FRAMES: DrakoMood[] = ['idle', 'working'];
 
 export const COMPANION_PX = 168; // live-action video display width
 
+export type DrakoPresence = 'companion' | 'lair' | 'hidden';
+
 export interface DrakoCompanionState {
   mood: DrakoMood;
   pendingMood: DrakoMood;
@@ -70,6 +76,8 @@ export interface DrakoCompanionState {
 
 export interface DrakoContextValue {
   state: DrakoCompanionState;
+  presence: DrakoPresence;
+  setPresence: (presence: DrakoPresence) => void;
   moveTo: (anchor: DrakoAnchor, opts?: { mood?: DrakoMood; caption?: string }) => void;
   setMood: (mood: DrakoMood, opts?: { caption?: string }) => void;
   placeAt: (position: { x: number; y: number }) => void;

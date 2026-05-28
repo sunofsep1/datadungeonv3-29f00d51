@@ -28,6 +28,7 @@ import {
   LineChart,
   Bot,
   Receipt,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -54,11 +55,13 @@ type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
 const homeItems: NavItem[] = [
   { title: "Daily Hub", url: "/attention-hub", icon: Sparkles },
+  { title: "Drako's Lair", url: "/lair", icon: Flame },
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
 ];
 
 const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "My Markets", url: "/contacts/markets", icon: MapPin },
   { title: "Listings", url: "/listings", icon: Building2 },
   { title: "Pricing", url: "/pricing", icon: LineChart },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
@@ -117,9 +120,11 @@ const mobileNavItems = [
 function isNavActive(item: { url: string }, pathname: string): boolean {
   if (pathname === item.url) return true;
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
+  if (item.url === "/lair" && pathname.startsWith("/lair")) return true;
   if (item.url === "/attention-hub" && pathname.startsWith("/attention-hub")) return true;
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/tasks" && pathname.startsWith("/tasks")) return true;
+  if (item.url === "/contacts/markets" && pathname.startsWith("/contacts/markets")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;

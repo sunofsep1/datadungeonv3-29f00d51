@@ -48,11 +48,13 @@ import { groupNotificationsForDrawer, notificationKindIcon } from "@/lib/notific
 const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Home",
   "/attention-hub": "Daily Hub",
+  "/lair": "Drako's Lair",
   "/nurture": "Nurture",
   "/hot-leads": "Hot Leads",
   "/recent": "Recent",
   "/tasks": "Tasks",
   "/contacts": "Contacts",
+  "/contacts/markets": "My Markets",
   "/calendar": "Calendar",
   "/appointments": "Appointments",
   "/marketing": "Marketing",
@@ -69,6 +71,7 @@ const MODULE_TITLES: Record<string, string> = {
 };
 
 function getModuleTitle(pathname: string): string {
+  if (pathname.startsWith("/contacts/markets")) return "My Markets";
   if (pathname.startsWith("/contacts")) return "Contacts";
   if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/listings")) return "Listings";
@@ -81,6 +84,7 @@ function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/invoices")) return "Invoices";
   if (pathname.startsWith("/touch-report")) return "Touch report";
   if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
+  if (pathname.startsWith("/lair")) return "Drako's Lair";
   if (pathname.startsWith("/attention-hub")) return "Daily Hub";
   return MODULE_TITLES[pathname] ?? "DataDungeon";
 }

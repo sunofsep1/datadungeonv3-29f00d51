@@ -24,6 +24,7 @@ import {
   xpSpanOfLevel,
   type XpSource,
 } from "@/lib/drakoProgress";
+import { dispatchDrakoLevelUp } from "@/lib/drakoLairMood";
 
 // Custom event dispatched whenever XP changes so all hook instances re-sync.
 const XP_EVENT = "drako:xp-updated";
@@ -64,6 +65,7 @@ export function useDrakoProgress(): DrakoProgressHookValue {
       dispatchXpEvent();
 
       if (result.leveledUp) {
+        dispatchDrakoLevelUp();
         // Small delay so the CRM action's own Drako reaction fires first,
         // then the level-up blaze follows ~600 ms later.
         setTimeout(() => {

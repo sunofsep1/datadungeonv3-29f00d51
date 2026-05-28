@@ -496,13 +496,13 @@ export function ContactProfileHero({
         <div className="border-t border-border/60 pt-3">
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-2 text-left text-sm font-medium text-foreground hover:text-primary"
+              className="mb-3 flex w-full items-center justify-between gap-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
               onClick={() => setExtraOpen((o) => !o)}
             >
               <span>
                 Additional emails & phones
                 {hasExtraChannels ? (
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  <span className="ml-2 normal-case font-normal tracking-normal">
                     (+{extraEmailCount + extraPhoneCount} extra)
                   </span>
                 ) : null}
@@ -510,9 +510,7 @@ export function ContactProfileHero({
               <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", extraOpen && "rotate-180")} />
             </button>
             {extraOpen ? (
-              <div className="mt-3">
-                <ContactCardChannelRows contactId={contactId} contact={contact} />
-              </div>
+              <ContactCardChannelRows contactId={contactId} contact={contact} />
             ) : null}
           </div>
       </div>

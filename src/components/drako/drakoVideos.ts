@@ -3,7 +3,7 @@ import type { DrakoMood } from "./types";
 
 const BASE = "/drako/videos";
 /** Bust browser cache when replacing MP4s in public/drako/videos/. */
-const V = "?v=20260526d";
+const V = "?v=20260528b";
 
 /** OpenArt near-white export (~#FCFCFC) — luminance key handles H.264 banding. */
 const LIGHT_MATTE: DrakoVideoKey = {
@@ -34,6 +34,8 @@ const GREEN_COFFEE: DrakoVideoKey = {
 export interface DrakoVideoAsset {
   src: string;
   key: DrakoVideoKey;
+  /** Default true. Set false for milestone one-shots. */
+  loop?: boolean;
 }
 
 const ASSETS = {
@@ -41,6 +43,8 @@ const ASSETS = {
   fireBreath: { src: `${BASE}/drako-fire-breath.mp4${V}`, key: GREEN_FIRE },
   sleeping: { src: `${BASE}/drako-sleeping.mp4${V}`, key: LIGHT_MATTE },
   coffee: { src: `${BASE}/drako-coffee-break.mp4${V}`, key: GREEN_COFFEE },
+  levelup: { src: `${BASE}/drako-fire-breath.mp4${V}`, key: GREEN_FIRE, loop: false },
+  achievement: { src: `${BASE}/drako-celebrate.mp4${V}`, key: LIGHT_MATTE, loop: false },
 } as const satisfies Record<string, DrakoVideoAsset>;
 
 export const DRAKO_VIDEO_BY_MOOD: Partial<Record<DrakoMood, DrakoVideoAsset>> = {
@@ -58,6 +62,8 @@ export const DRAKO_VIDEO_BY_MOOD: Partial<Record<DrakoMood, DrakoVideoAsset>> = 
   "growth-chart": ASSETS.celebrate,
   confused: ASSETS.sleeping,
   sad: ASSETS.sleeping,
+  levelup: ASSETS.levelup,
+  achievement: ASSETS.achievement,
 };
 
 export function getDrakoVideoAsset(mood: DrakoMood): DrakoVideoAsset | null {
