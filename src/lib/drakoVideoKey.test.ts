@@ -62,4 +62,15 @@ describe("applyDrakoVideoKey", () => {
     expect(data[(w - 1) * 4 + 3]).toBeLessThan(80);
     expect(data[0 * 4 + 3]).toBe(255);
   });
+
+  it("keys PC monitor greens on working clip without eating dragon skin", () => {
+    const workingKey = { ...WHITE_KEY, removeBrightGreens: true as const };
+    const monitor = new Uint8ClampedArray([150, 220, 190, 255]);
+    applyDrakoVideoKey(monitor, 1, 1, workingKey);
+    expect(monitor[3]).toBe(0);
+
+    const skin = new Uint8ClampedArray([91, 180, 152, 255]);
+    applyDrakoVideoKey(skin, 1, 1, workingKey);
+    expect(skin[3]).toBe(255);
+  });
 });

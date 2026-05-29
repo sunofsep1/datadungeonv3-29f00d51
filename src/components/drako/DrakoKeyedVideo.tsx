@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { DrakoVideoKey } from "@/lib/drakoVideoKey";
 import { applyDrakoVideoKey } from "@/lib/drakoVideoKey";
 import { cn } from "@/lib/utils";
@@ -9,27 +9,42 @@ interface DrakoKeyedVideoProps {
   height: number;
   keyConfig: DrakoVideoKey;
   loop?: boolean;
+  muted?: boolean;
+  renderScale?: number;
   className?: string;
   alt?: string;
   decorative?: boolean;
   onEnded?: () => void;
 }
 
-const RENDER_SCALE = 2;
+export interface DrakoKeyedVideoHandle {
+  /** Unmute and keep playing from the current position. */
+  ensureAudio: () => void;
+  /** Unmute and restart the clip from the beginning (mood change). */
+  restartAudio: () => void;
+}
+
+const DEFAULT_RENDER_SCALE = 1;
 const DEFAULT_LOOP_MARGIN_S = 0.07;
 
 /** Live-action loop with runtime chroma key — best quality for OpenArt mattes. */
-export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
-  src,
-  width,
-  height,
-  keyConfig,
-  loop = true,
-  className,
-  alt,
-  decorative,
-  onEnded,
-}: DrakoKeyedVideoProps) {
+export const DrakoKeyedVideo = memo(
+  forwardRef<DrakoKeyedVideoHandle, DrakoKeyedVideoProps>(function DrakoKeyedVideo(
+    {
+      src,
+      width,
+      height,
+      keyConfig,
+      loop = true,
+      muted = true,
+      renderScale = DEFAULT_RENDER_SCALE,
+      className,
+      alt,
+      decorative,
+      onEnded,
+    },
+    ref,
+  ) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sizeRef = useRef({ width, height });
@@ -40,8 +55,32 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
   const [kr, kg, kb] = keyConfig.key;
   const { similarity, blend, green, loopMarginS } = keyConfig;
   const loopMargin = loopMarginS ?? DEFAULT_LOOP_MARGIN_S;
-  const renderW = width * RENDER_SCALE;
-  const renderH = height * RENDER_SCALE;
+  const renderW = width * renderScale;
+  const renderH = height * renderScale;
+  const scaleRef = useRef(renderScale);
+  scaleRef.current = renderScale;
+
+  useImperativeHandle(ref, () => ({
+    ensureAudio: () => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.muted = false;
+      video.volume = 1;
+      void video.play().catch(() => {});
+    },
+    restartAudio: () => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.muted = false;
+      video.volume = 1;
+      try {
+        video.currentTime = 0;
+      } catch {
+        /* ignore seek errors during load */
+      }
+      void video.play().catch(() => {});
+    },
+  }));
 
   useEffect(() => {
     const video = videoRef.current;
@@ -71,8 +110,9 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
     const paint = () => {
       if (stopped) return;
       const { width: w, height: h } = sizeRef.current;
-      const rw = w * RENDER_SCALE;
-      const rh = h * RENDER_SCALE;
+      const rs = scaleRef.current;
+      const rw = w * rs;
+      const rh = h * rs;
 
       // Keep the last keyed frame on canvas until the next clip is ready — no clear/blink.
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !video.seeking) {
@@ -84,7 +124,19 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
             : false;
 
         if (!inLoopSeam) {
-          ctx.drawImage(video, 0, 0, rw, rh);
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (vw > 0 && vh > 0) {
+            const fit = Math.min(rw / vw, rh / vh);
+            const dw = vw * fit;
+            const dh = vh * fit;
+            const dx = (rw - dw) / 2;
+            const dy = (rh - dh) / 2;
+            ctx.clearRect(0, 0, rw, rh);
+            ctx.drawImage(video, dx, dy, dw, dh);
+          } else {
+            ctx.drawImage(video, 0, 0, rw, rh);
+          }
           const frame = ctx.getImageData(0, 0, rw, rh);
           applyDrakoVideoKey(frame.data, rw, rh, config);
           ctx.putImageData(frame, 0, 0);
@@ -113,7 +165,15 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
       video.removeEventListener("loadeddata", start);
       video.removeEventListener("playing", start);
     };
-  }, [src, kr, kg, kb, similarity, blend, green]);
+  }, [src, kr, kg, kb, similarity, blend, green, renderScale]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = muted;
+    video.volume = muted ? 0 : 1;
+    if (!muted) void video.play().catch(() => {});
+  }, [muted, src]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -132,7 +192,7 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
         ref={videoRef}
         src={src}
         loop={loop}
-        muted
+        muted={muted}
         playsInline
         preload="auto"
         className="hidden"
@@ -149,4 +209,5 @@ export const DrakoKeyedVideo = memo(function DrakoKeyedVideo({
       />
     </span>
   );
-});
+  }),
+);

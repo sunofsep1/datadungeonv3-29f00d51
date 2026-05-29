@@ -26,6 +26,8 @@ export const DRAKO_ROUTE_HOME: Record<string, DrakoRouteHome> = {
   "/nurture": { anchor: "stage", mood: "teacher" },
   "/calendar": { anchor: "stage", mood: "thinking" },
   "/appointments": { anchor: "stage", mood: "thinking" },
+  "/lair": { anchor: "stage", mood: "wave" },
+  "/training": { anchor: "stage", mood: "teacher" },
 };
 
 export function drakoRouteHome(pathname: string): DrakoRouteHome {

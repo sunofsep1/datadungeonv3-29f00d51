@@ -25,6 +25,7 @@ import {
   type XpSource,
 } from "@/lib/drakoProgress";
 import { dispatchDrakoLevelUp } from "@/lib/drakoLairMood";
+import { readGameModeEnabled } from "@/lib/gameModePrefs";
 
 // Custom event dispatched whenever XP changes so all hook instances re-sync.
 const XP_EVENT = "drako:xp-updated";
@@ -60,6 +61,7 @@ export function useDrakoProgress(): DrakoProgressHookValue {
 
   const grantXp = useCallback(
     (source: XpSource) => {
+      if (!readGameModeEnabled()) return;
       const result = grantXpToStorage(source);
       setProgressState(result.state);
       dispatchXpEvent();

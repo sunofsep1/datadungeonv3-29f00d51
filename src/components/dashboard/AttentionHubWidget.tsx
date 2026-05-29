@@ -40,6 +40,10 @@ import {
 } from "@/hooks/useNurtureSequences";
 import { useTodos, useUpdateTodo, useAddTodo, useDeleteTodo, type Todo } from "@/hooks/useTodos";
 import { hrefForWorkshop } from "@/lib/attentionWorkWorkspace";
+import { useDrako } from "@/components/drako";
+import { useDrakoProgress } from "@/hooks/useDrakoProgress";
+import { recordDrakoActivity } from "@/lib/drakoActivity";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import {
   compareAttentionItemsByTierScoreDue,
   urgencyTierBadgeClass,
@@ -213,6 +217,24 @@ export function AttentionHubWidget() {
   const createContactTask = useCreateContactTask();
   const deleteContactTask = useDeleteContactTask();
   const completeNurtureStep = useCompleteNurtureStepAndAdvance();
+  const { setMood } = useDrako();
+  const { grantXp } = useDrakoProgress();
+
+  /** Drako reaction + XP + quest progress when a queue item is cleared. */
+  const rewardCompletion = useCallback(
+    (kind: "todo" | "contact" | "nurture") => {
+      if (kind === "nurture") {
+        grantXp("nurtureStep");
+        recordDrakoActivity("nurtureStep");
+        setMood("wave", { caption: pickDrakoLine("nurtureStep") });
+        return;
+      }
+      grantXp(kind === "contact" ? "contactTaskDone" : "taskDone");
+      recordDrakoActivity("taskComplete");
+      setMood("celebrate", { caption: pickDrakoLine("taskDone") });
+    },
+    [grantXp, setMood],
+  );
 
   const sequenceTaskIds = useMemo(
     () => openContactTasks.filter((task) => Boolean(task.sequence_enrollment_id)).map((task) => task.id),
@@ -492,6 +514,7 @@ export function AttentionHubWidget() {
           setHiddenItemIds((prev) => [...prev, item.id]);
           setSessionCompletedCount((prev) => prev + 1);
           setCelebrating(true);
+          rewardCompletion("todo");
           toast({ title: "Completed", description: "Task marked as done." });
           return;
         }
@@ -511,6 +534,7 @@ export function AttentionHubWidget() {
               setHiddenItemIds((prev) => [...prev, item.id]);
               setSessionCompletedCount((prev) => prev + 1);
               setCelebrating(true);
+              rewardCompletion("nurture");
               toast({ title: "Step completed", description: "Nurture moved to the next step." });
               return;
             } catch (sequenceError) {
@@ -524,6 +548,7 @@ export function AttentionHubWidget() {
                 setHiddenItemIds((prev) => [...prev, item.id]);
                 setSessionCompletedCount((prev) => prev + 1);
                 setCelebrating(true);
+                rewardCompletion("nurture");
                 toast({
                   title: "Task completed",
                   description:
@@ -540,6 +565,7 @@ export function AttentionHubWidget() {
               setHiddenItemIds((prev) => [...prev, item.id]);
               setSessionCompletedCount((prev) => prev + 1);
               setCelebrating(true);
+              rewardCompletion("nurture");
               toast({
                 title: "Task completed",
                 description: `Step sync failed (${getErrorMessage(sequenceError)}). Task was still marked done.`,
@@ -556,6 +582,7 @@ export function AttentionHubWidget() {
           setHiddenItemIds((prev) => [...prev, item.id]);
           setSessionCompletedCount((prev) => prev + 1);
           setCelebrating(true);
+          rewardCompletion("contact");
           toast({ title: "Completed", description: "Contact task marked as done." });
         }
       } catch (error) {
@@ -567,7 +594,7 @@ export function AttentionHubWidget() {
         setQuickNote("");
       }
     },
-    [completeNurtureStep, pendingStepByTaskId, toast, updateContactTask, updateTodo]
+    [completeNurtureStep, pendingStepByTaskId, rewardCompletion, toast, updateContactTask, updateTodo]
   );
 
   const beginEdit = useCallback((item: AttentionItem) => {

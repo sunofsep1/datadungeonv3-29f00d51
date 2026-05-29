@@ -2944,6 +2944,69 @@ export type Database = {
           },
         ]
       }
+      listing_contract_documents: {
+        Row: {
+          created_at: string
+          doc_type: string
+          file_name: string
+          id: string
+          listing_id: string
+          mime_type: string | null
+          offer_id: string
+          parsed_snapshot: Json | null
+          source: string
+          storage_path: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doc_type: string
+          file_name: string
+          id?: string
+          listing_id: string
+          mime_type?: string | null
+          offer_id: string
+          parsed_snapshot?: Json | null
+          source?: string
+          storage_path: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          file_name?: string
+          id?: string
+          listing_id?: string
+          mime_type?: string | null
+          offer_id?: string
+          parsed_snapshot?: Json | null
+          source?: string
+          storage_path?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_contract_documents_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_contract_documents_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "listing_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_inspection_attendees: {
         Row: {
           checked_in_at: string

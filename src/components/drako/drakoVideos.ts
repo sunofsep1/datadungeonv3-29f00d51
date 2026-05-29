@@ -3,7 +3,7 @@ import type { DrakoMood } from "./types";
 
 const BASE = "/drako/videos";
 /** Bust browser cache when replacing MP4s in public/drako/videos/. */
-const V = "?v=20260528b";
+const V = "?v=20260529f";
 
 /** OpenArt near-white export (~#FCFCFC) — luminance key handles H.264 banding. */
 const LIGHT_MATTE: DrakoVideoKey = {
@@ -31,20 +31,87 @@ const GREEN_COFFEE: DrakoVideoKey = {
   loopMarginS: 0.12,
 };
 
+export type LairBehavior = "wander" | "sleep" | "play" | "eat" | "fly" | "talk";
+
 export interface DrakoVideoAsset {
   src: string;
   key: DrakoVideoKey;
   /** Default true. Set false for milestone one-shots. */
   loop?: boolean;
+  /** Curated line shown in speech bubble (and matches clip intent). */
+  guideLine?: string;
+  behavior?: LairBehavior;
 }
 
 const ASSETS = {
-  celebrate: { src: `${BASE}/drako-celebrate.mp4${V}`, key: LIGHT_MATTE },
-  fireBreath: { src: `${BASE}/drako-fire-breath.mp4${V}`, key: GREEN_FIRE },
-  sleeping: { src: `${BASE}/drako-sleeping.mp4${V}`, key: LIGHT_MATTE },
-  coffee: { src: `${BASE}/drako-coffee-break.mp4${V}`, key: GREEN_COFFEE },
-  levelup: { src: `${BASE}/drako-fire-breath.mp4${V}`, key: GREEN_FIRE, loop: false },
-  achievement: { src: `${BASE}/drako-celebrate.mp4${V}`, key: LIGHT_MATTE, loop: false },
+  celebrate: {
+    src: `${BASE}/drako-celebrate.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "HIGH SCORE! The vault is glowing today.",
+    behavior: "talk",
+  },
+  fireBreath: {
+    src: `${BASE}/drako-fire-breath.mp4${V}`,
+    key: GREEN_FIRE,
+    guideLine: "Feel that heat? That's pipeline momentum.",
+    behavior: "talk",
+  },
+  sleeping: {
+    src: `${BASE}/drako-sleeping.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "Shhh… Drako is recharging the dungeon drives.",
+    behavior: "sleep",
+  },
+  coffee: {
+    src: `${BASE}/drako-coffee-break.mp4${V}`,
+    key: GREEN_COFFEE,
+    guideLine: "Coffee break. Even dragons need a power-up.",
+    behavior: "talk",
+  },
+  play: {
+    src: `${BASE}/drako-play.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "Play mode engaged! Watch your step, operator.",
+    behavior: "play",
+  },
+  eat: {
+    src: `${BASE}/drako-eat.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "Snack time. A fed dragon is a helpful dragon.",
+    behavior: "eat",
+  },
+  fly: {
+    src: `${BASE}/drako-fly.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "Up we go! The lair looks better from up here.",
+    behavior: "fly",
+  },
+  bounce: {
+    src: `${BASE}/drako-bounce.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "Boing! Energy levels: maximum.",
+    behavior: "play",
+  },
+  sad: {
+    src: `${BASE}/drako-sad.mp4${V}`,
+    key: LIGHT_MATTE,
+    guideLine: "Quiet day in the dungeon… let's change that.",
+    behavior: "talk",
+  },
+  levelup: {
+    src: `${BASE}/drako-fire-breath.mp4${V}`,
+    key: GREEN_FIRE,
+    loop: false,
+    guideLine: "LEVEL UP! New powers unlocked, operator.",
+    behavior: "talk",
+  },
+  achievement: {
+    src: `${BASE}/drako-celebrate.mp4${V}`,
+    key: LIGHT_MATTE,
+    loop: false,
+    guideLine: "Achievement unlocked! Trophy wall material.",
+    behavior: "talk",
+  },
 } as const satisfies Record<string, DrakoVideoAsset>;
 
 export const DRAKO_VIDEO_BY_MOOD: Partial<Record<DrakoMood, DrakoVideoAsset>> = {
@@ -56,18 +123,26 @@ export const DRAKO_VIDEO_BY_MOOD: Partial<Record<DrakoMood, DrakoVideoAsset>> = 
   sleeping: ASSETS.sleeping,
   "coffee-break": ASSETS.coffee,
   thinking: ASSETS.sleeping,
-  working: ASSETS.fireBreath,
+  working: ASSETS.sleeping,
   pointing: ASSETS.celebrate,
   teacher: ASSETS.celebrate,
   "growth-chart": ASSETS.celebrate,
-  confused: ASSETS.sleeping,
-  sad: ASSETS.sleeping,
+  confused: ASSETS.sad,
+  sad: ASSETS.sad,
+  play: ASSETS.play,
+  eat: ASSETS.eat,
+  fly: ASSETS.fly,
+  bounce: ASSETS.bounce,
   levelup: ASSETS.levelup,
   achievement: ASSETS.achievement,
 };
 
 export function getDrakoVideoAsset(mood: DrakoMood): DrakoVideoAsset | null {
   return DRAKO_VIDEO_BY_MOOD[mood] ?? DRAKO_VIDEO_BY_MOOD.idle ?? null;
+}
+
+export function getGuideLineForMood(mood: DrakoMood): string | null {
+  return getDrakoVideoAsset(mood)?.guideLine ?? null;
 }
 
 /** Stable key for video element — moods sharing a clip won't remount. */

@@ -1,7 +1,8 @@
+import { forwardRef } from "react";
 import type { DrakoMood } from "./types";
 import { DRAKO_ALT } from "./types";
 import { getDrakoVideoAsset } from "./drakoVideos";
-import { DrakoKeyedVideo } from "./DrakoKeyedVideo";
+import { DrakoKeyedVideo, type DrakoKeyedVideoHandle } from "./DrakoKeyedVideo";
 import { cn } from "@/lib/utils";
 
 interface DrakoSpriteImageProps {
@@ -11,28 +12,39 @@ interface DrakoSpriteImageProps {
   alt?: string;
   decorative?: boolean;
   preferVideo?: boolean;
+  muted?: boolean;
+  renderScale?: number;
   onVideoEnded?: () => void;
 }
 
 /** Renders chroma-keyed live loop (MP4) or transparent pixel PNG fallback. */
-export function DrakoSpriteImage({
-  mood,
-  width,
-  className,
-  alt,
-  decorative,
-  preferVideo = true,
-  onVideoEnded,
-}: DrakoSpriteImageProps) {
+export const DrakoSpriteImage = forwardRef<DrakoKeyedVideoHandle, DrakoSpriteImageProps>(
+  function DrakoSpriteImage(
+    {
+      mood,
+      width,
+      className,
+      alt,
+      decorative,
+      preferVideo = true,
+      muted = true,
+      renderScale,
+      onVideoEnded,
+    },
+    ref,
+  ) {
   const videoAsset = getDrakoVideoAsset(mood);
-  const height = Math.round(width * 0.75);
+  const height = Math.round(width * (videoAsset ? 1 : 0.75));
 
   if (preferVideo && videoAsset) {
     return (
       <DrakoKeyedVideo
+        ref={ref}
         src={videoAsset.src}
         keyConfig={videoAsset.key}
         loop={videoAsset.loop ?? true}
+        muted={muted}
+        renderScale={renderScale}
         width={width}
         height={height}
         className={className}
@@ -58,4 +70,4 @@ export function DrakoSpriteImage({
       />
     </picture>
   );
-}
+});

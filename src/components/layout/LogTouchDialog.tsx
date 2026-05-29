@@ -25,6 +25,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
 import { useLogTouch } from "@/hooks/useLogTouch";
+import { useDrako } from "@/components/drako";
+import { useDrakoProgress } from "@/hooks/useDrakoProgress";
+import { recordDrakoActivity } from "@/lib/drakoActivity";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { TOUCH_TYPE_OPTIONS } from "@/lib/touchTypes";
 import { getLogTouchEventName, type OpenLogTouchDetail } from "@/lib/openLogTouch";
 import { cn, errorMessageFromUnknown } from "@/lib/utils";
@@ -34,6 +38,8 @@ export function LogTouchDialog() {
   const location = useLocation();
   const { data: contacts = [] } = useContacts();
   const logTouch = useLogTouch();
+  const { setMood } = useDrako();
+  const { grantXp } = useDrakoProgress();
 
   const [open, setOpen] = useState(false);
   const [initialContactId, setInitialContactId] = useState<string | null>(null);
@@ -115,6 +121,10 @@ export function LogTouchDialog() {
         notes: notes.trim() || null,
       });
       toast({ title: "Touch logged", description: "Last touch date updated on the contact." });
+      grantXp("touchLogged");
+      recordDrakoActivity("touch");
+      if (touchType === "call") recordDrakoActivity("call");
+      setMood("celebrate", { caption: pickDrakoLine("touchLogged") });
       handleOpenChange(false);
     } catch (err) {
       const description = errorMessageFromUnknown(err);

@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import { COMPANION_PX } from "./types";
 import { clampDrakoPosition, nextCycleMood, pickTapLine } from "@/lib/drakoInteractive";
+import { readGameModeEnabled } from "@/lib/gameModePrefs";
 import { preloadDrakoVideos } from "./drakoVideos";
 
 function parseSidebarWidthPx(): number {
@@ -242,6 +243,7 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
 
   const moveTo = useCallback(
     (anchor: DrakoAnchor, opts?: { mood?: DrakoMood; caption?: string }) => {
+      if (!readGameModeEnabled()) return;
       const position = getAnchorPosition(anchor);
       const moodChange = opts?.mood !== undefined;
       const pendingMood = opts?.mood ?? stateRef.current.mood;
@@ -275,6 +277,7 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setMood = useCallback((mood: DrakoMood, opts?: { caption?: string }) => {
+    if (!readGameModeEnabled()) return;
     dispatch({ type: "SET_MOOD", mood, caption: opts?.caption ?? null });
   }, []);
 
@@ -295,7 +298,10 @@ export function DrakoProvider({ children }: { children: React.ReactNode }) {
   }, [clearWakeFade, resetIdleClock]);
 
   const arrive  = useCallback(() => dispatch({ type: "ARRIVED" }), []);
-  const show    = useCallback(() => dispatch({ type: "SHOW" }), []);
+  const show    = useCallback(() => {
+    if (!readGameModeEnabled()) return;
+    dispatch({ type: "SHOW" });
+  }, []);
   const hide    = useCallback(() => dispatch({ type: "HIDE" }), []);
 
   const value = useMemo<DrakoContextValue>(

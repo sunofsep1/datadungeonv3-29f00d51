@@ -1,37 +1,50 @@
 import type { DrakoMood } from "@/components/drako/types";
 import { COMPANION_PX } from "@/components/drako/types";
 
-/** The four live-action loops — click cycles through these. */
+/** Full click cycle — lair + CRM companion (no PC/working clip). */
 export const DRAKO_VIDEO_CYCLE: DrakoMood[] = [
-  "sleeping",
+  "play",
+  "eat",
+  "fly",
+  "bounce",
+  "sad",
   "celebrate",
   "fire-breath",
+  "sleeping",
   "coffee-break",
 ];
 
-/** Route/default moods that share a cycle clip — avoids "dead" first clicks on idle. */
+/** Route/default moods that share a cycle clip — avoids dead first clicks. */
 const CYCLE_ALIASES: Partial<Record<DrakoMood, DrakoMood>> = {
-  idle: "sleeping",
+  idle: "bounce",
   thinking: "sleeping",
-  confused: "sleeping",
-  sad: "sleeping",
+  working: "sleeping",
+  confused: "sad",
   wave: "celebrate",
   birthday: "celebrate",
   pointing: "celebrate",
   teacher: "celebrate",
   "growth-chart": "celebrate",
-  working: "fire-breath",
 };
+
+function nextInCycle(current: DrakoMood, cycle: DrakoMood[]): DrakoMood {
+  const normalized = CYCLE_ALIASES[current] ?? current;
+  const idx = cycle.indexOf(normalized);
+  const next = idx >= 0 ? (idx + 1) % cycle.length : 0;
+  return cycle[next] ?? cycle[0] ?? "play";
+}
 
 export function normalizeCycleMood(mood: DrakoMood): DrakoMood {
   return CYCLE_ALIASES[mood] ?? mood;
 }
 
 export function nextCycleMood(current: DrakoMood): DrakoMood {
-  const normalized = normalizeCycleMood(current);
-  const idx = DRAKO_VIDEO_CYCLE.indexOf(normalized);
-  const next = idx >= 0 ? (idx + 1) % DRAKO_VIDEO_CYCLE.length : 0;
-  return DRAKO_VIDEO_CYCLE[next] ?? "sleeping";
+  return nextInCycle(current, DRAKO_VIDEO_CYCLE);
+}
+
+/** @deprecated Same as nextCycleMood — lair and CRM share one cycle. */
+export function nextLairCycleMood(current: DrakoMood): DrakoMood {
+  return nextCycleMood(current);
 }
 
 function parseSidebarWidthPx(): number {
@@ -79,6 +92,31 @@ const TAP_LINES: Partial<Record<DrakoMood, string[]>> = {
     "Coffee break on the data deck.",
     "Caffeine subroutine: online.",
     "Loading java.exe…",
+  ],
+  play: [
+    "Play mode! Don't touch the lava tiles.",
+    "Recreation subroutine: fully unhinged.",
+    "Tag! You're it, operator.",
+  ],
+  eat: [
+    "Fuel intake detected. Delicious bytes.",
+    "Om nom nom. CRM snacks hit different.",
+    "Dragon diet: 90% data, 10% pizza.",
+  ],
+  fly: [
+    "Altitude: maximum. Vibes: immaculate.",
+    "Look ma, no wings—just pure sass.",
+    "Cruising altitude: above your inbox.",
+  ],
+  bounce: [
+    "Boing! Energy levels: illegal.",
+    "Pogo mode activated. Hold on.",
+    "Bouncing off the walls. Literally.",
+  ],
+  sad: [
+    "Quiet day in the dungeon… let's fix that.",
+    "Low battery emotionally. Pet the dragon?",
+    "Even legends have slow Tuesdays.",
   ],
 };
 

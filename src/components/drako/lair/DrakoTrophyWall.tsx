@@ -1,62 +1,78 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { DRAKO_TROPHY_WALL_BG } from "./DrakoLairBackground";
+import { useDrakoProgress } from "@/hooks/useDrakoProgress";
+import { readStreak } from "@/lib/drakoStreak";
 
 interface AchievementDef {
   id: string;
   label: string;
   emoji: string;
-  earned: boolean;
+  /** How it's earned — shown on hover. */
+  hint: string;
 }
 
-const ACHIEVEMENTS: AchievementDef[] = [
-  { id: "first-blood", label: "First Blood", emoji: "🔥", earned: false },
-  { id: "century-club", label: "Century Club", emoji: "💯", earned: false },
-  { id: "7-day-blaze", label: "7-Day Blaze", emoji: "⚡", earned: false },
-  { id: "dragon-master", label: "Dragon Master", emoji: "🐉", earned: false },
-  { id: "night-owl", label: "Night Owl", emoji: "🌙", earned: false },
-  { id: "pipeline-king", label: "Pipeline King", emoji: "📈", earned: false },
+export const ACHIEVEMENTS: AchievementDef[] = [
+  { id: "first-blood", label: "First Blood", emoji: "🔥", hint: "Earn your first XP" },
+  { id: "century-club", label: "Century Club", emoji: "💯", hint: "Bank 1,000 total XP" },
+  { id: "on-a-roll", label: "On a Roll", emoji: "🔁", hint: "Hit a 3-day streak" },
+  { id: "7-day-blaze", label: "7-Day Blaze", emoji: "⚡", hint: "Hit a 7-day streak" },
+  { id: "seasoned", label: "Seasoned", emoji: "🛡️", hint: "Reach level 5" },
+  { id: "dragon-master", label: "Dragon Master", emoji: "🐉", hint: "Reach level 10" },
 ];
+
+interface TrophyContext {
+  level: number;
+  totalXp: number;
+  longestStreak: number;
+}
+
+function isEarned(id: string, ctx: TrophyContext): boolean {
+  switch (id) {
+    case "first-blood":
+      return ctx.totalXp > 0;
+    case "century-club":
+      return ctx.totalXp >= 1000;
+    case "on-a-roll":
+      return ctx.longestStreak >= 3;
+    case "7-day-blaze":
+      return ctx.longestStreak >= 7;
+    case "seasoned":
+      return ctx.level >= 5;
+    case "dragon-master":
+      return ctx.level >= 10;
+    default:
+      return false;
+  }
+}
+
+export function TrophyWallContent() {
+  const { level, totalXp } = useDrakoProgress();
+  const streak = readStreak();
+  const ctx: TrophyContext = { level, totalXp, longestStreak: streak.longest };
+
+  return (
+    <div className="drako-trophy-grid">
+      {ACHIEVEMENTS.map((a) => {
+        const earned = isEarned(a.id, ctx);
+        return (
+          <div
+            key={a.id}
+            className={cn("drako-trophy-slot", earned && "drako-trophy-slot-earned")}
+            title={`${a.label} — ${earned ? "Unlocked!" : a.hint}`}
+          >
+            <span className="drako-trophy-emoji">{a.emoji}</span>
+            <span className="drako-trophy-label">{a.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function DrakoTrophyWall() {
   return (
-    <Card className="h-full border-border/60 bg-card/80 overflow-hidden">
-      <div className="relative h-[72px] overflow-hidden border-b border-border/50">
-        <img
-          src={DRAKO_TROPHY_WALL_BG}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 h-full w-full object-cover object-[center_28%] opacity-90"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-card/95" />
-        <div className="relative z-10 px-4 py-3">
-          <CardTitle className="text-base font-semibold text-foreground drop-shadow-sm">
-            Trophy Wall
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">Achievements & collectibles</p>
-        </div>
-      </div>
-      <CardHeader className="sr-only">
-        <CardTitle>Trophy Wall</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <div className="grid grid-cols-2 gap-2">
-          {ACHIEVEMENTS.map((a) => (
-            <div
-              key={a.id}
-              className={cn(
-                "flex flex-col items-center justify-center rounded-lg border p-3 text-center min-h-[88px]",
-                a.earned
-                  ? "border-primary/40 bg-primary/5 shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
-                  : "border-border/40 bg-muted/20 opacity-50 grayscale",
-              )}
-            >
-              <span className="text-2xl mb-1">{a.emoji}</span>
-              <span className="text-[10px] font-medium leading-tight">{a.label}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="drako-hud-shelf drako-hud-object-open p-3">
+      <p className="drako-hud-kicker mb-2">TROPHY SHELF</p>
+      <TrophyWallContent />
+    </div>
   );
 }

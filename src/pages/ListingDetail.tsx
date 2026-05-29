@@ -72,6 +72,7 @@ import { MatchBuyersSheet } from "@/components/listings/MatchBuyersSheet";
 import { ListingContactLinksPanel } from "@/components/listings/ListingContactLinksPanel";
 import { ListingOpenInspectionsPanel } from "@/components/listings/ListingOpenInspectionsPanel";
 import { ListingOffersPanel } from "@/components/listings/ListingOffersPanel";
+import { ListingActiveContractPanel } from "@/components/listings/ListingActiveContractPanel";
 import { ListingCommissionPanel } from "@/components/listings/ListingCommissionPanel";
 import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
 import { ListingInvoicesPanel } from "@/components/listings/ListingInvoicesPanel";
@@ -1046,6 +1047,15 @@ export default function ListingDetail() {
         campaignStartAt={kpi.campaignStartAt}
         createdAt={listing.created_at}
       />
+
+      {id ? (
+        <ListingActiveContractPanel
+          listingId={id}
+          listingAddress={listing.address}
+          pipelineStage={listing.pipeline_stage}
+          onListingUpdated={() => void refetch()}
+        />
+      ) : null}
 
       <div id="listing-pricing" className="space-y-6 scroll-mt-28">
         <ListingForSalePanel

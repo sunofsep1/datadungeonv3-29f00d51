@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseErrorMessage } from "@/lib/supabaseErrorMessage";
 import type { ListingOfferStatus } from "@/lib/listingOffers";
+import {
+  buildListingSyncPatchFromOffer,
+  portalStatusFromOfferStatus,
+} from "@/lib/listingOfferPipelineSync";
 
 export type ListingOffer = {
   id: string;
@@ -47,6 +51,20 @@ async function syncOffersKpi(listingId: string) {
   if (error && error.code !== "42883" && error.code !== "PGRST202") {
     console.warn("sync_listing_offers_kpis:", error.message);
   }
+}
+
+async function syncListingFromOfferRow(offer: ListingOffer, statusOverride?: string) {
+  const status = statusOverride ?? offer.status;
+  const listingPatch = buildListingSyncPatchFromOffer({
+    status,
+    exchange_date: offer.exchange_date,
+    settlement_date: offer.settlement_date,
+    expected_settlement_date: offer.expected_settlement_date,
+  });
+  if (Object.keys(listingPatch).length === 0) return;
+
+  const { error } = await supabase.from("listings").update(listingPatch).eq("id", offer.listing_id);
+  if (error) console.warn("syncListingFromOffer:", error.message);
 }
 
 export function useAllListingOffers() {
@@ -166,7 +184,11 @@ export function useUpdateListingOffer() {
       ibd_branch?: string | null;
     }) => {
       const patch: Record<string, unknown> = {};
-      if (input.status != null) patch.status = input.status;
+      if (input.status != null) {
+        patch.status = input.status;
+        const portal = portalStatusFromOfferStatus(input.status);
+        if (portal) patch.portal_status = portal;
+      }
       if (input.exchange_date !== undefined) patch.exchange_date = input.exchange_date;
       if (input.settlement_date !== undefined) patch.settlement_date = input.settlement_date;
       if (input.expected_unconditional_date !== undefined) {
@@ -203,13 +225,18 @@ export function useUpdateListingOffer() {
         .single();
       if (error) throw new Error(supabaseErrorMessage(error));
       await syncOffersKpi(input.listing_id);
-      return data as ListingOffer;
+      const row = data as ListingOffer;
+      if (input.status != null) {
+        await syncListingFromOfferRow(row, input.status);
+      }
+      return row;
     },
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: ["listing_offers", row.listing_id] });
       void qc.invalidateQueries({ queryKey: ["listing", row.listing_id] });
       void qc.invalidateQueries({ queryKey: ["listings"] });
       void qc.invalidateQueries({ queryKey: ["listing_contact_links", row.listing_id] });
+      void qc.invalidateQueries({ queryKey: ["contacts"] });
     },
   });
 }

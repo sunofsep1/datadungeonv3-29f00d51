@@ -8,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { GameModeProvider } from "@/contexts/GameModeContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PageFallbackSkeleton } from "@/components/PageFallbackSkeleton";
 import { DrakoProvider, DrakoCompanion } from "@/components/drako";
@@ -64,6 +65,7 @@ const OfiCheckInPage = lazy(() => import("./pages/OfiCheckInPage"));
 const OfiBrochurePrintPage = lazy(() => import("./pages/OfiBrochurePrintPage"));
 const DrakoDemo = lazy(() => import("./pages/DrakoDemo"));
 const DrakoLair = lazy(() => import("./pages/DrakoLair"));
+const DrakoTraining = lazy(() => import("./pages/DrakoTraining"));
 const ContactMarkets = lazy(() => import("./pages/ContactMarkets"));
 
 const queryClient = new QueryClient();
@@ -71,6 +73,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
+      <GameModeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -88,6 +91,7 @@ const App = () => (
                 <Route path="/dashboard" element={<ProtectedRoute><MainLayout><ErrorBoundary><Dashboard /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/attention-hub" element={<ProtectedRoute><MainLayout><ErrorBoundary><AttentionHub /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/lair" element={<ProtectedRoute><MainLayout><ErrorBoundary><DrakoLair /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/training" element={<ProtectedRoute><MainLayout><ErrorBoundary><DrakoTraining /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />
                 <Route path="/workshop" element={<ProtectedRoute><MainLayout><Workshop /></MainLayout></ProtectedRoute>} />
                 <Route path="/hot-leads" element={<ProtectedRoute><MainLayout><HotLeads /></MainLayout></ProtectedRoute>} />
@@ -149,6 +153,7 @@ const App = () => (
         </DrakoProvider>
         </BrowserRouter>
       </TooltipProvider>
+      </GameModeProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

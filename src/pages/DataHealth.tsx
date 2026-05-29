@@ -17,6 +17,7 @@ import {
 } from "@/lib/contactAutomationReachability";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { Activity, Users, Home, ArrowRight, PieChart, Copy, LayoutGrid, Workflow } from "lucide-react";
+import { BuyerEnquiryRepairPanel } from "@/components/data-health/BuyerEnquiryRepairPanel";
 
 function pctComplete(total: number, missing: number): number {
   if (total <= 0) return 100;
@@ -88,6 +89,8 @@ export default function DataHealth() {
         </Card>
       ) : (
         <>
+          <BuyerEnquiryRepairPanel />
+
           <Card className="zoho-card p-6 border-border">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-5 h-5 text-primary" />

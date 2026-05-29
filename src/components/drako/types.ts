@@ -14,7 +14,11 @@ export type DrakoMood =
   | 'birthday'
   | 'growth-chart'
   | 'levelup'
-  | 'achievement';
+  | 'achievement'
+  | 'play'
+  | 'eat'
+  | 'fly'
+  | 'bounce';
 
 export type DrakoAnchor =
   | 'sidebar'
@@ -47,6 +51,10 @@ export const DRAKO_ALT: Record<DrakoMood, string> = {
   'growth-chart': 'Drako with a growth chart',
   levelup: 'Drako leveling up with a burst of energy',
   achievement: 'Drako unlocking an achievement',
+  play: 'Drako playing in the lair',
+  eat: 'Drako eating a snack',
+  fly: 'Drako flying around the dungeon',
+  bounce: 'Drako bouncing with excitement',
 };
 
 export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
@@ -58,9 +66,12 @@ export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
 
 // Walking frames: reference drako-walk-1/2 when available; companion falls back
 // to idle+working until walk sprites are dropped into public/drako/.
-export const WALK_FRAMES: DrakoMood[] = ['idle', 'working'];
+export const WALK_FRAMES: DrakoMood[] = ['idle', 'bounce'];
 
 export const COMPANION_PX = 168; // live-action video display width
+
+/** Internal canvas scale — 1 = chunky retro grid, matches dungeon bg pixel size. */
+export const DRAKO_VIDEO_RENDER_SCALE = 1;
 
 export type DrakoPresence = 'companion' | 'lair' | 'hidden';
 

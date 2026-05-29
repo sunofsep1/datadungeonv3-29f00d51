@@ -1,16 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { nextCycleMood } from "./drakoInteractive";
+import { nextCycleMood, nextLairCycleMood } from "./drakoInteractive";
 
 describe("nextCycleMood", () => {
-  it("cycles through the four video moods", () => {
-    expect(nextCycleMood("sleeping")).toBe("celebrate");
-    expect(nextCycleMood("celebrate")).toBe("fire-breath");
-    expect(nextCycleMood("fire-breath")).toBe("coffee-break");
-    expect(nextCycleMood("coffee-break")).toBe("sleeping");
+  it("cycles through all OpenArt clips (no working PC)", () => {
+    expect(nextCycleMood("play")).toBe("eat");
+    expect(nextCycleMood("sad")).toBe("celebrate");
+    expect(nextCycleMood("coffee-break")).toBe("play");
   });
 
-  it("starts from sleeping for unknown moods", () => {
-    expect(nextCycleMood("idle")).toBe("celebrate");
+  it("maps route aliases into the cycle", () => {
+    expect(nextCycleMood("idle")).toBe("sad");
     expect(nextCycleMood("working")).toBe("coffee-break");
+    expect(nextCycleMood("wave")).toBe("fire-breath");
+  });
+});
+
+describe("nextLairCycleMood", () => {
+  it("matches nextCycleMood", () => {
+    expect(nextLairCycleMood("bounce")).toBe(nextCycleMood("bounce"));
   });
 });

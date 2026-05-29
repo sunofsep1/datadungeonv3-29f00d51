@@ -49,6 +49,7 @@ const MODULE_TITLES: Record<string, string> = {
   "/dashboard": "Home",
   "/attention-hub": "Daily Hub",
   "/lair": "Drako's Lair",
+  "/training": "Drako's Trials",
   "/nurture": "Nurture",
   "/hot-leads": "Hot Leads",
   "/recent": "Recent",
@@ -85,6 +86,7 @@ function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/touch-report")) return "Touch report";
   if (pathname.startsWith("/calendar") || pathname.startsWith("/appointments")) return "Calendar";
   if (pathname.startsWith("/lair")) return "Drako's Lair";
+  if (pathname.startsWith("/training")) return "Drako's Trials";
   if (pathname.startsWith("/attention-hub")) return "Daily Hub";
   return MODULE_TITLES[pathname] ?? "DataDungeon";
 }

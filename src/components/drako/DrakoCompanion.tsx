@@ -4,11 +4,13 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDrakoInternal } from "./DrakoContext";
-import { COMPANION_PX, DRAKO_ALT } from "./types";
+import { COMPANION_PX, DRAKO_ALT, DRAKO_VIDEO_RENDER_SCALE } from "./types";
 import { DrakoSpriteImage } from "./DrakoSpriteImage";
+import type { DrakoKeyedVideoHandle } from "./DrakoKeyedVideo";
 import { getDrakoVideoAsset } from "./drakoVideos";
 import { clampDrakoPosition, DRAG_THRESHOLD_PX } from "@/lib/drakoInteractive";
 import { DrakoXpBadge } from "./DrakoXpBadge";
+import { useGameMode } from "@/hooks/useGameMode";
 
 const POS_SPRING = { type: "spring", stiffness: 80, damping: 18 } as const;
 const POP_SPRING = { type: "spring", stiffness: 300, damping: 22 } as const;
@@ -59,7 +61,10 @@ function DrakoBubble({ text }: { text: string }) {
 
 export function DrakoCompanion() {
   const { state, presence, arrive, placeAt, cycleVideoMood } = useDrakoInternal();
+  const { gameModeEnabled, drakoAudioEnabled } = useGameMode();
   const prefersReduced = useReducedMotion();
+  const drakoVideoRef = useRef<DrakoKeyedVideoHandle>(null);
+  const audioUnlockedRef = useRef(false);
   const isWalkingRef = useRef(false);
   const fallbackRef = useRef<ReturnType<typeof setTimeout>>();
   const dragRef = useRef({
@@ -122,6 +127,11 @@ export function DrakoCompanion() {
         placeAt(dragPosRef.current);
       } else if (!d.moved) {
         cycleVideoMood();
+        if (drakoAudioEnabled) {
+          audioUnlockedRef.current = true;
+          drakoVideoRef.current?.restartAudio();
+          window.setTimeout(() => drakoVideoRef.current?.restartAudio(), 0);
+        }
       }
 
       finishDrag();
@@ -135,7 +145,7 @@ export function DrakoCompanion() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [cycleVideoMood, finishDrag, placeAt]);
+  }, [cycleVideoMood, finishDrag, placeAt, drakoAudioEnabled]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -164,8 +174,13 @@ export function DrakoCompanion() {
   const posX = dragPos?.x ?? state.position.x;
   const posY = dragPos?.y ?? state.position.y;
 
+  useEffect(() => {
+    if (!drakoAudioEnabled || !audioUnlockedRef.current) return;
+    drakoVideoRef.current?.restartAudio();
+  }, [displayMood, drakoAudioEnabled]);
+
   // One Drako at a time — Lair Den owns him on /lair
-  if (presence === "lair" || presence === "hidden") return null;
+  if (!gameModeEnabled || presence === "lair" || presence === "hidden") return null;
 
   return (
     <div
@@ -214,8 +229,13 @@ export function DrakoCompanion() {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     cycleVideoMood();
+                    if (drakoAudioEnabled) {
+                      audioUnlockedRef.current = true;
+                      drakoVideoRef.current?.restartAudio();
+                    }
                   }
                 }}
+                className="drako-companion-sprite-inner"
                 style={{
                   touchAction: "none",
                   userSelect: "none",
@@ -233,9 +253,13 @@ export function DrakoCompanion() {
                   }}
                 >
                   <DrakoSpriteImage
+                    ref={drakoVideoRef}
                     mood={displayMood}
                     width={COMPANION_PX}
+                    className="drako-companion-video"
                     alt={DRAKO_ALT[displayMood]}
+                    muted={!drakoAudioEnabled}
+                    renderScale={DRAKO_VIDEO_RENDER_SCALE}
                   />
                 </div>
               </div>

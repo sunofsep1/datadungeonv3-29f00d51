@@ -8,11 +8,15 @@ export type DrakoDialogueCategory =
   | "urgent"
   | "taskDone"
   | "nurtureStep"
+  | "touchLogged"
   | "contactSaved"
   | "dealClosed"
   | "pipeline"
   | "hotLeads"
-  | "levelUp";
+  | "levelUp"
+  | "lairTour"
+  | "lairQuest"
+  | "lairTrophy";
 
 /** Retro 80s arcade / CRT dungeon — no Aussie slang. */
 const LINES: Record<DrakoDialogueCategory, string[]> = {
@@ -58,6 +62,11 @@ const LINES: Record<DrakoDialogueCategory, string[]> = {
     "Drip campaign ticked forward. Systems green.",
     "Sequence step sent. The dungeon runs itself.",
   ],
+  touchLogged: [
+    "Touch logged. +30 XP — the vault stays warm.",
+    "Contact pinged. Relationship meter rising.",
+    "Logged it. Consistency is your superpower, operator.",
+  ],
   contactSaved: [
     "Contact saved to permanent memory.",
     "New entry written to the vault. Solid.",
@@ -85,6 +94,22 @@ const LINES: Record<DrakoDialogueCategory, string[]> = {
     "New level achieved. Insert congratulations here.",
     "Status upgrade complete. Operator clearance elevated.",
   ],
+  lairTour: [
+    "This is my lair — your command centre for quests and trophies.",
+    "I'll roam around while you work. Check the HUD corners for missions.",
+    "The dungeon is yours, operator. I'm just the tour guide.",
+    "Keep your streak alive — visit me daily for bonus vibes.",
+  ],
+  lairQuest: [
+    "Quest Board online. Pick a mission and earn XP.",
+    "Daily quests reset at midnight. Don't leave loot on the table.",
+    "Three missions waiting. Which one first, operator?",
+  ],
+  lairTrophy: [
+    "Trophy Wall — proof you run this territory.",
+    "Achievements unlock as you level up. Collect them all.",
+    "Empty slots mean opportunity. Go earn some trophies.",
+  ],
 };
 
 export function pickDrakoLine(category: DrakoDialogueCategory, seed?: number): string {
@@ -102,9 +127,13 @@ export const CATEGORY_MOOD: Record<DrakoDialogueCategory, DrakoMood> = {
   urgent: "confused",
   taskDone: "celebrate",
   nurtureStep: "wave",
+  touchLogged: "celebrate",
   contactSaved: "wave",
   dealClosed: "fire-breath",
   pipeline: "growth-chart",
   hotLeads: "fire-breath",
   levelUp: "fire-breath",
+  lairTour: "wave",
+  lairQuest: "pointing",
+  lairTrophy: "celebrate",
 };

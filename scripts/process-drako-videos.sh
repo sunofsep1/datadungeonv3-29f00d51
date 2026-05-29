@@ -32,7 +32,7 @@ process_green() {
 }
 
 # Off-white matte (OpenArt default for new batches)
-for clip in drako-celebrate drako-sleeping drako-levelup drako-achievement drako-eating drako-working drako-sad drako-bounce; do
+for clip in drako-celebrate drako-sleeping drako-play drako-eat drako-fly drako-bounce drako-working drako-sad; do
   process_white "$clip"
 done
 

@@ -9,7 +9,7 @@ export function getLairMoodByTimeOfDay(date = new Date()): DrakoMood {
   if (hour < 6) return "sleeping";
   if (hour < 9) return "coffee-break";
   if (hour < 12) return "wave";
-  if (hour < 14) return "working";
+  if (hour < 14) return "play";
   if (hour < 18) return "idle";
   if (hour < 21) return "celebrate";
   return "thinking";

@@ -10,6 +10,8 @@ export interface DrakoVideoKey {
   softenFlameTips?: boolean;
   /** Skip painting near loop seams (seconds). */
   loopMarginS?: number;
+  /** Key bright green monitor/UI fills inside the frame (working PC clip). */
+  removeBrightGreens?: boolean;
 }
 
 function keyAlphaFromDistance(dist: number, similarity: number, blend: number): number | null {
@@ -222,6 +224,35 @@ function applyWhiteKey(
   }
 }
 
+function removeBrightDisplayGreens(data: Uint8ClampedArray): void {
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+    if (a === 0) continue;
+    if (isFirePixel(r, g, b)) continue;
+
+    const rbMax = Math.max(r, b);
+    const dominance = g - rbMax;
+
+    // PC monitor / UI fill — visible when the working clip breathes fire.
+    if (g >= 192 && r >= 95 && dominance >= 16 && g > r + 8) {
+      data[i + 3] = 0;
+      continue;
+    }
+
+    if (g >= 200 && dominance >= 32) {
+      data[i + 3] = 0;
+      continue;
+    }
+
+    if (g >= 185 && dominance >= 28 && r >= 105) {
+      data[i + 3] = Math.min(a, Math.max(0, Math.round(a - dominance * 4)));
+    }
+  }
+}
+
 export function applyDrakoVideoKey(
   data: Uint8ClampedArray,
   width: number,
@@ -229,7 +260,7 @@ export function applyDrakoVideoKey(
   config: DrakoVideoKey,
 ): void {
   const [kr, kg, kb] = config.key;
-  const { similarity, blend, green, softenFlameTips: softenTips } = config;
+  const { similarity, blend, green, softenFlameTips: softenTips, removeBrightGreens } = config;
 
   if (green) {
     applyGreenKey(data, kr, kg, kb, similarity, blend);
@@ -239,5 +270,9 @@ export function applyDrakoVideoKey(
     }
   } else {
     applyWhiteKey(data, kr, kg, kb, similarity, blend);
+  }
+
+  if (removeBrightGreens) {
+    removeBrightDisplayGreens(data);
   }
 }
