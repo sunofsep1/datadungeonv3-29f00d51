@@ -63,6 +63,7 @@ import { ContactCrmSettingsPanel } from "@/components/contacts/ContactCrmSetting
 import { ContactBuyerActivityPanel } from "@/components/contacts/ContactBuyerActivityPanel";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
+import { ContactHubWorkBanner } from "@/components/contacts/ContactHubWorkBanner";
 import { ContactExpandableSection } from "@/components/contacts/ContactExpandableSection";
 import { ContactNurtureSummaryStrip } from "@/components/contacts/ContactNurtureSummaryStrip";
 import { ContactActivitySummaryStrip } from "@/components/contacts/ContactActivitySummaryStrip";
@@ -195,6 +196,9 @@ export default function ContactDetail() {
   const { setMood } = useDrako();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const nurtureFocus = searchParams.get("nurtureFocus");
+  const workFocus = searchParams.get("work") === "1";
+  const hubContactTaskId = searchParams.get("contactTaskId");
+  const hubAppointmentId = searchParams.get("appointmentId");
   const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties", "crm"] as const;
   type ContactTab = (typeof CONTACT_TABS)[number];
   const tabParam = searchParams.get("tab");
@@ -299,6 +303,7 @@ export default function ContactDetail() {
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [printIncludeDob, setPrintIncludeDob] = useState(false);
   const printFrameRef = useRef<HTMLIFrameElement>(null);
+  const workTabAppliedRef = useRef(false);
   const [activitySectionOpen, setActivitySectionOpen] = useState(false);
 
   const linkedProperties = useMemo(() => {
@@ -319,6 +324,14 @@ export default function ContactDetail() {
     () => allProperties.filter((p) => !linkedPropertyIds.has(p.id)),
     [allProperties, linkedPropertyIds]
   );
+
+  useEffect(() => {
+    if (!workFocus || !contact || workTabAppliedRef.current) return;
+    workTabAppliedRef.current = true;
+    if (linkedProperties.length > 0) {
+      setContactTab("properties");
+    }
+  }, [workFocus, contact, linkedProperties.length]);
 
   const handleStartEdit = () => {
     if (contact) {
@@ -899,6 +912,15 @@ export default function ContactDetail() {
 
         {id ? (
           <ContactRelationshipBrief contact={contact} className="print:hidden" />
+        ) : null}
+
+        {id && workFocus ? (
+          <ContactHubWorkBanner
+            contactId={id}
+            contactTaskId={hubContactTaskId}
+            appointmentId={hubAppointmentId}
+            nurtureSequence={nurtureFocus === "1"}
+          />
         ) : null}
 
         <div className="min-w-0 space-y-5 print-contact-main">

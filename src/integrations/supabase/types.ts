@@ -4668,6 +4668,9 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
           year_built: number | null
+          latitude: number | null
+          longitude: number | null
+          geocoded_at: string | null
         }
         Insert: {
           address?: string | null
@@ -4709,6 +4712,9 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           year_built?: number | null
+          latitude?: number | null
+          longitude?: number | null
+          geocoded_at?: string | null
         }
         Update: {
           address?: string | null
@@ -4750,6 +4756,9 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           year_built?: number | null
+          latitude?: number | null
+          longitude?: number | null
+          geocoded_at?: string | null
         }
         Relationships: [
           {

@@ -23,25 +23,7 @@ function DrakoBubble({ text }: { text: string }) {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.85, y: 6 }}
       transition={{ duration: 0.2 }}
-      style={{
-        position: "absolute",
-        bottom: "calc(100% + 10px)",
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: "hsl(var(--card))",
-        color: "hsl(var(--foreground))",
-        border: "1px solid hsl(var(--border))",
-        borderRadius: 12,
-        padding: "7px 13px",
-        fontSize: 11,
-        fontWeight: 500,
-        whiteSpace: "nowrap",
-        maxWidth: 220,
-        textAlign: "center",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.45), 0 0 16px hsl(var(--primary) / 0.15)",
-        pointerEvents: "none",
-        zIndex: 1,
-      }}
+      className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-[1] max-w-[min(260px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-card px-3 py-1.5 text-center text-[11px] font-medium leading-snug text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.45),0_0_16px_hsl(var(--primary)/0.15)] break-words [overflow-wrap:anywhere] line-clamp-3"
     >
       {text}
       <div

@@ -11,6 +11,7 @@ const POSITIVE_ROWS: { key: string; label: string }[] = [
   { key: "sms_response_points", label: "SMS on file" },
   { key: "open_home_attended_points", label: "Open home attended" },
   { key: "appraisal_request_points", label: "Appraisal signals" },
+  { key: "recent_touch_points", label: "Recent touch (7d)" },
   { key: "past_client_referral_points", label: "Referral source" },
 ];
 

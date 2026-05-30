@@ -120,7 +120,7 @@ export function LogTouchDialog() {
         touch_type: touchType,
         notes: notes.trim() || null,
       });
-      toast({ title: "Touch logged", description: "Last touch date updated on the contact." });
+      toast({ title: "Touch logged", description: "Lead score and last touch date updated." });
       grantXp("touchLogged");
       recordDrakoActivity("touch");
       if (touchType === "call") recordDrakoActivity("call");

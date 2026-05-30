@@ -1610,7 +1610,13 @@ export default function Contacts() {
     const lastTouch = getLastTouchDate(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
     const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
-    const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
+    const displayName = getContactDisplayName(contact);
+    const companyOrRole = [contact.company_name, (contact as { job_title?: string | null }).job_title]
+      .map((v) => v?.trim())
+      .filter(Boolean)
+      .join(" · ");
+    const initials = getInitials(undefined, undefined, displayName);
+    const hasHighScore = contact.lead_score != null && contact.lead_score >= 70;
     return (
       <>
         <td className="w-10 py-2 px-2 md:px-3 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -1631,7 +1637,7 @@ export default function Contacts() {
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
           <div className="flex items-center gap-2.5 min-w-0">
-            <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size="sm" />
+            <AvatarCircle name={displayName} initials={initials} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {effectiveCategory && (
@@ -1640,8 +1646,16 @@ export default function Contacts() {
                     title={CONTACT_CATEGORIES.find((c) => c.value === effectiveCategory)?.label}
                   />
                 )}
-                <span className="font-medium text-foreground text-sm truncate block">{getContactDisplayName(contact)}</span>
+                <span className="font-medium text-foreground text-sm truncate block">{displayName}</span>
+                {hasHighScore ? (
+                  <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0 text-[10px] font-medium tabular-nums text-primary">
+                    {contact.lead_score}
+                  </span>
+                ) : null}
               </div>
+              {companyOrRole ? (
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{companyOrRole}</p>
+              ) : null}
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-muted-foreground text-xs">
                 {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{formatPhoneDisplay(primaryPhone)}</span>}
                 {primaryEmail && <span className="truncate">{primaryEmail}</span>}
@@ -1710,7 +1724,11 @@ export default function Contacts() {
     const effectiveCategory = getEffectiveCategory(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
     const displayName = getContactDisplayName(contact);
-    const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
+    const companyOrRole = [contact.company_name, (contact as { job_title?: string | null }).job_title]
+      .map((v) => v?.trim())
+      .filter(Boolean)
+      .join(" · ");
+    const initials = getInitials(undefined, undefined, displayName);
     const sourceLabel = String(contact.source ?? "").trim();
     const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
     const nextTouch = nextTouchRaw ? new Date(nextTouchRaw) : null;
@@ -1775,6 +1793,10 @@ export default function Contacts() {
             <span className="truncate text-[15px] font-semibold text-foreground">{displayName}</span>
             {isOverdueForTouch ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" /> : null}
           </div>
+
+          {companyOrRole ? (
+            <p className="truncate text-[11px] text-muted-foreground">{companyOrRole}</p>
+          ) : null}
 
           <div className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
             {effectiveCategory ? (
@@ -1935,6 +1957,9 @@ export default function Contacts() {
           </span>
           <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
             <Link to="/contacts/markets">All markets</Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Link to={`/contacts/markets?market=${encodeURIComponent(activeMarket.id)}`}>View on map</Link>
           </Button>
         </div>
       )}
@@ -2920,7 +2945,7 @@ export default function Contacts() {
                     {paginatedContacts.map((contact) => (
                       <tr
                         key={contact.id}
-                        className="group border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                        className="group border-b border-border/60 last:border-b-0 hover:bg-accent/30 transition-colors cursor-pointer"
                         onClick={() => navigate(`/contacts/${contact.id}`)}
                       >
                         {renderContactListRow(contact)}

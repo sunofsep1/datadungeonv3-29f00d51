@@ -3,8 +3,11 @@ import {
   buildMarketStats,
   contactMatchesMarket,
   getOwnerPropertySuburbs,
+  getPropertiesForMarket,
+  propertyMatchesMarket,
   type ContactForMarket,
   type ContactMarket,
+  type PropertyForMarket,
 } from "./contactMarkets";
 
 const victoriaPointMarket: ContactMarket = {
@@ -15,6 +18,10 @@ const victoriaPointMarket: ContactMarket = {
 };
 
 function contact(partial: ContactForMarket): ContactForMarket {
+  return partial;
+}
+
+function property(partial: PropertyForMarket): PropertyForMarket {
   return partial;
 }
 
@@ -101,5 +108,34 @@ describe("contactMarkets", () => {
     const stats = buildMarketStats([c], [victoriaPointMarket]);
     expect(stats[0]?.hotLeads).toBe(1);
     expect(stats[0]?.stale).toBe(1);
+  });
+
+  it("matches CRM properties by suburb independent of contact links", () => {
+    const p = property({ id: "p1", suburb: "Victoria Point", state: "QLD", address_line1: "2 Bay St" });
+    expect(propertyMatchesMarket(p, victoriaPointMarket)).toBe(true);
+    expect(getPropertiesForMarket([p], victoriaPointMarket)).toHaveLength(1);
+  });
+
+  it("rejects property when state mismatches market", () => {
+    const p = property({ suburb: "Victoria Point", state: "NSW" });
+    expect(propertyMatchesMarket(p, victoriaPointMarket)).toBe(false);
+  });
+
+  it("counts propertyCount separately from owner total", () => {
+    const contacts = [
+      contact({
+        contact_property_links: [
+          { role: "owner", properties: { city: "Victoria Point", state: "QLD" } },
+        ],
+      }),
+    ];
+    const properties = [
+      property({ id: "p1", suburb: "Victoria Point", state: "QLD" }),
+      property({ id: "p2", suburb: "Victoria Point", state: "QLD" }),
+      property({ id: "p3", suburb: "Redland Bay", state: "QLD" }),
+    ];
+    const stats = buildMarketStats(contacts, [victoriaPointMarket], properties);
+    expect(stats[0]?.total).toBe(1);
+    expect(stats[0]?.propertyCount).toBe(2);
   });
 });

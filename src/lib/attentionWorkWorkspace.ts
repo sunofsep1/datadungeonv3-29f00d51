@@ -42,3 +42,27 @@ export function hrefForWorkWorkspace(item: WorkWorkspaceSourceItem): string | nu
 export function hrefForWorkshop(item: WorkWorkspaceSourceItem): string | null {
   return hrefForBaseWorkspace(item, "/workshop");
 }
+
+/** Daily Hub "Work now" — full contact profile (email, phone, properties) when a contact is linked. */
+export function hrefForContactWork(item: WorkWorkspaceSourceItem): string | null {
+  if (!item.contactId) return null;
+
+  const p = new URLSearchParams({ work: "1" });
+  if (item.contactTaskId) p.set("contactTaskId", item.contactTaskId);
+  if (item.kind === "sequenceTask") p.set("nurtureFocus", "1");
+  if (item.appointmentId) p.set("appointmentId", item.appointmentId);
+
+  return `/contacts/${encodeURIComponent(item.contactId)}?${p.toString()}`;
+}
+
+/** Best destination for Daily Hub focus actions — contact-first, then workshop/tasks. */
+export function hrefForWorkNow(item: WorkWorkspaceSourceItem): string {
+  const contactHref = hrefForContactWork(item);
+  if (contactHref) return contactHref;
+
+  const workshop = hrefForWorkshop(item);
+  if (workshop) return workshop;
+
+  if (item.kind === "appointment") return "/appointments";
+  return "/tasks";
+}

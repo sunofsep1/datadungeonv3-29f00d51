@@ -31,10 +31,17 @@ export type ContactForMarket = ContactLikeForTouch & {
 export type MarketStats = {
   market: ContactMarket;
   total: number;
+  propertyCount: number;
   hotLeads: number;
   stale: number;
   noNextTouch: number;
   sampleAddresses: string[];
+};
+
+export type PropertyForMarket = ContactMarketProperty & {
+  id?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export function slugifyMarketId(label: string): string {
@@ -90,12 +97,27 @@ export function contactMatchesMarket(contact: ContactForMarket, market: ContactM
   for (const link of contact.contact_property_links ?? []) {
     if (!isOwnerLinkRole(link.role)) continue;
     const prop = link.properties;
-    if (!prop || !propertyStateMatches(prop, market.state)) continue;
-    const suburb = getPropertySuburb(prop);
-    if (!suburb) continue;
-    if (suburbs.has(normalizeSuburb(suburb))) return true;
+    if (!prop || !propertyMatchesMarket(prop, market)) continue;
+    return true;
   }
   return false;
+}
+
+export function propertyMatchesMarket(prop: ContactMarketProperty, market: ContactMarket): boolean {
+  const suburbs = marketSuburbSet(market);
+  if (suburbs.size === 0) return false;
+  if (!propertyStateMatches(prop, market.state)) return false;
+  const suburb = getPropertySuburb(prop);
+  if (!suburb) return false;
+  return suburbs.has(normalizeSuburb(suburb));
+}
+
+export function getPropertiesForMarket(properties: PropertyForMarket[], market: ContactMarket): PropertyForMarket[] {
+  return properties.filter((p) => propertyMatchesMarket(p, market));
+}
+
+export function getOwnerContactsForMarket(contacts: ContactForMarket[], market: ContactMarket): ContactForMarket[] {
+  return contacts.filter((c) => contactMatchesMarket(c, market));
 }
 
 function isHotLead(contact: ContactForMarket): boolean {
@@ -114,9 +136,14 @@ function formatPropertySample(prop: ContactMarketProperty): string {
   return parts.join(", ") || "—";
 }
 
-export function buildMarketStats(contacts: ContactForMarket[], markets: ContactMarket[]): MarketStats[] {
+export function buildMarketStats(
+  contacts: ContactForMarket[],
+  markets: ContactMarket[],
+  properties: PropertyForMarket[] = [],
+): MarketStats[] {
   return markets.map((market) => {
-    const matched = contacts.filter((c) => contactMatchesMarket(c, market));
+    const matched = getOwnerContactsForMarket(contacts, market);
+    const marketProperties = getPropertiesForMarket(properties, market);
     const sampleAddresses: string[] = [];
     for (const c of matched) {
       for (const link of c.contact_property_links ?? []) {
@@ -137,6 +164,7 @@ export function buildMarketStats(contacts: ContactForMarket[], markets: ContactM
     return {
       market,
       total: matched.length,
+      propertyCount: marketProperties.length,
       hotLeads: matched.filter(isHotLead).length,
       stale: matched.filter(isStaleContact).length,
       noNextTouch: matched.filter((c) => !(c.next_touch_date ?? "").trim()).length,
@@ -148,6 +176,23 @@ export function buildMarketStats(contacts: ContactForMarket[], markets: ContactM
 export function findMarketById(markets: ContactMarket[], id: string | null | undefined): ContactMarket | null {
   if (!id?.trim()) return null;
   return markets.find((m) => m.id === id) ?? null;
+}
+
+/** Display copy for territory section headers. */
+export function getMarketTerritoryHeading(market: ContactMarket, propertyCount: number, ownerCount: number) {
+  const primarySuburb = market.suburbs[0]?.trim() || market.label;
+  const state = market.state?.trim() || "QLD";
+  const pinLine =
+    propertyCount === 0
+      ? "No pins yet — add properties with addresses in this suburb"
+      : `${propertyCount} propert${propertyCount === 1 ? "y" : "ies"} on your map · ${ownerCount} linked owner${ownerCount === 1 ? "" : "s"}`;
+
+  return {
+    eyebrow: `${state} · Redlands patch`,
+    title: primarySuburb,
+    tagline: market.suburbs.length > 1 ? market.suburbs.join(" · ") : `Your ${primarySuburb} farm belt`,
+    pinLine,
+  };
 }
 
 export const DEFAULT_CONTACT_MARKETS: ContactMarket[] = [
