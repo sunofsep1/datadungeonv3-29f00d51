@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { LairBehavior } from "@/components/drako/drakoVideos";
 import type { DrakoMood } from "@/components/drako/types";
 import { LEVEL_UP_EVENT } from "@/lib/drakoLairMood";
@@ -12,8 +12,6 @@ import { periodicBanterLine } from "@/lib/drakoLairGuide";
 import { nextCycleMood, pickTapLine } from "@/lib/drakoInteractive";
 
 export interface DrakoLairAgentState {
-  x: number;
-  y: number;
   mood: DrakoMood;
   behavior: LairBehavior;
   bubble: string | null;
@@ -24,6 +22,8 @@ export interface DrakoLairAgentState {
 interface UseDrakoLairAgentOptions {
   bounds: LairBounds | null;
   paused: boolean;
+  /** Sprite wrapper — position updates write here (no per-frame React state). */
+  spriteElRef?: RefObject<HTMLElement | null>;
   externalBubble?: string | null;
   externalMood?: DrakoMood | null;
 }
@@ -32,15 +32,20 @@ const WANDER_MS = 4200;
 const BANTER_MS = 150_000;
 const IDLE_MOOD: DrakoMood = "play";
 
+function applySpritePosition(el: HTMLElement | null, x: number, y: number): void {
+  if (!el) return;
+  el.style.left = `${Math.round(x)}px`;
+  el.style.top = `${Math.round(y)}px`;
+}
+
 export function useDrakoLairAgent({
   bounds,
   paused,
+  spriteElRef,
   externalBubble = null,
   externalMood = null,
 }: UseDrakoLairAgentOptions) {
   const [state, setState] = useState<DrakoLairAgentState>({
-    x: 0,
-    y: 0,
     mood: IDLE_MOOD,
     behavior: "wander",
     bubble: null,
@@ -57,6 +62,8 @@ export function useDrakoLairAgent({
   const banterTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const pausedRef = useRef(paused);
   const manualMoodRef = useRef(false);
+  const spriteElRefStable = useRef(spriteElRef);
+  spriteElRefStable.current = spriteElRef;
 
   useEffect(() => {
     pausedRef.current = paused;
@@ -66,9 +73,9 @@ export function useDrakoLairAgent({
   }, [paused]);
 
   const pickWanderTarget = useCallback(() => {
-    if (!bounds || paused) return;
+    if (!bounds || pausedRef.current) return;
     targetRef.current = randomWaypoint(bounds);
-  }, [bounds, paused]);
+  }, [bounds]);
 
   useEffect(() => {
     if (!bounds) return;
@@ -80,14 +87,14 @@ export function useDrakoLairAgent({
         bounds,
       );
       posRef.current = start;
-      setState((s) => ({ ...s, x: start.x, y: start.y }));
+      applySpritePosition(spriteElRefStable.current?.current ?? null, start.x, start.y);
       initializedRef.current = true;
       return;
     }
 
     const clamped = clampLairPosition(posRef.current.x, posRef.current.y, bounds);
     posRef.current = clamped;
-    setState((s) => ({ ...s, x: clamped.x, y: clamped.y }));
+    applySpritePosition(spriteElRefStable.current?.current ?? null, clamped.x, clamped.y);
   }, [bounds]);
 
   useEffect(() => {
@@ -101,7 +108,7 @@ export function useDrakoLairAgent({
         const nextY = lerp(cur.y, target.y, 0.04);
         const clamped = clampLairPosition(nextX, nextY, bounds);
         posRef.current = clamped;
-        setState((s) => ({ ...s, x: clamped.x, y: clamped.y }));
+        applySpritePosition(spriteElRefStable.current?.current ?? null, clamped.x, clamped.y);
         if (Math.hypot(clamped.x - target.x, clamped.y - target.y) < 6) {
           targetRef.current = null;
         }
@@ -179,6 +186,8 @@ export function useDrakoLairAgent({
     }
   }, [state.mood]);
 
+  const getPosition = useCallback(() => posRef.current, []);
+
   const setPosition = useCallback(
     (x: number, y: number) => {
       if (!bounds) return;
@@ -186,10 +195,9 @@ export function useDrakoLairAgent({
       posRef.current = clamped;
       targetRef.current = null;
       behaviorRef.current = "wander";
+      applySpritePosition(spriteElRefStable.current?.current ?? null, clamped.x, clamped.y);
       setState((s) => ({
         ...s,
-        x: clamped.x,
-        y: clamped.y,
         behavior: "wander",
         isFlying: false,
         scale: 1,
@@ -223,6 +231,7 @@ export function useDrakoLairAgent({
     mood: displayMood,
     bubble: displayBubble,
     onVideoEnded,
+    getPosition,
     setPosition,
     cycleTapMood,
   };

@@ -106,9 +106,11 @@ export const DrakoKeyedVideo = memo(
     const config = { key: [kr, kg, kb] as [number, number, number], similarity, blend, green };
     let raf = 0;
     let stopped = false;
+    let tabVisible = !document.hidden;
+    let inView = true;
 
     const paint = () => {
-      if (stopped) return;
+      if (stopped || !tabVisible || !inView) return;
       const { width: w, height: h } = sizeRef.current;
       const rs = scaleRef.current;
       const rw = w * rs;
@@ -150,10 +152,48 @@ export const DrakoKeyedVideo = memo(
       raf = requestAnimationFrame(paint);
     };
 
-    const start = () => {
+    const schedulePaint = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(paint);
+      if (!stopped && tabVisible && inView) {
+        raf = requestAnimationFrame(paint);
+      }
     };
+
+    const onVisibility = () => {
+      tabVisible = !document.hidden;
+      if (tabVisible && inView) {
+        void video.play().catch(() => {});
+        schedulePaint();
+      } else {
+        cancelAnimationFrame(raf);
+        video.pause();
+      }
+    };
+
+    const start = () => {
+      schedulePaint();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+
+    let viewObserver: IntersectionObserver | undefined;
+    const host = canvas.parentElement;
+    if (host && typeof IntersectionObserver !== "undefined") {
+      viewObserver = new IntersectionObserver(
+        (entries) => {
+          inView = entries.some((e) => e.isIntersecting);
+          if (inView && tabVisible) {
+            void video.play().catch(() => {});
+            schedulePaint();
+          } else {
+            cancelAnimationFrame(raf);
+            video.pause();
+          }
+        },
+        { threshold: 0.05 },
+      );
+      viewObserver.observe(host);
+    }
 
     video.addEventListener("loadeddata", start);
     video.addEventListener("playing", start);
@@ -162,6 +202,8 @@ export const DrakoKeyedVideo = memo(
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
+      viewObserver?.disconnect();
       video.removeEventListener("loadeddata", start);
       video.removeEventListener("playing", start);
     };

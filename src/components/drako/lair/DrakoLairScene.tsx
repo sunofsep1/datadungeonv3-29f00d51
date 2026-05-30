@@ -36,8 +36,10 @@ function useLairSpriteSize() {
 
 export function DrakoLairScene() {
   const sceneRef = useRef<HTMLDivElement>(null);
+  const spriteWrapRef = useRef<HTMLDivElement>(null);
   const spriteW = useLairSpriteSize();
   const spriteH = spriteW;
+  const isMobile = spriteW < 170;
   const { drakoAudioEnabled } = useGameMode();
   const [bounds, setBounds] = useState<LairBounds | null>(null);
   const [hudPaused, setHudPaused] = useState(false);
@@ -49,8 +51,7 @@ export function DrakoLairScene() {
     null,
   );
   const [userPlaced, setUserPlaced] = useState(false);
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const drakoVideoRef = useRef<DrakoKeyedVideoHandle>(null);
   const audioUnlockedRef = useRef(false);
   const dragRef = useRef({
@@ -67,14 +68,14 @@ export function DrakoLairScene() {
     const el = sceneRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const isMobile = rect.width < 768;
+    const mobile = rect.width < 768;
     setBounds({
       width: rect.width,
       height: rect.height,
-      paddingTop: isMobile ? 120 : 96,
-      paddingBottom: isMobile ? 88 : 48,
-      paddingLeft: isMobile ? 12 : 160,
-      paddingRight: isMobile ? 12 : 160,
+      paddingTop: mobile ? 120 : 96,
+      paddingBottom: mobile ? 88 : 48,
+      paddingLeft: mobile ? 12 : 160,
+      paddingRight: mobile ? 12 : 160,
       spriteW,
       spriteH,
     });
@@ -114,18 +115,15 @@ export function DrakoLairScene() {
     return () => window.clearTimeout(id);
   }, [tourActive, tourIndex]);
 
-  const isDragging = dragPos !== null;
-
   const agent = useDrakoLairAgent({
     bounds,
+    spriteElRef: spriteWrapRef,
     paused: hudPaused || tourActive || isDragging || userPlaced,
     externalBubble: tourActive ? tourBubble : userPlaced ? null : (guideOverride?.line ?? null),
     externalMood: tourActive ? tourMood : userPlaced ? null : (guideOverride?.mood ?? null),
   });
 
   const {
-    x: agentX,
-    y: agentY,
     mood: agentMood,
     bubble: agentBubble,
     scale: agentScale,
@@ -133,29 +131,29 @@ export function DrakoLairScene() {
     onVideoEnded,
     setPosition,
     cycleTapMood,
+    getPosition,
   } = agent;
 
   const finishDrag = useCallback(() => {
     dragRef.current.active = false;
-    dragPosRef.current = null;
-    setDragPos(null);
+    setIsDragging(false);
   }, []);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       const d = dragRef.current;
-      if (!d.active || e.pointerId !== d.pointerId || !bounds || !sceneRef.current) return;
+      if (!d.active || e.pointerId !== d.pointerId || !bounds || !spriteWrapRef.current) return;
 
-      const rect = sceneRef.current.getBoundingClientRect();
       const dx = e.clientX - d.startClientX;
       const dy = e.clientY - d.startClientY;
       if (!d.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
         d.moved = true;
+        setIsDragging(true);
       }
       if (d.moved) {
         const next = clampLairPosition(d.originX + dx, d.originY + dy, bounds);
-        dragPosRef.current = next;
-        setDragPos(next);
+        spriteWrapRef.current.style.left = `${Math.round(next.x)}px`;
+        spriteWrapRef.current.style.top = `${Math.round(next.y)}px`;
       }
     };
 
@@ -163,8 +161,10 @@ export function DrakoLairScene() {
       const d = dragRef.current;
       if (!d.active || e.pointerId !== d.pointerId) return;
 
-      if (d.moved && dragPosRef.current) {
-        setPosition(dragPosRef.current.x, dragPosRef.current.y);
+      if (d.moved && spriteWrapRef.current && bounds) {
+        const left = parseFloat(spriteWrapRef.current.style.left) || d.originX;
+        const top = parseFloat(spriteWrapRef.current.style.top) || d.originY;
+        setPosition(left, top);
         setUserPlaced(true);
       } else if (!d.moved) {
         cycleTapMood();
@@ -195,24 +195,22 @@ export function DrakoLairScene() {
       e.preventDefault();
       e.stopPropagation();
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      const pos = getPosition();
       dragRef.current = {
         active: true,
         moved: false,
         pointerId: e.pointerId,
-        originX: dragPos?.x ?? agentX,
-        originY: dragPos?.y ?? agentY,
+        originX: pos.x,
+        originY: pos.y,
         startClientX: e.clientX,
         startClientY: e.clientY,
       };
     },
-    [agentX, agentY, dragPos, tourActive],
+    [getPosition, tourActive],
   );
 
-  const renderScale = DRAKO_VIDEO_RENDER_SCALE;
-
+  const renderScale = isMobile ? 0.85 : DRAKO_VIDEO_RENDER_SCALE;
   const videoAsset = getDrakoVideoAsset(agentMood);
-  const posX = dragPos?.x ?? agentX;
-  const posY = dragPos?.y ?? agentY;
 
   useEffect(() => {
     if (!drakoAudioEnabled || !audioUnlockedRef.current) return;
@@ -241,13 +239,11 @@ export function DrakoLairScene() {
 
       <div className="relative z-10 h-full min-h-[inherit] w-full">
         <div
-          className={cn(
-            "drako-lair-sprite-wrap absolute",
-            !isDragging && !userPlaced && agentScale === 1 && "transition-[left,top] duration-300 ease-out",
-          )}
+          ref={spriteWrapRef}
+          className="drako-lair-sprite-wrap absolute will-change-[left,top]"
           style={{
-            left: posX,
-            top: posY,
+            left: 0,
+            top: 0,
             width: spriteW,
             height: spriteH,
             transform: `scale(${agentScale})`,

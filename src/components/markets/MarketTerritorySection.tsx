@@ -51,7 +51,8 @@ export function MarketSuburbCard({
   const [localCoords, setLocalCoords] = useState<Record<string, { lat: number; lng: number }>>({});
   const [plotting, setPlotting] = useState(false);
   const [plotError, setPlotError] = useState<string | null>(null);
-  const [mapVisible, setMapVisible] = useState(false);
+
+  const mapActive = selected;
 
   const displayProperties = useMemo(
     () => mergeCoords(properties, localCoords),
@@ -136,33 +137,9 @@ export function MarketSuburbCard({
     }
   }, [properties, localCoords, saveCoordsBatch]);
 
-  // Lazy-load map + geocode when card scrolls into view
-  useEffect(() => {
-    const el = document.getElementById(`market-${market.id}`);
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setMapVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "120px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [market.id]);
-
   useEffect(() => {
     if (needsGeocodeCount === 0) setPlotError(null);
   }, [needsGeocodeCount]);
-
-  useEffect(() => {
-    if (!mapVisible || needsGeocodeCount === 0 || plotting || isGeocodeServiceBlocked()) return;
-    const timer = window.setTimeout(() => void plotProperties(), 400);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapVisible, market.id]);
 
   return (
     <Card
@@ -228,7 +205,7 @@ export function MarketSuburbCard({
         ) : null}
 
         <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
-          {mapVisible ? (
+          {mapActive ? (
             <MarketMapPanel
               market={market}
               properties={displayProperties}
@@ -240,8 +217,11 @@ export function MarketSuburbCard({
               className="rounded-md"
             />
           ) : (
-            <div className="flex min-h-[220px] items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
-              Map loads when visible…
+            <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border/70 bg-muted/20 px-4 text-center text-xs text-muted-foreground">
+              <span className="tabular-nums">
+                {pinnedCount} pinned · {propertyCount} propert{propertyCount === 1 ? "y" : "ies"}
+              </span>
+              <span>Select this card to load the map</span>
             </div>
           )}
         </div>
