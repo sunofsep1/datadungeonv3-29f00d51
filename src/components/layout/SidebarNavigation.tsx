@@ -22,14 +22,13 @@ import {
   Workflow,
   Activity,
   ClipboardCheck,
-  Search,
   Flame,
   Swords,
   Clock,
   LineChart,
-  Bot,
   Receipt,
   MapPin,
+  UserSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -66,6 +65,7 @@ const homeItems: NavItem[] = [
 
 const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "Contact research", url: "/contact-research", icon: UserSearch },
   { title: "My Markets", url: "/contacts/markets", icon: MapPin },
   { title: "Listings", url: "/listings", icon: Building2 },
   { title: "Pricing", url: "/pricing", icon: LineChart },
@@ -82,7 +82,6 @@ const relationshipItems: NavItem[] = [
 const automationItems: NavItem[] = [
   { title: "Automations", url: "/automations", icon: Workflow },
   { title: "Scripts", url: "/scripts", icon: FileText },
-  { title: "AI Ops", url: "/ai-ops", icon: Bot },
 ];
 
 const planningItems: NavItem[] = [{ title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck }];
@@ -96,7 +95,6 @@ const businessItems: NavItem[] = [
 
 const insightsItems: NavItem[] = [
   { title: "Data health", url: "/data-health", icon: Activity },
-  { title: "Research", url: "/research", icon: Search },
   { title: "Hot leads", url: "/hot-leads", icon: Flame },
   { title: "Recent", url: "/recent", icon: Clock },
 ];
@@ -131,6 +129,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/tasks" && pathname.startsWith("/tasks")) return true;
   if (item.url === "/contacts/markets" && pathname.startsWith("/contacts/markets")) return true;
+  if (item.url === "/contact-research" && pathname.startsWith("/contact-research")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
@@ -138,7 +137,6 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/pricing" && pathname.startsWith("/pricing")) return true;
   if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;
   if (item.url === "/automations" && pathname.startsWith("/automations")) return true;
-  if (item.url === "/ai-ops" && pathname.startsWith("/ai-ops")) return true;
   if (item.url === "/data-health" && pathname.startsWith("/data-health")) return true;
   if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
   if (item.url === "/invoices" && pathname.startsWith("/invoices")) return true;

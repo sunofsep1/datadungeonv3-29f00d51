@@ -62,6 +62,7 @@ const navGroups: NavGroup[] = [
     items: [
       { title: "Home", url: "/dashboard", icon: LayoutDashboard },
       { title: "Contacts", url: "/contacts", icon: Users },
+      { title: "Contact research", url: "/contact-research", icon: Search },
       { title: "Listings", url: "/listings", icon: Building2 },
       { title: "Tasks", url: "/tasks", icon: CheckSquare },
     ],
@@ -90,7 +91,6 @@ const navGroups: NavGroup[] = [
     items: [
       { title: "Data health", url: "/data-health", icon: Activity },
       { title: "Performance", url: "/performance", icon: BarChart3 },
-      { title: "Research", url: "/research", icon: Search },
       { title: "Hot leads", url: "/hot-leads", icon: Flame },
       { title: "Nurture", url: "/nurture", icon: Sparkles },
       { title: "Recent", url: "/recent", icon: Clock },

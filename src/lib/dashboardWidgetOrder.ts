@@ -1,7 +1,6 @@
 /** Widget ids used by Dashboard grid — keep in sync with `renderWidget` switch in Dashboard.tsx */
 export const DASHBOARD_WIDGET_IDS = [
   "commandCenter",
-  "claudeOps",
   "visionBoard",
   "affirmations",
   "stats",
@@ -39,8 +38,6 @@ export const WIDGETS_INTRODUCED_IN_SCHEMA: Record<number, readonly string[]> = {
   3: ["activeSequences"],
   /** Dashboard command center was made movable as a regular widget. */
   4: ["commandCenter"],
-  /** Claude AI Ops dashboard widget. */
-  5: ["claudeOps"],
   /** Open-for-inspection times across listings. */
   6: ["upcomingInspections"],
 };
@@ -157,7 +154,6 @@ export function resetDashboardWidgetsToDefault(userId: string | undefined): stri
 
 export const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
   commandCenter: "Command center",
-  claudeOps: "Claude AI Ops",
   visionBoard: "Vision board",
   affirmations: "Affirmations",
   stats: "Stats",

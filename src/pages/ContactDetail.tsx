@@ -29,6 +29,7 @@ import {
   ChevronDown,
   FileText,
   Handshake,
+  UserSearch,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDrako } from "@/components/drako";
@@ -647,6 +648,12 @@ export default function ContactDetail() {
             title="Open command palette (⌘K)"
           >
             <kbd className="text-[10px] font-mono">⌘K</kbd>
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3" asChild>
+            <Link to={id ? `/contact-research?contact=${encodeURIComponent(id)}` : "/contact-research"} className="inline-flex items-center gap-1.5">
+              <UserSearch className="w-4 h-4" />
+              <span className="hidden sm:inline">Research</span>
+            </Link>
           </Button>
           <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3" asChild>
             <Link to="/scripts" className="inline-flex items-center gap-1.5">

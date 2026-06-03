@@ -39,7 +39,7 @@ const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
-const Research = lazy(() => import("./pages/Research"));
+const ContactResearch = lazy(() => import("./pages/ContactResearch"));
 const AnnualReviews = lazy(() => import("./pages/AnnualReviews"));
 const Automations = lazy(() => import("./pages/Automations"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
@@ -52,7 +52,6 @@ const ContactPrintPage = lazy(() => import("./pages/ContactPrintPage"));
 const ContactRequirementsSearch = lazy(() => import("./pages/ContactRequirementsSearch"));
 const PropertyPrintPage = lazy(() => import("./pages/PropertyPrintPage"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
-const AIOps = lazy(() => import("./pages/AIOps"));
 const TouchReport = lazy(() => import("./pages/TouchReport"));
 const TouchReportPrint = lazy(() => import("./pages/TouchReportPrint"));
 const MatchBuyersLettersPrintPage = lazy(() => import("./pages/MatchBuyersLettersPrintPage"));
@@ -101,6 +100,7 @@ const App = () => (
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/markets" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactMarkets /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/requirements-search" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactRequirementsSearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/contact-research" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactResearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture/print" element={<ProtectedRoute><NurtureBacklogPrintPage /></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactDetail /></ErrorBoundary></MainLayout></ProtectedRoute>} />
@@ -134,9 +134,9 @@ const App = () => (
                 <Route path="/scripts" element={<ProtectedRoute><MainLayout><Scripts /></MainLayout></ProtectedRoute>} />
                 <Route path="/automations" element={<ProtectedRoute><MainLayout><ErrorBoundary><Automations /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/data-health" element={<ProtectedRoute><MainLayout><DataHealth /></MainLayout></ProtectedRoute>} />
-                <Route path="/research" element={<ProtectedRoute><MainLayout><Research /></MainLayout></ProtectedRoute>} />
+                <Route path="/research" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/ai-ops" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/annual-reviews" element={<ProtectedRoute><MainLayout><AnnualReviews /></MainLayout></ProtectedRoute>} />
-                <Route path="/ai-ops" element={<ProtectedRoute><MainLayout><AIOps /></MainLayout></ProtectedRoute>} />
                 <Route path="/touch-report" element={<ProtectedRoute><MainLayout><TouchReport /></MainLayout></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
                 <Route path="/invoices" element={<ProtectedRoute><MainLayout><ErrorBoundary><Invoices /></ErrorBoundary></MainLayout></ProtectedRoute>} />

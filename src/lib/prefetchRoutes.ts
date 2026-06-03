@@ -6,6 +6,7 @@
 const prefetchers: Record<string, () => Promise<unknown>> = {
   "/dashboard": () => import("@/pages/CorePages").then((m) => m.Dashboard),
   "/contacts": () => import("@/pages/CorePages").then((m) => m.Contacts),
+  "/contact-research": () => import("@/pages/ContactResearch"),
   "/properties": () => import("@/pages/CorePages").then((m) => m.Properties),
   "/calendar": () => import("@/pages/CalendarPages").then((m) => m.Calendar),
   "/appointments": () => import("@/pages/CalendarPages").then((m) => m.Appointments),
@@ -16,7 +17,6 @@ const prefetchers: Record<string, () => Promise<unknown>> = {
   "/performance": () => import("@/pages/Performance"),
   "/reports": () => import("@/pages/Reports"),
   "/invoices": () => import("@/pages/Invoices"),
-  "/research": () => import("@/pages/Research"),
   "/annual-reviews": () => import("@/pages/AnnualReviews"),
   "/automations": () => import("@/pages/Automations"),
   "/data-health": () => import("@/pages/DataHealth"),

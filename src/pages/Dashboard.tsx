@@ -55,7 +55,6 @@ import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { UpcomingInspectionsCard } from "@/components/dashboard/UpcomingInspectionsCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
-import { ClaudeCommandCenterWidget } from "@/components/dashboard/ClaudeCommandCenterWidget";
 import {
   loadDashboardWidgetOrder,
   saveDashboardWidgetOrder,
@@ -327,8 +326,6 @@ export default function Dashboard() {
     switch (id) {
       case "commandCenter":
         return <DashboardCommandCenter />;
-      case "claudeOps":
-        return <ClaudeCommandCenterWidget />;
       case "visionBoard":
         return <VisionBoard />;
       case "affirmations":
