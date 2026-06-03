@@ -1,6 +1,6 @@
 [build]
-publish = "call-lists"
-command = "echo 'Static site ready'"
+publish = "_site"
+command = "mkdir -p _site && cp call-lists/*.html _site/ && cp nurture-call-list.html _site/"
 
 [[redirects]]
 from = "/"
@@ -10,4 +10,9 @@ status = 200
 [[redirects]]
 from = "/nurture"
 to = "/nurture-call-list.html"
+status = 200
+
+[[redirects]]
+from = "/buyers/*"
+to = "/20-hickory-drive-buyers.html"
 status = 200
