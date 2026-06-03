@@ -2,38 +2,38 @@
 
 [Pricefinder](https://www.pricefinder.com.au/) provides Australian property data including sale history, lot details, and property attributes (bedrooms, bathrooms, lot size, etc.).
 
+## Two different credential types (important)
+
+| Credential | Where you get it | Works with this CRM? |
+|------------|------------------|----------------------|
+| **Widget / portal API key** | Pricefinder portal (short key for embedded widgets) | **Usually no** for REST enrich — calls return HTTP 401 |
+| **API Integration (OAuth)** | Pricefinder portal → **Developer Resources** → **API Integration** | **Yes** — `client_id` + `client_secret` → Bearer token |
+
+The CRM calls the **Pricefinder REST API v1** (`suggest/properties`, `properties/{id}`) via the server-side `pricefinder-proxy` edge function. That API expects **OAuth client credentials**, not a widget key used as a Bearer token.
+
+If enrich shows **HTTP 401**, you almost certainly have a widget key in `PRICEFINDER_API_KEY`. Ask Domain/Pricefinder (Mathew Heath) for an **API Integration** pair instead.
+
 ## API authentication
 
-Pricefinder uses **OAuth 2.0 client credentials**. You need both a **client ID** and **client secret** from your Pricefinder account.
+Pricefinder uses **OAuth 2.0 client credentials**:
 
-1. Log into [Pricefinder](https://app.pricefinder.com.au/) or the [Pricefinder Portal](https://www.pricefinder.com.au/portal/).
-2. Go to **Developer Resources** → **API Credentials** (or similar).
-3. Create or view an **API Integration** to get:
-   - **Client ID** (or API Key)
-   - **Client Secret**
-
-Some plans may support a direct API key. If you have only one key, try setting it as both `PRICEFINDER_CLIENT_ID` and `PRICEFINDER_CLIENT_SECRET`, or as `PRICEFINDER_API_KEY`.
+1. `POST https://api.pricefinder.com.au/v1/oauth/token` with `client_id` + `client_secret`
+2. Response includes `tokenKey` — use as `Authorization: Bearer {tokenKey}` on API calls
 
 ## Setup
 
-### 1. Set secrets in Supabase
+### 1. Set secrets in Supabase (project `sujyalrzbubvhpkntwja`)
 
-**Option A: Supabase Dashboard**
-
-1. Open **Supabase Dashboard** → your project → **Edge Functions** → **Secrets**
-2. Add:
-   - `PRICEFINDER_CLIENT_ID` = your client ID
-   - `PRICEFINDER_CLIENT_SECRET` = your client secret
-
-**Option B: CLI**
+**Recommended — OAuth pair:**
 
 ```bash
 npx supabase secrets set PRICEFINDER_CLIENT_ID=your_client_id
 npx supabase secrets set PRICEFINDER_CLIENT_SECRET=your_client_secret
 ```
 
-**Fallback (single API key):**  
-If your plan supports a direct key, set `PRICEFINDER_API_KEY` only.
+Or in **Supabase Dashboard → Edge Functions → Secrets**.
+
+**Not recommended alone:** `PRICEFINDER_API_KEY` (widget key). The proxy will try OAuth and `?apiKey=` fallback, but widget keys typically cannot access the REST API.
 
 ### 2. Deploy the Edge Function
 
@@ -41,22 +41,49 @@ If your plan supports a direct key, set `PRICEFINDER_API_KEY` only.
 npm run supabase:deploy:pricefinder
 ```
 
+### 3. Smoke test
+
+1. Open any property with a full address (e.g. Redland Bay)
+2. Click **Enrich from Pricefinder API**
+3. Expect bedrooms, last sale, land area — not HTTP 401
+
+## Widget-key workflow (no OAuth — default today)
+
+If you only have a **portal/widget API key**, use the **research + import** path:
+
+1. **Property detail** or **My Markets** → **Open in Pricefinder** (address copied to clipboard)
+2. Log in to Pricefinder, run a property report, download **PDF**
+3. **Upload Property Report** → review → **Apply to property**
+4. Data is stored in `properties.property_report` and shown on My Markets pins, contact linked properties, and long-hold farming badges
+
+Live **Enrich from API** and suburb stats appear only when `PRICEFINDER_CLIENT_ID` + `PRICEFINDER_CLIENT_SECRET` are set (CRM mode flips from `pdf` to `api` automatically).
+
+### Optional widget embed (future)
+
+When Domain provides an official embed script URL:
+
+```env
+VITE_PRICEFINDER_WIDGET_KEY=your-widget-key
+VITE_PRICEFINDER_WIDGET_SCRIPT=https://…/widget.js
+```
+
+The CRM loads it in `PricefinderWidgetSlot` on the property research panel. Restrict the key to your CRM origins in the Pricefinder portal.
+
 ## How the app uses it
 
-- The **Property detail** page has a **Property data from Pricefinder** section.
-- Click **Enrich from Pricefinder** to fetch live property data for the address.
-- The function returns: bedrooms, bathrooms, property type, lot size (m²), last sale price/date, car spaces, lot/plan.
-- Use **Apply to property** to save the enriched data into your property record.
+- **Property detail** — research panel: upload PDF, open portal, optional API enrich
+- **My Markets** — **Import report** on map pins; cached last-sale from uploaded reports
+- **Contact detail** — property intelligence strip on linked properties (last sale, long-hold flag)
 
 ## Edge Function: `pricefinder-proxy`
 
 - **Path:** `supabase/functions/pricefinder-proxy/index.ts`
-- Authenticates with Pricefinder via OAuth (`/oauth/token`) or direct API key.
-- Accepts authenticated `POST` requests with a JSON body:
+- Authenticates with Pricefinder via OAuth (`/oauth/token`) or `?apiKey=` fallback
+- Accepts authenticated `POST` with Supabase session JWT
+- Body examples:
+  - `{ "action": "health" }` — returns `{ mode: "pdf" | "api" }` for UI
   - `{ "full_address": "12 Wilson Esplanade, Main Beach, QLD 4217" }`
-  - `{ "address": "..." }` (alias)
-- Uses Pricefinder v1 API: `suggest/properties` for search, then `properties/{id}` for details.
-- Returns: `address`, `bedrooms`, `bathrooms`, `property_type`, `land_area_sqm`, `last_sale_price`, `last_sale_date`, `carspaces`, `lot_plan`.
+  - `{ "action": "suburb_stats", "suburb": "Redland Bay", "state": "QLD" }`
 
 ## Pricefinder API endpoints (v1)
 

@@ -178,6 +178,26 @@ export function findMarketById(markets: ContactMarket[], id: string | null | und
   return markets.find((m) => m.id === id) ?? null;
 }
 
+export type PropertyPinUrgency = "hot" | "stale" | "none";
+
+/** Pin colour hint from linked owner contact urgency. */
+export function buildPropertyPinUrgencyMap(contacts: ContactForMarket[]): Record<string, PropertyPinUrgency> {
+  const map: Record<string, PropertyPinUrgency> = {};
+  for (const contact of contacts) {
+    const hot = isHotLead(contact);
+    const stale = isStaleContact(contact);
+    for (const link of contact.contact_property_links ?? []) {
+      if (!isOwnerLinkRole(link.role)) continue;
+      const propertyId = link.property_id;
+      if (!propertyId) continue;
+      if (hot) map[propertyId] = "hot";
+      else if (stale && map[propertyId] !== "hot") map[propertyId] = "stale";
+      else if (!map[propertyId]) map[propertyId] = "none";
+    }
+  }
+  return map;
+}
+
 /** Display copy for territory section headers. */
 export function getMarketTerritoryHeading(market: ContactMarket, propertyCount: number, ownerCount: number) {
   const primarySuburb = market.suburbs[0]?.trim() || market.label;

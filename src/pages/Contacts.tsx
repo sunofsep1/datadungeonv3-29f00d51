@@ -246,20 +246,22 @@ const AUSTRALIAN_STATES = [
   { value: "ACT", label: "Australian Capital Territory" },
 ];
 
-export type ContactCategory = "immediate" | "priority" | "planned" | "backlog";
+export type ContactCategory = "immediate" | "priority" | "planned" | "backlog" | "prospect";
 type ContactClassificationCategory =
   | "top_100"
   | "past_client"
   | "referral_partner"
   | "hot_lead"
   | "warm_lead"
-  | "seller_nurture";
+  | "seller_nurture"
+  | "prospect";
 
 const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; border: string }[] = [
   { value: "immediate", label: "Immediate", bg: "bg-red-500", border: "border-red-500" },
   { value: "priority", label: "Priority", bg: "bg-amber-500", border: "border-amber-500" },
   { value: "planned", label: "Planned", bg: "bg-sky-500", border: "border-sky-500" },
   { value: "backlog", label: "Backlog", bg: "bg-emerald-500", border: "border-emerald-500" },
+  { value: "prospect", label: "Prospect", bg: "bg-purple-500", border: "border-purple-500" },
 ];
 
 const CONTACT_CLASSIFICATION_CATEGORIES: Array<{
@@ -272,12 +274,13 @@ const CONTACT_CLASSIFICATION_CATEGORIES: Array<{
   { value: "hot_lead", label: "Hot Lead" },
   { value: "warm_lead", label: "Warm Lead" },
   { value: "seller_nurture", label: "Seller Nurture" },
+  { value: "prospect", label: "Prospect" },
 ];
 
 function normalizeLegacyCategory(value: string | null | undefined): ContactCategory | null {
   const raw = String(value ?? "").trim().toLowerCase();
   if (!raw) return null;
-  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog" || raw === "prospect") {
     return raw as ContactCategory;
   }
   const legacyMap: Record<string, ContactCategory> = {
@@ -286,7 +289,7 @@ function normalizeLegacyCategory(value: string | null | undefined): ContactCateg
     yellow: "priority",
     green: "planned",
     blue: "planned",
-    purple: "backlog",
+    purple: "prospect",
     pink: "backlog",
     gray: "backlog",
   };
@@ -303,7 +306,8 @@ function normalizeContactClassificationCategory(
     raw === "referral_partner" ||
     raw === "hot_lead" ||
     raw === "warm_lead" ||
-    raw === "seller_nurture"
+    raw === "seller_nurture" ||
+    raw === "prospect"
   ) {
     return raw as ContactClassificationCategory;
   }

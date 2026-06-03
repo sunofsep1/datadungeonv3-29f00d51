@@ -154,10 +154,11 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
 
   // Address: "145 MILL STREET, REDLAND BAY, QLD 4165" - use full match (regex has no capturing group)
   const addrMatch = fullText.match(
-    /\d+[\s\w]+(?:STREET|ROAD|AVENUE|DRIVE|PLACE|COURT|LANE|CRESCENT|PARADE|WAY|TERRACE|BOULEVARD|CLOSE|CRT|ST|RD|AVE|DR|PL|CT|LN|CRES|TCE|BLVD|CL)[,.\s]+[\w\s]+(?:,\s*)?(?:QLD|NSW|VIC|WA|SA|TAS|NT|ACT)\s*\d{4}/i
+    /\d+[\s\w]+(?:STREET|ROAD|AVENUE|DRIVE|PLACE|COURT|LANE|CRESCENT|PARADE|WAY|TERRACE|BOULEVARD|CLOSE|CRT|ST|RD|AVE|DR|PL|CT|LN|CRES|TCE|BLVD|CL)(?:\s+OF)?[,.\s]+[\w\s]+(?:,\s*)?(?:QLD|NSW|VIC|WA|SA|TAS|NT|ACT)\s*\d{4}/i
   );
   if (addrMatch?.[0]) {
-    const addr = safeTrim(addrMatch[0]);
+    let addr = safeTrim(addrMatch[0]);
+    addr = addr.replace(/\b(DRIVE|ROAD|STREET|AVENUE|LANE|COURT|PLACE|PARADE|WAY|TERRACE|CLOSE)\s+OF,/i, "$1,");
     const parts = parseAddressParts(addr.replace(/\s+/g, " "));
     result.address_line1 = parts.address_line1;
     result.city = parts.city;
@@ -175,9 +176,36 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     result.postcode = parts.postcode;
   }
 
-  // Owner Name(s): names appear BEFORE "Owner Name(s):" on the same line
-  const ownerMatch = fullText.match(/([A-Za-z][A-Za-z\s&.'-]+?)\s+Owner Name\(s\):/);
-  if (ownerMatch?.[1]) result.owner_names = safeTrim(ownerMatch[1]) || null;
+  // Owner Name(s): names usually appear BEFORE the label on the same line (Pricefinder PDF export).
+  const ownerBeforeLabel = [
+    ...fullText.matchAll(/([A-Za-z][A-Za-z\s&.'-]{2,120})\s+Owner Name\(s\):/gi),
+  ];
+  if (ownerBeforeLabel.length > 0) {
+    result.owner_names = safeTrim(ownerBeforeLabel[ownerBeforeLabel.length - 1]![1]) || null;
+  }
+
+  // Fallback: names AFTER "Owner Name(s):"
+  if (!result.owner_names) {
+    const ownerAfterLabel = fullText.match(
+      /Owner Name\(s\):\s*([A-Za-z][A-Za-z\s&.'-]{2,120}?)\s+(?:Owner Type|Owner Details|Phone\(s\)|Owner Address)/i,
+    );
+    if (ownerAfterLabel?.[1]) result.owner_names = safeTrim(ownerAfterLabel[1]) || null;
+  }
+
+  // Some PDF exports put the first owner before the label and the second after (e.g. "SANDRA MCDONALD Owner Name(s): & JULIAN …").
+  if (result.owner_names && !/\s&\s|\s+and\s+|,/i.test(result.owner_names)) {
+    const trailingOwner = fullText.match(
+      /Owner Name\(s\):\s*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s.'-]{1,80}?)\s+(?:Owner Type|Owner Details|Phone\(s\)|Owner Address|Owner Occupied)/i,
+    );
+    const extra = safeTrim(trailingOwner?.[1] ?? "");
+    if (extra) {
+      const base = result.owner_names.toLowerCase();
+      const extraLower = extra.toLowerCase();
+      if (!base.includes(extraLower) && !extraLower.includes(base)) {
+        result.owner_names = `${result.owner_names} & ${extra}`;
+      }
+    }
+  }
 
   // Phone(s)
   const phoneMatch = fullText.match(/Phone\(s\):\s*[\^]?([\d\s]+)/i);
@@ -255,8 +283,10 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     }
   }
 
-  // Beds, Baths, Cars - often appear as "7 3 6" near "Area $/m2" or in a row
-  const bedsBathsCarsMatch = fullText.match(/(\d+)\s+(\d+)\s+(\d+)\s*(?:\n|Area|\$|Sale)/);
+  // Beds, Baths, Cars - after Area $/m2 row or standalone triplet before Sale
+  const bedsAfterArea = fullText.match(/Area\s*\$\/m2:\s*(\d+)\s+(\d+)\s+(\d+)/i);
+  const bedsBathsCarsMatch =
+    bedsAfterArea ?? fullText.match(/(\d+)\s+(\d+)\s+(\d+)\s*(?:Sale Amount|Sale Date|\$[\d,]+\s+\d{2}\/)/i);
   if (bedsBathsCarsMatch) {
     const [b, ba, c] = bedsBathsCarsMatch.slice(1, 4).map(Number);
     if (b >= 1 && b <= 20) result.bedrooms = b;

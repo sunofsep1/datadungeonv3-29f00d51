@@ -4,11 +4,11 @@ import { useOpenContactTasksForUser } from "@/hooks/useContactTasks";
 import { useAppointments } from "@/hooks/useAppointments";
 import { buildContactUrgency, type ContactUrgencyResult } from "@/lib/contactUrgency";
 
-type ContactUrgencyTier = "immediate" | "priority" | "planned" | "backlog";
+type ContactUrgencyTier = "immediate" | "priority" | "planned" | "backlog" | "prospect";
 
 function normalizeManualUrgencyTier(value: string | null | undefined): ContactUrgencyTier | null {
   const raw = String(value ?? "").trim().toLowerCase();
-  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog" || raw === "prospect") {
     return raw as ContactUrgencyTier;
   }
   const legacyMap: Record<string, ContactUrgencyTier> = {
@@ -17,7 +17,7 @@ function normalizeManualUrgencyTier(value: string | null | undefined): ContactUr
     yellow: "priority",
     green: "planned",
     blue: "planned",
-    purple: "backlog",
+    purple: "prospect",
     pink: "backlog",
     gray: "backlog",
   };

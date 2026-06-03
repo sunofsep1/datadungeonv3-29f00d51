@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { User, Plus, Trash2, Phone, Mail, ChevronRight, Users } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
+import { normalizeOwnerName, splitOwnerNames } from "@/lib/ownerNameParse";
 import { useDeleteContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useListings } from "@/hooks/useListings";
 import type { PropertyWithLinks } from "@/hooks/useProperties";
@@ -166,6 +167,25 @@ export function PropertyContactsCard({
   const ownerLinks = useMemo(() => links.filter((l) => OWNER_ROLES.has(linkRole(l))), [links]);
   const otherLinks = useMemo(() => links.filter((l) => !OWNER_ROLES.has(linkRole(l))), [links]);
 
+  const reportOwnerNames = useMemo(() => {
+    const report = property.property_report;
+    if (!report || typeof report !== "object") return [] as string[];
+    return splitOwnerNames((report as Record<string, unknown>).owner_names as string | null | undefined);
+  }, [property.property_report]);
+
+  const linkedOwnerNorms = useMemo(
+    () => new Set(ownerLinks.map((l) => {
+      const c = (l as { contacts?: ContactLookup | null }).contacts ?? contactById.get(l.contact_id);
+      return normalizeOwnerName(contactDisplayName(c));
+    })),
+    [ownerLinks, contactById],
+  );
+
+  const unlinkedReportOwners = useMemo(
+    () => reportOwnerNames.filter((name) => !linkedOwnerNorms.has(normalizeOwnerName(name))),
+    [reportOwnerNames, linkedOwnerNorms],
+  );
+
   const ownerNames = ownerLinks
     .map((l) => {
       const c = (l as { contacts?: ContactLookup | null }).contacts ?? contactById.get(l.contact_id);
@@ -239,6 +259,18 @@ export function PropertyContactsCard({
             </Link>
           </Button>
         </div>
+      )}
+
+      {reportOwnerNames.length > 0 && (
+        <p className="text-muted-foreground text-sm mb-2">
+          From Pricefinder report: {reportOwnerNames.join(", ")}
+          {unlinkedReportOwners.length > 0 ? (
+            <span className="text-amber-700 dark:text-amber-300">
+              {" "}
+              · {unlinkedReportOwners.length} not linked yet
+            </span>
+          ) : null}
+        </p>
       )}
 
       {coOwnersLabel && ownerLinks.length <= 3 && (

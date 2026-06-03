@@ -1,5 +1,6 @@
 import type { PropertyForMarket } from "@/lib/contactMarkets";
 import { parseSuburbFromAddress } from "@/lib/buyerRequirementMatch";
+import { parseGeocoderComponentsToAddressParts, type ParsedAddressParts } from "@/lib/addressFromGeocoder";
 import { ensureGoogleMapsLoaded } from "@/lib/loadGoogleMaps";
 
 export type GeocodeOutcome =
@@ -345,4 +346,46 @@ export async function geocodePropertiesBatch(
   }
 
   return { results };
+}
+
+export type ReverseGeocodeOutcome =
+  | { ok: true; lat: number; lng: number; addressParts: ParsedAddressParts; formattedAddress: string }
+  | { ok: false; status: string };
+
+/** Resolve lat/lng to a street address (for map pin drops). */
+export function reverseGeocodeLatLng(
+  lat: number,
+  lng: number,
+  apiKey: string,
+): Promise<ReverseGeocodeOutcome> {
+  return runGeocodeQueued(async () => {
+    if (isGeocodeServiceBlocked()) {
+      return { ok: false, status: "REQUEST_DENIED" };
+    }
+
+    await ensureGoogleMapsLoaded(apiKey);
+    return new Promise((resolve) => {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng }, region: "AU" }, (results, status) => {
+        if (status !== "OK" || !results?.[0]) {
+          if (GEOCODE_BLOCKED_STATUSES.has(status)) markGeocodeBlocked(status);
+          resolve({ ok: false, status });
+          return;
+        }
+        const best = results[0];
+        const formattedAddress = best.formatted_address ?? "";
+        const addressParts = parseGeocoderComponentsToAddressParts(
+          best.address_components ?? [],
+          formattedAddress,
+        );
+        resolve({
+          ok: true,
+          lat,
+          lng,
+          addressParts,
+          formattedAddress,
+        });
+      });
+    });
+  });
 }

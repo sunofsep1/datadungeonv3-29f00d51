@@ -262,6 +262,12 @@ export default function Properties() {
           water_sewerage: parsed.water_sewerage,
           property_id: parsed.property_id,
           ubd_ref: parsed.ubd_ref,
+          owner_names: parsed.owner_names,
+          owner_phones: parsed.owner_phones,
+          sales_history: parsed.sales_history?.slice(0, 10) ?? null,
+          last_sale_price: parsed.price ?? parsed.sales_history?.[0]?.amount ?? null,
+          last_sale_date: parsed.sales_history?.[0]?.date ?? null,
+          source: "pricefinder_pdf",
         } as Record<string, unknown>,
       }));
       toast({ title: "Success", description: "Property report parsed. Review and save." });

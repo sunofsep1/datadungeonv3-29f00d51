@@ -210,6 +210,7 @@ export function ContactsFilterPanel({
             <SelectItem value="seller_nurture">Seller nurture</SelectItem>
             <SelectItem value="active_buyer">Active buyer</SelectItem>
             <SelectItem value="seller_lead">Seller lead</SelectItem>
+            <SelectItem value="prospect">Prospect</SelectItem>
           </SelectContent>
         </Select>
       </div>
