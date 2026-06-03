@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 node_modules/
 *.pyc
 __pycache__/
@@ -13,3 +14,46 @@ exports/
 *.json.bak
 audio_*
 file_*.txt
+=======
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Env (secrets). Use .env.example as template.
+.env
+.env.rtf
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+supabase/.temp/
+supabase/.branches/
+
+# Local Netlify folder
+.netlify
+
+.env.save
+*.zip
+
+.env.save
+*.zip
+>>>>>>> origin/main

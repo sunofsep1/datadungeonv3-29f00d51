@@ -1,0 +1,41 @@
+---
+description: Clean, minimal page UI — no unnecessary explanatory copy
+globs: src/pages/**/*.tsx,src/components/**/*.tsx
+alwaysApply: false
+---
+
+# Minimal page UI
+
+DataDungeon pages should feel **clean and minimal**. Prefer scannable layouts over prose.
+
+## Page headers
+
+- Use `PageHeader` with **title only** unless one short line is truly needed for context (e.g. empty-state or error routes).
+- **Do not** add `description` props that explain how filters, smart lists, chips, or fields relate to each other. Users learn by using the UI.
+- **Do not** add tutorial paragraphs under titles (“set that in Edit contact”, “open Filters for…”, etc.).
+
+```tsx
+// ❌ BAD — meta-explanation under the title
+<PageHeader
+  title="Contacts"
+  description="Smart list chips mostly match Contact category…"
+/>
+
+// ✅ GOOD — title + actions only
+<PageHeader title="Contacts" actions={…} />
+```
+
+## Copy elsewhere on pages
+
+- Skip redundant helper text above lists, toolbars, and filter bars when labels, placeholders, and empty states are enough.
+- Keep dialog **titles** specific; avoid long **descriptions** unless confirming a destructive action or a non-obvious workflow.
+- Empty states: one short line + primary action — not a paragraph.
+- Prefer tooltips on icon buttons over inline “how to use this” paragraphs.
+
+## When text is OK
+
+- Validation errors and toasts
+- Legal/privacy notices (e.g. print DOB checkbox)
+- genuinely non-obvious one-liners in empty states (max ~1 sentence)
+
+When in doubt, remove the text.

@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { width: 280px; margin: 0; font-family: system-ui, Arial, sans-serif; background: #0b3b42; color: #e0f7fa; }
+      .pad { padding: 16px; }
+      h1 { font-size: 15px; margin: 0 0 4px; }
+      .sub { font-size: 12px; color: #8fd3dc; margin: 0 0 12px; }
+      .status { font-size: 12px; background: #062b30; border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; line-height: 1.4; }
+      button { width: 100%; border: none; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+      .primary { background: #00BCD4; color: #062b30; }
+      .ghost { background: transparent; color: #8fd3dc; border: 1px solid #1d5860; font-weight: 600; }
+      .primary:disabled { opacity: .5; cursor: default; }
+      a { color: #00BCD4; font-size: 11px; }
+      .hint { font-size: 11px; color: #8fd3dc; margin-top: 6px; line-height: 1.4; }
+    </style>
+  </head>
+  <body>
+    <div class="pad">
+      <h1>DataDungeon</h1>
+      <p class="sub">Capture a RiTA list into a CSV.</p>
+      <div id="status" class="status">Checking this page…</div>
+      <button id="capture" class="primary" disabled>Capture list → download CSV</button>
+      <button id="json" class="ghost">Download everything (JSON)</button>
+      <p class="hint">CSV → DataDungeon → Contacts → Import CSV. The JSON has every field RiTA holds (for the in-app importer later).</p>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

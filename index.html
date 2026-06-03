@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <style>
+      html, body, #root { background-color: #0f1219 !important; }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataDungeon</title>
+    <meta name="description" content="DataDungeon — real estate CRM for contacts, listings, nurture, and day-to-day ops. Drako keeps you on track." />
+    <meta name="author" content="DataDungeon" />
+
+    <meta property="og:title" content="DataDungeon" />
+    <meta property="og:description" content="Real estate CRM for contacts, listings, nurture, and day-to-day ops." />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary" />
+  </head>
+
+  <body>
+    <script>
+      (function() {
+        var theme = localStorage.getItem('theme');
+        var themeClasses = ['dark', 'light', 'theme-tomorrow-night-blue', 'theme-dracula', 'theme-monokai', 'theme-github-dark', 'theme-one-dark', 'theme-solarized-dark', 'theme-nord', 'theme-catppuccin', 'theme-high-contrast', 'theme-tokyo-night', 'theme-gruvbox', 'theme-rose-pine', 'theme-synthwave', 'theme-ayu-mirage', 'theme-material-palenight', 'theme-kanagawa', 'theme-oceanic-next', 'theme-horizon', 'theme-everforest'];
+        var themeToClass = {
+          dark: 'dark', light: 'light',
+          tomorrowNightBlue: 'theme-tomorrow-night-blue', dracula: 'theme-dracula', monokai: 'theme-monokai',
+          githubDark: 'theme-github-dark', oneDark: 'theme-one-dark', solarizedDark: 'theme-solarized-dark',
+          nord: 'theme-nord', catppuccin: 'theme-catppuccin', highContrast: 'theme-high-contrast',
+          tokyoNight: 'theme-tokyo-night', gruvbox: 'theme-gruvbox', rosePine: 'theme-rose-pine',
+          synthwave: 'theme-synthwave', ayuMirage: 'theme-ayu-mirage', materialPalenight: 'theme-material-palenight',
+          kanagawa: 'theme-kanagawa', oceanicNext: 'theme-oceanic-next', horizon: 'theme-horizon', everforest: 'theme-everforest'
+        };
+        var valid = ['dark', 'light', 'tomorrowNightBlue', 'dracula', 'monokai', 'githubDark', 'oneDark', 'solarizedDark', 'nord', 'catppuccin', 'highContrast', 'tokyoNight', 'gruvbox', 'rosePine', 'synthwave', 'ayuMirage', 'materialPalenight', 'kanagawa', 'oceanicNext', 'horizon', 'everforest'];
+        var cls = (valid.indexOf(theme) !== -1 && themeToClass[theme]) ? themeToClass[theme] : 'dark';
+        themeClasses.forEach(function(c) { document.documentElement.classList.remove(c); });
+        document.documentElement.classList.add(cls);
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

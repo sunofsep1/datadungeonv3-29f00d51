@@ -1,0 +1,32 @@
+# Netlify — Vite + React SPA (datadungeon)
+# Environment variables: set in Netlify → Site configuration → Environment variables
+#   Typical Vite client vars (prefix VITE_): Supabase URL/anon key, maps, etc.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Match a current Netlify LTS; avoids surprise Node upgrades on the build image
+  NODE_VERSION = "22"
+
+# Client-side routing (React Router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Long cache for fingerprinted Vite assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Baseline security headers for the app shell
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

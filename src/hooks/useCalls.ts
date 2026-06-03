@@ -1,0 +1,132 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
+
+export interface Call {
+  id: string;
+  user_id: string;
+  contact_id: string | null;
+  contact_name: string | null;
+  call_date: string;
+  duration_minutes: number | null;
+  notes: string | null;
+  outcome: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CallInsert {
+  contact_id?: string | null;
+  contact_name?: string | null;
+  call_date?: string;
+  duration_minutes?: number | null;
+  notes?: string | null;
+  outcome?: string | null;
+}
+
+export interface CallUpdate {
+  id: string;
+  contact_id?: string | null;
+  contact_name?: string | null;
+  call_date?: string;
+  duration_minutes?: number | null;
+  notes?: string | null;
+  outcome?: string | null;
+}
+
+export function useCalls() {
+  // Realtime subscription - calls table added via migration
+
+  return useQuery({
+    queryKey: ["calls"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("calls")
+        .select("*")
+        .order("call_date", { ascending: false });
+      if (!error) return (data ?? []) as Call[];
+      const msg = (error?.message ?? "").toLowerCase();
+      if (error?.code === "PGRST204" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist") || String(error?.code) === "400") {
+        return [] as Call[];
+      }
+      throw error;
+    },
+  });
+}
+
+export function useCreateCall() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (call: CallInsert) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      
+      const { data, error } = await supabase
+        .from("calls")
+        .insert({ ...call, user_id: user.id })
+        .select()
+        .single();
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist")) {
+          throw new Error("Calls table is not set up. Run database migrations (npm run db:push) to enable call tracking.");
+        }
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calls"] });
+    },
+  });
+}
+
+export function useUpdateCall() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: CallUpdate) => {
+      const { data, error } = await supabase
+        .from("calls")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist")) {
+          throw new Error("Calls table is not set up. Run database migrations (npm run db:push) to enable call tracking.");
+        }
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calls"] });
+    },
+  });
+}
+
+export function useDeleteCall() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("calls")
+        .delete()
+        .eq("id", id);
+      if (error) {
+        const msg = (error?.message ?? "").toLowerCase();
+        if (error.code === "PGRST204" || String(error.code) === "400" || msg.includes("relation") || msg.includes("calls") || msg.includes("does not exist")) {
+          throw new Error("Calls table is not set up. Run database migrations (npm run db:push) to enable call tracking.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calls"] });
+    },
+  });
+}

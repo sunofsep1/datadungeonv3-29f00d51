@@ -1,0 +1,254 @@
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
+import {
+  Activity,
+  Cake,
+  CalendarClock,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  Flame,
+  Home,
+  ListTodo,
+  Sparkles,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
+import { getDaysSinceLastTouch } from "@/lib/contactLastTouch";
+import { CONTACT_SMART_LISTS } from "@/lib/contactSmartLists";
+import { isBirthdayWithinDays } from "@/lib/contactBirthday";
+import { isAnnualReviewSchedulingCandidate } from "@/lib/annualReviewCandidates";
+import { useContacts } from "@/hooks/useContacts";
+import { useOpenContactTasksForUser } from "@/hooks/useContactTasks";
+import { useListings } from "@/hooks/useListings";
+import { useDataHealth } from "@/hooks/useDataHealth";
+import { useAnnualReviewContactStatusMap } from "@/hooks/useAnnualReviews";
+
+type PriorityTileProps = {
+  to: string;
+  label: string;
+  sub?: string;
+  count: number | null;
+  icon: typeof Flame;
+  emphasize?: boolean;
+};
+
+function PriorityTile({ to, label, sub, count, icon: Icon, emphasize }: PriorityTileProps) {
+  return (
+    <Button
+      variant="outline"
+      className={cn(
+        "h-auto min-h-[4.25rem] w-full flex-col items-stretch gap-0 p-3 text-left border-border/80 bg-card/50 hover:bg-accent/40",
+        emphasize && count != null && count > 0 && "border-primary/40 bg-primary/5",
+      )}
+      asChild
+    >
+      <Link to={to} className="flex flex-row items-start gap-2">
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-1 flex flex-col gap-1">
+          <span className="flex items-start justify-between gap-2">
+            <span className="min-w-0 text-sm font-medium leading-snug text-foreground line-clamp-2 [overflow-wrap:anywhere]">
+              {label}
+            </span>
+            {count != null ? (
+              <Badge variant="secondary" className="shrink-0 tabular-nums font-semibold">
+                {count}
+              </Badge>
+            ) : null}
+          </span>
+          {sub ? (
+            <span className="text-[11px] leading-snug text-muted-foreground line-clamp-2 [overflow-wrap:anywhere]">
+              {sub}
+            </span>
+          ) : null}
+          <span className="flex items-center gap-0.5 text-[11px] text-primary">
+            Open <ChevronRight className="h-3 w-3 shrink-0" />
+          </span>
+        </span>
+      </Link>
+    </Button>
+  );
+}
+
+/**
+ * Priority counts + smart-list chips shared by Home dashboard and Daily Hub.
+ */
+export function DailyHubPriorityAndSmartLists() {
+  const reviewYear = new Date().getFullYear();
+  const { data: contacts = [] } = useContacts();
+  const { data: openTasks = [] } = useOpenContactTasksForUser();
+  const { data: listings = [] } = useListings();
+  const { data: dataHealth } = useDataHealth();
+  const { data: reviewStatusByContact = new Map<string, string>() } = useAnnualReviewContactStatusMap(reviewYear);
+
+  const healthScore = Math.max(0, Math.min(100, Math.round(Number(dataHealth?.health_score ?? 0))));
+
+  const hotLeadCount = useMemo(
+    () =>
+      contacts.filter((c) => {
+        const cat = String(c.contact_category ?? "").toLowerCase();
+        if (cat === "hot_lead") return true;
+        const temp = String(c.lead_temperature ?? "").toLowerCase();
+        return temp.includes("hot");
+      }).length,
+    [contacts],
+  );
+
+  const overdueTaskCount = useMemo(() => {
+    const now = Date.now();
+    return openTasks.filter((t) => {
+      if (!t.due_at) return false;
+      const tms = new Date(t.due_at).getTime();
+      return tms < now;
+    }).length;
+  }, [openTasks]);
+
+  const staleContactCount = useMemo(
+    () =>
+      contacts.filter((c) => {
+        const days = getDaysSinceLastTouch(c);
+        return days != null && days > 30;
+      }).length,
+    [contacts],
+  );
+
+  const noNextTouchCount = useMemo(
+    () => contacts.filter((c) => !(c as { next_touch_date?: string | null }).next_touch_date).length,
+    [contacts],
+  );
+
+  const birthdayUpcomingCount = useMemo(
+    () => contacts.filter((c) => isBirthdayWithinDays(c as { date_of_birth?: string | null }, 30)).length,
+    [contacts],
+  );
+
+  const annualReviewCandidateCount = useMemo(
+    () =>
+      contacts.filter((c) =>
+        isAnnualReviewSchedulingCandidate(
+          (c as { contact_category?: string | null }).contact_category,
+          reviewStatusByContact.get(c.id),
+        ),
+      ).length,
+    [contacts, reviewStatusByContact],
+  );
+
+  const smartListChips = CONTACT_SMART_LISTS.filter((s) => s.id !== "all");
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Do this next
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Each tile opens the filtered list or screen behind it.
+        </p>
+      </div>
+
+      <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
+        <CarouselContent className="-ml-0">
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=hot_lead"
+            label="Hot leads"
+            sub="Playbook + temperature"
+            count={hotLeadCount}
+            icon={Flame}
+            emphasize
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/tasks"
+            label="Overdue tasks"
+            sub="Open contact tasks past due"
+            count={overdueTaskCount}
+            icon={ListTodo}
+            emphasize
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=stale"
+            label="Stale contacts"
+            sub="30+ days since last touch"
+            count={staleContactCount}
+            icon={Clock}
+            emphasize
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=no_next_touch"
+            label="No next touch"
+            sub="Missing next touch date"
+            count={noNextTouchCount}
+            icon={CalendarClock}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=birthdays_upcoming"
+            label="Birthdays"
+            sub="Next 30 days (set date of birth on contacts)"
+            count={birthdayUpcomingCount}
+            icon={Cake}
+            emphasize={birthdayUpcomingCount > 0}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/contacts?smart=annual_review_candidates"
+            label="Review pool"
+            sub="Top 100 & past clients — schedule January reviews"
+            count={annualReviewCandidateCount}
+            icon={ClipboardList}
+            emphasize={annualReviewCandidateCount > 0}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/listings"
+            label="Listings"
+            sub="Pipeline board"
+            count={listings.length}
+            icon={Home}
+          />
+          </CarouselItem>
+          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
+          <PriorityTile
+            to="/data-health"
+            label="Data health"
+            sub={`${healthScore}% score · cleanup queues`}
+            count={null}
+            icon={Activity}
+          />
+          </CarouselItem>
+        </CarouselContent>
+        <CarouselPrevious
+          className="left-auto right-9 top-[-2.1rem] h-7 w-7 rounded-md border-border/70 bg-card/90 hover:bg-card"
+          aria-label="Previous focus card"
+        />
+        <CarouselNext
+          className="right-0 top-[-2.1rem] h-7 w-7 rounded-md border-border/70 bg-card/90 hover:bg-card"
+          aria-label="Next focus card"
+        />
+      </Carousel>
+
+      <div>
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Smart lists</p>
+        <div className="flex flex-wrap gap-1.5">
+          {smartListChips.map((s) => (
+            <Button key={s.id} variant="secondary" size="sm" className="h-7 text-xs font-normal" asChild>
+              <Link to={`/contacts?smart=${s.id}`}>{s.short ?? s.label}</Link>
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

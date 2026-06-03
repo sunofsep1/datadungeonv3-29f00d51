@@ -1,0 +1,49 @@
+project_id = "sujyalrzbubvhpkntwja"
+
+[functions.google-calendar]
+verify_jwt = false
+
+[functions.news-proxy]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-broadcast]
+verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.send-sms-broadcast]
+verify_jwt = false
+
+[functions.process-scheduled-sms]
+verify_jwt = false
+
+[functions.listing-stage-automation]
+verify_jwt = false
+
+[functions.sms-webhook]
+verify_jwt = false
+
+[functions.followup-digest]
+verify_jwt = false
+
+[functions.sequence-runner]
+verify_jwt = false
+
+[functions.nightly-lead-score-recompute]
+verify_jwt = false
+
+[functions.birthday-reminders]
+verify_jwt = false
+
+[functions.notification-digest]
+verify_jwt = false
+
+[functions.inbound-lead]
+verify_jwt = false
+
+[functions.process-workflows]
+verify_jwt = false
