@@ -89,6 +89,8 @@ function buildOwnerInfoLines(
   linkedOwners: PropertyOwnerLink[],
   isProspect: boolean,
 ): string {
+  const linkStyle = "color:#0e7490;font-weight:600;text-decoration:underline;text-underline-offset:2px";
+  const nameStyle = "color:#1e293b;font-weight:600";
   const reportRaw = property.property_report?.owner_names;
   const reportOwners = splitOwnerNames(typeof reportRaw === "string" ? reportRaw : null);
   const linkedByNorm = new Map(
@@ -100,24 +102,44 @@ function buildOwnerInfoLines(
       .map((name) => {
         const linked = linkedByNorm.get(normalizeOwnerName(name));
         if (linked) {
-          return `<a href="/contacts/${escapeHtml(linked.contactId)}" style="color:#00bcd4;font-weight:500">${escapeHtml(linked.contactName)}</a>`;
+          return `<a href="/contacts/${escapeHtml(linked.contactId)}" style="${linkStyle}">${escapeHtml(linked.contactName)}</a>`;
         }
-        return `<span style="color:#555">${escapeHtml(name)}</span>`;
+        return `<span style="${nameStyle}">${escapeHtml(name)}</span>`;
       })
-      .join(", ");
+      .join("<span style=\"color:#94a3b8;margin:0 4px\"> · </span>");
   }
 
   if (linkedOwners.length > 0) {
     return linkedOwners
       .map(
         (o) =>
-          `<a href="/contacts/${escapeHtml(o.contactId)}" style="color:#00bcd4;font-weight:500">${escapeHtml(o.contactName)}</a>`,
+          `<a href="/contacts/${escapeHtml(o.contactId)}" style="${linkStyle}">${escapeHtml(o.contactName)}</a>`,
       )
-      .join(", ");
+      .join("<span style=\"color:#94a3b8;margin:0 4px\"> · </span>");
   }
 
-  return isProspect ? "Prospect — upload Pricefinder to add owners" : "No linked owner yet";
+  return isProspect
+    ? `<span style="color:#64748b;font-weight:500">Prospect — upload Pricefinder to add owners</span>`
+    : `<span style="color:#64748b;font-weight:500">No linked owner yet</span>`;
 }
+
+const IW = {
+  wrap: "font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:300px;line-height:1.5;padding:4px 2px;color:#0f172a",
+  title: "margin:0 0 8px;font-weight:700;font-size:15px;line-height:1.35;color:#0f172a;letter-spacing:-0.01em",
+  sectionLabel: "font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;margin:0 0 4px",
+  sectionBody: "margin:0 0 10px;font-size:13px;line-height:1.45;color:#1e293b",
+  meta: "margin:0 0 5px;font-size:13px;line-height:1.4;color:#334155",
+  metaMuted: "margin:0 0 8px;font-size:13px;line-height:1.4;color:#64748b",
+  btn:
+    "font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;cursor:pointer;line-height:1.2",
+  btnPrimary:
+    "font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid #0e7490;background:#ecfeff;color:#0e7490;cursor:pointer;line-height:1.2",
+  btnAccent:
+    "font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid #0891b2;background:#0891b2;color:#fff;cursor:pointer;line-height:1.2",
+  recordLink: "font-size:13px;font-weight:700;padding:6px 0;color:#0e7490;text-decoration:none;line-height:1.2",
+  badge:
+    "display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;line-height:1.3",
+} as const;
 
 function buildInfoWindowHtml(
   property: MapProperty,
@@ -149,9 +171,9 @@ function buildInfoWindowHtml(
       : null;
 
   const listingBadge = listingPin
-    ? `<p style="margin:0 0 8px"><span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;background:${LISTING_PIN_COLORS[listingPin.kind].fill};color:#fff;box-shadow:0 0 8px ${LISTING_PIN_COLORS[listingPin.kind].glow}">${escapeHtml(LISTING_PIN_COLORS[listingPin.kind].label)} · ${escapeHtml(listingPin.stageLabel)}</span></p>`
+    ? `<p style="margin:0 0 10px"><span style="${IW.badge};background:${LISTING_PIN_COLORS[listingPin.kind].fill};color:#fff;box-shadow:0 0 8px ${LISTING_PIN_COLORS[listingPin.kind].glow}">${escapeHtml(LISTING_PIN_COLORS[listingPin.kind].label)} · ${escapeHtml(listingPin.stageLabel)}</span></p>`
     : isProspect
-      ? `<p style="margin:0 0 8px"><span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;background:#A855F7;color:#fff;box-shadow:0 0 8px ${PROSPECT_PIN_GLOW}">Prospect</span></p>`
+      ? `<p style="margin:0 0 10px"><span style="${IW.badge};background:#A855F7;color:#fff;box-shadow:0 0 8px ${PROSPECT_PIN_GLOW}">Prospect</span></p>`
       : "";
 
   const pfLines = pf
@@ -162,34 +184,37 @@ function buildInfoWindowHtml(
         pf.land_area_sqm != null ? `${pf.land_area_sqm} m² land` : null,
       ]
         .filter(Boolean)
-        .map((line) => `<p style="margin:0 0 4px;font-size:11px;color:#444">${line}</p>`)
+        .map((line) => `<p style="${IW.meta}">${line}</p>`)
         .join("")
-    : `<p style="margin:0 0 6px;font-size:11px;color:#888">${pricefinderMode === "pdf" ? "Import a Pricefinder PDF on this property" : "No Pricefinder data yet"}</p>`;
+    : `<p style="${IW.metaMuted}">${pricefinderMode === "pdf" ? "Import a Pricefinder PDF on this property" : "No Pricefinder data yet"}</p>`;
 
   const pfActionButton =
     pricefinderMode === "api"
-      ? `<button type="button" data-market-action="enrich" data-property-id="${escapeHtml(property.id)}" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #00bcd4;background:#ecfeff;cursor:pointer">Pricefinder</button>`
+      ? `<button type="button" data-market-action="enrich" data-property-id="${escapeHtml(property.id)}" style="${IW.btnPrimary}">Pricefinder</button>`
       : listingIdFromMapPropertyId(property.id)
         ? ""
-        : `<button type="button" data-market-action="import" data-property-id="${escapeHtml(property.id)}" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #00bcd4;background:#ecfeff;cursor:pointer">${isProspect ? "Import Pricefinder" : "Import report"}</button>`;
+        : `<button type="button" data-market-action="import" data-property-id="${escapeHtml(property.id)}" style="${IW.btnPrimary}">${isProspect ? "Import Pricefinder" : "Import report"}</button>`;
 
   const recordHref = listingPin
     ? `/listings/${escapeHtml(listingPin.listingId)}`
     : `/properties/${escapeHtml(property.id)}`;
   const recordLabel = listingPin ? "Open listing →" : "Open record →";
+  const linkedCount = owners.length;
 
   return `
-    <div style="font-family:system-ui,sans-serif;max-width:260px;line-height:1.45;padding:2px 0">
-      ${svThumb ? `<img src="${svThumb}" alt="" style="width:100%;border-radius:6px;margin-bottom:8px" />` : ""}
-      <p style="margin:0 0 6px;font-weight:600;font-size:13px;color:#111">${escapeHtml(addr || "Property")}</p>
+    <div style="${IW.wrap}">
+      ${svThumb ? `<img src="${svThumb}" alt="" style="width:100%;border-radius:8px;margin-bottom:10px" />` : ""}
+      <p style="${IW.title}">${escapeHtml(addr || "Property")}</p>
       ${listingBadge}
-      <p style="margin:0 0 8px;font-size:11px;color:#555">${escapeHtml(ownerLabel)}: ${ownerLines}</p>
+      <p style="${IW.sectionLabel}">${escapeHtml(ownerLabel)}</p>
+      <p style="${IW.sectionBody}">${ownerLines}</p>
+      ${linkedCount > 0 ? `<p style="${IW.metaMuted}">${linkedCount} contact${linkedCount === 1 ? "" : "s"} linked in CRM</p>` : ""}
       ${pfLines}
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
-        <button type="button" data-market-action="streetview" data-property-id="${escapeHtml(property.id)}" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Street View</button>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0">
+        <button type="button" data-market-action="streetview" data-property-id="${escapeHtml(property.id)}" style="${IW.btn}">Street View</button>
         ${pfActionButton}
-        ${pf && pricefinderMode === "api" ? `<button type="button" data-market-action="apply-pf" data-property-id="${escapeHtml(property.id)}" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #00bcd4;background:#00bcd4;color:#fff;cursor:pointer">Apply</button>` : ""}
-        <a href="${recordHref}" style="font-size:11px;padding:4px 0;color:#00bcd4;font-weight:600">${recordLabel}</a>
+        ${pf && pricefinderMode === "api" ? `<button type="button" data-market-action="apply-pf" data-property-id="${escapeHtml(property.id)}" style="${IW.btnAccent}">Apply</button>` : ""}
+        <a href="${recordHref}" style="${IW.recordLink}">${recordLabel}</a>
       </div>
     </div>
   `;
@@ -337,6 +362,8 @@ export function MarketMapPanel({
   const propertiesRef = useRef(properties);
   propertiesRef.current = properties;
   const marketViewportInitRef = useRef<string | null>(null);
+  const lastInfoPropertyIdRef = useRef<string | null>(null);
+  const prevSelectedForInfoRef = useRef<string | null>(null);
 
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -353,6 +380,8 @@ export function MarketMapPanel({
 
   useEffect(() => {
     marketViewportInitRef.current = null;
+    lastInfoPropertyIdRef.current = null;
+    prevSelectedForInfoRef.current = null;
   }, [mapInstanceKey]);
 
   useEffect(() => {
@@ -366,7 +395,12 @@ export function MarketMapPanel({
           mapRef.current,
           buildMapOptions(REDLANDS_DEFAULT, pinDropModeRef.current),
         );
-        infoWindowRef.current = new google.maps.InfoWindow({ maxWidth: 280 });
+        const iw = new google.maps.InfoWindow({ maxWidth: 320, disableAutoPan: true });
+        iw.addListener("closeclick", () => {
+          lastInfoPropertyIdRef.current = null;
+          prevSelectedForInfoRef.current = null;
+        });
+        infoWindowRef.current = iw;
         const overlay = new google.maps.OverlayView();
         overlay.onAdd = () => {};
         overlay.draw = () => {};
@@ -568,7 +602,40 @@ export function MarketMapPanel({
     let cancelled = false;
     const shouldInitViewport = marketViewportInitRef.current !== market.id;
 
-    const openForProperty = (property: MapProperty, marker: google.maps.marker.AdvancedMarkerElement) => {
+    const wireInfoWindowActions = () => {
+      const root = document.querySelector(".gm-style-iw-d");
+      if (!root) return;
+      root.querySelectorAll("[data-market-action]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          e.preventDefault();
+          const action = (el as HTMLElement).dataset.marketAction;
+          const pid = (el as HTMLElement).dataset.propertyId;
+          const prop = propertiesRef.current.find((p) => p.id === pid);
+          if (!prop) return;
+          if (action === "streetview") {
+            if (!hasValidCoordinates(prop)) return;
+            callbacksRef.current.onOpenStreetView?.(
+              prop.latitude!,
+              prop.longitude!,
+              formatPropertyAddress(prop as Property) || "Property",
+            );
+          } else if (action === "enrich") {
+            callbacksRef.current.onEnrichProperty?.(prop.id);
+          } else if (action === "import") {
+            callbacksRef.current.onImportReport?.(prop.id);
+          } else if (action === "apply-pf") {
+            const data = pfRef.current[prop.id];
+            if (data) callbacksRef.current.onApplyPf?.(prop.id, data);
+          }
+        });
+      });
+    };
+
+    const openForProperty = (
+      property: MapProperty,
+      marker: google.maps.marker.AdvancedMarkerElement,
+      { reopen = false }: { reopen?: boolean } = {},
+    ) => {
       callbacksRef.current.onSelectProperty?.(property.id);
       const listingPin = listingPinRef.current[property.id];
       const prospect = isProspectProperty(property.id, ownerLinksByPropertyId, listingPinRef.current);
@@ -583,35 +650,12 @@ export function MarketMapPanel({
           prospect,
         ),
       );
-      iw.open({ map, anchor: marker });
-      google.maps.event.addListenerOnce(iw, "domready", () => {
-        const root = document.querySelector(".gm-style-iw-d");
-        if (!root) return;
-        root.querySelectorAll("[data-market-action]").forEach((el) => {
-          el.addEventListener("click", (e) => {
-            e.preventDefault();
-            const action = (el as HTMLElement).dataset.marketAction;
-            const pid = (el as HTMLElement).dataset.propertyId;
-            const prop = propertiesRef.current.find((p) => p.id === pid);
-            if (!prop) return;
-            if (action === "streetview") {
-              if (!hasValidCoordinates(prop)) return;
-              callbacksRef.current.onOpenStreetView?.(
-                prop.latitude!,
-                prop.longitude!,
-                formatPropertyAddress(prop as Property) || "Property",
-              );
-            } else if (action === "enrich") {
-              callbacksRef.current.onEnrichProperty?.(prop.id);
-            } else if (action === "import") {
-              callbacksRef.current.onImportReport?.(prop.id);
-            } else if (action === "apply-pf") {
-              const data = pfRef.current[prop.id];
-              if (data) callbacksRef.current.onApplyPf?.(prop.id, data);
-            }
-          });
-        });
-      });
+      const alreadyShowing = lastInfoPropertyIdRef.current === property.id && iw.getMap();
+      if (reopen || !alreadyShowing) {
+        iw.open({ map, anchor: marker });
+        lastInfoPropertyIdRef.current = property.id;
+      }
+      google.maps.event.addListenerOnce(iw, "domready", wireInfoWindowActions);
     };
 
     (async () => {
@@ -699,7 +743,10 @@ export function MarketMapPanel({
             onProspectPinMovedRef.current?.(property.id, lat, lng);
           });
         }
-        const onMarkerActivate = () => openForProperty(property, marker);
+        const onMarkerActivate = () => {
+          prevSelectedForInfoRef.current = property.id;
+          openForProperty(property, marker, { reopen: true });
+        };
         marker.addEventListener("gmp-click", onMarkerActivate);
         marker.addListener?.("click", onMarkerActivate);
         markersRef.current.push(marker);
@@ -729,7 +776,15 @@ export function MarketMapPanel({
       if (selectedPropertyId) {
         const prop = mappable.find((p) => p.id === selectedPropertyId);
         const marker = prop ? markerByIdRef.current.get(prop.id) : null;
-        if (prop && marker) openForProperty(prop, marker);
+        const selectionChanged = prevSelectedForInfoRef.current !== selectedPropertyId;
+        if (prop && marker) {
+          prevSelectedForInfoRef.current = selectedPropertyId;
+          openForProperty(prop, marker, { reopen: selectionChanged });
+        }
+      } else {
+        prevSelectedForInfoRef.current = null;
+        lastInfoPropertyIdRef.current = null;
+        iw.close();
       }
 
       window.setTimeout(() => google.maps.event.trigger(map, "resize"), 100);

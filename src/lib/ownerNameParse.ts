@@ -7,13 +7,63 @@ export function normalizeOwnerName(value: string | null | undefined): string {
     .replace(/[.'-]/g, "");
 }
 
+/**
+ * Split stacked co-owners that share a surname (common in Pricefinder PDFs).
+ * e.g. "THOMAS MURPHY MICHAEL JOHN MURPHY" → two names.
+ */
+function splitSharedSurnameNames(raw: string): string[] {
+  const normalized = raw.trim().replace(/\s+/g, " ");
+  if (!normalized) return [];
+
+  const words = normalized.split(" ");
+  if (words.length < 4) return [titleCaseOwnerName(normalized)];
+
+  const surname = words[words.length - 1]!;
+  const surnameIndices: number[] = [];
+  for (let i = 0; i < words.length; i++) {
+    if (words[i]!.toUpperCase() === surname.toUpperCase()) surnameIndices.push(i);
+  }
+  if (surnameIndices.length < 2) return [titleCaseOwnerName(normalized)];
+
+  const parts: string[] = [];
+  let start = 0;
+  for (let si = 0; si < surnameIndices.length - 1; si++) {
+    const end = surnameIndices[si]!;
+    parts.push(titleCaseOwnerName(words.slice(start, end + 1).join(" ")));
+    start = end + 1;
+  }
+  parts.push(titleCaseOwnerName(words.slice(start).join(" ")));
+
+  return parts.length >= 2 ? parts : [titleCaseOwnerName(normalized)];
+}
+
 /** Split combined owner string from Pricefinder reports into individual names. */
 export function splitOwnerNames(raw: string | null | undefined): string[] {
   if (!raw?.trim()) return [];
-  return raw
-    .split(/(?:\s+&\s+|\s+and\s+|,)/i)
-    .map((s) => titleCaseOwnerName(s.trim()))
+
+  const segments = raw
+    .split(/\n|;|\r/)
+    .map((s) => s.trim())
     .filter(Boolean);
+
+  const pieces = segments.flatMap((segment) => {
+    const byDelimiter = segment
+      .split(/(?:\s+&\s+|\s+and\s+|,)/i)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (byDelimiter.length > 1) return byDelimiter.map(titleCaseOwnerName);
+    return splitSharedSurnameNames(segment);
+  });
+
+  return pieces.filter(Boolean);
+}
+
+/** Collapse parsed owner list into a canonical "A & B" string for storage. */
+export function joinOwnerNames(raw: string | null | undefined): string | null {
+  const parts = splitOwnerNames(raw);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0]!;
+  return parts.join(" & ");
 }
 
 /** Title-case a name while preserving hyphenated parts (Mary-Ann). */

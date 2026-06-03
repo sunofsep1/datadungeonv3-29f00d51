@@ -19,6 +19,20 @@ describe("splitOwnerNames", () => {
   it("splits comma-separated names", () => {
     expect(splitOwnerNames("John Smith, Jane Smith")).toEqual(["John Smith", "Jane Smith"]);
   });
+
+  it("splits newline-separated names", () => {
+    expect(splitOwnerNames("THOMAS MURPHY\nMICHAEL JOHN MURPHY")).toEqual([
+      "Thomas Murphy",
+      "Michael John Murphy",
+    ]);
+  });
+
+  it("splits stacked co-owners with shared surname (Pricefinder PDF)", () => {
+    expect(splitOwnerNames("THOMAS MURPHY MICHAEL JOHN MURPHY")).toEqual([
+      "Thomas Murphy",
+      "Michael John Murphy",
+    ]);
+  });
 });
 
 describe("allOwnersAlreadyLinked", () => {

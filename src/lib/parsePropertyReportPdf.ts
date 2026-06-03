@@ -4,6 +4,7 @@
  */
 
 import * as pdfjsLib from "pdfjs-dist";
+import { joinOwnerNames } from "@/lib/ownerNameParse";
 import { normalizePropertyType } from "@/lib/propertyType";
 
 // Configure worker for pdfjs (required for browser) - use unpkg for Vite compatibility
@@ -205,6 +206,10 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
         result.owner_names = `${result.owner_names} & ${extra}`;
       }
     }
+  }
+
+  if (result.owner_names) {
+    result.owner_names = joinOwnerNames(result.owner_names) ?? result.owner_names;
   }
 
   // Phone(s)

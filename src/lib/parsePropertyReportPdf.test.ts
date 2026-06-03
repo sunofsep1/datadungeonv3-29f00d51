@@ -52,3 +52,16 @@ describe("parsePropertyReportText — split owner after label", () => {
     expect(splitOwnerNames(parsed.owner_names)).toEqual(["Sandra Mcdonald", "Julian Francis Mcdonnell"]);
   });
 });
+
+describe("parsePropertyReportText — stacked owners (Horsley Place)", () => {
+  it("splits two co-owners before Owner Name(s): label", () => {
+    const text = `
+      7 HORSLEY PLACE, VICTORIA POINT QLD 4165
+      THOMAS MURPHY MICHAEL JOHN MURPHY Owner Name(s):
+      Owner Type: Owner Occupied Owner Address: 7 HORSLEY PL VICTORIA POINT QLD 4165
+    `;
+    const parsed = parsePropertyReportText(text);
+    expect(parsed.owner_names).toBe("Thomas Murphy & Michael John Murphy");
+    expect(splitOwnerNames(parsed.owner_names)).toEqual(["Thomas Murphy", "Michael John Murphy"]);
+  });
+});
