@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nurture Call List</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #f8f8f8;
+      color: #333;
+      line-height: 1.5;
+    }
+    
+    .header {
+      background: white;
+      padding: 40px 20px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .header h1 {
+      font-size: 26px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    
+    .header p {
+      font-size: 12px;
+      color: #999;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+    
+    .section {
+      margin-bottom: 45px;
+    }
+    
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    
+    .section-header .emoji {
+      font-size: 18px;
+    }
+    
+    .section-header .count {
+      margin-left: auto;
+      font-size: 12px;
+      color: #999;
+      font-weight: normal;
+    }
+    
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .card {
+      background: white;
+      padding: 20px;
+      border-bottom: 1px solid #f0f0f0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    
+    .card:last-child {
+      border-bottom: none;
+    }
+    
+    .card-number {
+      font-size: 18px;
+      font-weight: 600;
+      color: #999;
+      min-width: 30px;
+      padding-top: 2px;
+    }
+    
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .card-name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    
+    .card-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    
+    .card-role {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      background: #f5f5f5;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    
+    .meta-badge.overdue {
+      background: #fff3e0;
+      color: #f57c00;
+    }
+    
+    .meta-badge.hot {
+      background: #ffebee;
+      color: #d32f2f;
+    }
+    
+    .card-wants {
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    .card-wants strong {
+      color: #333;
+    }
+    
+    .card-note {
+      font-size: 12px;
+      color: #999;
+      font-style: italic;
+      margin-top: 2px;
+    }
+    
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .btn {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .btn:hover {
+      background: #fafafa;
+      border-color: #bbb;
+    }
+    
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #999;
+      margin-top: 40px;
+      padding: 20px 0;
+    }
+    
+    @media (max-width: 600px) {
+      .card {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      
+      .card-number {
+        order: -1;
+      }
+      
+      .card-meta {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📞 Nurture Call List — Next 10</h1>
+    <p>Cross-checked against DataDungeon CRM · Generated 4 June 2026</p>
+  </div>
+  
+  <div class="container">
+    <!-- HOT SECTION -->
+    <div class="section">
+      <div class="section-header">
+        <span class="emoji">🔴</span>
+        <span>HOT — Active Sellers, Move Quickly</span>
+        <span class="count">3 contacts</span>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-number">4</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Tracey Crichton</span>
+              <span class="card-role">Dual seller, buyer in process</span>
+            </div>
+            <div class="card-meta">
+              <span>traceycrichton@hotmail.com</span>
+              <span class="meta-badge hot">⚡ 5 days overdue</span>
+              <span class="meta-badge">Narangba, QLD 4504</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Confirm pricing strategy & list date</div>
+            <div class="card-note">Selling 2 properties, buying together ~$1.2m. Step 5: Appraisal & Listing Path.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">6</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Trent Wolno</span>
+              <span class="card-role">Upcoming listing (appraisal locked)</span>
+            </div>
+            <div class="card-meta">
+              <span>0408 972 247</span>
+              <span class="meta-badge hot">⚡ 4 days overdue</span>
+              <span class="meta-badge">Redland Bay, QLD</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Lock in photos & marketing timeline</div>
+            <div class="card-note">10 Wilohurst Drive — 3bed + study, pool, ~$1.4m. Step 5: OTM Intensive (90-day).</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">7</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Lynda Mann</span>
+              <span class="card-role">Owner-occupier, 3–6 month horizon</span>
+            </div>
+            <div class="card-meta">
+              <span>0415 638 699</span>
+              <span class="meta-badge hot">⚡ 4 days overdue</span>
+              <span class="meta-badge">Redland Bay, QLD</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Proceed to appraisal</div>
+            <div class="card-note">36–38 Marine Street. Door knock contact with strong warmth signals. Step 8: Appraisal & Listing Path.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WARM SECTION -->
+    <div class="section">
+      <div class="section-header">
+        <span class="emoji">🟡</span>
+        <span>WARM — Pre-Qualified Sellers</span>
+        <span class="count">5 contacts</span>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-number">1</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Kenneth MacDougall</span>
+              <span class="card-role">Warm lead, planning phase</span>
+            </div>
+            <div class="card-meta">
+              <span>0488 770 329</span>
+              <span class="meta-badge overdue">9 days overdue</span>
+              <span class="meta-badge">Redland Bay, QLD</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Check in on timeline & interest</div>
+            <div class="card-note">Step 3: Appraisal & Listing Path.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">2</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Debra Davidson</span>
+              <span class="card-role">Upcoming listing (prep phase)</span>
+            </div>
+            <div class="card-meta">
+              <span>0411 457 072</span>
+              <span class="meta-badge overdue">7 days overdue</span>
+              <span class="meta-badge">Virginia, QLD 4014</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Lock in appraisal & photography date</div>
+            <div class="card-note">158 Saint Vincents Rd — Decluttering, targeting ~$1.1m. Step 4: Appraisal & Listing Path.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">3</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Daniel Clark</span>
+              <span class="card-role">RITA source, prospective</span>
+            </div>
+            <div class="card-meta">
+              <span>0405 278 877</span>
+              <span class="meta-badge overdue">6 days overdue</span>
+              <span class="meta-badge">Redland Bay, QLD 4165</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Confirm interest & timeline</div>
+            <div class="card-note">Step 3: Appraisal & Listing Path.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">5</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Ken Buckley</span>
+              <span class="card-role">Near-term seller (0–3 months)</span>
+            </div>
+            <div class="card-meta">
+              <span>0447 953 842</span>
+              <span class="meta-badge overdue">5 days overdue</span>
+              <span class="meta-badge">Thornlands, QLD 4164</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Progress appraisal booking</div>
+            <div class="card-note">Step 3: Appraisal & Listing Path. Prep phase actively underway.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">8</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Nathan Grima</span>
+              <span class="card-role">FSBO, 3 businesses, motivated</span>
+            </div>
+            <div class="card-meta">
+              <span>0405 703 885</span>
+              <span class="meta-badge overdue">5 days overdue</span>
+              <span class="meta-badge">Redland Bay, QLD</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Discuss agent option & strategy</div>
+            <div class="card-note">145 Mill Street — Currently FSBO (~3 weeks, 2 groups only). Moving to Mt Cotton. Step 1: OTM Intensive.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COOL SECTION -->
+    <div class="section">
+      <div class="section-header">
+        <span class="emoji">🔵</span>
+        <span>COOL — Long-Term Nurture</span>
+        <span class="count">2 contacts</span>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-number">9</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Jacqueline Winters</span>
+              <span class="card-role">Just sold attendee, future seller</span>
+            </div>
+            <div class="card-meta">
+              <span>📵 No phone</span>
+              <span class="meta-badge">8 days overdue</span>
+              <span class="meta-badge">Redland Bay, QLD 4165</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Periodic relationship check-in</div>
+            <div class="card-note">Step 2: Future Seller — Long Nurture (24 months). 6–12 month horizon.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-number">10</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Paul Blucher</span>
+              <span class="card-role">Long-term nurture, future prospect</span>
+            </div>
+            <div class="card-meta">
+              <span>0422 855 059</span>
+              <span class="meta-badge">8 days overdue</span>
+              <span class="meta-badge">Thornlands, QLD 4164</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Low-frequency touch, build relationship</div>
+            <div class="card-note">Step 2: Future Seller — Long Nurture (24 months). Strategic long-term follow-up.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    Redland Bay & Surrounds · Nurture Call List · CRM-verified 4 June 2026 · DataDungeon
+  </div>
+</body>
+</html>

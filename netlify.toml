@@ -1,18 +1,11 @@
-[build]
-publish = "_site"
-command = "mkdir -p _site && cp call-lists/*.html _site/ && cp nurture-call-list.html _site/"
+# Netlify deployment config for call lists
+# Landing page and all call list HTML files are in call-lists/
 
-[[redirects]]
-from = "/"
-to = "/20-hickory-drive-buyers.html"
-status = 200
+[build]
+publish = "call-lists"
+command = "echo 'Static site ready'"
 
 [[redirects]]
 from = "/nurture"
 to = "/nurture-call-list.html"
-status = 200
-
-[[redirects]]
-from = "/buyers/*"
-to = "/20-hickory-drive-buyers.html"
 status = 200
