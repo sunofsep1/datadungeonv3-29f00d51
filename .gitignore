@@ -1,0 +1,15 @@
+node_modules/
+*.pyc
+__pycache__/
+.DS_Store
+.env
+.env.local
+.clawhub/
+.openclaw/
+state/
+exports/
+*.pdf
+*.csv
+*.json.bak
+audio_*
+file_*.txt
