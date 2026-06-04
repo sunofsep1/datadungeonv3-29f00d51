@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { leadScoreBand } from "@/lib/contactScoreQuery";
 import { useContactScoresByContactIds } from "@/hooks/useContactScore";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,8 @@ import { Search, Phone, Mail, ChevronRight, Users } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 
 function getStatusVariant(status: string | null): BadgeVariant {
   switch (status) {
@@ -64,6 +66,7 @@ function HotLeadScorePill({ loading, total }: { loading: boolean; total: number 
 
 export default function HotLeads() {
   const navigate = useNavigate();
+  const { moveTo, setMood } = useDrako();
   const { data: contacts, isLoading } = useContacts();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -90,6 +93,17 @@ export default function HotLeads() {
 
   const hotLeadIds = useMemo(() => hotLeads.map((c) => c.id), [hotLeads]);
   const { data: scoreByContactId, isLoading: scoresLoading } = useContactScoresByContactIds(hotLeadIds);
+
+  useEffect(() => {
+    if (hotLeads.length > 0) {
+      moveTo("stage", { mood: "fire-breath" });
+      const timer = setTimeout(
+        () => setMood("pointing", { caption: pickDrakoLine("hotLeads") }),
+        1600,
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [hotLeads.length, moveTo, setMood]);
 
   if (isLoading) {
     return (

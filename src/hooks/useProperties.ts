@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { tryGeocodePropertyAfterSave } from "@/hooks/usePropertyGeocode";
 import { supabase } from "@/integrations/supabase/client";
 import { formatAddressForDisplay } from "@/lib/formatAddressDisplay";
 import type { ContactChannel } from "./useContactChannels";
@@ -33,6 +34,10 @@ export interface Property {
   property_report?: Record<string, unknown> | null;
   images?: unknown;
   documents?: unknown;
+  suburb?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  geocoded_at?: string | null;
 }
 
 export interface PropertyInsert {
@@ -327,7 +332,19 @@ export function useCreateProperty() {
       if (error) throw error;
       return data as Property;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["properties"] }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["properties"] });
+      void tryGeocodePropertyAfterSave({
+        id: data.id,
+        address_line1: data.address_line1,
+        suburb: (data as { suburb?: string | null }).suburb ?? data.city,
+        city: data.city,
+        state: data.state,
+        postcode: data.postcode,
+        latitude: (data as { latitude?: number | null }).latitude,
+        longitude: (data as { longitude?: number | null }).longitude,
+      });
+    },
   });
 }
 
@@ -347,6 +364,16 @@ export function useUpdateProperty() {
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["properties"] });
       qc.invalidateQueries({ queryKey: ["property", d.id] });
+      void tryGeocodePropertyAfterSave({
+        id: d.id,
+        address_line1: d.address_line1,
+        suburb: (d as { suburb?: string | null }).suburb ?? d.city,
+        city: d.city,
+        state: d.state,
+        postcode: d.postcode,
+        latitude: (d as { latitude?: number | null }).latitude,
+        longitude: (d as { longitude?: number | null }).longitude,
+      });
     },
   });
 }

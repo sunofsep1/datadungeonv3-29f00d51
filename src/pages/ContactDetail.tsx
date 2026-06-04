@@ -29,8 +29,11 @@ import {
   ChevronDown,
   FileText,
   Handshake,
+  UserSearch,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { useContact } from "@/hooks/useContact";
 import {
   useContacts,
@@ -61,12 +64,14 @@ import { ContactCrmSettingsPanel } from "@/components/contacts/ContactCrmSetting
 import { ContactBuyerActivityPanel } from "@/components/contacts/ContactBuyerActivityPanel";
 import { ContactSuiteCard } from "@/components/contacts/ContactSuiteCard";
 import { ContactNurturePanel } from "@/components/contacts/ContactNurturePanel";
+import { ContactHubWorkBanner } from "@/components/contacts/ContactHubWorkBanner";
 import { ContactExpandableSection } from "@/components/contacts/ContactExpandableSection";
 import { ContactNurtureSummaryStrip } from "@/components/contacts/ContactNurtureSummaryStrip";
 import { ContactActivitySummaryStrip } from "@/components/contacts/ContactActivitySummaryStrip";
 import { ContactRelationshipBrief } from "@/components/contacts/ContactRelationshipBrief";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
+import { PropertyIntelligenceStrip } from "@/components/pricefinder/PropertyIntelligenceStrip";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
 import { ContactMatchingListingsPanel } from "@/components/contacts/ContactMatchingListingsPanel";
 import { ContactRelatedContactsPanel } from "@/components/contacts/ContactRelatedContactsPanel";
@@ -108,7 +113,7 @@ const URGENCY_OPTIONS: Array<{ value: ContactUrgencyCategory; label: string }> =
   { value: "backlog", label: "Backlog" },
 ];
 
-type ContactUrgencyCategory = "immediate" | "priority" | "planned" | "backlog";
+type ContactUrgencyCategory = "immediate" | "priority" | "planned" | "backlog" | "prospect";
 type ContactClassificationCategory =
   | "top_100"
   | "past_client"
@@ -117,7 +122,8 @@ type ContactClassificationCategory =
   | "warm_lead"
   | "seller_nurture"
   | "active_buyer"
-  | "seller_lead";
+  | "seller_lead"
+  | "prospect";
 
 const CONTACT_CLASSIFICATION_OPTIONS: Array<{ value: ContactClassificationCategory; label: string }> = [
   { value: "top_100", label: "Top 100" },
@@ -128,12 +134,13 @@ const CONTACT_CLASSIFICATION_OPTIONS: Array<{ value: ContactClassificationCatego
   { value: "seller_nurture", label: "Seller Nurture" },
   { value: "active_buyer", label: "Active Buyer" },
   { value: "seller_lead", label: "Seller Lead" },
+  { value: "prospect", label: "Prospect" },
 ];
 
 function normalizeContactCategory(value: string | null | undefined): ContactUrgencyCategory | null {
   const raw = String(value ?? "").trim().toLowerCase();
   if (!raw) return null;
-  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog" || raw === "prospect") {
     return raw as ContactUrgencyCategory;
   }
   const legacyMap: Record<string, ContactUrgencyCategory> = {
@@ -142,7 +149,7 @@ function normalizeContactCategory(value: string | null | undefined): ContactUrge
     yellow: "priority",
     green: "planned",
     blue: "planned",
-    purple: "backlog",
+    purple: "prospect",
     pink: "backlog",
     gray: "backlog",
   };
@@ -154,6 +161,7 @@ function urgencyLabel(category: ContactUrgencyCategory | null): string {
   if (category === "priority") return "Priority";
   if (category === "planned") return "Planned";
   if (category === "backlog") return "Backlog";
+  if (category === "prospect") return "Prospect";
   return "Unassigned";
 }
 
@@ -162,6 +170,7 @@ function urgencyBadgeClass(category: ContactUrgencyCategory | null): string {
   if (category === "priority") return "border-amber-500/45 bg-amber-500/15 text-amber-200";
   if (category === "planned") return "border-sky-500/45 bg-sky-500/15 text-sky-200";
   if (category === "backlog") return "border-emerald-500/45 bg-emerald-500/15 text-emerald-200";
+  if (category === "prospect") return "border-purple-500/45 bg-purple-500/15 text-purple-200";
   return "border-border/70 bg-muted/50 text-muted-foreground";
 }
 
@@ -177,7 +186,8 @@ function normalizeContactClassificationCategory(
     raw === "warm_lead" ||
     raw === "seller_nurture" ||
     raw === "active_buyer" ||
-    raw === "seller_lead"
+    raw === "seller_lead" ||
+    raw === "prospect"
   ) {
     return raw as ContactClassificationCategory;
   }
@@ -190,8 +200,12 @@ export default function ContactDetail() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const { setMood } = useDrako();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const nurtureFocus = searchParams.get("nurtureFocus");
+  const workFocus = searchParams.get("work") === "1";
+  const hubContactTaskId = searchParams.get("contactTaskId");
+  const hubAppointmentId = searchParams.get("appointmentId");
   const CONTACT_TABS = ["overview", "card", "requirements", "people", "properties", "crm"] as const;
   type ContactTab = (typeof CONTACT_TABS)[number];
   const tabParam = searchParams.get("tab");
@@ -296,6 +310,7 @@ export default function ContactDetail() {
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [printIncludeDob, setPrintIncludeDob] = useState(false);
   const printFrameRef = useRef<HTMLIFrameElement>(null);
+  const workTabAppliedRef = useRef(false);
   const [activitySectionOpen, setActivitySectionOpen] = useState(false);
 
   const linkedProperties = useMemo(() => {
@@ -316,6 +331,14 @@ export default function ContactDetail() {
     () => allProperties.filter((p) => !linkedPropertyIds.has(p.id)),
     [allProperties, linkedPropertyIds]
   );
+
+  useEffect(() => {
+    if (!workFocus || !contact || workTabAppliedRef.current) return;
+    workTabAppliedRef.current = true;
+    if (linkedProperties.length > 0) {
+      setContactTab("properties");
+    }
+  }, [workFocus, contact, linkedProperties.length]);
 
   const handleStartEdit = () => {
     if (contact) {
@@ -422,6 +445,7 @@ export default function ContactDetail() {
         }
       }
       toast({ title: "Success", description: "Contact updated!" });
+      setMood("wave", { caption: pickDrakoLine("contactSaved") });
       setIsEditing(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -624,6 +648,12 @@ export default function ContactDetail() {
             title="Open command palette (⌘K)"
           >
             <kbd className="text-[10px] font-mono">⌘K</kbd>
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3" asChild>
+            <Link to={id ? `/contact-research?contact=${encodeURIComponent(id)}` : "/contact-research"} className="inline-flex items-center gap-1.5">
+              <UserSearch className="w-4 h-4" />
+              <span className="hidden sm:inline">Research</span>
+            </Link>
           </Button>
           <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 sm:h-9 sm:px-3" asChild>
             <Link to="/scripts" className="inline-flex items-center gap-1.5">
@@ -897,6 +927,15 @@ export default function ContactDetail() {
           <ContactRelationshipBrief contact={contact} className="print:hidden" />
         ) : null}
 
+        {id && workFocus ? (
+          <ContactHubWorkBanner
+            contactId={id}
+            contactTaskId={hubContactTaskId}
+            appointmentId={hubAppointmentId}
+            nurtureSequence={nurtureFocus === "1"}
+          />
+        ) : null}
+
         <div className="min-w-0 space-y-5 print-contact-main">
           {id ? (
             <Tabs
@@ -1116,6 +1155,15 @@ export default function ContactDetail() {
                         {link.role && (
                           <Badge variant="outline" className="text-xs mb-2">{link.role}</Badge>
                         )}
+                        <PropertyIntelligenceStrip
+                          propertyReport={
+                            (property.property_report as Record<string, unknown> | null | undefined) ?? null
+                          }
+                          address={address}
+                          propertyId={property.id}
+                          compact
+                          className="mb-2"
+                        />
                         <div className="flex gap-2 mt-2 print:hidden">
                           <Button
                             variant="ghost"

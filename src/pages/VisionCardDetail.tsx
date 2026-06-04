@@ -33,7 +33,6 @@ import {
   Hammer,
   Flame,
   ListTodo,
-  Bot,
   Building2,
   GitBranch,
   LineChart,
@@ -64,10 +63,9 @@ const STATUS_OPTIONS = [
   { value: "achieved", label: "Achieved" },
 ] as const;
 
-const VISION_DESK_MORE_LINKS: { to: string; label: string; Icon: typeof Bot; hint: string }[] = [
+const VISION_DESK_MORE_LINKS: { to: string; label: string; Icon: typeof Building2; hint: string }[] = [
   { to: "/listings", label: "Listings", Icon: Building2, hint: "Campaign board" },
   { to: "/nurture", label: "Nurture", Icon: Workflow, hint: "Sequences" },
-  { to: "/ai-ops", label: "AI Ops", Icon: Bot, hint: "Claude batch" },
   { to: "/pricing", label: "Pricing", Icon: LineChart, hint: "Intel" },
   { to: "/pipeline", label: "Pipeline", Icon: GitBranch, hint: "Deals" },
   { to: "/marketing", label: "Marketing", Icon: Megaphone, hint: "Campaigns" },

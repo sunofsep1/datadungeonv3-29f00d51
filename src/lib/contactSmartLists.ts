@@ -4,7 +4,8 @@ export type ContactClassificationKey =
   | "referral_partner"
   | "hot_lead"
   | "warm_lead"
-  | "seller_nurture";
+  | "seller_nurture"
+  | "prospect";
 
 export type ContactSmartListId =
   | "all"
@@ -27,6 +28,7 @@ export const CONTACT_SMART_LISTS: Array<{
   { id: "hot_lead", label: "Hot leads", short: "Hot" },
   { id: "warm_lead", label: "Warm leads", short: "Warm" },
   { id: "seller_nurture", label: "Seller nurture", short: "Seller" },
+  { id: "prospect", label: "Prospects", short: "Prospect" },
   { id: "stale", label: "Stale (30+ days no touch)", short: "Stale" },
   { id: "no_next_touch", label: "No next touch date", short: "No next touch" },
   {
@@ -53,6 +55,7 @@ const CLASSIFICATION_SET = new Set<ContactClassificationKey>([
   "hot_lead",
   "warm_lead",
   "seller_nurture",
+  "prospect",
 ]);
 
 export function parseSmartListParam(raw: string | null): ContactSmartListId | null {

@@ -31,6 +31,9 @@ import { useSavedViews } from "@/hooks/useSavedViews";
 import { getTasksOpenDefaultSavedView } from "@/lib/savedViewsClientPrefs";
 import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
+import { useDrakoProgress } from "@/hooks/useDrakoProgress";
 
 /** Same Embla behavior as Daily Hub — smaller slide width for compact tiles. */
 const TASKS_TODO_CAROUSEL_OPTS = {
@@ -173,6 +176,8 @@ function PersonalTodoCarouselStrip({
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const { setMood } = useDrako();
+  const { grantXp } = useDrakoProgress();
   const { data: appointments = [], isLoading } = useAppointments();
   const { data: contacts = [] } = useContacts();
   const { data: contactTasks = [], isLoading: ctLoading } = useOpenContactTasksForUser();
@@ -429,12 +434,21 @@ export default function Tasks() {
               renderCard={(todo) => (
                 <PersonalTodoCarouselCard
                   todo={todo}
-                  onToggle={() =>
+                  onToggle={() => {
+                    const markingComplete = !todo.completed;
                     updateTodo.mutate(
-                      { id: todo.id, completed: !todo.completed },
-                      { onError: (e) => toast.error(e.message || "Failed to update") },
-                    )
-                  }
+                      { id: todo.id, completed: markingComplete },
+                      {
+                        onSuccess: () => {
+                          if (markingComplete) {
+                            setMood("celebrate", { caption: pickDrakoLine("taskDone") });
+                            grantXp("taskDone");
+                          }
+                        },
+                        onError: (e) => toast.error(e.message || "Failed to update"),
+                      },
+                    );
+                  }}
                   onDelete={() =>
                     deleteTodo.mutate(todo.id, {
                       onSuccess: () => toast.success("Removed"),
@@ -623,7 +637,11 @@ export default function Tasks() {
                                     outcome: "completed",
                                   },
                                   {
-                                    onSuccess: () => toast.success("Step completed. Next step scheduled."),
+                                    onSuccess: () => {
+                                      toast.success("Step completed. Next step scheduled.");
+                                      setMood("wave", { caption: pickDrakoLine("nurtureStep") });
+                                      grantXp("nurtureStep");
+                                    },
                                     onError: (e) => {
                                       if (isNurtureNoActiveStepError(e)) {
                                         updateContactTask.mutate(
@@ -719,7 +737,10 @@ export default function Tasks() {
                                       outcome: "completed",
                                     },
                                     {
-                                      onSuccess: () => toast.success("Step completed. Next step scheduled."),
+                                      onSuccess: () => {
+                                        toast.success("Step completed. Next step scheduled.");
+                                        setMood("wave", { caption: pickDrakoLine("nurtureStep") });
+                                      },
                                       onError: (e) => {
                                         if (isNurtureNoActiveStepError(e)) {
                                           updateContactTask.mutate(

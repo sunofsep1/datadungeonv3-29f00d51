@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileText,
   Flame,
+  Handshake,
   Home,
   ListTodo,
   Sparkles,
@@ -25,6 +26,7 @@ const LINKS: Array<{ to: string; label: string; hint?: string; icon: typeof User
   { to: "/data-health", label: "Data health", icon: Activity },
   { to: "/annual-reviews", label: "Reviews & events", hint: "Annual reviews", icon: ClipboardCheck },
   { to: "/calendar", label: "Calendar", icon: Calendar },
+  { to: "/touch-report", label: "Touch report", hint: "Daily targets", icon: Handshake },
   { to: "/scripts", label: "Scripts", icon: FileText },
 ];
 

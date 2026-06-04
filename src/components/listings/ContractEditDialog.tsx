@@ -20,6 +20,7 @@ import {
   useOfferConditions,
   useSeedOfferConditions,
   useUpdateOfferCondition,
+  useCreateOfferCondition,
 } from "@/hooks/useOfferConditions";
 import {
   buildDefaultConditions,
@@ -48,6 +49,10 @@ export function ContractEditDialog({ open, onOpenChange, offer, listingId, commi
   const { data: conditions = [] } = useOfferConditions(offer?.id);
   const seedConditions = useSeedOfferConditions();
   const updateCondition = useUpdateOfferCondition();
+  const createCondition = useCreateOfferCondition();
+
+  const [newConditionLabel, setNewConditionLabel] = useState("");
+  const [newConditionDue, setNewConditionDue] = useState("");
 
   const [exchangeDate, setExchangeDate] = useState("");
   const [expUnconditional, setExpUnconditional] = useState("");
@@ -259,33 +264,95 @@ export function ContractEditDialog({ open, onOpenChange, offer, listingId, commi
               {conditions.map((c) => {
                 const status = effectiveConditionStatus(c.status, c.due_date);
                 return (
-                  <li key={c.id} className="flex items-center justify-between gap-2 rounded-md border border-border/70 px-2 py-1.5 text-xs">
-                    <div className="min-w-0">
+                  <li key={c.id} className="rounded-md border border-border/70 px-2 py-1.5 text-xs space-y-1">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="font-medium truncate">{c.label}</p>
-                      <p className="text-muted-foreground">{format(new Date(c.due_date), "d MMM yyyy")}</p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className={cn("rounded border px-1.5 py-0.5 text-[10px]", conditionStatusClass(status))}>
+                      <span className={cn("rounded border px-1.5 py-0.5 text-[10px] shrink-0", conditionStatusClass(status))}>
                         {conditionStatusLabel(status)}
                       </span>
+                    </div>
+                    <Input
+                      type="date"
+                      className="h-7 text-xs"
+                      value={c.due_date.slice(0, 10)}
+                      onChange={(e) =>
+                        void updateCondition.mutateAsync({
+                          id: c.id,
+                          offer_id: c.offer_id,
+                          due_date: e.target.value,
+                        })
+                      }
+                    />
+                    <div className="flex gap-1">
                       {status !== "complete" && status !== "waived" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-[10px] px-2"
-                          onClick={() =>
-                            void updateCondition.mutateAsync({ id: c.id, offer_id: c.offer_id, status: "complete" })
-                          }
-                        >
-                          Done
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[10px] px-2"
+                            onClick={() =>
+                              void updateCondition.mutateAsync({ id: c.id, offer_id: c.offer_id, status: "complete" })
+                            }
+                          >
+                            Done
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[10px] px-2"
+                            onClick={() =>
+                              void updateCondition.mutateAsync({ id: c.id, offer_id: c.offer_id, status: "waived" })
+                            }
+                          >
+                            Waive
+                          </Button>
+                        </>
                       ) : null}
                     </div>
                   </li>
                 );
               })}
             </ul>
+            <div className="flex gap-2 pt-1">
+              <Input
+                className="h-8 text-xs flex-1"
+                placeholder="New condition label"
+                value={newConditionLabel}
+                onChange={(e) => setNewConditionLabel(e.target.value)}
+              />
+              <Input
+                type="date"
+                className="h-8 text-xs w-[130px]"
+                value={newConditionDue}
+                onChange={(e) => setNewConditionDue(e.target.value)}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0"
+                disabled={!newConditionLabel.trim() || !newConditionDue || !offer}
+                onClick={() => {
+                  if (!offer) return;
+                  void createCondition
+                    .mutateAsync({
+                      offer_id: offer.id,
+                      listing_id: listingId,
+                      condition_type: "other",
+                      label: newConditionLabel.trim(),
+                      due_date: newConditionDue,
+                    })
+                    .then(() => {
+                      setNewConditionLabel("");
+                      setNewConditionDue("");
+                    });
+                }}
+              >
+                Add
+              </Button>
+            </div>
           </div>
         ) : null}
 

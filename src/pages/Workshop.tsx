@@ -28,6 +28,7 @@ import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { EmailComposeDialog } from "@/components/contacts/EmailComposeDialog";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
 import { ReiqReadyReckonerCard } from "@/components/workshop/ReiqReadyReckonerCard";
+import { WorkshopContactDetailsPanel } from "@/components/workshop/WorkshopContactDetailsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -114,6 +115,7 @@ export default function Workshop() {
   const [completing, setCompleting] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [smsToNumber, setSmsToNumber] = useState("");
 
   const hasWorkParams = Boolean(todoId || contactTaskId || appointmentId || (reminderOnly && contactId));
 
@@ -312,6 +314,19 @@ export default function Workshop() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
+          {contact && contactId ? (
+            <WorkshopContactDetailsPanel
+              contactId={contactId}
+              contact={contact}
+              nurtureFocus={nurtureParam || isSequenceTask}
+              onEmail={() => setEmailOpen(true)}
+              onSms={(phone) => {
+                setSmsToNumber(phone);
+                setSmsOpen(true);
+              }}
+            />
+          ) : null}
+
           <Card className="zoho-card border-primary/20 bg-primary/5 p-5">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -404,11 +419,11 @@ export default function Workshop() {
         </div>
       </div>
 
-      {contact && primaryPhone ? (
+      {contact && (smsToNumber || primaryPhone) ? (
         <SendSmsDialog
           open={smsOpen}
           onOpenChange={setSmsOpen}
-          to={primaryPhone}
+          to={smsToNumber || primaryPhone!}
           contactId={contactId}
           contactName={contactName ?? undefined}
           firstName={contact.first_name ?? null}

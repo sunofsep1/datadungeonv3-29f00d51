@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useUserReminderPreferences, useUpsertUserReminderPreferences } from "@/hooks/useUserReminderPreferences";
 import { useUserCommunicationSettings, useUpsertUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
+import { useGameMode } from "@/hooks/useGameMode";
 import { toast } from "sonner";
 import { ActivityScheduleBuilderCard } from "@/components/settings/ActivityScheduleBuilderCard";
 import { ListingStageAutomationCard } from "@/components/settings/ListingStageAutomationCard";
@@ -110,6 +111,8 @@ export default function Settings() {
   const location = useLocation();
   const { user } = useAuth();
   const { theme, setTheme, density, setDensity, fontSize, setFontSize } = useTheme();
+  const { gameModeEnabled, setGameModeEnabled, drakoAudioEnabled, setDrakoAudioEnabled } =
+    useGameMode();
   const { commissionRate, setCommissionRate } = useCommissionRate();
   const { data: reminderPrefs, isSuccess: reminderPrefsLoaded } = useUserReminderPreferences();
   const upsertReminder = useUpsertUserReminderPreferences();
@@ -156,6 +159,43 @@ export default function Settings() {
             <div className="space-y-2">
               <Label>Display Name</Label>
               <Input placeholder="Your name" className="bg-input" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Experience / Game Mode */}
+        <Card className="zoho-card p-6 border-border">
+          <div className="flex items-center gap-3 mb-6">
+            <Flame className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Experience</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="game-mode">Game mode</Label>
+                <p className="text-xs text-muted-foreground">
+                  Drako, XP, quests, and the Lair — turn off for a plain CRM.
+                </p>
+              </div>
+              <Switch
+                id="game-mode"
+                checked={gameModeEnabled}
+                onCheckedChange={setGameModeEnabled}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="drako-audio">Drako voice</Label>
+                <p className="text-xs text-muted-foreground">
+                  Play clip audio in the Lair (speech bubbles always show).
+                </p>
+              </div>
+              <Switch
+                id="drako-audio"
+                checked={drakoAudioEnabled}
+                disabled={!gameModeEnabled}
+                onCheckedChange={setDrakoAudioEnabled}
+              />
             </div>
           </div>
         </Card>

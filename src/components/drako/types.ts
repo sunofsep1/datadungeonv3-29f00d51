@@ -12,15 +12,25 @@ export type DrakoMood =
   | 'working'
   | 'coffee-break'
   | 'birthday'
-  | 'growth-chart';
+  | 'growth-chart'
+  | 'levelup'
+  | 'achievement'
+  | 'play'
+  | 'eat'
+  | 'fly'
+  | 'bounce';
 
 export type DrakoAnchor =
   | 'sidebar'
+  | 'sidebar-dock'
+  | 'top-right'
+  | 'stage'
   | 'header'
   | 'center'
   | 'table'
   | 'empty-state'
-  | 'bottom-right';
+  | 'bottom-right'
+  | 'free';
 
 export type DrakoSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -39,10 +49,16 @@ export const DRAKO_ALT: Record<DrakoMood, string> = {
   'coffee-break': 'Drako taking a coffee break',
   birthday: 'Drako celebrating a birthday',
   'growth-chart': 'Drako with a growth chart',
+  levelup: 'Drako leveling up with a burst of energy',
+  achievement: 'Drako unlocking an achievement',
+  play: 'Drako playing in the lair',
+  eat: 'Drako eating a snack',
+  fly: 'Drako flying around the dungeon',
+  bounce: 'Drako bouncing with excitement',
 };
 
 export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
-  sm: 48,
+  sm: 64,
   md: 96,
   lg: 192,
   xl: 384,
@@ -50,9 +66,14 @@ export const DRAKO_SIZE_PX: Record<DrakoSize, number> = {
 
 // Walking frames: reference drako-walk-1/2 when available; companion falls back
 // to idle+working until walk sprites are dropped into public/drako/.
-export const WALK_FRAMES: DrakoMood[] = ['idle', 'working'];
+export const WALK_FRAMES: DrakoMood[] = ['idle', 'bounce'];
 
-export const COMPANION_PX = 128; // fixed size for the floating companion
+export const COMPANION_PX = 168; // live-action video display width
+
+/** Internal canvas scale — 1 = chunky retro grid, matches dungeon bg pixel size. */
+export const DRAKO_VIDEO_RENDER_SCALE = 1;
+
+export type DrakoPresence = 'companion' | 'lair' | 'hidden';
 
 export interface DrakoCompanionState {
   mood: DrakoMood;
@@ -66,8 +87,12 @@ export interface DrakoCompanionState {
 
 export interface DrakoContextValue {
   state: DrakoCompanionState;
+  presence: DrakoPresence;
+  setPresence: (presence: DrakoPresence) => void;
   moveTo: (anchor: DrakoAnchor, opts?: { mood?: DrakoMood; caption?: string }) => void;
   setMood: (mood: DrakoMood, opts?: { caption?: string }) => void;
+  placeAt: (position: { x: number; y: number }) => void;
+  cycleVideoMood: () => void;
   arrive: () => void;
   show: () => void;
   hide: () => void;

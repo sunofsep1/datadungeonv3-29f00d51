@@ -72,6 +72,7 @@ import { MatchBuyersSheet } from "@/components/listings/MatchBuyersSheet";
 import { ListingContactLinksPanel } from "@/components/listings/ListingContactLinksPanel";
 import { ListingOpenInspectionsPanel } from "@/components/listings/ListingOpenInspectionsPanel";
 import { ListingOffersPanel } from "@/components/listings/ListingOffersPanel";
+import { ListingActiveContractPanel } from "@/components/listings/ListingActiveContractPanel";
 import { ListingCommissionPanel } from "@/components/listings/ListingCommissionPanel";
 import { ListingMarketingFundsPanel } from "@/components/listings/ListingMarketingFundsPanel";
 import { ListingInvoicesPanel } from "@/components/listings/ListingInvoicesPanel";
@@ -85,6 +86,9 @@ import {
 } from "@/lib/contactConflictDetection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
+import { useDrakoProgress } from "@/hooks/useDrakoProgress";
 import { useCreateListingOpenInspection } from "@/hooks/useListingOpenInspections";
 import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspection";
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
@@ -178,6 +182,8 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { moveTo, setMood } = useDrako();
+  const { grantXp } = useDrakoProgress();
   const { data: listing, isLoading, isError, refetch } = useListing(id);
   const listingWithContact = listing as (Listing & { contact_id?: string | null }) | null;
   const contactId = listingWithContact?.contact_id ?? undefined;
@@ -335,6 +341,11 @@ export default function ListingDetail() {
       await updateListing.mutateAsync({ id, status });
       toast({ title: "Updated", description: `Status set to ${status}` });
       refetch();
+      if (status === "sold") {
+        moveTo("center", { mood: "fire-breath" });
+        setTimeout(() => setMood("celebrate", { caption: pickDrakoLine("dealClosed") }), 1200);
+        grantXp("dealClosed");
+      }
     } catch (e) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Update failed", variant: "destructive" });
     }
@@ -624,6 +635,8 @@ export default function ListingDetail() {
         title: "Stage updated",
         description: `Pipeline is now ${pipelineStageLabel(newPipelineStage)}. The board will match on refresh.`,
       });
+      setMood("growth-chart", { caption: pickDrakoLine("pipeline") });
+      grantXp("pipelineAdvance");
       setActionModal(null);
       refetch();
     } catch (e) {
@@ -1034,6 +1047,15 @@ export default function ListingDetail() {
         campaignStartAt={kpi.campaignStartAt}
         createdAt={listing.created_at}
       />
+
+      {id ? (
+        <ListingActiveContractPanel
+          listingId={id}
+          listingAddress={listing.address}
+          pipelineStage={listing.pipeline_stage}
+          onListingUpdated={() => void refetch()}
+        />
+      ) : null}
 
       <div id="listing-pricing" className="space-y-6 scroll-mt-28">
         <ListingForSalePanel

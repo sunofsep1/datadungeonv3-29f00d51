@@ -55,7 +55,6 @@ import { PipelineSummary } from "@/components/dashboard/PipelineSummary";
 import { UpcomingInspectionsCard } from "@/components/dashboard/UpcomingInspectionsCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NurtureLiveEnrollments } from "@/components/nurture/NurtureLiveEnrollments";
-import { ClaudeCommandCenterWidget } from "@/components/dashboard/ClaudeCommandCenterWidget";
 import {
   loadDashboardWidgetOrder,
   saveDashboardWidgetOrder,
@@ -327,8 +326,6 @@ export default function Dashboard() {
     switch (id) {
       case "commandCenter":
         return <DashboardCommandCenter />;
-      case "claudeOps":
-        return <ClaudeCommandCenterWidget />;
       case "visionBoard":
         return <VisionBoard />;
       case "affirmations":
@@ -635,17 +632,19 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in flex min-h-0 flex-1 flex-col gap-4 pb-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 text-[11px]"
+            onClick={() => setManageWidgetsOpen(true)}
+          >
+            Manage widgets
+          </Button>
+        </div>
         <DashboardWelcomeHeader />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 shrink-0 self-end text-[11px] sm:self-start"
-          onClick={() => setManageWidgetsOpen(true)}
-        >
-          Manage widgets
-        </Button>
       </div>
 
       {widgetOrder.length === 0 ? (

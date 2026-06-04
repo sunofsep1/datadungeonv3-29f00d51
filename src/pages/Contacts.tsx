@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useDrako } from "@/components/drako";
+import { pickDrakoLine } from "@/lib/drakoDialogue";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { format, isValid, parseISO } from "date-fns";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
@@ -126,6 +128,11 @@ import {
   type ContactClassificationKey,
   type ContactSmartListId,
 } from "@/lib/contactSmartLists";
+import { contactMatchesMarket, findMarketById } from "@/lib/contactMarkets";
+import {
+  CONTACT_MARKETS_EVENT,
+  loadContactMarkets,
+} from "@/lib/contactMarketsPrefs";
 import { isContactUnreachableForAutomation } from "@/lib/contactAutomationReachability";
 import { SavedViewsMenu } from "@/components/saved-views/SavedViewsMenus";
 import {
@@ -239,20 +246,22 @@ const AUSTRALIAN_STATES = [
   { value: "ACT", label: "Australian Capital Territory" },
 ];
 
-export type ContactCategory = "immediate" | "priority" | "planned" | "backlog";
+export type ContactCategory = "immediate" | "priority" | "planned" | "backlog" | "prospect";
 type ContactClassificationCategory =
   | "top_100"
   | "past_client"
   | "referral_partner"
   | "hot_lead"
   | "warm_lead"
-  | "seller_nurture";
+  | "seller_nurture"
+  | "prospect";
 
 const CONTACT_CATEGORIES: { value: ContactCategory; label: string; bg: string; border: string }[] = [
   { value: "immediate", label: "Immediate", bg: "bg-red-500", border: "border-red-500" },
   { value: "priority", label: "Priority", bg: "bg-amber-500", border: "border-amber-500" },
   { value: "planned", label: "Planned", bg: "bg-sky-500", border: "border-sky-500" },
   { value: "backlog", label: "Backlog", bg: "bg-emerald-500", border: "border-emerald-500" },
+  { value: "prospect", label: "Prospect", bg: "bg-purple-500", border: "border-purple-500" },
 ];
 
 const CONTACT_CLASSIFICATION_CATEGORIES: Array<{
@@ -265,12 +274,13 @@ const CONTACT_CLASSIFICATION_CATEGORIES: Array<{
   { value: "hot_lead", label: "Hot Lead" },
   { value: "warm_lead", label: "Warm Lead" },
   { value: "seller_nurture", label: "Seller Nurture" },
+  { value: "prospect", label: "Prospect" },
 ];
 
 function normalizeLegacyCategory(value: string | null | undefined): ContactCategory | null {
   const raw = String(value ?? "").trim().toLowerCase();
   if (!raw) return null;
-  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog") {
+  if (raw === "immediate" || raw === "priority" || raw === "planned" || raw === "backlog" || raw === "prospect") {
     return raw as ContactCategory;
   }
   const legacyMap: Record<string, ContactCategory> = {
@@ -279,7 +289,7 @@ function normalizeLegacyCategory(value: string | null | undefined): ContactCateg
     yellow: "priority",
     green: "planned",
     blue: "planned",
-    purple: "backlog",
+    purple: "prospect",
     pink: "backlog",
     gray: "backlog",
   };
@@ -296,7 +306,8 @@ function normalizeContactClassificationCategory(
     raw === "referral_partner" ||
     raw === "hot_lead" ||
     raw === "warm_lead" ||
-    raw === "seller_nurture"
+    raw === "seller_nurture" ||
+    raw === "prospect"
   ) {
     return raw as ContactClassificationCategory;
   }
@@ -438,8 +449,22 @@ function buildNormalizedExistingContact(contact: ContactWithMeta): Record<string
 
 export default function Contacts() {
   const navigate = useNavigate();
+  const { moveTo } = useDrako();
   const [searchParams, setSearchParams] = useSearchParams();
   const smartParam = searchParams.get("smart");
+  const marketParam = searchParams.get("market");
+  const [contactMarkets, setContactMarkets] = useState(() => loadContactMarkets());
+
+  useEffect(() => {
+    const sync = () => setContactMarkets(loadContactMarkets());
+    window.addEventListener(CONTACT_MARKETS_EVENT, sync);
+    return () => window.removeEventListener(CONTACT_MARKETS_EVENT, sync);
+  }, []);
+
+  const activeMarket = useMemo(
+    () => findMarketById(contactMarkets, marketParam),
+    [contactMarkets, marketParam],
+  );
   const { data: contacts, isLoading, isError, refetch } = useContacts();
   const reviewYear = new Date().getFullYear();
   const { data: reviewStatusByContact = new Map<string, string>() } =
@@ -893,6 +918,10 @@ export default function Contacts() {
       );
     }
 
+    if (activeMarket) {
+      list = list.filter((c) => contactMatchesMarket(c, activeMarket));
+    }
+
     // Sorting: derive last name from full name (last word = surname)
     const getLastNameForSort = (c: ContactWithMeta): string => {
       const name = (c.name || "").trim();
@@ -950,6 +979,7 @@ export default function Contacts() {
     subscriptionIndex,
     reviewStatusByContact,
     sortBy,
+    activeMarket,
   ]);
 
   // Pagination
@@ -959,6 +989,14 @@ export default function Contacts() {
   }, [filteredAndSortedContacts, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(filteredAndSortedContacts.length / itemsPerPage);
+
+  useEffect(() => {
+    if (filteredAndSortedContacts.length === 0) {
+      moveTo("empty-state", { mood: "sleeping", caption: pickDrakoLine("empty") });
+    } else if (filteredAndSortedContacts.length > 0) {
+      moveTo("stage", { mood: "idle" });
+    }
+  }, [filteredAndSortedContacts.length === 0, moveTo]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -1007,9 +1045,17 @@ export default function Contacts() {
     hasActiveSubscriptionFilters({
       kind: filterSubscriptionKind,
       mode: filterSubscriptionMode,
-    });
+    }) ||
+    Boolean(activeMarket);
 
-  const clearSmartListParam = () => setSearchParams({}, { replace: true });
+  const clearSmartListParam = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("smart");
+      next.delete("market");
+      return next;
+    }, { replace: true });
+  };
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -1568,7 +1614,13 @@ export default function Contacts() {
     const lastTouch = getLastTouchDate(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
     const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
-    const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
+    const displayName = getContactDisplayName(contact);
+    const companyOrRole = [contact.company_name, (contact as { job_title?: string | null }).job_title]
+      .map((v) => v?.trim())
+      .filter(Boolean)
+      .join(" · ");
+    const initials = getInitials(undefined, undefined, displayName);
+    const hasHighScore = contact.lead_score != null && contact.lead_score >= 70;
     return (
       <>
         <td className="w-10 py-2 px-2 md:px-3 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -1589,7 +1641,7 @@ export default function Contacts() {
         </td>
         <td className="py-2 px-3 md:py-2 md:px-4 align-middle">
           <div className="flex items-center gap-2.5 min-w-0">
-            <AvatarCircle name={getContactDisplayName(contact)} initials={initials} size="sm" />
+            <AvatarCircle name={displayName} initials={initials} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 {effectiveCategory && (
@@ -1598,8 +1650,16 @@ export default function Contacts() {
                     title={CONTACT_CATEGORIES.find((c) => c.value === effectiveCategory)?.label}
                   />
                 )}
-                <span className="font-medium text-foreground text-sm truncate block">{getContactDisplayName(contact)}</span>
+                <span className="font-medium text-foreground text-sm truncate block">{displayName}</span>
+                {hasHighScore ? (
+                  <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0 text-[10px] font-medium tabular-nums text-primary">
+                    {contact.lead_score}
+                  </span>
+                ) : null}
               </div>
+              {companyOrRole ? (
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{companyOrRole}</p>
+              ) : null}
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-muted-foreground text-xs">
                 {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{formatPhoneDisplay(primaryPhone)}</span>}
                 {primaryEmail && <span className="truncate">{primaryEmail}</span>}
@@ -1668,7 +1728,11 @@ export default function Contacts() {
     const effectiveCategory = getEffectiveCategory(contact);
     const daysSinceTouch = getDaysSinceLastTouch(contact);
     const displayName = getContactDisplayName(contact);
-    const initials = getInitials(undefined, undefined, getContactDisplayName(contact));
+    const companyOrRole = [contact.company_name, (contact as { job_title?: string | null }).job_title]
+      .map((v) => v?.trim())
+      .filter(Boolean)
+      .join(" · ");
+    const initials = getInitials(undefined, undefined, displayName);
     const sourceLabel = String(contact.source ?? "").trim();
     const nextTouchRaw = (contact as { next_touch_date?: string | null }).next_touch_date;
     const nextTouch = nextTouchRaw ? new Date(nextTouchRaw) : null;
@@ -1733,6 +1797,10 @@ export default function Contacts() {
             <span className="truncate text-[15px] font-semibold text-foreground">{displayName}</span>
             {isOverdueForTouch ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" /> : null}
           </div>
+
+          {companyOrRole ? (
+            <p className="truncate text-[11px] text-muted-foreground">{companyOrRole}</p>
+          ) : null}
 
           <div className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
             {effectiveCategory ? (
@@ -1819,6 +1887,9 @@ export default function Contacts() {
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link to="/contacts/markets">My Markets</Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
               <Link to="/contacts/requirements-search">Requirements search</Link>
             </Button>
             <SavedViewsMenu
@@ -1867,6 +1938,35 @@ export default function Contacts() {
           );
         })}
       </div>
+
+      {activeMarket && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 -mt-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            {activeMarket.label}
+            <span className="text-primary/70">· {filteredAndSortedContacts.length}</span>
+            <button
+              type="button"
+              className="rounded-full p-0.5 hover:bg-primary/20"
+              aria-label="Clear market filter"
+              onClick={() => {
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.delete("market");
+                  return next;
+                }, { replace: true });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Link to="/contacts/markets">All markets</Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Link to={`/contacts/markets?market=${encodeURIComponent(activeMarket.id)}`}>View on map</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="mb-5 rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -2849,7 +2949,7 @@ export default function Contacts() {
                     {paginatedContacts.map((contact) => (
                       <tr
                         key={contact.id}
-                        className="group border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                        className="group border-b border-border/60 last:border-b-0 hover:bg-accent/30 transition-colors cursor-pointer"
                         onClick={() => navigate(`/contacts/${contact.id}`)}
                       >
                         {renderContactListRow(contact)}

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileSpreadsheet, Check, AlertCircle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,6 +18,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useContacts, useCreateContact, useUpdateContact, getPrimaryEmail, getPrimaryPhone } from "@/hooks/useContacts";
 import { useProperties, useCreateProperty } from "@/hooks/useProperties";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
+import { useListings } from "@/hooks/useListings";
+import { useAddListingContactLink } from "@/hooks/useListingContactLinks";
+import { useCreateBuyerRequirement } from "@/hooks/useBuyerRequirements";
+import { useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useTags, useCreateTag } from "@/hooks/useTags";
 import { useAddContactTag } from "@/hooks/useContactTags";
 import type { ContactWithMeta } from "@/hooks/useContacts";
@@ -34,6 +39,8 @@ interface CSVImportDialogProps {
 }
 
 const PREVIEW_ROWS = 20;
+
+type ImportMode = "contacts_only" | "property_owners" | "buyer_enquiries";
 
 const MAP_OPTIONS = [
   { value: "name", label: "Name *", required: true },
@@ -54,6 +61,11 @@ const MAP_OPTIONS = [
   { value: "dnc_sms", label: "Do not SMS (Yes/No)" },
   { value: "dnc_email", label: "Do not email (Yes/No)" },
   { value: "agentbox_id", label: "Agentbox ID (appended to notes)" },
+  { value: "price_min", label: "Buyer budget min" },
+  { value: "price_max", label: "Buyer budget max" },
+  { value: "beds_min", label: "Beds min (buyer brief)" },
+  { value: "suburbs_req", label: "Suburbs (buyer brief, comma-separated)" },
+  { value: "property_type_req", label: "Property type (buyer brief)" },
   { value: "skip", label: "-- Skip --" },
 ];
 
@@ -104,10 +116,14 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const { toast } = useToast();
   const { data: existingContacts = [] } = useContacts();
   const { data: existingProperties = [] } = useProperties();
+  const { data: listings = [] } = useListings();
   const createContact = useCreateContact();
   const updateContact = useUpdateContact();
   const createProperty = useCreateProperty();
   const createLink = useCreateContactPropertyLink();
+  const addListingLink = useAddListingContactLink();
+  const createBuyerRequirement = useCreateBuyerRequirement();
+  const createActivityLog = useCreateActivityLog();
   const { data: existingTags = [] } = useTags();
   const createTag = useCreateTag();
   const addContactTag = useAddContactTag();
@@ -116,13 +132,16 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<number, string>>({});
-  const [createPropertiesFromAddress, setCreatePropertiesFromAddress] = useState(true);
+  const [importMode, setImportMode] = useState<ImportMode>("contacts_only");
+  const [targetListingId, setTargetListingId] = useState("");
+  const [createPropertiesFromAddress, setCreatePropertiesFromAddress] = useState(false);
   const [progress, setProgress] = useState(0);
   const [created, setCreated] = useState(0);
   const [updated, setUpdated] = useState(0);
   const [skipped, setSkipped] = useState(0);
   const [propertiesCreated, setPropertiesCreated] = useState(0);
   const [linksCreated, setLinksCreated] = useState(0);
+  const [buyerLinksCreated, setBuyerLinksCreated] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
 
   const tagNameToId = useMemo(() => {
@@ -150,13 +169,16 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     setCsvData([]);
     setHeaders([]);
     setMapping({});
-    setCreatePropertiesFromAddress(true);
+    setImportMode("contacts_only");
+    setTargetListingId("");
+    setCreatePropertiesFromAddress(false);
     setProgress(0);
     setCreated(0);
     setUpdated(0);
     setSkipped(0);
     setPropertiesCreated(0);
     setLinksCreated(0);
+    setBuyerLinksCreated(0);
     setErrors([]);
   };
 
@@ -265,7 +287,8 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       up = 0,
       sk = 0,
       propsCreated = 0,
-      linksCreated = 0;
+      linksCreated = 0,
+      buyerLinks = 0;
     const total = mappedRows.length;
     const tagMap = new Map(tagNameToId);
 
@@ -427,8 +450,59 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           );
         }
 
-        // Create property from address if enabled and address data exists
-        if (createPropertiesFromAddress && (addr.addressLine1 || addr.suburb || addr.state || addr.postcode)) {
+        // Buyer enquiries → listing (not property owners)
+        if (importMode === "buyer_enquiries" && targetListingId) {
+          try {
+            await addListingLink.mutateAsync({
+              listing_id: targetListingId,
+              contact_id: contactId,
+              role: "prospective_buyer",
+            });
+            buyerLinks++;
+          } catch {
+            /* may already be linked */
+          }
+          const listing = listings.find((l) => l.id === targetListingId);
+          await createActivityLog.mutateAsync({
+            activity_type: "note",
+            title: `Enquiry — ${r.name}`,
+            description: addr.addressLine1
+              ? `Enquired on ${addr.addressLine1}${addr.suburb ? `, ${addr.suburb}` : ""}`
+              : r.notes?.trim() || null,
+            listing_id: targetListingId,
+            contact_id: contactId,
+          });
+          const priceMin = r.price_min ? Number(r.price_min.replace(/[^0-9.]/g, "")) : null;
+          const priceMax = r.price_max ? Number(r.price_max.replace(/[^0-9.]/g, "")) : null;
+          const bedsMin = r.beds_min ? parseInt(r.beds_min, 10) : null;
+          const suburbs = r.suburbs_req
+            ? r.suburbs_req.split(",").map((s) => s.trim()).filter(Boolean)
+            : [];
+          if (priceMin || priceMax || bedsMin || suburbs.length || r.property_type_req) {
+            try {
+              await createBuyerRequirement.mutateAsync({
+                contact_id: contactId,
+                action: "buy",
+                state: addr.state || "QLD",
+                suburbs,
+                price_min: Number.isFinite(priceMin!) && priceMin! > 0 ? priceMin : null,
+                price_max: Number.isFinite(priceMax!) && priceMax! > 0 ? priceMax : null,
+                beds_min: Number.isFinite(bedsMin!) && bedsMin! > 0 ? bedsMin : null,
+                property_type: r.property_type_req?.trim() || null,
+                notes: listing?.address ? `Import — enquired on ${listing.address}` : null,
+              });
+            } catch {
+              /* skip brief */
+            }
+          }
+        }
+
+        // Create property from address if vendor import mode
+        if (
+          importMode === "property_owners" &&
+          createPropertiesFromAddress &&
+          (addr.addressLine1 || addr.suburb || addr.state || addr.postcode)
+        ) {
           const addressLine1 = addr.addressLine1;
           const suburb = addr.suburb;
           let state = addr.state;
@@ -508,6 +582,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       setSkipped(sk);
       setPropertiesCreated(propsCreated);
       setLinksCreated(linksCreated);
+      setBuyerLinksCreated(buyerLinks);
     }
 
     setErrors(errs);
@@ -515,6 +590,9 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
     qc.invalidateQueries({ queryKey: ["properties"] });
     qc.invalidateQueries({ queryKey: ["contact"] });
     qc.invalidateQueries({ queryKey: ["property"] });
+    qc.invalidateQueries({ queryKey: ["listing_contact_links"] });
+    qc.invalidateQueries({ queryKey: ["listings"] });
+    qc.invalidateQueries({ queryKey: ["buyer_requirements"] });
     qc.invalidateQueries({ queryKey: ["tags"] });
     setStep("complete");
   };
@@ -580,21 +658,74 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="create-props"
-                checked={createPropertiesFromAddress}
-                onCheckedChange={(v) => setCreatePropertiesFromAddress(!!v)}
-              />
-              <Label htmlFor="create-props" className="text-sm">
-                Create properties from address columns and link contacts as owners
-              </Label>
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <Label className="text-sm font-medium">Import mode</Label>
+              <RadioGroup
+                value={importMode}
+                onValueChange={(v) => {
+                  const mode = v as ImportMode;
+                  setImportMode(mode);
+                  if (mode === "property_owners") setCreatePropertiesFromAddress(true);
+                  else setCreatePropertiesFromAddress(false);
+                }}
+                className="space-y-2"
+              >
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="contacts_only" className="mt-0.5" />
+                  <span>Contacts only — no property or listing links</span>
+                </label>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="buyer_enquiries" className="mt-0.5" />
+                  <span>
+                    <strong>Buyer enquiries → listing</strong> — link as prospective buyers (portal/REA exports)
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="property_owners" className="mt-0.5" />
+                  <span>
+                    Property vendors — create property from address and link as <strong>owners</strong> (not enquiries)
+                  </span>
+                </label>
+              </RadioGroup>
+              {importMode === "buyer_enquiries" && (
+                <div>
+                  <Label className="text-xs">Target listing *</Label>
+                  <Select value={targetListingId || "__none__"} onValueChange={(v) => setTargetListingId(v === "__none__" ? "" : v)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select listing campaign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Select listing…</SelectItem>
+                      {listings.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.address ?? "Listing"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {importMode === "property_owners" && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="create-props"
+                    checked={createPropertiesFromAddress}
+                    onCheckedChange={(v) => setCreatePropertiesFromAddress(!!v)}
+                  />
+                  <Label htmlFor="create-props" className="text-sm">
+                    Create property records from address columns and link contacts as owners
+                  </Label>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStep("upload")}>
                 Back
               </Button>
-              <Button onClick={() => setStep("preview")} disabled={!hasName}>
+              <Button
+                onClick={() => setStep("preview")}
+                disabled={!hasName || (importMode === "buyer_enquiries" && !targetListingId)}
+              >
                 Next: Preview
               </Button>
             </div>
@@ -682,7 +813,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
           <div className="space-y-4 mt-4 text-center py-6">
             <Progress value={progress} className="h-2 max-w-xs mx-auto" />
             <p className="text-sm font-medium">Importing… {created} contacts created, {updated} updated, {skipped} skipped</p>
-            <p className="text-xs text-muted-foreground">{propertiesCreated} properties, {linksCreated} owner links</p>
+            <p className="text-xs text-muted-foreground">{propertiesCreated} properties, {linksCreated} owner links, {buyerLinksCreated} listing buyer links</p>
           </div>
         )}
 

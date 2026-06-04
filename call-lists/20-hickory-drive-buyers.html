@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📞 Buyer Call List — 20 Hickory Drive, Narangba</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #f8f8f8;
+      color: #333;
+      line-height: 1.5;
+    }
+    
+    .header {
+      background: white;
+      padding: 40px 20px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .header h1 {
+      font-size: 26px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    
+    .header p {
+      font-size: 12px;
+      color: #999;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+    
+    .section {
+      margin-bottom: 45px;
+    }
+    
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    
+    .section-header .emoji {
+      font-size: 18px;
+    }
+    
+    .section-header .count {
+      margin-left: auto;
+      font-size: 12px;
+      color: #999;
+      font-weight: normal;
+    }
+    
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .card {
+      background: white;
+      padding: 20px;
+      border-bottom: 1px solid #f0f0f0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    
+    .card:last-child {
+      border-bottom: none;
+    }
+    
+    .card-number {
+      font-size: 18px;
+      font-weight: 600;
+      color: #999;
+      min-width: 30px;
+      padding-top: 2px;
+    }
+    
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .card-name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    
+    .card-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    
+    .card-role {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      background: #f5f5f5;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    
+    .meta-badge.hot { background: #ffebee; color: #d32f2f; }
+    .meta-badge.warm { background: #fff3e0; color: #f57c00; }
+    .meta-badge.cold { background: #e3f2fd; color: #1e5a96; }
+    
+    .card-wants {
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    .card-wants strong {
+      color: #333;
+    }
+    
+    .card-note {
+      font-size: 12px;
+      color: #999;
+      font-style: italic;
+      margin-top: 2px;
+    }
+    
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .btn {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .btn:hover {
+      background: #fafafa;
+      border-color: #bbb;
+    }
+    
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #999;
+      margin-top: 40px;
+      padding: 20px 0;
+    }
+    
+    @media (max-width: 600px) {
+      .card {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .card-number { order: -1; }
+      .card-meta { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📞 Buyer Call List — 20 Hickory Drive, Narangba</h1>
+    <p>QLD 4504 · Pre-qualified active buyers · Cross-checked against DataDungeon CRM · Generated 2 June 2026</p>
+  </div>
+  
+  <div class="container">
+    
+    <div class="section">
+      <div class="section-header">
+        <span class="emoji">🔴</span>
+        <span>HOT — Active Buyers, Want to Inspect or Settle Fast</span>
+        <span class="count">9 contacts</span>
+      </div>
+      <div class="cards">
+        
+        <div class="card">
+          <div class="card-number">1</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Jimmy C</span>
+              <span class="card-role">Investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 16 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide</div>
+            <div class="card-note">Can settle in 45 days. Looking for similar house in this area. Top priority call.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">2</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Katherine Zappala</span>
+              <span class="card-role">First Home Buyer, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 20 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide</div>
+            <div class="card-note">"Would you have any upcoming inspections? Do the owners have a rough price they are after?"</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">3</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Olive Wilson</span>
+              <span class="card-role">First Home Buyer, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 1 Jun</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide + rates info</div>
+            <div class="card-note">Most recent enquiry. "What is the price guide here?"</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">4</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Samarjit Vasran</span>
+              <span class="card-role">Investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 10 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide + rates info</div>
+            <div class="card-note">Active buyer with full pre-approval.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">5</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Kacey Raffin</span>
+              <span class="card-role">Buy & Sell investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 9 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide</div>
+            <div class="card-note">Portfolio investor, pre-qualified.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">6</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Shayana Hardy</span>
+              <span class="card-role">Buy & Sell investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 23 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect</div>
+            <div class="card-note">Ready to move forward with inspection.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">7</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Nericha de Kock</span>
+              <span class="card-role">Buy & Sell investor</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 22 May</span>
+              <span class="meta-badge">Finance TBA</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide</div>
+            <div class="card-note">Interested buyer, finance status pending.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">8</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Josh Wonka</span>
+              <span class="card-role">First Home Buyer, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 12 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide</div>
+            <div class="card-note">Active first-time buyer ready to view.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">9</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Harrison Drummond-Hills</span>
+              <span class="card-role">First Home Buyer</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge hot">⚡ Enquired 5 May</span>
+              <span class="meta-badge">Finance TBA</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Inspect + price guide</div>
+            <div class="card-note">"Please provide price guide and next available inspection date and time."</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-header">
+        <span class="emoji">🟡</span>
+        <span>WARM — Pre-Approved Active Buyers</span>
+        <span class="count">8 contacts</span>
+      </div>
+      <div class="cards">
+        
+        <div class="card">
+          <div class="card-number">10</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Chrystal Haberecht</span>
+              <span class="card-role">Investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge warm">⚡ Enquired 19 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide</div>
+            <div class="card-note">Waiting on pricing signal.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">11</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Jeff Marques</span>
+              <span class="card-role">Buy & Sell investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge warm">⚡ Enquired 15 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide</div>
+            <div class="card-note">Portfolio investor monitoring market.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">12</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Zoe Barrow</span>
+              <span class="card-role">Buy & Sell investor, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge warm">⚡ Enquired 11 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide</div>
+            <div class="card-note">Pre-qualified, awaiting pricing.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">13</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Rachel Oxenham</span>
+              <span class="card-role">First Home Buyer, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge warm">⚡ Enquired 6 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide</div>
+            <div class="card-note">FHB ready to move if price aligns.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">14</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Brenda-Lee Scott</span>
+              <span class="card-role">First Home Buyer, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge warm">⚡ Enquired 5 May</span>
+              <span class="meta-badge">Pre-approval ready</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide</div>
+            <div class="card-note">Pre-approved FHB seeking guidance.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">15</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Andrew Mann</span>
+              <span class="card-role">CRM sourced contact</span>
+            </div>
+            <div class="card-meta">
+              <span>📋 From CRM</span>
+              
+              <span class="meta-badge warm">⚡ Enquired 6 May</span>
+              <span class="meta-badge">Finance TBA</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Market context</div>
+            <div class="card-note">Greg replied with CMA on 6 May. Already has market context.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">16</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Mohammed Shakir Ali</span>
+              <span class="card-role">CRM sourced contact</span>
+            </div>
+            <div class="card-meta">
+              <span>📋 From CRM</span>
+              
+              <span class="meta-badge warm">⚡ Enquired 6 May</span>
+              <span class="meta-badge">Finance TBA</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Market context</div>
+            <div class="card-note">Full name & phone from CRM — Greg replied with CMA on 6 May.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">17</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Rebecca Topham</span>
+              <span class="card-role">CRM sourced contact</span>
+            </div>
+            <div class="card-meta">
+              <span>📋 From CRM</span>
+              
+              <span class="meta-badge warm">⚡ Enquired 6 May</span>
+              <span class="meta-badge">Finance TBA</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Market context</div>
+            <div class="card-note">Greg replied with CMA on 6 May. Follow up on interest.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-header">
+        <span class="emoji">🔵</span>
+        <span>COOL — Price-Checkers & Market Monitors</span>
+        <span class="count">5 contacts</span>
+      </div>
+      <div class="cards">
+        
+        <div class="card">
+          <div class="card-number">18</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Jodie Danckert</span>
+              <span class="card-role">Buy & Sell investor</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge cold">⚡ Enquired 11 May</span>
+              <span class="meta-badge">No pre-approval yet</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide</div>
+            <div class="card-note">Not yet pre-approved. Light follow-up.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">19</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Cameron Clark</span>
+              <span class="card-role">General enquiry</span>
+            </div>
+            <div class="card-meta">
+              <span>📱 (corrected)</span>
+              
+              <span class="meta-badge cold">⚡ Enquired 20 May</span>
+              <span class="meta-badge">Finance unknown</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide only</div>
+            <div class="card-note">"Is there a rough price the seller is after?" — CRM phone corrected (was missing digit).</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">20</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Pieter Kruger</span>
+              <span class="card-role">Market monitor</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge cold">⚡ Enquired 19 May</span>
+              <span class="meta-badge">Monitoring market</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide (market research)</div>
+            <div class="card-note">Investor monitoring market trends.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">21</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Sarah Bekkers</span>
+              <span class="card-role">Market monitor</span>
+            </div>
+            <div class="card-meta">
+              
+              
+              <span class="meta-badge cold">⚡ Enquired 8 May</span>
+              <span class="meta-badge">No pre-approval yet</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide only</div>
+            <div class="card-note">"Just after a price guide please." Low urgency.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-number">22</div>
+          <div class="card-content">
+            <div class="card-name-row">
+              <span class="card-name">Kira Towner</span>
+              <span class="card-role">First Home Buyer, pre-approved</span>
+            </div>
+            <div class="card-meta">
+              <span>📵 No phone</span>
+              <span>kjtowner@hotmail.com</span>
+              <span class="meta-badge cold">⚡ Enquired 6 May</span>
+              <span class="meta-badge">Email only</span>
+            </div>
+            <div class="card-wants"><strong>Wants:</strong> Price guide + rates info</div>
+            <div class="card-note">Pre-approved FHB but no phone on file. Email contact only.</div>
+            <div class="card-actions">
+              <button class="btn">Called</button>
+              <button class="btn">Follow-up</button>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+  </div>
+  
+  <div class="footer">
+    20 Hickory Drive, Narangba QLD 4504 · Buyer Enquiry Call List · CRM-verified 2 June 2026 · DataDungeon
+  </div>
+</body>
+</html>

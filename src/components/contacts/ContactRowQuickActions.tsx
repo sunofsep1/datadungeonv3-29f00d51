@@ -53,6 +53,7 @@ const CLASSIFICATION_OPTIONS = [
   { value: "hot_lead", label: "Hot lead" },
   { value: "warm_lead", label: "Warm lead" },
   { value: "seller_nurture", label: "Seller nurture" },
+  { value: "prospect", label: "Prospect" },
 ] as const;
 
 const URGENCY_LANE_OPTIONS = [
@@ -60,6 +61,7 @@ const URGENCY_LANE_OPTIONS = [
   { value: "priority", label: "Priority" },
   { value: "planned", label: "Planned" },
   { value: "backlog", label: "Backlog" },
+  { value: "prospect", label: "Prospect" },
 ] as const;
 
 function normalizeClassification(value: string): (typeof CLASSIFICATION_OPTIONS)[number]["value"] {

@@ -160,7 +160,7 @@ export type ContactPropertyLinkRow = {
   property_id: string;
   role?: string;
   notes?: string | null;
-  properties: { address_line1: string | null; city: string | null; state: string | null; postcode: string | null } | null;
+  properties: { address_line1: string | null; suburb?: string | null; city: string | null; state: string | null; postcode: string | null } | null;
 };
 export type ContactAddressRow = {
   id: string;
@@ -320,7 +320,7 @@ export function useContacts() {
           const propertyIds = [...new Set(links.map((l: { property_id: string }) => l.property_id))];
           const { data: propertyRows } = await (supabase as any)
             .from("properties")
-            .select("id, address_line1, address_line2, city, state, postcode, country, property_type")
+            .select("id, address_line1, address_line2, city, suburb, state, postcode, country, property_type")
             .in("id", propertyIds);
           const propertyMap = new Map(
             (propertyRows ?? []).map((p: { id: string }) => [p.id, p])
@@ -344,6 +344,7 @@ export function useContacts() {
                   properties: prop
                     ? {
                         address_line1: prop.address_line1 ?? null,
+                        suburb: prop.suburb ?? null,
                         city: prop.city ?? null,
                         state: prop.state ?? null,
                         postcode: prop.postcode ?? null,

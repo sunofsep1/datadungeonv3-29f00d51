@@ -8,6 +8,58 @@ html {
 body {
   background-color: hsl(222 47% 6%);
 }
+
+/* My Markets map — Google Maps info window readability */
+.gm-style-iw-d {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: #0f172a !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  max-height: min(320px, 50vh) !important;
+  padding: 2px 4px 2px 0 !important;
+  overscroll-behavior: contain;
+}
+
+.gm-style-iw-c {
+  padding: 14px 16px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18) !important;
+  overflow: hidden !important;
+}
+
+.gm-style-iw-chr {
+  height: 36px !important;
+}
+
+.gm-style-iw-ch {
+  padding-top: 0 !important;
+}
+
+/* Clickable UI — standard arrow cursor, no hand/grab pointers */
+@layer base {
+  a,
+  button,
+  [role="button"],
+  label[for],
+  summary {
+    cursor: default;
+  }
+}
+
+@layer utilities {
+  .cursor-pointer,
+  .cursor-grab,
+  .cursor-grabbing,
+  .active\:cursor-grabbing:active {
+    cursor: default;
+  }
+}
+
+.drako-lair-sprite-inner {
+  cursor: default;
+}
 #root {
   min-height: 100vh;
   background-color: hsl(222 47% 6%) !important;
@@ -2326,9 +2378,425 @@ html.theme-retro-wave-dusk #root {
   }
 }
 
-/* Dashboard clock: theme-aware glow (dark themes only) */
+/* Dashboard clock: theme-aware glow */
+.dashboard-clock-glow {
+  text-shadow: 0 0 8px hsl(var(--teal) / 0.55), 0 0 16px hsl(var(--teal) / 0.25);
+}
+
 html:not(.light) .dashboard-clock-glow {
-  text-shadow: 0 0 6px hsl(var(--teal) / 0.8), 0 0 12px hsl(var(--teal) / 0.4);
+  text-shadow: 0 0 10px hsl(var(--teal) / 0.85), 0 0 22px hsl(var(--teal) / 0.45), 0 0 36px hsl(var(--teal) / 0.2);
+}
+
+.dashboard-clock-seconds {
+  animation: dashboard-clock-tick 1s step-end infinite;
+}
+
+@keyframes dashboard-clock-tick {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes drako-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes drako-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes drako-waddle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+.dashboard-clock-progress {
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.45);
+}
+
+/* Drako pixel sprites — grounded glow, no white-box paste look */
+.drako-sprite {
+  isolation: isolate;
+}
+
+.drako-sprite-img {
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 8px hsl(var(--primary) / 0.28));
+}
+
+.drako-caption-bubble {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Live-action loops — canvas chroma key (OpenArt mattes) */
+.drako-sprite-video {
+  isolation: isolate;
+}
+
+.drako-video-img {
+  object-fit: contain;
+  pointer-events: none;
+  background: transparent;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 12px hsl(var(--primary) / 0.25));
+}
+
+/* Lair — blend live Drako into retro dungeon scene (subtle, not full pixel swap) */
+.drako-lair-sprite-wrap {
+  isolation: isolate;
+}
+
+.drako-lair-sprite-wrap::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -4px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55) 0%, transparent 72%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.drako-lair-sprite-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  border-radius: 4px;
+  opacity: 0.35;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.07) 2px,
+    rgba(0, 0, 0, 0.07) 4px
+  );
+}
+
+.drako-lair-sprite-wrap .drako-lair-video .drako-video-img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter:
+    contrast(1.08)
+    saturate(0.9)
+    brightness(0.96)
+    drop-shadow(0 4px 0 rgba(30, 10, 50, 0.5))
+    drop-shadow(0 0 14px hsl(280 45% 35% / 0.28));
+}
+
+.drako-lair-sprite-wrap .drako-speech-bubble-retro {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.02em;
+  border-color: hsl(280 35% 38% / 0.65);
+  background: hsl(260 28% 12% / 0.92);
+  box-shadow:
+    0 0 0 1px hsl(280 50% 55% / 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 hsl(280 40% 70% / 0.08);
+}
+
+/* Companion — same chunky pixel grid as lair */
+.drako-companion-sprite-inner {
+  cursor: default;
+}
+
+.drako-companion-video .drako-video-img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter:
+    contrast(1.06)
+    saturate(0.92)
+    brightness(0.98)
+    drop-shadow(0 3px 0 rgba(30, 10, 50, 0.45))
+    drop-shadow(0 0 10px hsl(280 45% 35% / 0.22));
+}
+
+/* Lair HUD — diegetic scroll / shelf / RPG stat bar */
+.drako-hud-kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: hsl(42 55% 72%);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.drako-hud-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.45rem 0.85rem;
+  border: 3px solid hsl(42 38% 28%);
+  background: linear-gradient(180deg, hsl(28 22% 16%) 0%, hsl(24 20% 10%) 100%);
+  box-shadow:
+    inset 0 1px 0 hsl(45 40% 45% / 0.25),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 hsl(22 25% 8%),
+    0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.drako-hud-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.drako-hud-stat-xp {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.drako-hud-stat-key {
+  color: hsl(42 35% 58%);
+  letter-spacing: 0.08em;
+}
+
+.drako-hud-stat-val {
+  color: hsl(48 90% 78%);
+  font-weight: 700;
+  text-shadow: 0 0 8px hsl(45 80% 50% / 0.35);
+}
+
+.drako-hud-xp-track {
+  flex: 1;
+  height: 5px;
+  margin-left: 0.35rem;
+  border: 1px solid hsl(42 30% 22%);
+  background: hsl(24 18% 8%);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.drako-hud-xp-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, hsl(175 70% 38%), hsl(185 85% 52%));
+  box-shadow: 0 0 6px hsl(180 80% 45% / 0.55);
+}
+
+.drako-hud-object {
+  min-width: 10.5rem;
+  max-width: min(18rem, calc(100vw - 1.5rem));
+  border: 3px solid hsl(42 38% 28%);
+  background: linear-gradient(180deg, hsl(32 24% 18%) 0%, hsl(26 20% 11%) 100%);
+  box-shadow:
+    inset 0 1px 0 hsl(45 40% 45% / 0.2),
+    0 4px 0 hsl(22 25% 8%),
+    0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.drako-hud-scroll {
+  border-color: hsl(38 42% 32%);
+  background: linear-gradient(180deg, hsl(36 28% 22%) 0%, hsl(30 22% 14%) 100%);
+}
+
+.drako-hud-shelf {
+  border-color: hsl(28 30% 24%);
+  background: linear-gradient(180deg, hsl(24 18% 14%) 0%, hsl(20 16% 9%) 100%);
+}
+
+.drako-hud-object-open {
+  box-shadow:
+    inset 0 1px 0 hsl(45 40% 45% / 0.2),
+    0 4px 0 hsl(22 25% 8%),
+    0 10px 28px rgba(0, 0, 0, 0.5),
+    0 0 18px hsl(45 70% 45% / 0.12);
+}
+
+.drako-hud-object-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: hsl(45 70% 82%);
+  transition: background 120ms ease;
+}
+
+.drako-hud-object-trigger:hover {
+  background: hsl(42 25% 22% / 0.55);
+}
+
+.drako-hud-object-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.drako-hud-object-label {
+  flex: 1;
+  font-weight: 700;
+}
+
+.drako-hud-object-count {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid hsl(42 35% 35%);
+  background: hsl(24 18% 10%);
+  color: hsl(48 85% 70%);
+  font-size: 9px;
+}
+
+.drako-hud-object-caret {
+  font-size: 8px;
+  opacity: 0.65;
+  transition: transform 150ms ease;
+}
+
+.drako-hud-object-caret-open {
+  transform: rotate(180deg);
+}
+
+.drako-hud-object-body {
+  max-height: min(46vh, 340px);
+  overflow-y: auto;
+  border-top: 2px solid hsl(42 30% 22%);
+  padding: 0.55rem;
+}
+
+.drako-quest-row {
+  padding: 0.45rem;
+  border: 2px solid hsl(42 28% 26%);
+  background: hsl(24 16% 10% / 0.85);
+  box-shadow: inset 0 1px 0 hsl(45 30% 40% / 0.08);
+}
+
+.drako-quest-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.drako-quest-num {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: hsl(42 45% 55%);
+  padding-top: 0.1rem;
+}
+
+.drako-quest-title {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(45 75% 85%);
+  line-height: 1.25;
+}
+
+.drako-quest-desc {
+  margin-top: 0.15rem;
+  font-size: 9px;
+  line-height: 1.35;
+  color: hsl(42 20% 62%);
+}
+
+.drako-quest-xp {
+  flex-shrink: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: hsl(175 70% 58%);
+}
+
+.drako-quest-bar {
+  margin-top: 0.35rem;
+  height: 4px;
+  border: 1px solid hsl(42 25% 22%);
+  background: hsl(22 16% 8%);
+}
+
+.drako-quest-bar-fill {
+  display: block;
+  height: 100%;
+  background: hsl(175 65% 42%);
+}
+
+.drako-quest-go {
+  display: inline-block;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  border: 2px solid hsl(42 35% 32%);
+  background: hsl(28 22% 16%);
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: hsl(48 85% 75%);
+  text-decoration: none;
+  box-shadow: 0 2px 0 hsl(22 25% 8%);
+}
+
+.drako-quest-go:hover {
+  background: hsl(32 24% 20%);
+  color: hsl(50 90% 85%);
+}
+
+.drako-trophy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.drako-trophy-slot {
+  display: flex;
+  min-height: 4.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.35rem;
+  border: 2px inset hsl(28 22% 18%);
+  background: linear-gradient(180deg, hsl(22 14% 12%) 0%, hsl(18 12% 8%) 100%);
+  opacity: 0.55;
+  filter: grayscale(0.85);
+}
+
+.drako-trophy-slot-earned {
+  opacity: 1;
+  filter: none;
+  border-color: hsl(45 50% 38%);
+  box-shadow: 0 0 10px hsl(45 80% 45% / 0.25);
+}
+
+.drako-trophy-emoji {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.drako-trophy-label {
+  font-family: ui-monospace, monospace;
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: center;
+  color: hsl(42 30% 68%);
 }
 
 /* Density: compact reduces spacing */
@@ -3746,22 +4214,103 @@ html {
   z-index: 10000 !important;
 }
 
-/* ─── Drako mascot animations ───────────────────────────────────────────────
-   GPU-accelerated transforms only. prefers-reduced-motion is enforced via
-   inline `animation: none` overrides in the component itself.             */
-
-@keyframes drako-bob {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
+/* OFI check-in brochure — A4 print layout */
+.ofi-brochure-print {
+  background: #f4f4f5;
+  min-height: 100vh;
+  padding: 1rem 0 2rem;
 }
 
-@keyframes drako-breathe {
-  0%, 100% { transform: scaleY(1) scaleX(1); }
-  50%       { transform: scaleY(1.02) scaleX(0.99); }
+.ofi-brochure-sheet {
+  width: min(210mm, 100%);
+  min-height: 297mm;
+  background: #fff;
+  color: #111;
+  padding: 18mm 16mm;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
 }
 
-@keyframes drako-waddle {
-  0%   { transform: rotate(-4deg) translateY(0px); }
-  50%  { transform: rotate(4deg)  translateY(-4px); }
-  100% { transform: rotate(-4deg) translateY(0px); }
+.ofi-brochure-kicker {
+  font-size: 11pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0891b2;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+
+.ofi-brochure-address {
+  font-size: 22pt;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ofi-brochure-when {
+  font-size: 14pt;
+  margin: 0;
+  font-weight: 600;
+}
+
+.ofi-brochure-time {
+  font-size: 12pt;
+  margin: 0.35rem 0 0;
+  color: #52525b;
+}
+
+.ofi-brochure-qr-block {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.ofi-brochure-qr {
+  width: 280px;
+  height: 280px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.ofi-brochure-scan {
+  font-size: 14pt;
+  font-weight: 600;
+  margin: 1rem 0 0.35rem;
+}
+
+.ofi-brochure-url {
+  font-size: 9pt;
+  color: #71717a;
+  word-break: break-all;
+  margin: 0;
+}
+
+.ofi-brochure-footer {
+  border-top: 1px solid #e4e4e7;
+  padding-top: 1rem;
+  font-size: 10pt;
+  color: #52525b;
+  text-align: center;
+}
+
+.ofi-brochure-agency {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: #0891b2;
+}
+
+@media print {
+  .ofi-brochure-print {
+    background: #fff;
+    padding: 0;
+  }
+
+  .ofi-brochure-sheet {
+    box-shadow: none;
+    width: 100%;
+    min-height: auto;
+    page-break-after: avoid;
+  }
 }

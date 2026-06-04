@@ -110,6 +110,9 @@ export default {
       maxWidth: {
         container: "1280px",
       },
+      fontFamily: {
+        pixel: ['"Press Start 2P"', "cursive"],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

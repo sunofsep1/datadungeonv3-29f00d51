@@ -1,0 +1,38 @@
+{
+  "title": "📞 Call List Title",
+  "subtitle": "Description · Generated DATE · Source",
+  "filename": "output.html",
+  "sections": [
+    {
+      "title": "HOT — Urgent (N contacts)",
+      "emoji": "🔴",
+      "type": "hot",
+      "contacts": [
+        {
+          "number": 1,
+          "name": "Contact Name",
+          "role": "Contact type / status",
+          "phone": "0412 345 678",
+          "email": "email@example.com",
+          "overdue": "5 days overdue",
+          "location": "City, QLD 4000",
+          "wants": "What they want / next step",
+          "note": "Context, property details, sequence info, etc."
+        }
+      ]
+    },
+    {
+      "title": "WARM — Active (N contacts)",
+      "emoji": "🟡",
+      "type": "warm",
+      "contacts": []
+    },
+    {
+      "title": "COOL — Long-term (N contacts)",
+      "emoji": "🔵",
+      "type": "cold",
+      "contacts": []
+    }
+  ],
+  "footer": "Location · List Type · CRM-verified DATE · DataDungeon"
+}

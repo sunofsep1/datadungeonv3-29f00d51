@@ -7,7 +7,6 @@ import {
   Megaphone,
   Menu,
   X,
-  Database,
   FileText,
   Settings,
   LogOut,
@@ -23,12 +22,13 @@ import {
   Workflow,
   Activity,
   ClipboardCheck,
-  Search,
   Flame,
+  Swords,
   Clock,
   LineChart,
-  Bot,
   Receipt,
+  MapPin,
+  UserSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,16 +49,24 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { layout } from "@/lib/designTokens";
+import { DataDungeonBrand } from "@/components/brand/DataDungeonBrand";
+import { useGameMode } from "@/hooks/useGameMode";
 
 type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
+const GAME_MODE_NAV_URLS = new Set(["/lair", "/training"]);
+
 const homeItems: NavItem[] = [
   { title: "Daily Hub", url: "/attention-hub", icon: Sparkles },
+  { title: "Drako's Lair", url: "/lair", icon: Flame },
+  { title: "Drako's Trials", url: "/training", icon: Swords },
   { title: "Home", url: "/dashboard", icon: LayoutDashboard },
 ];
 
 const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "Contact research", url: "/contact-research", icon: UserSearch },
+  { title: "My Markets", url: "/contacts/markets", icon: MapPin },
   { title: "Listings", url: "/listings", icon: Building2 },
   { title: "Pricing", url: "/pricing", icon: LineChart },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
@@ -74,7 +82,6 @@ const relationshipItems: NavItem[] = [
 const automationItems: NavItem[] = [
   { title: "Automations", url: "/automations", icon: Workflow },
   { title: "Scripts", url: "/scripts", icon: FileText },
-  { title: "AI Ops", url: "/ai-ops", icon: Bot },
 ];
 
 const planningItems: NavItem[] = [{ title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck }];
@@ -88,7 +95,6 @@ const businessItems: NavItem[] = [
 
 const insightsItems: NavItem[] = [
   { title: "Data health", url: "/data-health", icon: Activity },
-  { title: "Research", url: "/research", icon: Search },
   { title: "Hot leads", url: "/hot-leads", icon: Flame },
   { title: "Recent", url: "/recent", icon: Clock },
 ];
@@ -117,9 +123,13 @@ const mobileNavItems = [
 function isNavActive(item: { url: string }, pathname: string): boolean {
   if (pathname === item.url) return true;
   if (item.url === "/calendar" && (pathname.startsWith("/calendar") || pathname.startsWith("/appointments"))) return true;
+  if (item.url === "/lair" && pathname.startsWith("/lair")) return true;
+  if (item.url === "/training" && pathname.startsWith("/training")) return true;
   if (item.url === "/attention-hub" && pathname.startsWith("/attention-hub")) return true;
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/tasks" && pathname.startsWith("/tasks")) return true;
+  if (item.url === "/contacts/markets" && pathname.startsWith("/contacts/markets")) return true;
+  if (item.url === "/contact-research" && pathname.startsWith("/contact-research")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
@@ -127,7 +137,6 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/pricing" && pathname.startsWith("/pricing")) return true;
   if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;
   if (item.url === "/automations" && pathname.startsWith("/automations")) return true;
-  if (item.url === "/ai-ops" && pathname.startsWith("/ai-ops")) return true;
   if (item.url === "/data-health" && pathname.startsWith("/data-health")) return true;
   if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
   if (item.url === "/invoices" && pathname.startsWith("/invoices")) return true;
@@ -161,6 +170,23 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { signOut, user } = useAuth();
+  const { gameModeEnabled } = useGameMode();
+
+  const visibleHomeItems = homeItems.filter(
+    (item) => gameModeEnabled || !GAME_MODE_NAV_URLS.has(item.url),
+  );
+  const visibleNavItems = navItems.filter(
+    (item) => gameModeEnabled || !GAME_MODE_NAV_URLS.has(item.url),
+  );
+  const bottomNavItems = gameModeEnabled
+    ? [
+        { title: "Hub", url: "/attention-hub", icon: Sparkles },
+        { title: "Contacts", url: "/contacts", icon: Users },
+        { title: "Lair", url: "/lair", icon: Flame },
+        { title: "Tasks", url: "/tasks", icon: CheckSquare },
+        { title: "More", url: "#more", icon: MoreHorizontal },
+      ]
+    : mobileNavItems;
 
   const desktopWidth = collapsed ? layout.sidebarCollapsed : layout.sidebarWidth;
 
@@ -191,18 +217,10 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         )}
         style={{ width: desktopWidth }}
       >
-        {/* Logo / brand — teal to match main page (dashboard clock, KPIs) */}
+        {/* Logo / brand — pixel wordmark (no graphic) */}
         <div className="flex h-[60px] shrink-0 items-center border-b border-sidebar-border px-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal">
-              <Database className="h-5 w-5 text-teal-foreground" />
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 flex flex-col">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/70">Data</span>
-                <span className="text-sm font-semibold text-teal truncate">Dungeon</span>
-              </div>
-            )}
+          <div className="flex min-w-0 flex-1 items-center">
+            <DataDungeonBrand collapsed={collapsed} />
           </div>
           {!collapsed && (
             <Tooltip>
@@ -241,7 +259,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
           <nav className="space-y-0.5 p-2 pr-1" aria-label="Main navigation">
           {collapsed ? (
-            navItems.map((item) => {
+            visibleNavItems.map((item) => {
               const active = isNavActive(item, location.pathname);
               const link = (
                 <NavLink
@@ -271,7 +289,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {homeItems.map((item) => renderNavItem(item, location.pathname))}
+                  {visibleHomeItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
               <Collapsible defaultOpen className="space-y-0.5">
@@ -396,14 +414,11 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
         )}
       >
         <div className="flex h-14 items-center gap-3 border-b border-sidebar-border px-4 mt-12">
-          <div className="h-9 w-9 rounded-lg bg-teal flex items-center justify-center">
-            <Database className="h-5 w-5 text-teal-foreground" />
-          </div>
-          <span className="text-sm font-semibold text-teal">Data Dungeon</span>
+          <DataDungeonBrand collapsed={false} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
           <nav className="space-y-1 p-3" aria-label="Main navigation">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const active = isNavActive(item, location.pathname);
             return (
               <NavLink
@@ -444,7 +459,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
       {/* Mobile bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-sidebar border-t border-sidebar-border md:hidden print:hidden safe-area-bottom">
         <div className="flex items-center justify-around h-16">
-          {mobileNavItems.map((item) => {
+          {bottomNavItems.map((item) => {
             if (item.url === "#more") {
               return (
                 <DropdownMenu key={item.title}>

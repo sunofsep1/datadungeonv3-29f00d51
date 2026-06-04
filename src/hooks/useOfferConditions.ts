@@ -101,6 +101,57 @@ export function useUpdateOfferCondition() {
   });
 }
 
+export function useCreateOfferCondition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      offer_id: string;
+      listing_id: string;
+      condition_type: OfferConditionType;
+      label: string;
+      due_date: string;
+      sort_order?: number;
+    }) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const { data, error } = await supabase
+        .from("offer_conditions")
+        .insert({
+          offer_id: input.offer_id,
+          listing_id: input.listing_id,
+          user_id: user.id,
+          condition_type: input.condition_type,
+          label: input.label,
+          due_date: input.due_date,
+          sort_order: input.sort_order ?? 99,
+          status: "pending",
+        })
+        .select()
+        .single();
+      if (error) throw new Error(supabaseErrorMessage(error));
+      return data as OfferCondition;
+    },
+    onSuccess: (row) => {
+      void qc.invalidateQueries({ queryKey: ["offer_conditions", row.offer_id] });
+    },
+  });
+}
+
+export function useDeleteOfferCondition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; offer_id: string }) => {
+      const { error } = await supabase.from("offer_conditions").delete().eq("id", input.id);
+      if (error) throw new Error(supabaseErrorMessage(error));
+    },
+    onSuccess: (_d, v) => {
+      void qc.invalidateQueries({ queryKey: ["offer_conditions", v.offer_id] });
+    },
+  });
+}
+
 export function useCompleteAllOfferConditions() {
   const qc = useQueryClient();
   return useMutation({

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 /** Show only main-points text; hide disclaimer and long boilerplate */
 function reportDisplayValue(s: unknown, maxLen = 120): string | null {
@@ -57,6 +58,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import type { ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
 import { normalizePropertyType, PROPERTY_TYPE_VALUES } from "@/lib/propertyType";
+import { usePricefinderPropertyEnrich, type PricefinderPropertyData } from "@/hooks/usePricefinderEnrich";
+import { isPricefinderConfiguredError } from "@/lib/pricefinderClient";
+import { markPricefinderApiUnavailable } from "@/lib/pricefinderMode";
+import {
+  applyPropertyReportToProperty,
+  errorMessageFromUnknown,
+} from "@/lib/applyPropertyReport";
+import { splitOwnerNames } from "@/lib/ownerNameParse";
+import { PricefinderResearchPanel } from "@/components/pricefinder/PricefinderResearchPanel";
+import { OwnerReviewDialog } from "@/components/pricefinder/OwnerReviewDialog";
+import { isLongHoldProperty, yearsSinceLastSale } from "@/lib/propertyReportIntel";
 
 const LINK_ROLES = ["owner", "seller", "buyer", "tenant", "investor", "agent", "interested", "other"] as const;
 
@@ -154,6 +166,7 @@ export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: property, isLoading, isError, refetch } = useProperty(id);
   const { data: propertiesList = [] } = useProperties();
   const { data: contacts = [] } = useContacts();
@@ -196,23 +209,14 @@ export default function PropertyDetail() {
     price: "" as string | number,
     notes: "",
   });
-  type PricefinderEnriched = {
-    address?: string;
-    bedrooms?: number | null;
-    bathrooms?: number | null;
-    property_type?: string | null;
-    last_sale_price?: number | null;
-    last_sale_date?: string | null;
-    land_area_sqm?: number | null;
-    carspaces?: number | null;
-    lot_plan?: string | null;
-  };
-  const [enrichedData, setEnrichedData] = useState<PricefinderEnriched | null>(null);
+  const [enrichedData, setEnrichedData] = useState<PricefinderPropertyData | null>(null);
   const [parsedReportData, setParsedReportData] = useState<ParsedPropertyReport | null>(null);
-  const [enrichLoading, setEnrichLoading] = useState(false);
+  const enrichMutation = usePricefinderPropertyEnrich();
   const [uploadReportLoading, setUploadReportLoading] = useState(false);
   const [uploadImageLoading, setUploadImageLoading] = useState(false);
   const [enrichUnconfigured, setEnrichUnconfigured] = useState(false);
+  const [ownerSuggestionOpen, setOwnerSuggestionOpen] = useState(false);
+  const [lastAppliedReport, setLastAppliedReport] = useState<ParsedPropertyReport | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
@@ -399,52 +403,21 @@ export default function PropertyDetail() {
   };
 
   const handleEnrichFromPricefinder = async () => {
-    const base = import.meta.env.VITE_SUPABASE_URL;
-    const url = base ? `${base}/functions/v1/pricefinder-proxy` : null;
-    if (!url) {
-      toast({ title: "Error", description: "App URL not configured", variant: "destructive" });
-      return;
-    }
-    setEnrichLoading(true);
     setEnrichUnconfigured(false);
     setEnrichedData(null);
+    const address = formatPropertyAddress(property) || property.address_line1 || "";
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({ title: "Error", description: "Sign in to load property data", variant: "destructive" });
-        return;
-      }
-      const address = formatPropertyAddress(property);
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          ...(anonKey && { apikey: anonKey }),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ full_address: address || property.address_line1 || "" }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 503) {
+      const data = await enrichMutation.mutateAsync(address);
+      setEnrichedData(data);
+      toast({ title: "Success", description: "Property data loaded from Pricefinder" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not reach Pricefinder";
+      if (isPricefinderConfiguredError(msg)) {
+        markPricefinderApiUnavailable();
         setEnrichUnconfigured(true);
         return;
       }
-      if (!res.ok) {
-        const desc = [data?.message, data?.error, data?.status ? `(HTTP ${data.status})` : "", "Failed to load property data"].filter(Boolean).join(" ");
-        toast({ title: "Error", description: desc, variant: "destructive" });
-        return;
-      }
-      if (res.status === 404) {
-        toast({ title: "Not found", description: data?.message || "No property match for this address", variant: "destructive" });
-        return;
-      }
-      setEnrichedData(data);
-      toast({ title: "Success", description: "Property data loaded from Pricefinder" });
-    } catch {
-      toast({ title: "Error", description: "Could not reach Pricefinder", variant: "destructive" });
-    } finally {
-      setEnrichLoading(false);
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -526,72 +499,34 @@ export default function PropertyDetail() {
 
   const handleApplyReportData = async () => {
     if (!id || !parsedReportData) return;
-    const updates: Record<string, unknown> = {};
-    // Only send columns that exist in the minimal properties schema (so apply always succeeds)
-    if (parsedReportData.address_line1) updates.address_line1 = parsedReportData.address_line1;
-    if (parsedReportData.city) updates.city = parsedReportData.city;
-    if (parsedReportData.state) updates.state = parsedReportData.state;
-    if (parsedReportData.postcode) updates.postcode = parsedReportData.postcode;
-    if (parsedReportData.property_type) updates.property_type = normalizePropertyType(parsedReportData.property_type);
-    if (parsedReportData.bedrooms != null) updates.bedrooms = parsedReportData.bedrooms;
-    if (parsedReportData.bathrooms != null) updates.bathrooms = parsedReportData.bathrooms;
-    if (parsedReportData.price != null) updates.price = parsedReportData.price;
-    if (parsedReportData.notes) updates.notes = parsedReportData.notes;
-    // Everything else (lot_size, car_spaces, estimated_value, etc.) goes in property_report only
-    const reportPayload = {
-      property_type_full: parsedReportData.property_type_full,
-      rpd: parsedReportData.lot_plan,
-      valuation_amounts: parsedReportData.valuation_amounts,
-      land_use: parsedReportData.land_use,
-      zoning: parsedReportData.zoning,
-      council: parsedReportData.council,
-      features: parsedReportData.features?.slice(0, 20) ?? null,
-      area_land: parsedReportData.lot_size,
-      area_building: parsedReportData.building_size,
-      area_per_m2: parsedReportData.area_per_m2,
-      water_sewerage: parsedReportData.water_sewerage,
-      property_id: parsedReportData.property_id,
-      ubd_ref: parsedReportData.ubd_ref,
-      bedrooms: parsedReportData.bedrooms,
-      bathrooms: parsedReportData.bathrooms,
-      car_spaces: parsedReportData.car_spaces,
-    };
-    const hasReportData = Object.values(reportPayload).some((v) => v != null && (Array.isArray(v) ? v.length > 0 : true));
-    if (hasReportData) updates.property_report = reportPayload;
+    const existingReport =
+      property?.property_report && typeof property.property_report === "object"
+        ? (property.property_report as Record<string, unknown>)
+        : null;
+    const snapshot = parsedReportData;
 
     try {
-      await updateProperty.mutateAsync({ id, ...updates });
-      toast({ title: "Success", description: "Property updated from report" });
+      const result = await applyPropertyReportToProperty(supabase, id, parsedReportData, existingReport);
+      await queryClient.invalidateQueries({ queryKey: ["properties"] });
+      await queryClient.invalidateQueries({ queryKey: ["property", id] });
+      await queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      const description =
+        result.warnings.length > 0
+          ? `Property updated. ${result.warnings[0]}`
+          : "Property updated from report";
+      toast({ title: result.partialSave ? "Saved (partial)" : "Success", description });
       setParsedReportData(null);
-    } catch (e: unknown) {
-      const msg =
-        e != null && typeof e === "object" && "message" in e
-          ? String((e as { message: unknown }).message)
-          : e instanceof Error
-            ? e.message
-            : String(e);
-      const isColumnError = /column.*does not exist|property_report|car_spaces|building_size/i.test(msg);
-      if (isColumnError) {
-        try {
-          const coreOnly = { ...updates };
-          delete coreOnly.property_report;
-          delete coreOnly.car_spaces;
-          delete coreOnly.building_size;
-          await updateProperty.mutateAsync({ id, ...coreOnly });
-          toast({ title: "Saved basics", description: "Property updated (report fields need migration: run 20260311000000_properties_report_data.sql in Supabase)." });
-          setParsedReportData(null);
-        } catch (retryErr: unknown) {
-          const retryMsg =
-            retryErr != null && typeof retryErr === "object" && "message" in retryErr
-              ? String((retryErr as { message: unknown }).message)
-              : retryErr instanceof Error
-                ? retryErr.message
-                : String(retryErr);
-          toast({ title: "Error", description: retryMsg + " Run migration: supabase/migrations/20260311000000_properties_report_data.sql", variant: "destructive" });
-        }
-      } else {
-        toast({ title: "Error", description: msg, variant: "destructive" });
+
+      if (splitOwnerNames(snapshot.owner_names).length > 0) {
+        setLastAppliedReport(snapshot);
+        setOwnerSuggestionOpen(true);
       }
+    } catch (e: unknown) {
+      toast({
+        title: "Error",
+        description: errorMessageFromUnknown(e),
+        variant: "destructive",
+      });
     }
   };
 
@@ -1117,214 +1052,52 @@ export default function PropertyDetail() {
         </div>
       </Card>
 
-      {/* Property data: Upload Report (primary) or Enrich from API (fallback) */}
-      <Card className="zoho-card p-6 mb-6 border-white/10">
-        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">Property data</h3>
-        {parsedReportData ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Parsed from uploaded Pricefinder report. Review and apply below.</p>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-              <h4 className="text-xs font-medium text-white/60 uppercase tracking-wide mb-3">Property details</h4>
-              <dl className="space-y-2 text-sm">
-                {parsedReportData.address_line1 && (
-                  <>
-                    <dt className="text-white/60">Address</dt>
-                    <dd className="font-medium">{[parsedReportData.address_line1, parsedReportData.city, parsedReportData.state, parsedReportData.postcode].filter(Boolean).join(", ")}</dd>
-                  </>
-                )}
-                {parsedReportData.property_type_full && (
-                  <>
-                    <dt className="text-white/60">Property Type</dt>
-                    <dd className="font-medium">{parsedReportData.property_type_full}</dd>
-                  </>
-                )}
-                {parsedReportData.lot_plan && (
-                  <>
-                    <dt className="text-white/60">RPD</dt>
-                    <dd className="font-medium">{parsedReportData.lot_plan}</dd>
-                  </>
-                )}
-                {parsedReportData.valuation_amounts?.length
-                  ? parsedReportData.valuation_amounts.map((v, i) => (
-                      <React.Fragment key={i}>
-                        <dt className="text-white/60">Valuation Amount</dt>
-                        <dd className="font-medium">${v.amount.toLocaleString()}{v.date ? ` - Site Value on ${v.date}` : ""}</dd>
-                      </React.Fragment>
-                    ))
-                  : null}
-                {parsedReportData.land_use && (
-                  <>
-                    <dt className="text-white/60">Land Use</dt>
-                    <dd className="font-medium">{parsedReportData.land_use}</dd>
-                  </>
-                )}
-                {parsedReportData.zoning && (
-                  <>
-                    <dt className="text-white/60">Zoning</dt>
-                    <dd className="font-medium">{parsedReportData.zoning}</dd>
-                  </>
-                )}
-                {parsedReportData.council && (
-                  <>
-                    <dt className="text-white/60">Council</dt>
-                    <dd className="font-medium">{parsedReportData.council}</dd>
-                  </>
-                )}
-                {(parsedReportData.bedrooms != null || parsedReportData.bathrooms != null || parsedReportData.car_spaces != null) && (
-                  <>
-                    <dt className="text-white/60">Bedrooms / Bathrooms / Car spaces</dt>
-                    <dd className="font-medium">{parsedReportData.bedrooms ?? "—"} / {parsedReportData.bathrooms ?? "—"} / {parsedReportData.car_spaces ?? "—"}</dd>
-                  </>
-                )}
-                {parsedReportData.features?.length ? (
-                  <>
-                    <dt className="text-white/60">Features</dt>
-                    <dd className="font-medium">{parsedReportData.features.join(", ")}</dd>
-                  </>
-                ) : null}
-                {(parsedReportData.lot_size != null || parsedReportData.building_size != null) && (
-                  <>
-                    <dt className="text-white/60">Area</dt>
-                    <dd className="font-medium">
-                      {parsedReportData.lot_size != null ? `${parsedReportData.lot_size.toLocaleString()} m²` : ""}
-                      {parsedReportData.lot_size != null && parsedReportData.building_size != null ? " " : ""}
-                      {parsedReportData.building_size != null ? `(${parsedReportData.building_size.toLocaleString()} m²)` : ""}
-                    </dd>
-                  </>
-                )}
-                {parsedReportData.area_per_m2 && (
-                  <>
-                    <dt className="text-white/60">Area $/m2</dt>
-                    <dd className="font-medium">{parsedReportData.area_per_m2}</dd>
-                  </>
-                )}
-                {parsedReportData.water_sewerage && (
-                  <>
-                    <dt className="text-white/60">Water/Sewerage</dt>
-                    <dd className="font-medium">{parsedReportData.water_sewerage}</dd>
-                  </>
-                )}
-                {parsedReportData.property_id && (
-                  <>
-                    <dt className="text-white/60">Property ID</dt>
-                    <dd className="font-medium">{parsedReportData.property_id}</dd>
-                  </>
-                )}
-                {parsedReportData.ubd_ref && (
-                  <>
-                    <dt className="text-white/60">UBD Ref</dt>
-                    <dd className="font-medium">{parsedReportData.ubd_ref}</dd>
-                  </>
-                )}
-                {parsedReportData.price != null && (
-                  <>
-                    <dt className="text-white/60">Price</dt>
-                    <dd className="font-medium">${parsedReportData.price.toLocaleString()}</dd>
-                  </>
-                )}
-              </dl>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="default" size="sm" onClick={handleApplyReportData} disabled={updateProperty.isPending}>
-                {updateProperty.isPending ? "Applying..." : "Apply to property"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setParsedReportData(null)}>
-                Dismiss
-              </Button>
-            </div>
-          </div>
-        ) : enrichedData ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Data from Pricefinder API. Review and apply below.</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-              {enrichedData.bedrooms != null && (
-                <div>
-                  <span className="text-white/60">Bedrooms</span>
-                  <p className="font-medium">{enrichedData.bedrooms}</p>
-                </div>
-              )}
-              {enrichedData.bathrooms != null && (
-                <div>
-                  <span className="text-white/60">Bathrooms</span>
-                  <p className="font-medium">{enrichedData.bathrooms}</p>
-                </div>
-              )}
-              {enrichedData.property_type && (
-                <div>
-                  <span className="text-white/60">Type</span>
-                  <p className="font-medium capitalize">{enrichedData.property_type}</p>
-                </div>
-              )}
-              {enrichedData.land_area_sqm != null && (
-                <div>
-                  <span className="text-white/60">Lot size</span>
-                  <p className="font-medium">{enrichedData.land_area_sqm} m²</p>
-                </div>
-              )}
-              {enrichedData.last_sale_price != null && (
-                <div>
-                  <span className="text-white/60">Last sale price</span>
-                  <p className="font-medium">${Number(enrichedData.last_sale_price).toLocaleString()}</p>
-                </div>
-              )}
-              {enrichedData.carspaces != null && (
-                <div>
-                  <span className="text-white/60">Car spaces</span>
-                  <p className="font-medium">{enrichedData.carspaces}</p>
-                </div>
-              )}
-              {enrichedData.lot_plan && (
-                <div>
-                  <span className="text-white/60">Lot/plan</span>
-                  <p className="font-medium">{enrichedData.lot_plan}</p>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={handleApplyEnrichedData} disabled={updateProperty.isPending}>
-                {updateProperty.isPending ? "Applying..." : "Apply to property"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setEnrichedData(null)}>
-                Dismiss
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                id="property-report-upload-detail"
-                type="file"
-                accept=".pdf,application/pdf"
-                className="sr-only"
-                onChange={handleUploadReport}
-                aria-label="Upload Pricefinder property report PDF"
-              />
-              <label
-                htmlFor="property-report-upload-detail"
-                className={`inline-flex items-center justify-center gap-1.5 rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground cursor-pointer hover:bg-primary/90 ${uploadReportLoading ? "pointer-events-none opacity-50" : ""}`}
-              >
-                <Upload className="w-4 h-4" />
-                {uploadReportLoading ? "Parsing..." : "Upload Property Report"}
-              </label>
-              <span className="text-xs text-muted-foreground">Upload a Pricefinder PDF report (no API key needed)</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/10">
-              <Button variant="outline" size="sm" onClick={handleEnrichFromPricefinder} disabled={enrichLoading}>
-                {enrichLoading ? "Loading..." : "Enrich from Pricefinder API"}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Live lookup by address (requires API key)
-              </span>
-            </div>
-            {enrichUnconfigured && (
-              <p className="text-xs text-muted-foreground">
-                Pricefinder API not configured. See docs/PRICEFINDER_INTEGRATION.md. Use Upload Property Report instead.
-              </p>
-            )}
-          </div>
-        )}
+      {/* Property data: Pricefinder research + PDF import */}
+      <Card className="zoho-card p-6 mb-6 border-white/10" id="pricefinder-research">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Property data</h3>
+          {isLongHoldProperty(report as Record<string, unknown>) ? (
+            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-200">
+              Long hold · {yearsSinceLastSale(report as Record<string, unknown>)}y since sale
+            </span>
+          ) : null}
+        </div>
+        <PricefinderResearchPanel
+          propertyId={id}
+          address={formatPropertyAddress(property)}
+          parsedReport={parsedReportData}
+          enrichedData={enrichedData}
+          uploadLoading={uploadReportLoading}
+          applyLoading={updateProperty.isPending}
+          enrichLoading={enrichMutation.isPending}
+          onUploadReport={handleUploadReport}
+          onApplyReport={handleApplyReportData}
+          onDismissReport={() => setParsedReportData(null)}
+          onApplyEnriched={handleApplyEnrichedData}
+          onDismissEnriched={() => setEnrichedData(null)}
+          onEnrichFromApi={() => void handleEnrichFromPricefinder()}
+          uploadInputId="property-report-upload-detail"
+        />
+        {enrichUnconfigured ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Live API needs OAuth credentials in Supabase. Use Upload Property Report or Open in Pricefinder.
+          </p>
+        ) : null}
       </Card>
+
+      <OwnerReviewDialog
+        open={ownerSuggestionOpen}
+        onOpenChange={setOwnerSuggestionOpen}
+        propertyId={id!}
+        propertyAddress={formatPropertyAddress(property!)}
+        ownerNames={lastAppliedReport?.owner_names}
+        ownerPhones={lastAppliedReport?.owner_phones}
+        linkedContactIds={links.map((l) => l.contact_id)}
+        linkedContactNames={links
+          .map((l) => contacts?.find((c) => c.id === l.contact_id)?.name?.trim())
+          .filter(Boolean) as string[]}
+        onComplete={() => void refetch()}
+      />
 
       <Card className="zoho-card p-6 mb-6 border-white/10">
         <ActivityTimeline entityType="property" entityId={id} showAddNote={true} />
