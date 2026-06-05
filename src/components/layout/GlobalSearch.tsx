@@ -11,11 +11,8 @@ import {
   Home,
   Sparkles,
   ListTodo,
-  Workflow,
-  Activity,
-  Flame,
-  FileText,
   Settings,
+  FileText,
   LayoutDashboard,
   LineChart,
 } from "lucide-react";
@@ -24,6 +21,8 @@ import { formatPhoneDisplay } from "@/lib/formatPhone";
 
 const GLOBAL_SEARCH_EVENT = "open-global-search";
 
+import { SETTINGS_SEARCH_INDEX } from "@/lib/settingsSearchIndex";
+
 const NAV_SHORTCUTS: Array<{ path: string; label: string; icon: typeof Users }> = [
   { path: "/attention-hub", label: "Daily Hub", icon: Sparkles },
   { path: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -31,11 +30,10 @@ const NAV_SHORTCUTS: Array<{ path: string; label: string; icon: typeof Users }> 
   { path: "/contacts", label: "Contacts", icon: Users },
   { path: "/listings", label: "Listings", icon: Home },
   { path: "/pricing", label: "Pricing intelligence", icon: LineChart },
-  { path: "/hot-leads", label: "Hot leads", icon: Flame },
-  { path: "/automations", label: "Automations", icon: Workflow },
-  { path: "/data-health", label: "Data health", icon: Activity },
   { path: "/scripts", label: "Scripts", icon: FileText },
-  { path: "/settings", label: "Settings", icon: Settings },
+  ...SETTINGS_SEARCH_INDEX.filter((e) => !e.fieldId)
+    .slice(0, 6)
+    .map((e) => ({ path: e.path, label: `Settings · ${e.label}`, icon: Settings })),
 ];
 
 export function GlobalSearch() {
@@ -133,7 +131,7 @@ export function GlobalSearch() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5 px-1 pb-2">
                 {NAV_SHORTCUTS.map(({ path, label, icon: Icon }) => (
                   <button
-                    key={path}
+                    key={`${path}:${label}`}
                     type="button"
                     className="flex w-full items-center gap-2 px-2 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-md"
                     onClick={() => handleSelect(path)}
@@ -156,7 +154,7 @@ export function GlobalSearch() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
                   {NAV_SHORTCUTS.map(({ path, label, icon: Icon }) => (
                     <button
-                      key={path}
+                      key={`${path}:${label}`}
                       type="button"
                       className="flex w-full items-center gap-2 px-2 py-2 text-left text-sm text-popover-foreground hover:bg-accent rounded-md"
                       onClick={() => handleSelect(path)}

@@ -30,7 +30,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty, formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
+import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty, useProperty, formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
+import {
+  PropertyImagesGallery,
+  PropertyImagesPendingPicker,
+  uploadPendingPropertyImages,
+} from "@/components/properties/PropertyImagesGallery";
+import { bucketNotFoundHint } from "@/lib/propertyImageUpload";
+import { useAuth } from "@/contexts/AuthContext";
 import { PropertyList } from "@/components/PropertyManagement/PropertyList";
 import { MergePropertiesDialog } from "@/components/PropertyManagement/MergePropertiesDialog";
 import { getContactDisplayName, useContacts } from "@/hooks/useContacts";
@@ -68,7 +75,7 @@ export default function Properties() {
   const deleteProperty = useDeleteProperty();
   const createLink = useCreateContactPropertyLink();
   const { toast } = useToast();
-  
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -85,6 +92,11 @@ export default function Properties() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [uploadReportLoading, setUploadReportLoading] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
+
+  const { data: editingPropertyLive } = useProperty(
+    isDialogOpen && editingProperty?.id ? editingProperty.id : undefined,
+  );
 
   const filtered = useMemo(() => {
     return (properties ?? []).filter((p) => {
@@ -382,9 +394,29 @@ export default function Properties() {
         }
       }
 
+      if (!editingProperty && pendingImageFiles.length > 0 && user) {
+        const { urls, failed } = await uploadPendingPropertyImages(propertyId, user.id, pendingImageFiles);
+        if (urls.length > 0) {
+          await updateProperty.mutateAsync({ id: propertyId, images: urls });
+        }
+        if (failed.length > 0) {
+          toast({
+            title: urls.length > 0 ? "Some photos failed" : "Photo upload failed",
+            description: `${failed.map((f) => f.name).join(", ")}${bucketNotFoundHint(failed[0]?.message ?? "")}`,
+            variant: "destructive",
+          });
+        } else if (urls.length > 0) {
+          toast({
+            title: "Photos uploaded",
+            description: `${urls.length} photo${urls.length === 1 ? "" : "s"} added to the property.`,
+          });
+        }
+      }
+
       setIsDialogOpen(false);
       setFormData(createEmptyProperty());
       setSelectedOwnerIds([]);
+      setPendingImageFiles([]);
       setEditingProperty(null);
     } catch (error: any) {
       toast({
@@ -452,6 +484,7 @@ export default function Properties() {
               if (!open) {
                 setFormData(createEmptyProperty());
                 setSelectedOwnerIds([]);
+                setPendingImageFiles([]);
                 setEditingProperty(null);
               }
             }}
@@ -488,9 +521,10 @@ export default function Properties() {
               </div>
               <ScrollArea className="flex-1 pr-4">
                 <Tabs defaultValue="address" className="mt-4">
-                  <SegmentedTabsList className="grid-cols-2 sm:grid-cols-4">
+                  <SegmentedTabsList className="grid-cols-2 sm:grid-cols-5">
                     <SegmentedTabsTrigger value="address">Address</SegmentedTabsTrigger>
                     <SegmentedTabsTrigger value="details">Details</SegmentedTabsTrigger>
+                    <SegmentedTabsTrigger value="photos">Photos</SegmentedTabsTrigger>
                     <SegmentedTabsTrigger value="owners">Owners</SegmentedTabsTrigger>
                     <SegmentedTabsTrigger value="notes">Notes</SegmentedTabsTrigger>
                   </SegmentedTabsList>
@@ -676,6 +710,26 @@ export default function Properties() {
                       />
                     </div>
                   </div>
+                  </TabsContent>
+                  <TabsContent value="photos" className="space-y-4 mt-4">
+                    {editingProperty?.id ? (
+                      <PropertyImagesGallery
+                        propertyId={editingProperty.id}
+                        images={
+                          Array.isArray(editingPropertyLive?.images)
+                            ? (editingPropertyLive.images as string[])
+                            : Array.isArray(editingProperty.images)
+                              ? (editingProperty.images as string[])
+                              : []
+                        }
+                        compact
+                      />
+                    ) : (
+                      <PropertyImagesPendingPicker
+                        files={pendingImageFiles}
+                        onFilesChange={setPendingImageFiles}
+                      />
+                    )}
                   </TabsContent>
                   <TabsContent value="owners" className="space-y-4 mt-4">
                     {!editingProperty ? (

@@ -31,7 +31,6 @@ import {
   ExternalLink,
   LayoutDashboard,
   Hammer,
-  Flame,
   ListTodo,
   Building2,
   GitBranch,
@@ -460,17 +459,6 @@ export default function VisionCardDetail() {
               <LayoutDashboard className="h-4 w-4 text-primary shrink-0" />
               <span className="font-semibold text-sm">Dashboard</span>
               <span className="text-[11px] text-muted-foreground font-normal">Vision board & widgets</span>
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto min-h-[5.5rem] flex-col items-start justify-center gap-1 border-border/80 bg-card/60 py-4 px-4 text-left hover:bg-card"
-            asChild
-          >
-            <Link to="/hot-leads">
-              <Flame className="h-4 w-4 text-orange-400 shrink-0" />
-              <span className="font-semibold text-sm">Hot leads</span>
-              <span className="text-[11px] text-muted-foreground font-normal">Strike while it is hot</span>
             </Link>
           </Button>
           <Button

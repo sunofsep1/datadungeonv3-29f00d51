@@ -31,14 +31,18 @@ export function useUpsertUserCommunicationSettings() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (input: { sms_signature: string }) => {
+    mutationFn: async (input: {
+      sms_signature?: string;
+      email_signature?: string;
+      email_from_name?: string;
+    }) => {
       if (!user) throw new Error("Not authenticated");
       const { data, error } = await supabase
         .from("user_communication_settings")
         .upsert(
           {
             user_id: user.id,
-            sms_signature: input.sms_signature,
+            ...input,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id" },

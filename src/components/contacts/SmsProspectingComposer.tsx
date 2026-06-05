@@ -161,7 +161,7 @@ export function SmsProspectingComposer({
         <CollapsibleContent className="space-y-4 pt-2">
           <p className="text-xs text-muted-foreground">
             Your SMS signature (name + agency) is set in{" "}
-            <Link to="/settings" className="text-primary underline underline-offset-2">
+            <Link to="/settings/communications" className="text-primary underline underline-offset-2">
               Settings
             </Link>
             . Use these four slots for listing-specific details (same values for bulk sends).
@@ -225,7 +225,7 @@ export function SmsProspectingComposer({
       {isSignatureUnfilled(body, mergePreviewContext.signature) ? (
         <p className="text-xs text-amber-600 dark:text-amber-400">
           This message uses <code className="text-[10px]">{"{{signature}}"}</code> but your SMS signature is empty.{" "}
-          <Link to="/settings" className="font-medium underline underline-offset-2">
+          <Link to="/settings/communications" className="font-medium underline underline-offset-2">
             Add it in Settings
           </Link>{" "}
           before sending.

@@ -1,23 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
-import { Sparkles, Clock, CheckSquare } from "lucide-react";
+import { Sparkles, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface NavHeadingButtonsProps {
   nurtureDueCount: number;
-  recentCount: number;
   tasksCount: number;
 }
 
 export function NavHeadingButtons({
   nurtureDueCount,
-  recentCount,
   tasksCount,
 }: NavHeadingButtonsProps) {
   const location = useLocation();
 
   const links = [
     { path: "/nurture", label: "Nurture", count: nurtureDueCount, icon: Sparkles },
-    { path: "/recent", label: "Recent", count: recentCount, icon: Clock },
     { path: "/tasks", label: "Tasks", count: tasksCount, icon: CheckSquare },
   ];
 

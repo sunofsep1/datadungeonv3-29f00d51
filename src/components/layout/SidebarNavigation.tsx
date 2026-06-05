@@ -24,11 +24,9 @@ import {
   ClipboardCheck,
   Flame,
   Swords,
-  Clock,
   LineChart,
   Receipt,
   MapPin,
-  UserSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -65,7 +63,6 @@ const homeItems: NavItem[] = [
 
 const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Contact research", url: "/contact-research", icon: UserSearch },
   { title: "My Markets", url: "/contacts/markets", icon: MapPin },
   { title: "Listings", url: "/listings", icon: Building2 },
   { title: "Pricing", url: "/pricing", icon: LineChart },
@@ -80,7 +77,6 @@ const relationshipItems: NavItem[] = [
 ];
 
 const automationItems: NavItem[] = [
-  { title: "Automations", url: "/automations", icon: Workflow },
   { title: "Scripts", url: "/scripts", icon: FileText },
 ];
 
@@ -93,11 +89,7 @@ const businessItems: NavItem[] = [
   { title: "Invoices", url: "/invoices", icon: Receipt },
 ];
 
-const insightsItems: NavItem[] = [
-  { title: "Data health", url: "/data-health", icon: Activity },
-  { title: "Hot leads", url: "/hot-leads", icon: Flame },
-  { title: "Recent", url: "/recent", icon: Clock },
-];
+const insightsItems: NavItem[] = [];
 
 const communicationsItems: NavItem[] = [{ title: "SMS suite", url: "/communications/sms", icon: MessageSquare }];
 
@@ -129,15 +121,12 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/todos" && pathname.startsWith("/todos")) return true;
   if (item.url === "/tasks" && pathname.startsWith("/tasks")) return true;
   if (item.url === "/contacts/markets" && pathname.startsWith("/contacts/markets")) return true;
-  if (item.url === "/contact-research" && pathname.startsWith("/contact-research")) return true;
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
   if (item.url === "/listings" && (pathname === "/listings" || pathname.startsWith("/listings/"))) return true;
   if (item.url === "/pricing" && pathname.startsWith("/pricing")) return true;
   if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;
-  if (item.url === "/automations" && pathname.startsWith("/automations")) return true;
-  if (item.url === "/data-health" && pathname.startsWith("/data-health")) return true;
   if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
   if (item.url === "/invoices" && pathname.startsWith("/invoices")) return true;
   return false;
@@ -337,6 +326,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                   {businessItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
+              {insightsItems.length > 0 ? (
               <Collapsible defaultOpen={false} className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Insights</span>
@@ -346,6 +336,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                   {insightsItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
+              ) : null}
               <Collapsible defaultOpen className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Communications</span>
@@ -470,18 +461,6 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-48 mb-2 bg-popover border-border">
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/automations" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
-                        <Workflow className="w-4 h-4" />
-                        Automations
-                      </NavLink>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/data-health" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
-                        <Activity className="w-4 h-4" />
-                        Data health
-                      </NavLink>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <NavLink to="/annual-reviews" className="flex items-center gap-2 text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                         <ClipboardCheck className="w-4 h-4" />

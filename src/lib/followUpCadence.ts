@@ -42,12 +42,24 @@ export function getTemperature(status: string | null | undefined): "hot" | "warm
 }
 
 /** Cadence in days for a contact's status (or coming_to_market if set). */
-export function getCadenceDays(status: string | null | undefined, comingToMarket?: string | null): number {
+export function getCadenceDays(
+  status: string | null | undefined,
+  comingToMarket?: string | null,
+  defaultFollowUpDays?: number,
+): number {
   if (comingToMarket && comingToMarket in COMING_TO_MARKET_CADENCE) {
     return COMING_TO_MARKET_CADENCE[comingToMarket as ComingToMarket].days;
   }
   const temp = getTemperature(status);
-  return FOLLOW_UP_CADENCE_DAYS[temp] ?? 90;
+  if (temp === "lead" && defaultFollowUpDays != null && Number.isFinite(defaultFollowUpDays) && defaultFollowUpDays > 0) {
+    return defaultFollowUpDays;
+  }
+  const mapped = FOLLOW_UP_CADENCE_DAYS[temp];
+  if (mapped != null) return mapped;
+  if (defaultFollowUpDays != null && Number.isFinite(defaultFollowUpDays) && defaultFollowUpDays > 0) {
+    return defaultFollowUpDays;
+  }
+  return 90;
 }
 
 /** Next follow-up date from a "last touch" timestamp and cadence days. */

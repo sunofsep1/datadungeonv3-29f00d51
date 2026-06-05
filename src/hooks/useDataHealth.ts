@@ -38,6 +38,7 @@ export function useDataHealth() {
         checks_mode: typeof row.checks_mode === "string" ? row.checks_mode : undefined,
       };
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 }

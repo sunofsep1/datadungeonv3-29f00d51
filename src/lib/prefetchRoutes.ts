@@ -6,7 +6,6 @@
 const prefetchers: Record<string, () => Promise<unknown>> = {
   "/dashboard": () => import("@/pages/CorePages").then((m) => m.Dashboard),
   "/contacts": () => import("@/pages/CorePages").then((m) => m.Contacts),
-  "/contact-research": () => import("@/pages/ContactResearch"),
   "/properties": () => import("@/pages/CorePages").then((m) => m.Properties),
   "/calendar": () => import("@/pages/CalendarPages").then((m) => m.Calendar),
   "/appointments": () => import("@/pages/CalendarPages").then((m) => m.Appointments),
@@ -18,13 +17,9 @@ const prefetchers: Record<string, () => Promise<unknown>> = {
   "/reports": () => import("@/pages/Reports"),
   "/invoices": () => import("@/pages/Invoices"),
   "/annual-reviews": () => import("@/pages/AnnualReviews"),
-  "/automations": () => import("@/pages/Automations"),
-  "/data-health": () => import("@/pages/DataHealth"),
   "/settings": () => import("@/pages/Settings"),
   "/scripts": () => import("@/pages/Scripts"),
-  "/hot-leads": () => import("@/pages/HotLeads"),
   "/nurture": () => import("@/pages/Nurture"),
-  "/recent": () => import("@/pages/Recent"),
 };
 
 const prefetched = new Set<string>();

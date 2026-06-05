@@ -6,6 +6,7 @@ import {
   getNextFollowUpDate,
   daysUntilDue,
 } from "@/lib/followUpCadence";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import type { ContactWithMeta } from "./useContacts";
 
 export type ContactDueForFollowUp = ContactWithMeta & {
@@ -21,6 +22,9 @@ export type ContactDueForFollowUp = ContactWithMeta & {
  * and last_activity_at or next_follow_up_at. Excludes contacts without a follow-up temperature (e.g. no status).
  */
 export function useContactsDueForFollowUp(contacts: ContactWithMeta[] | undefined): ContactDueForFollowUp[] {
+  const { data: profile } = useUserProfile();
+  const defaultFollowUpDays = profile?.default_follow_up_days ?? 14;
+
   return useMemo(() => {
     if (!contacts?.length) return [];
 
@@ -30,7 +34,11 @@ export function useContactsDueForFollowUp(contacts: ContactWithMeta[] | undefine
     for (const c of contacts) {
       const status = c.status ?? "lead";
       const temperature = getTemperature(status);
-      const cadenceDays = getCadenceDays(status, (c as { coming_to_market?: string | null }).coming_to_market);
+      const cadenceDays = getCadenceDays(
+        status,
+        (c as { coming_to_market?: string | null }).coming_to_market,
+        defaultFollowUpDays,
+      );
 
       // Prefer next_follow_up_at; else derive from last_activity_at or updated_at or created_at
       const lastTouch =
@@ -65,7 +73,7 @@ export function useContactsDueForFollowUp(contacts: ContactWithMeta[] | undefine
     });
 
     return result;
-  }, [contacts]);
+  }, [contacts, defaultFollowUpDays]);
 }
 
 /** Contacts that are due (overdue or due today). */

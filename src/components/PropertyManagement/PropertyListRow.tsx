@@ -22,6 +22,8 @@ export function PropertyListRow({
 }: PropertyListRowProps) {
   const navigate = useNavigate();
   const addr = formatPropertyAddress(property);
+  const imageList = Array.isArray(property.images) ? (property.images as string[]) : [];
+  const thumbnail = imageList.length > 0 ? imageList[0] : null;
   const price = (property.price_listed ?? property.price ?? 0) > 0
     ? `$${(property.price_listed ?? property.price ?? 0).toLocaleString()}`
     : "—";
@@ -47,8 +49,14 @@ export function PropertyListRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       )}
     >
-      <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-        <MapPin className="w-4 h-4 text-primary" />
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+        {thumbnail ? (
+          <img src={thumbnail} alt="" className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-primary/20">
+            <MapPin className="h-4 w-4 text-primary" />
+          </div>
+        )}
       </div>
       <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-0.5 text-sm">
         <p className="font-medium text-foreground truncate">{addr || "—"}</p>

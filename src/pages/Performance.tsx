@@ -248,7 +248,12 @@ export default function Performance() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">Default commission rate</p>
-                  <p className="text-xs text-muted-foreground">Used for projected GCI across Listings and Performance.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Used for projected GCI across Listings and Performance.{" "}
+                    <Link to="/settings/business#commission-rate" className="text-primary hover:underline">
+                      Change in Settings
+                    </Link>
+                  </p>
                 </div>
                 <div className="w-full sm:w-48">
                   <Input

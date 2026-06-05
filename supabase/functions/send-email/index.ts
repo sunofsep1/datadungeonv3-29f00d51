@@ -15,28 +15,41 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
-      global: { headers: { Authorization: authHeader } },
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "No authorization header" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  }
 
-    const { data, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !data?.claims) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data, error: claimsError } = await supabase.auth.getClaims(token);
+  if (claimsError || !data?.claims) {
+    return new Response(JSON.stringify({ error: "Invalid token" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    if (url.searchParams.get("action") === "status") {
+      return new Response(
+        JSON.stringify({ configured: Boolean(RESEND_API_KEY) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
+  try {
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "Email service not configured" }), {
         status: 500,
@@ -51,8 +64,9 @@ Deno.serve(async (req) => {
       replyTo?: unknown;
       contact_id?: unknown;
       log_to_timeline?: unknown;
+      from_name?: unknown;
     };
-    const { to, subject, html, replyTo, contact_id: contactIdRaw, log_to_timeline: logTimeline } = body;
+    const { to, subject, html, replyTo, contact_id: contactIdRaw, log_to_timeline: logTimeline, from_name: fromNameRaw } = body;
 
     if (!to || !subject) {
       return new Response(JSON.stringify({ error: "Missing to or subject" }), {
@@ -72,6 +86,10 @@ Deno.serve(async (req) => {
         .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
         .replace(/javascript\s*:/gi, "");
 
+    const fromName = typeof fromNameRaw === "string" ? fromNameRaw.trim() : "";
+    const from =
+      fromName && !EMAIL_FROM.includes("<") ? `${fromName} <${EMAIL_FROM}>` : EMAIL_FROM;
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -79,7 +97,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from,
         to: Array.isArray(to) ? to : [to],
         subject,
         html: sanitize(html || ""),

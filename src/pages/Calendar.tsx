@@ -46,8 +46,10 @@ import {
   addDays,
   subDays,
 } from "date-fns";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { endTimeFromStart } from "@/lib/appointmentTime";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -79,10 +81,19 @@ const getGcalUrl = () => {
 export default function Calendar() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: profile } = useUserProfile();
+  const defaultDuration = profile?.default_appointment_duration ?? 60;
   const { data: appointments = [], refetch: refetchAppointments } = useAppointments();
   const createAppointmentWithGcal = useCreateAppointmentWithGcal();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [defaultViewApplied, setDefaultViewApplied] = useState(false);
+
+  useEffect(() => {
+    if (defaultViewApplied || !profile?.default_calendar_view) return;
+    setViewMode(profile.default_calendar_view);
+    setDefaultViewApplied(true);
+  }, [profile?.default_calendar_view, defaultViewApplied]);
 
   const [gcalEvents, setGcalEvents] = useState<GCalEvent[]>([]);
   const [gcalLoading, setGcalLoading] = useState(false);
@@ -103,10 +114,12 @@ export default function Calendar() {
 
   /** Open the New Appointment dialog with a specific date (and optional time) pre-filled (e.g. from clicking a calendar cell). */
   const openNewAppointmentForSlot = (date: Date, startTime?: string) => {
+    const start = startTime ?? "09:00";
     setNewAppointment((prev) => ({
       ...prev,
       date: format(date, "yyyy-MM-dd"),
-      startTime: startTime ?? prev.startTime,
+      startTime: start,
+      endTime: endTimeFromStart(start, defaultDuration),
       title: "",
       notes: "",
     }));
@@ -308,7 +321,7 @@ export default function Calendar() {
       const dateTime = `${newAppointment.date}T${newAppointment.startTime}:00`;
       const endDateTime = newAppointment.endTime
         ? `${newAppointment.date}T${newAppointment.endTime}:00`
-        : undefined;
+        : `${newAppointment.date}T${endTimeFromStart(newAppointment.startTime, defaultDuration)}:00`;
       await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,
         date: dateTime,
@@ -644,7 +657,14 @@ export default function Calendar() {
                       type="time"
                       className="bg-input"
                       value={newAppointment.startTime}
-                      onChange={(e) => setNewAppointment({ ...newAppointment, startTime: e.target.value })}
+                      onChange={(e) => {
+                        const startTime = e.target.value;
+                        setNewAppointment({
+                          ...newAppointment,
+                          startTime,
+                          endTime: endTimeFromStart(startTime, defaultDuration),
+                        });
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
@@ -760,10 +780,15 @@ export default function Calendar() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="hidden text-muted-foreground sm:inline">Google</span>
                 {gcalNeedsAuth ? (
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleConnectGcal} disabled={gcalLoading}>
-                    {gcalLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CalendarIcon className="h-3.5 w-3.5" />}
-                    Connect
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleConnectGcal} disabled={gcalLoading}>
+                      {gcalLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CalendarIcon className="h-3.5 w-3.5" />}
+                      Connect
+                    </Button>
+                    <Link to="/settings/integrations" className="text-[11px] text-primary hover:underline">
+                      Integration settings
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <Badge

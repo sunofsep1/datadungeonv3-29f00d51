@@ -26,10 +26,9 @@ export function PropertyCard({
 }: PropertyCardProps) {
   const navigate = useNavigate();
   const addr = formatPropertyAddress(property);
-  const thumbnail =
-    Array.isArray(property.images) && property.images.length > 0
-      ? (property.images as string[])[0]
-      : null;
+  const imageList = Array.isArray(property.images) ? (property.images as string[]) : [];
+  const thumbnail = imageList.length > 0 ? imageList[0] : null;
+  const extraPhotoCount = imageList.length > 1 ? imageList.length - 1 : 0;
 
   const handleClick = () => {
     if (onSelect) onSelect();
@@ -41,16 +40,21 @@ export function PropertyCard({
       className="group overflow-hidden border border-white/10 hover:bg-white/[0.06] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer zoho-card shadow-sm"
       onClick={handleClick}
     >
-      {thumbnail && (
-        <div className="aspect-video bg-muted relative">
+      {thumbnail ? (
+        <div className="relative aspect-video bg-muted">
           <img
             src={thumbnail}
             alt=""
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
             loading="lazy"
           />
+          {extraPhotoCount > 0 ? (
+            <span className="absolute bottom-2 right-2 rounded-md bg-black/65 px-2 py-0.5 text-xs font-semibold text-white">
+              +{extraPhotoCount}
+            </span>
+          ) : null}
         </div>
-      )}
+      ) : null}
       <div className="p-3 flex gap-3">
         {onToggleSelect && (
           <Button

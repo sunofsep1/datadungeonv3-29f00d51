@@ -1102,7 +1102,7 @@ export default function ListingDetail() {
               {user?.email && (
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               )}
-              <Link to="/settings" className="text-xs text-primary hover:underline mt-0.5 inline-block">
+              <Link to="/settings/automations" className="text-xs text-primary hover:underline mt-0.5 inline-block">
                 Profile settings
               </Link>
             </div>
