@@ -77,3 +77,40 @@ describe("parsePropertyReportText — stacked owners (Horsley Place)", () => {
     expect(splitOwnerNames(parsed.owner_names)).toEqual(["Thomas Murphy", "Michael John Murphy"]);
   });
 });
+
+const THORNLANDS_95_SAMPLE = `
+PROPERTY REPORT 95 THORNLANDS ROAD, THORNLANDS, QLD
+95 THORNLANDS ROAD, THORNLANDS, QLD 4164 JAMIE MATTHEW & CAREN JOY JOYCE Owner Name(s):
+Owner Details Owner Type: Owner Occupied Phone(s): ^0409 068 677 (DUNCAN) N/A Owner Address:
+Property Details RPD: L2 SP179650 Valuation Amount: $860,000 - Site Value on 30/06/2026
+Property Type: House - Freehold [Issuing] Land Use: SINGLE UNIT DWELLING Zoning Area: 1,150 m²
+Council: REDLAND Features: Deck, Study Area $/m2: 4 3 5 Sales History
+`;
+
+describe("parsePropertyReportText — Thornlands 95 sample", () => {
+  it("extracts address, two owners, phone, and beds/baths/cars", () => {
+    const parsed = parsePropertyReportText(THORNLANDS_95_SAMPLE);
+    expect(parsed.address_line1).toMatch(/95 THORNLANDS ROAD/i);
+    expect(parsed.city).toMatch(/THORNLANDS/i);
+    expect(parsed.postcode).toBe("4164");
+    expect(splitOwnerNames(parsed.owner_names)).toEqual(["Jamie Matthew Joyce", "Caren Joy Joyce"]);
+    expect(parsed.owner_phones?.[0]).toBe("0409068677");
+    expect(parsed.bedrooms).toBe(4);
+    expect(parsed.bathrooms).toBe(3);
+    expect(parsed.car_spaces).toBe(5);
+    expect(parsed.lot_plan).toBe("L2 SP179650");
+  });
+});
+
+describe("parsePropertyReportText — owner label junk regression", () => {
+  it("prefers real names before label over Owner Details section labels", () => {
+    const text = `
+      12 MAIN STREET, REDLAND BAY QLD 4165
+      JOHN SMITH & JANE DOE Owner Name(s):
+      Owner Details OWNER TYPE OWNER OCCUPIED PHONE Owner Type: Owner Occupied
+      Property Details RPD: L1 RP1
+    `;
+    const parsed = parsePropertyReportText(text);
+    expect(splitOwnerNames(parsed.owner_names)).toEqual(["John Smith", "Jane Doe"]);
+  });
+});

@@ -37,7 +37,96 @@ function splitSharedSurnameNames(raw: string): string[] {
   return parts.length >= 2 ? parts : [titleCaseOwnerName(normalized)];
 }
 
-/** Split ampersand-separated co-owners; share surname when second part is given names only. */
+/**
+ * Tokens that are commonly given/middle names in Pricefinder owner strings.
+ * When a co-owner segment ends with one of these, the shared couple surname is
+ * usually on the last person only (e.g. "JAMIE MATTHEW & CAREN JOY JOYCE").
+ */
+const LIKELY_GIVEN_NOT_SURNAME = new Set([
+  "matthew",
+  "john",
+  "james",
+  "michael",
+  "david",
+  "william",
+  "robert",
+  "richard",
+  "joseph",
+  "thomas",
+  "charles",
+  "daniel",
+  "mark",
+  "paul",
+  "steven",
+  "andrew",
+  "joshua",
+  "kevin",
+  "brian",
+  "george",
+  "timothy",
+  "ronald",
+  "edward",
+  "jason",
+  "jeffrey",
+  "ryan",
+  "jacob",
+  "gary",
+  "nicholas",
+  "eric",
+  "stephen",
+  "jonathan",
+  "mary",
+  "patricia",
+  "jennifer",
+  "linda",
+  "elizabeth",
+  "barbara",
+  "susan",
+  "jessica",
+  "sarah",
+  "karen",
+  "lisa",
+  "nancy",
+  "betty",
+  "helen",
+  "sandra",
+  "donna",
+  "carol",
+  "ruth",
+  "sharon",
+  "michelle",
+  "laura",
+  "kimberly",
+  "deborah",
+  "amy",
+  "angela",
+  "melissa",
+  "brenda",
+  "emma",
+  "olivia",
+  "sophia",
+  "isabella",
+  "charlotte",
+  "mia",
+  "amelia",
+  "harper",
+  "evelyn",
+  "abigail",
+  "emily",
+  "ella",
+  "julian",
+  "francis",
+  "joy",
+  "ann",
+  "anne",
+  "lee",
+  "rose",
+  "may",
+  "caren",
+  "jamie",
+]);
+
+/** Split ampersand-separated co-owners; propagate shared surname from the last fully-named person. */
 function expandSameSurnameCouple(segment: string): string[] {
   const parts = segment
     .split(/\s+&\s+|\s+and\s+/i)
@@ -45,19 +134,41 @@ function expandSameSurnameCouple(segment: string): string[] {
     .filter(Boolean);
   if (parts.length <= 1) return splitSharedSurnameNames(segment);
 
-  const first = titleCaseOwnerName(parts[0]!);
-  const firstWords = first.split(/\s+/).filter(Boolean);
-  const sharedSurname = firstWords.length >= 2 ? firstWords[firstWords.length - 1]! : "";
+  const titledParts = parts.map(titleCaseOwnerName);
+  const wordGroups = titledParts.map((part) => part.split(/\s+/).filter(Boolean));
+  const lastGroup = wordGroups[wordGroups.length - 1]!;
+  const firstGroup = wordGroups[0]!;
 
-  return parts.map((part, i) => {
-    const tc = titleCaseOwnerName(part);
-    if (i === 0 || !sharedSurname) return tc;
-    const words = tc.split(/\s+/).filter(Boolean);
+  // Prefer surname from the last multi-word part (Pricefinder puts shared surname there).
+  let coupleSurname: string | null = null;
+  if (lastGroup.length >= 2) {
+    coupleSurname = lastGroup[lastGroup.length - 1]!;
+  } else if (firstGroup.length >= 2) {
+    coupleSurname = firstGroup[firstGroup.length - 1]!;
+  }
+  if (!coupleSurname) return titledParts;
+
+  const trailingTokens = wordGroups
+    .filter((words) => words.length >= 2)
+    .map((words) => words[words.length - 1]!.toLowerCase());
+  const multipleDistinctTrailing =
+    new Set(trailingTokens).size >= 2 && trailingTokens.length >= 2;
+
+  return titledParts.map((tc, i) => {
+    const words = wordGroups[i]!;
+    const hasCoupleSurname = words.some((w) => w.toLowerCase() === coupleSurname!.toLowerCase());
+    if (hasCoupleSurname) return tc;
+
     const lastToken = words[words.length - 1]?.toLowerCase() ?? "";
-    // Already has a distinct surname (e.g. semicolon-separated couple re-joined with &)
-    if (words.length >= 2 && lastToken !== sharedSurname.toLowerCase()) return tc;
-    const hasSurname = words.some((w) => w.toLowerCase() === sharedSurname.toLowerCase());
-    if (!hasSurname && words.length <= 2) return `${tc} ${sharedSurname}`;
+    const missingFullName =
+      (lastGroup.length >= 2 && (words.length <= 1 || words.length === lastGroup.length - 1)) ||
+      (lastGroup.length === 1 && words.length === 1 && i > 0 && firstGroup.length >= 2);
+
+    // Same-surname couple: earlier person has given names only, surname on last person.
+    if (missingFullName && (!multipleDistinctTrailing || LIKELY_GIVEN_NOT_SURNAME.has(lastToken))) {
+      return `${tc} ${coupleSurname}`;
+    }
+
     return tc;
   });
 }

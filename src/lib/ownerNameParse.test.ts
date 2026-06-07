@@ -34,6 +34,13 @@ describe("splitOwnerNames", () => {
   it("shares surname for ampersand couple when second name is given names only", () => {
     expect(splitOwnerNames("SANDRA MCDONALD & JULIAN")).toEqual(["Sandra Mcdonald", "Julian Mcdonald"]);
   });
+
+  it("shares surname for ampersand couple when surname appears on last person only (Thornlands)", () => {
+    expect(splitOwnerNames("JAMIE MATTHEW & CAREN JOY JOYCE")).toEqual([
+      "Jamie Matthew Joyce",
+      "Caren Joy Joyce",
+    ]);
+  });
 });
 
 describe("allOwnersAlreadyLinked", () => {
@@ -74,6 +81,17 @@ describe("splitFirstLastName", () => {
 
   it("handles single name", () => {
     expect(splitFirstLastName("Madonna")).toEqual({ first_name: "Madonna", last_name: "" });
+  });
+
+  it("splits Thornlands couple with middle name", () => {
+    expect(splitFirstLastName("Caren Joy Joyce")).toEqual({
+      first_name: "Caren Joy",
+      last_name: "Joyce",
+    });
+    expect(splitFirstLastName("Jamie Matthew Joyce")).toEqual({
+      first_name: "Jamie Matthew",
+      last_name: "Joyce",
+    });
   });
 });
 

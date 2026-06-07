@@ -56,6 +56,109 @@ function safeTrim(s: string | undefined | null): string {
   return s == null ? "" : String(s).trim();
 }
 
+const OWNER_NAME_BLOCKLIST = [
+  "owner type",
+  "owner occupied",
+  "owner details",
+  "owner address",
+  "owner name",
+  "property details",
+  "property report",
+  "property type",
+  "phone",
+  "normal sale",
+  "single unit",
+  "land use",
+  "valuation amount",
+  "sales history",
+  "mailing address",
+  "postal address",
+];
+
+/** Reject PDF label junk mistaken for owner names. */
+export function isPlausibleOwnerNames(raw: string | null | undefined): boolean {
+  const trimmed = safeTrim(raw);
+  if (!trimmed || trimmed.length < 3) return false;
+
+  const lower = trimmed.toLowerCase();
+  if (OWNER_NAME_BLOCKLIST.some((phrase) => lower.includes(phrase))) return false;
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length < 2 && !/[;&]/.test(trimmed)) return false;
+
+  // Must contain at least one letter sequence that looks like a name (not only labels)
+  if (!/[A-Za-z]{2,}/.test(trimmed)) return false;
+
+  return true;
+}
+
+function trySetOwnerNames(result: ParsedPropertyReport, candidate: string | null | undefined): boolean {
+  const trimmed = safeTrim(candidate);
+  if (!trimmed || !isPlausibleOwnerNames(trimmed)) return false;
+  result.owner_names = trimmed;
+  return true;
+}
+
+function extractOwnerNamesFromText(fullText: string): string | null {
+  const NON_NAME_HEADERS = [
+    "owner details",
+    "property details",
+    "property report",
+    "owner address",
+    "owner occupied",
+    "owner type",
+  ];
+
+  // 1. Name before "Owner Name(s):" — common Pricefinder print-page layout
+  const ownerBeforeLabel = [
+    ...fullText.matchAll(/([A-Za-z][A-Za-z\s&.;'-]{2,120})\s+Owner Name\(s\):/gi),
+  ];
+  if (ownerBeforeLabel.length > 0) {
+    const candidate = safeTrim(ownerBeforeLabel[ownerBeforeLabel.length - 1]![1]);
+    if (
+      candidate &&
+      !NON_NAME_HEADERS.some((h) => candidate.toLowerCase().includes(h)) &&
+      isPlausibleOwnerNames(candidate)
+    ) {
+      return candidate;
+    }
+  }
+
+  // 2. Name after "Owner Name(s):"
+  const ownerAfterLabel = fullText.match(
+    /Owner Name\(s\):\s*([A-Za-z][A-Za-z\s&.;'-]{2,120}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
+  );
+  if (ownerAfterLabel?.[1] && isPlausibleOwnerNames(ownerAfterLabel[1])) {
+    return safeTrim(ownerAfterLabel[1]);
+  }
+
+  // 3. ALL-CAPS name in Owner Details section — last resort
+  const ownerSectionMatch = fullText.match(/Owner Details(.{0,600}?)(?=Property Details|$)/i);
+  const ownerSection = ownerSectionMatch?.[1] ?? "";
+  if (ownerSection) {
+    const capsNameMatch = ownerSection.match(
+      /([A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6}(?:\s*[;&]\s*[A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6})*)/,
+    );
+    if (capsNameMatch?.[1] && isPlausibleOwnerNames(capsNameMatch[1])) {
+      return safeTrim(capsNameMatch[1]);
+    }
+  }
+
+  return null;
+}
+
+function parseOwnerPhonesFromText(fullText: string): string[] | null {
+  const phoneMatch = fullText.match(/Phone\(s\):\s*\^?\s*([\d\s()A-Za-z]+?)(?=\s+(?:N\/A|Owner|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing|RPD|Valuation)|$)/i);
+  if (!phoneMatch?.[1]) return null;
+
+  // Strip directory suffix e.g. "(DUNCAN)" and whitespace before extracting digits
+  const segment = String(phoneMatch[1])
+    .replace(/\([A-Za-z\s]+\)/g, " ")
+    .replace(/\s+/g, "");
+  const phones = segment.match(/\d{10,11}/g) || [];
+  return phones.length ? phones : null;
+}
+
 /** Remove disclaimer and long boilerplate from parsed text so only main points are kept */
 function stripDisclaimerAndTruncate(s: string | undefined | null, maxLen = 200): string | null {
   if (s == null || typeof s !== "string") return null;
@@ -146,40 +249,8 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     result.postcode = parts.postcode;
   }
 
-  // Owner Name(s): search the "Owner Details" section for an ALL-CAPS multi-word name.
-  // This handles both label-before-value AND value-before-label PDF.js extraction orders —
-  // PDF.js sometimes reads columns out of order, putting values before their labels.
-  const ownerSectionMatch = fullText.match(/Owner Details(.{0,600}?)(?=Property Details|$)/i);
-  const ownerSection = ownerSectionMatch?.[1] ?? "";
-  if (ownerSection) {
-    // Pattern: 2+ uppercase words (hyphens/apostrophes allowed), optionally joined by ; or &
-    const capsNameMatch = ownerSection.match(
-      /([A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6}(?:\s*[;&]\s*[A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6})*)/,
-    );
-    if (capsNameMatch?.[1]) result.owner_names = safeTrim(capsNameMatch[1]) || null;
-  }
-
-  // Fallback 1: name explicitly after the "Owner Name(s):" label (row-by-row PDF layout)
-  if (!result.owner_names) {
-    const ownerAfterLabel = fullText.match(
-      /Owner Name\(s\):\s*([A-Za-z][A-Za-z\s&.;'-]{2,120}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
-    );
-    if (ownerAfterLabel?.[1]) result.owner_names = safeTrim(ownerAfterLabel[1]) || null;
-  }
-
-  // Fallback 2: older format — name appears before the label
-  const NON_NAME_HEADERS = ["owner details", "property details", "property report", "owner address", "owner occupied", "owner type"];
-  if (!result.owner_names) {
-    const ownerBeforeLabel = [
-      ...fullText.matchAll(/([A-Za-z][A-Za-z\s&.;'-]{2,120})\s+Owner Name\(s\):/gi),
-    ];
-    if (ownerBeforeLabel.length > 0) {
-      const candidate = safeTrim(ownerBeforeLabel[ownerBeforeLabel.length - 1]![1]);
-      if (candidate && !NON_NAME_HEADERS.some((h) => candidate.toLowerCase().includes(h))) {
-        result.owner_names = candidate || null;
-      }
-    }
-  }
+  // Owner Name(s): priority — before label, after label, then Owner Details section
+  trySetOwnerNames(result, extractOwnerNamesFromText(fullText));
 
   // Some PDF exports put the first owner before the label and the second after (e.g. "SANDRA MCDONALD Owner Name(s): & JULIAN …").
   const ownersFromExtract = result.owner_names ? splitOwnerNames(result.owner_names) : [];
@@ -192,7 +263,7 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
       /Owner Name\(s\):\s*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s.;'-]{1,80}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
     );
     const extra = safeTrim(trailingOwner?.[1] ?? "");
-    if (extra) {
+    if (extra && isPlausibleOwnerNames(extra)) {
       const base = result.owner_names.toLowerCase();
       const extraLower = extra.toLowerCase();
       if (!base.includes(extraLower) && !extraLower.includes(base)) {
@@ -205,13 +276,7 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     result.owner_names = joinOwnerNames(result.owner_names) ?? result.owner_names;
   }
 
-  // Phone(s) — strip spaces before matching 10-digit run (e.g. "0409 068 677" → "0409068677")
-  const phoneMatch = fullText.match(/Phone\(s\):\s*[\^]?([\d\s]+)/i);
-  if (phoneMatch?.[1]) {
-    const clean = String(phoneMatch[1]).replace(/\s+/g, "");
-    const phones = clean.match(/\d{10,11}/g) || [];
-    result.owner_phones = phones.length ? phones : null;
-  }
+  result.owner_phones = parseOwnerPhonesFromText(fullText);
 
   // Owner Type — stop before next section header
   const ownerTypeMatch = fullText.match(/Owner Type:\s*([\w\s]{1,50}?)(?=\s+Property|\s+Valuation|$)/i);
