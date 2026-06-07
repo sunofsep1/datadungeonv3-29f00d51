@@ -39,3 +39,16 @@ supabase/.branches/
 
 .env.save
 *.zip
+
+# Large asset folders / non-app files
+Canva Stock/
+New Ideas Selling Social/
+agentbox-export/
+datadungeonv3-29f00d51/
+*.csv
+*.docx
+*.html
+*.mp4
+*.pyc
+prospect_contacts.csv
+Pipeline_*
