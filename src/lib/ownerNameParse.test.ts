@@ -27,11 +27,12 @@ describe("splitOwnerNames", () => {
     ]);
   });
 
-  it("splits stacked co-owners with shared surname (Pricefinder PDF)", () => {
-    expect(splitOwnerNames("THOMAS MURPHY MICHAEL JOHN MURPHY")).toEqual([
-      "Thomas Murphy",
-      "Michael John Murphy",
-    ]);
+  it("splits semicolon-separated owners with different surnames", () => {
+    expect(splitOwnerNames("JOHN SMITH; JANE DOE")).toEqual(["John Smith", "Jane Doe"]);
+  });
+
+  it("shares surname for ampersand couple when second name is given names only", () => {
+    expect(splitOwnerNames("SANDRA MCDONALD & JULIAN")).toEqual(["Sandra Mcdonald", "Julian Mcdonald"]);
   });
 });
 
@@ -64,11 +65,15 @@ describe("findContactByOwnerName", () => {
 });
 
 describe("splitFirstLastName", () => {
-  it("splits on first space", () => {
+  it("uses last token as surname", () => {
     expect(splitFirstLastName("Julian Francis Mcdonnell")).toEqual({
-      first_name: "Julian",
-      last_name: "Francis Mcdonnell",
+      first_name: "Julian Francis",
+      last_name: "Mcdonnell",
     });
+  });
+
+  it("handles single name", () => {
+    expect(splitFirstLastName("Madonna")).toEqual({ first_name: "Madonna", last_name: "" });
   });
 });
 

@@ -1,12 +1,12 @@
 import React, { useId, useState } from "react";
-import { ExternalLink, Loader2, Sparkles, Upload } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PricefinderWidgetSlot } from "@/components/pricefinder/PricefinderWidgetSlot";
 import { usePricefinderMode } from "@/hooks/usePricefinderMode";
 import type { ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
 import type { PricefinderPropertyData } from "@/lib/pricefinderTypes";
 import { splitOwnerNames } from "@/lib/ownerNameParse";
-import { openPricefinderPortal, markPricefinderApiUnavailable } from "@/lib/pricefinderMode";
+import { copyTextToClipboard, openPricefinderPortal, markPricefinderApiUnavailable } from "@/lib/pricefinderMode";
 import { isPricefinderConfiguredError } from "@/lib/pricefinderClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -117,6 +117,14 @@ export function PricefinderResearchPanel({
   const { mode } = usePricefinderMode();
   const { toast } = useToast();
   const [openingPortal, setOpeningPortal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAddress = async () => {
+    if (!address?.trim()) return;
+    await copyTextToClipboard(address.trim());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const handleOpenPortal = async () => {
     setOpeningPortal(true);
@@ -124,8 +132,8 @@ export function PricefinderResearchPanel({
       await openPricefinderPortal(address);
       if (address?.trim()) {
         toast({
-          title: "Address copied",
-          description: "Paste into Pricefinder search after login.",
+          title: "Opening Pricefinder",
+          description: "Search page opened with address pre-filled. Also copied to clipboard as backup.",
         });
       }
     } finally {
@@ -199,6 +207,21 @@ export function PricefinderResearchPanel({
         </div>
       ) : (
         <>
+          {address?.trim() ? (
+            <div className="flex items-center gap-1 min-w-0">
+              <span className={cn("truncate text-muted-foreground font-mono", isCompact ? "text-[11px]" : "text-xs")}>
+                {address.trim()}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleCopyAddress()}
+                title="Copy address"
+                className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+              </button>
+            </div>
+          ) : null}
           <p className={cn("text-muted-foreground", isCompact ? "text-[11px]" : "text-xs")}>
             Research in Pricefinder, download a property report PDF, then upload here — no REST API needed.
           </p>

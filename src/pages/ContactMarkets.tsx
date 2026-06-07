@@ -8,20 +8,26 @@ import { useListings } from "@/hooks/useListings";
 import { useProperties, type PropertyWithLinks } from "@/hooks/useProperties";
 import {
   buildMarketStats,
+  buildPropertyLastTouchMap,
   buildPropertyPinUrgencyMap,
   findMarketById,
   getPropertiesForMarket,
   isOwnerLinkRole,
+  type ContactMarket,
   type PropertyForMarket,
 } from "@/lib/contactMarkets";
 import {
   CONTACT_MARKETS_EVENT,
   loadContactMarkets,
+  loadLastMarketId,
   saveContactMarkets,
+  saveLastMarketId,
 } from "@/lib/contactMarketsPrefs";
 import { loadSessionMarketId, saveSessionMarketId } from "@/lib/marketMapSession";
-import { hasValidCoordinates } from "@/lib/propertyGeocode";
+import { clearGeocodeBlockedState, hasValidCoordinates } from "@/lib/propertyGeocode";
+import { getGoogleMapsApiKey } from "@/lib/loadGoogleMaps";
 import { MarketEditorDialog } from "@/components/contacts/MarketEditorDialog";
+import { SuburbQuickAdd } from "@/components/markets/SuburbQuickAdd";
 import { MarketMapWorkspace } from "@/components/markets/MarketMapWorkspace";
 import { MarketSuburbListItem } from "@/components/markets/MarketSuburbListItem";
 import { useGeocodeBlockedMessage } from "@/hooks/usePropertyGeocode";
@@ -66,6 +72,7 @@ export default function ContactMarkets() {
   const [markets, setMarkets] = useState(() => loadContactMarkets());
   const [editorOpen, setEditorOpen] = useState(false);
   const geocodeBlockedMessage = useGeocodeBlockedMessage();
+  const mapsApiKeyMissing = !getGoogleMapsApiKey();
 
   useEffect(() => {
     const sync = () => setMarkets(loadContactMarkets());
@@ -78,11 +85,17 @@ export default function ContactMarkets() {
     const fromSession = loadSessionMarketId();
     if (fromSession && findMarketById(markets, fromSession)) {
       setSearchParams({ market: fromSession }, { replace: true });
+      return;
+    }
+    const fromLast = loadLastMarketId();
+    if (fromLast && findMarketById(markets, fromLast)) {
+      setSearchParams({ market: fromLast }, { replace: true });
     }
   }, [marketParam, markets, setSearchParams]);
 
   useEffect(() => {
     saveSessionMarketId(marketParam);
+    saveLastMarketId(marketParam);
   }, [marketParam]);
 
   const propertiesForMarkets = useMemo(
@@ -97,6 +110,11 @@ export default function ContactMarkets() {
 
   const propertyUrgencyById = useMemo(
     () => buildPropertyPinUrgencyMap((contacts ?? []) as ContactWithMeta[]),
+    [contacts],
+  );
+
+  const propertyLastTouchById = useMemo(
+    () => buildPropertyLastTouchMap((contacts ?? []) as ContactWithMeta[]),
     [contacts],
   );
 
@@ -175,6 +193,13 @@ export default function ContactMarkets() {
     );
   };
 
+  const handleQuickAddMarket = (newMarket: ContactMarket) => {
+    const next = [...markets, newMarket];
+    saveContactMarkets(next);
+    setMarkets(next);
+    setSearchParams({ market: newMarket.id }, { replace: true });
+  };
+
   if (isLoading) {
     return (
       <div className="animate-fade-in flex flex-col gap-2" style={{ height: MAP_VIEW_HEIGHT }}>
@@ -218,10 +243,28 @@ export default function ContactMarkets() {
         </Button>
       </div>
 
-      {geocodeBlockedMessage ? (
-        <div className="mx-4 mb-2 shrink-0 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 sm:mx-6">
-          <span className="font-medium text-amber-50">Geocoding API required for pins — </span>
-          {geocodeBlockedMessage}
+      {mapsApiKeyMissing ? (
+        <div className="mx-4 mb-2 shrink-0 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive sm:mx-6">
+          <span className="font-medium">Google Maps API key missing — </span>
+          Set <code className="text-[10px]">VITE_GOOGLE_MAPS_API_KEY</code> in your{" "}
+          <code className="text-[10px]">.env</code> and enable Geocoding API + Places API in Google Cloud
+          Console, then restart the dev server.
+        </div>
+      ) : geocodeBlockedMessage ? (
+        <div className="mx-4 mb-2 shrink-0 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 sm:mx-6 flex items-start justify-between gap-3">
+          <div>
+            <span className="font-medium text-amber-50">Geocoding API required for pins — </span>
+            {geocodeBlockedMessage}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 shrink-0 px-2 text-[10px] border-amber-400/60 text-amber-100 hover:bg-amber-500/20"
+            onClick={() => clearGeocodeBlockedState()}
+          >
+            Retry
+          </Button>
         </div>
       ) : null}
 
@@ -242,6 +285,11 @@ export default function ContactMarkets() {
                 compact
               />
             ))}
+            <SuburbQuickAdd
+              existingIds={markets.map((m) => m.id)}
+              onAdd={handleQuickAddMarket}
+              className="hidden sm:block shrink-0 pb-1"
+            />
           </aside>
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:border-l-0">
@@ -252,6 +300,7 @@ export default function ContactMarkets() {
                 ownerLinksByPropertyId={ownerLinksByPropertyId}
                 propertyUrgencyById={propertyUrgencyById}
                 propertyListingPinById={propertyListingPinById}
+                propertyLastTouchById={propertyLastTouchById}
               />
             ) : (
               <div className="flex flex-1 items-center justify-center border border-dashed border-border/60 bg-muted/10 p-8 text-center sm:mx-2 sm:rounded-lg">

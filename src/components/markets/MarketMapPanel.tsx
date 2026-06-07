@@ -22,9 +22,10 @@ import { cn } from "@/lib/utils";
 const REDLANDS_DEFAULT = { lat: -27.5877, lng: 153.2667 };
 
 const PIN_COLORS: Record<PropertyPinUrgency | "pf" | "prospect", string> = {
-  hot: "#F59E0B",
-  stale: "#64748B",
-  none: "#00BCD4",
+  immediate: "#EF4444", // red   — overdue / action required now
+  priority:  "#F59E0B", // amber — due soon
+  planned:   "#00BCD4", // teal  — on track
+  backlog:   "#64748B", // slate — no upcoming touch
   pf: "#0891B2",
   prospect: "#A855F7",
 };
@@ -49,6 +50,7 @@ type Props = {
   propertyUrgencyById?: Record<string, PropertyPinUrgency>;
   propertyListingPinById?: Record<string, PropertyListingPinMeta>;
   pfByPropertyId?: Record<string, PricefinderPropertyData>;
+  propertyLastTouchById?: Record<string, Date>;
   pricefinderMode?: PricefinderMode;
   selectedPropertyId?: string | null;
   onSelectProperty?: (propertyId: string) => void;
@@ -141,6 +143,23 @@ const IW = {
     "display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;line-height:1.3",
 } as const;
 
+const URGENCY_BADGE: Record<import("@/lib/contactMarkets").PropertyPinUrgency, { label: string; bg: string; color: string }> = {
+  immediate: { label: "Overdue",  bg: "#FEE2E2", color: "#B91C1C" },
+  priority:  { label: "Due soon", bg: "#FEF3C7", color: "#92400E" },
+  planned:   { label: "On track", bg: "#CFFAFE", color: "#0E7490" },
+  backlog:   { label: "Backlog",  bg: "#F1F5F9", color: "#475569" },
+};
+
+function formatRelativeDate(d: Date): string {
+  const days = Math.round((Date.now() - d.getTime()) / 86_400_000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 31) return `${Math.round(days / 7)}w ago`;
+  if (days < 365) return `${Math.round(days / 30)}mo ago`;
+  return `${Math.round(days / 365)}y ago`;
+}
+
 function buildInfoWindowHtml(
   property: MapProperty,
   owners: PropertyOwnerLink[],
@@ -149,6 +168,8 @@ function buildInfoWindowHtml(
   pricefinderMode: PricefinderMode,
   listingPin?: PropertyListingPinMeta,
   isProspect?: boolean,
+  urgency?: import("@/lib/contactMarkets").PropertyPinUrgency,
+  lastTouch?: Date,
 ): string {
   const addr = formatPropertyAddress(property as Property) || listingPin?.address || "Property";
   const ownerLines = buildOwnerInfoLines(property, owners, isProspect ?? false);
@@ -201,10 +222,23 @@ function buildInfoWindowHtml(
   const recordLabel = listingPin ? "Open listing →" : "Open record →";
   const linkedCount = owners.length;
 
+  const urgencyRow = (() => {
+    if (isProspect || listingPin) return "";
+    const badge = urgency ? URGENCY_BADGE[urgency] : null;
+    const badgeHtml = badge
+      ? `<span style="${IW.badge};background:${badge.bg};color:${badge.color}">${badge.label}</span>`
+      : "";
+    const touchHtml = lastTouch
+      ? `<span style="font-size:11px;color:#64748b;margin-left:6px">Touched ${formatRelativeDate(lastTouch)}</span>`
+      : `<span style="font-size:11px;color:#94a3b8;margin-left:6px">No touch recorded</span>`;
+    return `<p style="margin:0 0 10px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${badgeHtml}${touchHtml}</p>`;
+  })();
+
   return `
     <div style="${IW.wrap}">
       ${svThumb ? `<img src="${svThumb}" alt="" style="width:100%;border-radius:8px;margin-bottom:10px" />` : ""}
       <p style="${IW.title}">${escapeHtml(addr || "Property")}</p>
+      ${urgencyRow}
       ${listingBadge}
       <p style="${IW.sectionLabel}">${escapeHtml(ownerLabel)}</p>
       <p style="${IW.sectionBody}">${ownerLines}</p>
@@ -307,7 +341,7 @@ function resolvePinAppearance(
     return { color: PIN_COLORS.prospect, listingKind: "prospect" };
   }
   if (pfMap[propertyId]) return { color: PIN_COLORS.pf, listingKind: null };
-  const u = urgencyMap[propertyId] ?? "none";
+  const u = urgencyMap[propertyId] ?? "backlog";
   return { color: PIN_COLORS[u], listingKind: null };
 }
 
@@ -318,6 +352,7 @@ export function MarketMapPanel({
   propertyUrgencyById = {},
   propertyListingPinById = {},
   pfByPropertyId = {},
+  propertyLastTouchById = {},
   pricefinderMode = "pdf",
   selectedPropertyId = null,
   onSelectProperty,
@@ -359,6 +394,10 @@ export function MarketMapPanel({
   pfRef.current = pfByPropertyId;
   const listingPinRef = useRef(propertyListingPinById);
   listingPinRef.current = propertyListingPinById;
+  const urgencyRef = useRef(propertyUrgencyById);
+  urgencyRef.current = propertyUrgencyById;
+  const lastTouchRef = useRef(propertyLastTouchById);
+  lastTouchRef.current = propertyLastTouchById;
   const propertiesRef = useRef(properties);
   propertiesRef.current = properties;
   const marketViewportInitRef = useRef<string | null>(null);
@@ -648,6 +687,8 @@ export function MarketMapPanel({
           pricefinderMode,
           listingPin,
           prospect,
+          urgencyRef.current[property.id],
+          lastTouchRef.current[property.id],
         ),
       );
       const alreadyShowing = lastInfoPropertyIdRef.current === property.id && iw.getMap();

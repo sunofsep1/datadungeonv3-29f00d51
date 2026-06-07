@@ -1,4 +1,28 @@
 import { normalizeSuburb, parseSuburbFromAddress } from "@/lib/buyerRequirementMatch";
+import { buildContactUrgency, type ContactUrgencyTier } from "@/lib/contactUrgency";
+
+/** Common AU suburb spelling variants for market ↔ property matching. */
+const SUBURB_ALIASES: Record<string, string> = {
+  "mt gravatt": "mount gravatt",
+  "mt gravatt east": "mount gravatt east",
+  "mt gravatt west": "mount gravatt west",
+  "mt cotton": "mount cotton",
+  "mt ommaney": "mount ommaney",
+  "mt warren park": "mount warren park",
+  "mt louisa": "mount louisa",
+  "mt isa": "mount isa",
+  "mt morgan": "mount morgan",
+  "st lucia": "saint lucia",
+  "st kilda": "saint kilda",
+  "st ives": "saint ives",
+};
+
+/** Normalize suburb for market membership checks (aliases + casing). */
+export function normalizeMarketSuburb(value: string | null | undefined): string {
+  const base = normalizeSuburb(value);
+  if (!base) return "";
+  return SUBURB_ALIASES[base] ?? base;
+}
 import { getDaysSinceLastTouch, type ContactLikeForTouch } from "@/lib/contactLastTouch";
 
 export type ContactMarket = {
@@ -81,13 +105,13 @@ export function getOwnerPropertySuburbs(contact: ContactForMarket): string[] {
     if (!prop) continue;
     const suburb = getPropertySuburb(prop);
     if (!suburb) continue;
-    out.add(normalizeSuburb(suburb));
+    out.add(normalizeMarketSuburb(suburb));
   }
   return [...out];
 }
 
 export function marketSuburbSet(market: ContactMarket): Set<string> {
-  return new Set(market.suburbs.map((s) => normalizeSuburb(s)).filter(Boolean));
+  return new Set(market.suburbs.map((s) => normalizeMarketSuburb(s)).filter(Boolean));
 }
 
 export function contactMatchesMarket(contact: ContactForMarket, market: ContactMarket): boolean {
@@ -109,7 +133,7 @@ export function propertyMatchesMarket(prop: ContactMarketProperty, market: Conta
   if (!propertyStateMatches(prop, market.state)) return false;
   const suburb = getPropertySuburb(prop);
   if (!suburb) return false;
-  return suburbs.has(normalizeSuburb(suburb));
+  return suburbs.has(normalizeMarketSuburb(suburb));
 }
 
 export function getPropertiesForMarket(properties: PropertyForMarket[], market: ContactMarket): PropertyForMarket[] {
@@ -151,7 +175,7 @@ export function buildMarketStats(
         const prop = link.properties;
         if (!propertyStateMatches(prop, market.state)) continue;
         const suburb = getPropertySuburb(prop);
-        if (!suburb || !marketSuburbSet(market).has(normalizeSuburb(suburb))) continue;
+        if (!suburb || !marketSuburbSet(market).has(normalizeMarketSuburb(suburb))) continue;
         const line = formatPropertySample(prop);
         if (line !== "—" && !sampleAddresses.includes(line)) {
           sampleAddresses.push(line);
@@ -178,21 +202,55 @@ export function findMarketById(markets: ContactMarket[], id: string | null | und
   return markets.find((m) => m.id === id) ?? null;
 }
 
-export type PropertyPinUrgency = "hot" | "stale" | "none";
+/** Full 4-tier urgency for map pin colouring (aligns with ContactUrgencyTier). */
+export type PropertyPinUrgency = ContactUrgencyTier; // "immediate" | "priority" | "planned" | "backlog"
 
-/** Pin colour hint from linked owner contact urgency. */
+const URGENCY_RANK: Record<PropertyPinUrgency, number> = {
+  immediate: 4,
+  priority: 3,
+  planned: 2,
+  backlog: 1,
+};
+
+/** Pin colour hint derived from linked owner urgency (highest tier wins). */
 export function buildPropertyPinUrgencyMap(contacts: ContactForMarket[]): Record<string, PropertyPinUrgency> {
   const map: Record<string, PropertyPinUrgency> = {};
   for (const contact of contacts) {
-    const hot = isHotLead(contact);
-    const stale = isStaleContact(contact);
+    const result = buildContactUrgency({
+      contactId: contact.id ?? "",
+      manualTier: null,
+      lastActivityAt: contact.last_activity_at ?? contact.last_touch_date ?? null,
+      taskDueAts: contact.next_touch_date ? [contact.next_touch_date] : [],
+      sequenceTaskDueAts: [],
+      appointmentDates: [],
+    });
+    const tier = result.tier;
     for (const link of contact.contact_property_links ?? []) {
       if (!isOwnerLinkRole(link.role)) continue;
-      const propertyId = link.property_id;
+      const propertyId = (link as Record<string, unknown>).property_id as string | undefined;
       if (!propertyId) continue;
-      if (hot) map[propertyId] = "hot";
-      else if (stale && map[propertyId] !== "hot") map[propertyId] = "stale";
-      else if (!map[propertyId]) map[propertyId] = "none";
+      const existing = map[propertyId];
+      if (!existing || URGENCY_RANK[tier] > URGENCY_RANK[existing]) {
+        map[propertyId] = tier;
+      }
+    }
+  }
+  return map;
+}
+
+/** Last touch date (most recent across all linked owner contacts) keyed by property ID. */
+export function buildPropertyLastTouchMap(contacts: ContactForMarket[]): Record<string, Date> {
+  const map: Record<string, Date> = {};
+  for (const contact of contacts) {
+    const raw = contact.last_touch_date ?? contact.last_activity_at ?? null;
+    if (!raw) continue;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) continue;
+    for (const link of contact.contact_property_links ?? []) {
+      if (!isOwnerLinkRole(link.role)) continue;
+      const propertyId = (link as Record<string, unknown>).property_id as string | undefined;
+      if (!propertyId) continue;
+      if (!map[propertyId] || d > map[propertyId]) map[propertyId] = d;
     }
   }
   return map;

@@ -53,6 +53,18 @@ describe("parsePropertyReportText — split owner after label", () => {
   });
 });
 
+describe("parsePropertyReportText — semicolon owners", () => {
+  it("captures both owners when separated by semicolon", () => {
+    const text = `
+      12 MAIN STREET, REDLAND BAY QLD 4165
+      JOHN SMITH; JANE DOE Owner Name(s):
+      Owner Type: Owner Occupied
+    `;
+    const parsed = parsePropertyReportText(text);
+    expect(splitOwnerNames(parsed.owner_names)).toEqual(["John Smith", "Jane Doe"]);
+  });
+});
+
 describe("parsePropertyReportText — stacked owners (Horsley Place)", () => {
   it("splits two co-owners before Owner Name(s): label", () => {
     const text = `

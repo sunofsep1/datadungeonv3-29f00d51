@@ -3,11 +3,17 @@
  */
 import * as pdfjsLib from "pdfjs-dist";
 
+// Serve the worker from the same origin (Vite bundles it locally) instead of
+// fetching from unpkg.com on every parse — eliminates the CDN round-trip.
 if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${(pdfjsLib as { version?: string }).version || "4.0.379"}/build/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).href;
 }
 
-export async function extractTextFromPdfFile(file: File): Promise<string> {
+/** Extract PDF text with page-break newlines, no whitespace normalization. */
+async function extractPdfPages(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const typedArray = new Uint8Array(buffer);
   const pdf = await pdfjsLib.getDocument(typedArray).promise;
@@ -20,5 +26,18 @@ export async function extractTextFromPdfFile(file: File): Promise<string> {
       .join(" ");
     fullText += `${pageText}\n`;
   }
-  return fullText.replace(/\s+/g, " ").trim();
+  return fullText;
+}
+
+/** Extract and normalize PDF text (collapses whitespace). For most parsers. */
+export async function extractTextFromPdfFile(file: File): Promise<string> {
+  return (await extractPdfPages(file)).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Extract PDF text preserving page-break newlines, without whitespace normalization.
+ * Use when the calling parser relies on newlines for line-by-line matching.
+ */
+export async function extractRawTextFromPdfFile(file: File): Promise<string> {
+  return extractPdfPages(file);
 }

@@ -3,14 +3,9 @@
  * Extracts text via PDF.js and parses the standard report format.
  */
 
-import * as pdfjsLib from "pdfjs-dist";
-import { joinOwnerNames } from "@/lib/ownerNameParse";
+import { extractRawTextFromPdfFile } from "@/lib/extractPdfText";
+import { joinOwnerNames, splitOwnerNames } from "@/lib/ownerNameParse";
 import { normalizePropertyType } from "@/lib/propertyType";
-
-// Configure worker for pdfjs (required for browser) - use unpkg for Vite compatibility
-if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${(pdfjsLib as { version?: string }).version || "4.0.379"}/build/pdf.worker.min.mjs`;
-}
 
 export interface ParsedPropertyReport {
   // Core property fields (map to DB)
@@ -55,32 +50,6 @@ export interface ParsedPropertyReport {
   /** e.g. "$552 ($1,504)" */
   area_per_m2?: string | null;
   water_sewerage?: string | null;
-}
-
-function extractTextFromPdf(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const typedArray = new Uint8Array(reader.result as ArrayBuffer);
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
-        let fullText = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const pageText = content.items
-            .map((item: { str?: string }) => item.str || "")
-            .join(" ");
-          fullText += pageText + "\n";
-        }
-        resolve(fullText);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
 }
 
 function safeTrim(s: string | undefined | null): string {
@@ -177,26 +146,50 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     result.postcode = parts.postcode;
   }
 
-  // Owner Name(s): names usually appear BEFORE the label on the same line (Pricefinder PDF export).
-  const ownerBeforeLabel = [
-    ...fullText.matchAll(/([A-Za-z][A-Za-z\s&.'-]{2,120})\s+Owner Name\(s\):/gi),
-  ];
-  if (ownerBeforeLabel.length > 0) {
-    result.owner_names = safeTrim(ownerBeforeLabel[ownerBeforeLabel.length - 1]![1]) || null;
+  // Owner Name(s): search the "Owner Details" section for an ALL-CAPS multi-word name.
+  // This handles both label-before-value AND value-before-label PDF.js extraction orders —
+  // PDF.js sometimes reads columns out of order, putting values before their labels.
+  const ownerSectionMatch = fullText.match(/Owner Details(.{0,600}?)(?=Property Details|$)/i);
+  const ownerSection = ownerSectionMatch?.[1] ?? "";
+  if (ownerSection) {
+    // Pattern: 2+ uppercase words (hyphens/apostrophes allowed), optionally joined by ; or &
+    const capsNameMatch = ownerSection.match(
+      /([A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6}(?:\s*[;&]\s*[A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6})*)/,
+    );
+    if (capsNameMatch?.[1]) result.owner_names = safeTrim(capsNameMatch[1]) || null;
   }
 
-  // Fallback: names AFTER "Owner Name(s):"
+  // Fallback 1: name explicitly after the "Owner Name(s):" label (row-by-row PDF layout)
   if (!result.owner_names) {
     const ownerAfterLabel = fullText.match(
-      /Owner Name\(s\):\s*([A-Za-z][A-Za-z\s&.'-]{2,120}?)\s+(?:Owner Type|Owner Details|Phone\(s\)|Owner Address)/i,
+      /Owner Name\(s\):\s*([A-Za-z][A-Za-z\s&.;'-]{2,120}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
     );
     if (ownerAfterLabel?.[1]) result.owner_names = safeTrim(ownerAfterLabel[1]) || null;
   }
 
+  // Fallback 2: older format — name appears before the label
+  const NON_NAME_HEADERS = ["owner details", "property details", "property report", "owner address", "owner occupied", "owner type"];
+  if (!result.owner_names) {
+    const ownerBeforeLabel = [
+      ...fullText.matchAll(/([A-Za-z][A-Za-z\s&.;'-]{2,120})\s+Owner Name\(s\):/gi),
+    ];
+    if (ownerBeforeLabel.length > 0) {
+      const candidate = safeTrim(ownerBeforeLabel[ownerBeforeLabel.length - 1]![1]);
+      if (candidate && !NON_NAME_HEADERS.some((h) => candidate.toLowerCase().includes(h))) {
+        result.owner_names = candidate || null;
+      }
+    }
+  }
+
   // Some PDF exports put the first owner before the label and the second after (e.g. "SANDRA MCDONALD Owner Name(s): & JULIAN …").
-  if (result.owner_names && !/\s&\s|\s+and\s+|,/i.test(result.owner_names)) {
+  const ownersFromExtract = result.owner_names ? splitOwnerNames(result.owner_names) : [];
+  const needsTrailingOwnerMerge =
+    result.owner_names &&
+    ownersFromExtract.length < 2 &&
+    !/\s&\s|\s+and\s+|,|;|\r|\n/i.test(result.owner_names);
+  if (needsTrailingOwnerMerge) {
     const trailingOwner = fullText.match(
-      /Owner Name\(s\):\s*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s.'-]{1,80}?)\s+(?:Owner Type|Owner Details|Phone\(s\)|Owner Address|Owner Occupied)/i,
+      /Owner Name\(s\):\s*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s.;'-]{1,80}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
     );
     const extra = safeTrim(trailingOwner?.[1] ?? "");
     if (extra) {
@@ -212,15 +205,16 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     result.owner_names = joinOwnerNames(result.owner_names) ?? result.owner_names;
   }
 
-  // Phone(s)
+  // Phone(s) — strip spaces before matching 10-digit run (e.g. "0409 068 677" → "0409068677")
   const phoneMatch = fullText.match(/Phone\(s\):\s*[\^]?([\d\s]+)/i);
   if (phoneMatch?.[1]) {
-    const phones = String(phoneMatch[1]).match(/\d{10,11}/g) || [];
+    const clean = String(phoneMatch[1]).replace(/\s+/g, "");
+    const phones = clean.match(/\d{10,11}/g) || [];
     result.owner_phones = phones.length ? phones : null;
   }
 
-  // Owner Type
-  const ownerTypeMatch = fullText.match(/Owner Type:\s*([^\n\t]+)/i);
+  // Owner Type — stop before next section header
+  const ownerTypeMatch = fullText.match(/Owner Type:\s*([\w\s]{1,50}?)(?=\s+Property|\s+Valuation|$)/i);
   if (ownerTypeMatch?.[1]) result.owner_type = safeTrim(ownerTypeMatch[1]) || null;
 
   // RPD / Lot plan – short e.g. "L177 RP30552"
@@ -242,8 +236,8 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
   const valDateMatch = fullText.match(/Valuation Amount[^\n]*?(\d{2}\/\d{2}\/\d{4})/i);
   if (valDateMatch?.[1]) result.valuation_date = valDateMatch[1];
 
-  // Property Type: House - Freehold [Issuing] (full label, stop before disclaimer)
-  const ptFullMatch = fullText.match(/Property Type:\s*([^\n]+?)(?=\s+Land Use:|Owner|$)/i);
+  // Property Type: House - Freehold [Issuing] (stop before RPD, Valuation, or Land Use)
+  const ptFullMatch = fullText.match(/Property Type:\s*([^\n]+?)(?=\s+(?:Land Use:|RPD:|Valuation|Owner)|$)/i);
   if (ptFullMatch?.[1]) {
     const full = stripDisclaimerAndTruncate(ptFullMatch[1], 80) || safeTrim(ptFullMatch[1]);
     if (full) {
@@ -274,9 +268,16 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
   if (councilMatch?.[1]) result.council = stripDisclaimerAndTruncate(councilMatch[1], 40) || null;
 
   // Features: comma-separated list - stop at Area $/m2 or Sales History
-  const featMatch = fullText.match(/Features:\s*([^$]+?)(?=\s*\$[\d,]|\s*Area \$\/m|Improvements:|Sales History)/i);
-  if (featMatch?.[1]) {
-    const raw = String(featMatch[1]);
+  // Note: "Improvements:" can appear inline within the features list (do NOT use it as a stop word)
+  const featMatch = fullText.match(/Features:\s*([^$]+?)(?=\s*\$[\d,]|\s*Area \$\/m|Sales History)/i);
+  // Fallback: column-by-column PDF.js ordering puts feature text BEFORE the "Features:" label.
+  // Also triggers when after-label matched but captured an empty string.
+  const featBeforeLabel = !featMatch?.[1]
+    ? fullText.match(/([A-Za-z][A-Za-z,\s'\-:]{10,400}?)\s+Features:/i)
+    : null;
+  const featRaw = (featMatch?.[1] || null) ?? featBeforeLabel?.[1] ?? null;
+  if (featRaw) {
+    const raw = String(featRaw);
     const stripped = stripDisclaimerAndTruncate(raw, 500);
     if (!stripped) result.features = null;
     else {
@@ -288,10 +289,11 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     }
   }
 
-  // Beds, Baths, Cars - after Area $/m2 row or standalone triplet before Sale
+  // Beds, Baths, Cars - after Area $/m2 row or standalone triplet before Sale or Area section
   const bedsAfterArea = fullText.match(/Area\s*\$\/m2:\s*(\d+)\s+(\d+)\s+(\d+)/i);
   const bedsBathsCarsMatch =
-    bedsAfterArea ?? fullText.match(/(\d+)\s+(\d+)\s+(\d+)\s*(?:Sale Amount|Sale Date|\$[\d,]+\s+\d{2}\/)/i);
+    bedsAfterArea ??
+    fullText.match(/(\d+)\s+(\d+)\s+(\d+)\s*(?:Sale Amount|Sale Date|\$[\d,]+\s+\d{2}\/|Area:)/i);
   if (bedsBathsCarsMatch) {
     const [b, ba, c] = bedsBathsCarsMatch.slice(1, 4).map(Number);
     if (b >= 1 && b <= 20) result.bedrooms = b;
@@ -299,26 +301,50 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     if (c >= 0 && c <= 20) result.car_spaces = c;
   }
 
-  // Sales History: $ 600,000 22/02/2017 Normal Sale
-  const saleLines = text.match(/\$\s*[\d,]+\s+\d{2}\/\d{2}\/\d{4}\s+[^\n]+/g);
-  if (saleLines) {
-    result.sales_history = saleLines.slice(0, 5).map((line) => {
-      const amt = line.match(/\$\s*([\d,]+)/);
-      const dt = line.match(/(\d{2}\/\d{2}\/\d{4})/);
-      return {
-        amount: amt ? parseNumberFromText(amt[1]) ?? undefined : undefined,
-        date: dt ? dt[1] : undefined,
-        type: line.includes("Normal Sale") ? "Normal Sale" : undefined,
-      };
-    });
+  // Sales History — extract $amount + date pairs from normalized text.
+  // Using fullText (all whitespace collapsed to space) handles both row-by-row and
+  // column-by-column PDF table layouts. Only look within the Sales History section.
+  const salesSectionStart = fullText.indexOf("Sales History");
+  const salesSection = salesSectionStart >= 0 ? fullText.slice(salesSectionStart) : fullText;
+
+  // Approach 1: amount and date are adjacent (row-by-row PDF layout, most common)
+  const salePairMatches = [...salesSection.matchAll(/\$\s*([\d,]+)\s+(\d{2}\/\d{2}\/\d{4})/g)].filter(
+    (m) => (parseNumberFromText(m[1]) ?? 0) > 50_000,
+  );
+
+  // Approach 2: amount and date appear in separate columns — extract independently and align by index
+  let saleAmountsCol: number[] = [];
+  let saleDatesCol: string[] = [];
+  if (salePairMatches.length === 0) {
+    saleAmountsCol = [...salesSection.matchAll(/\$\s*([\d,]+)/g)]
+      .map((m) => parseNumberFromText(m[1]) ?? 0)
+      .filter((a) => a > 50_000);
+    saleDatesCol = [...salesSection.matchAll(/(\d{2}\/\d{2}\/\d{4})/g)].map((m) => m[1]);
   }
 
-  // Last sale amount as price if no other price
-  const lastSaleMatch = fullText.match(/\$\s*([\d,]+)\s+(\d{2}\/\d{2}\/\d{4})\s+Normal Sale/i);
-  if (lastSaleMatch && !result.price && !result.estimated_value) {
-    result.price = parseNumberFromText(lastSaleMatch[1]);
-  } else if (lastSaleMatch && !result.price) {
-    result.price = parseNumberFromText(lastSaleMatch[1]);
+  // Determine sale type label(s) — may be "Normal Sale", "Mortgagee Sale" etc.
+  const saleTypeMatches = [
+    ...salesSection.matchAll(/Normal Sale|Mortgagee Sale|Auction Sale|Vacant Land Sale|Body Corporate Sale/gi),
+  ].map((m) => m[0]);
+
+  if (salePairMatches.length > 0) {
+    result.sales_history = salePairMatches.slice(0, 5).map((m, i) => ({
+      amount: parseNumberFromText(m[1]) ?? undefined,
+      date: m[2] ?? undefined,
+      type: saleTypeMatches[i] ?? (salesSection.includes("Normal Sale") ? "Normal Sale" : undefined),
+    }));
+  } else if (saleAmountsCol.length > 0) {
+    const len = Math.min(saleAmountsCol.length, saleDatesCol.length, 5);
+    result.sales_history = Array.from({ length: len }, (_, i) => ({
+      amount: saleAmountsCol[i],
+      date: saleDatesCol[i],
+      type: saleTypeMatches[i] ?? (salesSection.includes("Normal Sale") ? "Normal Sale" : undefined),
+    }));
+  }
+
+  // Most recent sale as price (first entry in history = most recent)
+  if (!result.price && result.sales_history?.[0]?.amount) {
+    result.price = result.sales_history[0].amount;
   }
 
   // Property ID – only "1674208 / QLD227492" style (short, no disclaimer)
@@ -349,6 +375,6 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
  * Extract text from PDF file and parse as Pricefinder Property Report.
  */
 export async function parsePropertyReportPdf(file: File): Promise<ParsedPropertyReport> {
-  const text = await extractTextFromPdf(file);
+  const text = await extractRawTextFromPdfFile(file);
   return parsePropertyReportText(text);
 }
