@@ -544,5 +544,168 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  "get_daily_brief",
+  {
+    title: "Get Daily Brief",
+    description:
+      "Morning brief aligned with Daily Hub: overdue items, due today, and upcoming work (contact tasks, todos, appointments, next-touch reminders).",
+    inputSchema: {
+      userId: z.string().uuid(),
+      daysAhead: z.number().int().positive().max(14).default(7),
+    },
+  },
+  async ({ userId, daysAhead }) => {
+    assertUserAllowed(userId);
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+    const aheadIso = addDaysToNow(daysAhead, 14);
+    const todayKey = now.toISOString().slice(0, 10);
+
+    type BriefRow = {
+      id: string;
+      kind: string;
+      title: string;
+      detail: string | null;
+      due_at: string | null;
+      contact_id: string | null;
+      bucket: "overdue" | "today" | "upcoming";
+    };
+
+    function bucketFor(dueAt: string | null | undefined): "overdue" | "today" | "upcoming" | null {
+      if (!dueAt) return "upcoming";
+      const due = new Date(dueAt.includes("T") ? dueAt : `${dueAt.slice(0, 10)}T12:00:00`);
+      if (Number.isNaN(due.getTime())) return null;
+      if (due < startOfToday) return "overdue";
+      if (due <= endOfToday) return "today";
+      if (due.toISOString() <= aheadIso) return "upcoming";
+      return null;
+    }
+
+    const rows: BriefRow[] = [];
+
+    const { data: tasks, error: tasksError } = await supabase
+      .from("contact_tasks")
+      .select("id, title, due_at, contact_id, sequence_enrollment_id")
+      .eq("user_id", userId)
+      .is("completed_at", null)
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .limit(120);
+    if (tasksError) throw tasksError;
+
+    for (const row of (tasks ?? []) as Record<string, unknown>[]) {
+      const bucket = bucketFor(row.due_at as string | null);
+      if (!bucket) continue;
+      rows.push({
+        id: String(row.id),
+        kind: row.sequence_enrollment_id ? "sequence_task" : "contact_task",
+        title: String(row.title ?? "Task"),
+        detail: null,
+        due_at: (row.due_at as string | null) ?? null,
+        contact_id: (row.contact_id as string | null) ?? null,
+        bucket,
+      });
+    }
+
+    const { data: todos, error: todosError } = await supabase
+      .from("todos")
+      .select("id, title, due_at, priority")
+      .eq("user_id", userId)
+      .eq("completed", false)
+      .limit(80);
+    if (todosError) throw todosError;
+
+    for (const row of (todos ?? []) as Record<string, unknown>[]) {
+      const bucket = bucketFor(row.due_at as string | null);
+      if (!bucket) continue;
+      rows.push({
+        id: String(row.id),
+        kind: "todo",
+        title: String(row.title ?? "Task"),
+        detail: String(row.priority ?? "medium"),
+        due_at: (row.due_at as string | null) ?? null,
+        contact_id: null,
+        bucket,
+      });
+    }
+
+    const { data: appointments, error: apptError } = await supabase
+      .from("appointments")
+      .select("id, title, date, contact_id")
+      .eq("user_id", userId)
+      .gte("date", startOfToday.toISOString())
+      .lte("date", aheadIso)
+      .order("date", { ascending: true })
+      .limit(30);
+    if (apptError) throw apptError;
+
+    for (const row of (appointments ?? []) as Record<string, unknown>[]) {
+      const bucket = bucketFor(row.date as string);
+      if (!bucket) continue;
+      rows.push({
+        id: String(row.id),
+        kind: "appointment",
+        title: String(row.title ?? "Appointment"),
+        detail: null,
+        due_at: (row.date as string | null) ?? null,
+        contact_id: (row.contact_id as string | null) ?? null,
+        bucket,
+      });
+    }
+
+    const { data: contacts, error: contactsError } = await supabase
+      .from("contacts")
+      .select("id, name, first_name, last_name, next_touch_date")
+      .or(`user_id.eq.${userId},owner_id.eq.${userId}`)
+      .not("next_touch_date", "is", null)
+      .lte("next_touch_date", todayKey)
+      .limit(50);
+    if (contactsError) throw contactsError;
+
+    const taskContactDays = new Set(
+      rows
+        .filter((r) => r.contact_id && r.due_at)
+        .map((r) => `${r.contact_id}:${String(r.due_at).slice(0, 10)}`),
+    );
+
+    for (const row of (contacts ?? []) as Record<string, unknown>[]) {
+      const contactId = String(row.id);
+      const touchDate = String(row.next_touch_date ?? "").slice(0, 10);
+      if (!touchDate || taskContactDays.has(`${contactId}:${touchDate}`)) continue;
+      const bucket = bucketFor(touchDate);
+      if (!bucket || bucket === "upcoming") continue;
+      rows.push({
+        id: `next-touch-${contactId}`,
+        kind: "next_touch",
+        title: normalizeContactName(row),
+        detail: "Scheduled next touch",
+        due_at: touchDate,
+        contact_id: contactId,
+        bucket,
+      });
+    }
+
+    const overdue = rows.filter((r) => r.bucket === "overdue");
+    const today = rows.filter((r) => r.bucket === "today");
+    const upcoming = rows.filter((r) => r.bucket === "upcoming");
+
+    return text({
+      generated_at: now.toISOString(),
+      summary: {
+        overdue_count: overdue.length,
+        today_count: today.length,
+        upcoming_count: upcoming.length,
+      },
+      start_here: [...overdue, ...today],
+      overdue,
+      today,
+      upcoming,
+    });
+  },
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
