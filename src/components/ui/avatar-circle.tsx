@@ -9,6 +9,10 @@ interface AvatarCircleProps {
   size?: "sm" | "md" | "lg";
   /** Two-tone gradient from the avatar palette (name-hashed). */
   variant?: "solid" | "duotone";
+  /** Offset palette index — use to alternate colours in lists (e.g. every second card). */
+  paletteShift?: number;
+  /** Force exact duotone pair (CSS var names, e.g. `--avatar-5`). Overrides name hash. */
+  duotonePair?: readonly [string, string];
   className?: string;
 }
 
@@ -38,12 +42,12 @@ function hashName(name: string | undefined | null): number {
   return Math.abs(hash);
 }
 
-function getPaletteTokenForName(name: string | undefined | null): string {
-  return paletteTokens[hashName(name) % paletteTokens.length];
+function getPaletteTokenForName(name: string | undefined | null, paletteShift = 0): string {
+  return paletteTokens[(hashName(name) + paletteShift) % paletteTokens.length];
 }
 
-function getDuotoneTokensForName(name: string | undefined | null): [string, string] {
-  const idx = hashName(name) % paletteTokens.length;
+function getDuotoneTokensForName(name: string | undefined | null, paletteShift = 0): [string, string] {
+  const idx = (hashName(name) + paletteShift) % paletteTokens.length;
   const secondary = (idx + 3) % paletteTokens.length;
   return [paletteTokens[idx], paletteTokens[secondary]];
 }
@@ -63,11 +67,13 @@ export function AvatarCircle({
   color,
   size = "md",
   variant = "solid",
+  paletteShift = 0,
+  duotonePair,
   className,
 }: AvatarCircleProps) {
   const displayName = name ?? "";
-  const token = getPaletteTokenForName(displayName);
-  const [duoA, duoB] = getDuotoneTokensForName(displayName);
+  const token = getPaletteTokenForName(displayName, paletteShift);
+  const [duoA, duoB] = duotonePair ?? getDuotoneTokensForName(displayName, paletteShift);
   const style = color
     ? { backgroundColor: color, color: "hsl(var(--avatar-foreground))" }
     : variant === "duotone"

@@ -17,6 +17,8 @@ type Props = {
   categoryLabel?: string | null;
   categoryDotClass?: string | null;
   selected?: boolean;
+  /** Alternate thumbnail palette (every second card in grid). */
+  alternateTone?: boolean;
   onOpen: () => void;
   onLogTouch: () => void;
   onSms: () => void;
@@ -84,6 +86,7 @@ export function ContactThumbnailCard({
   categoryLabel,
   categoryDotClass,
   selected,
+  alternateTone = false,
   onOpen,
   onLogTouch,
   onSms,
@@ -112,11 +115,16 @@ export function ContactThumbnailCard({
       className={cn(
         "group relative flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all duration-200",
         "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        alternateTone ? "bg-muted/30" : "bg-card",
         selected && "border-primary ring-1 ring-primary/40",
-        isOverdueByNextTouch && "border-l-[3px] border-l-amber-400",
       )}
     >
-      <div className="relative flex flex-col items-center bg-gradient-to-b from-muted/25 via-muted/10 to-card px-4 pb-3 pt-5">
+      <div
+        className={cn(
+          "relative flex flex-col items-center px-4 pb-3 pt-5",
+          alternateTone ? "bg-muted/20" : "bg-muted/10",
+        )}
+      >
         {temperature ? (
           <span
             className={cn(
@@ -137,6 +145,7 @@ export function ContactThumbnailCard({
           initials={initials}
           size="lg"
           variant="duotone"
+          paletteShift={alternateTone ? 4 : 0}
           className={cn("h-14 w-14 text-base shadow-md", avatarRing(contact))}
         />
       </div>

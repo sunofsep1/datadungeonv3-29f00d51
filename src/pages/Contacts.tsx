@@ -2945,7 +2945,7 @@ export default function Contacts() {
           </p>
           {contactView === "cards" ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-4">
-              {paginatedContacts.map((contact) => {
+              {paginatedContacts.map((contact, index) => {
                 const effectiveCategory = getEffectiveCategory(contact);
                 const primaryPhone = getPrimaryPhone(contact);
                 const categoryMeta = effectiveCategory
@@ -2955,6 +2955,7 @@ export default function Contacts() {
                   <ContactThumbnailCard
                     key={contact.id}
                     contact={contact}
+                    alternateTone={index % 2 === 1}
                     categoryLabel={
                       effectiveCategory ? getCategoryLabel({ category: effectiveCategory }) : null
                     }
