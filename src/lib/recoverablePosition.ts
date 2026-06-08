@@ -1,4 +1,10 @@
-import { deriveStatus, type InvoiceDirection, type InvoiceStoredStatus } from "@/lib/invoiceStatus";
+import {
+  deriveStatus,
+  type InvoiceDirection,
+  type InvoiceStoredStatus,
+} from "@/lib/invoiceStatus";
+
+export type { InvoiceDirection };
 
 export type RecoverableInvoice = {
   id: string;
@@ -6,6 +12,7 @@ export type RecoverableInvoice = {
   status: InvoiceStoredStatus;
   due_date: string;
   total: number;
+  invoice_number?: string;
   paid_amount?: number | null;
   reimbursable?: boolean;
   reimbursement_invoice_id?: string | null;
@@ -94,11 +101,35 @@ function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-export function reimbursementStateLabel(invoice: RecoverableInvoice): string {
+export type LinkedReimbursementInvoice = Pick<RecoverableInvoice, "status" | "invoice_number">;
+
+/** Build id → outgoing invoice map for reimbursement state labels in list views. */
+export function outgoingInvoiceLookup(
+  invoices: RecoverableInvoice[],
+): Map<string, LinkedReimbursementInvoice> {
+  const map = new Map<string, LinkedReimbursementInvoice>();
+  for (const inv of invoices) {
+    if (inv.direction === "outgoing") {
+      map.set(inv.id, { status: inv.status, invoice_number: inv.invoice_number });
+    }
+  }
+  return map;
+}
+
+export function markPaidActionLabel(direction: InvoiceDirection): string {
+  return direction === "outgoing" ? "Payment received from agency" : "I paid this bill";
+}
+
+export function reimbursementStateLabel(
+  invoice: RecoverableInvoice,
+  linkedOutgoing?: LinkedReimbursementInvoice | null,
+): string {
   if (invoice.direction !== "incoming") return "—";
   if (!invoice.reimbursable) return "Not reimbursable";
   if (invoice.reimbursement_invoice_id) {
-    return invoice.status === "paid" ? "Reimbursed" : "Invoiced";
+    if (linkedOutgoing?.status === "paid") return "Reimbursed";
+    if (linkedOutgoing?.invoice_number) return `Awaiting payment · ${linkedOutgoing.invoice_number}`;
+    return "Awaiting payment";
   }
   if (invoice.status === "paid") return "Unbilled";
   return "Pending";

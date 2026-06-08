@@ -3,12 +3,20 @@ import {
   CONTACTS_SAVED_VIEW_V,
   TASKS_SAVED_VIEW_V,
   contactsPayloadToJson,
+  normalizeContactView,
   parseContactsSavedViewPayload,
   parseTasksSavedViewPayload,
   tasksPayloadToJson,
 } from "./savedViewPayloads";
 
 describe("savedViewPayloads", () => {
+  it("normalizes legacy contact view values", () => {
+    expect(normalizeContactView("grid")).toBe("compact");
+    expect(normalizeContactView("kanban")).toBe("list");
+    expect(normalizeContactView("cards")).toBe("cards");
+    expect(normalizeContactView("unknown", "list")).toBe("list");
+  });
+
   it("parses valid contacts v1 payload", () => {
     const raw = {
       v: CONTACTS_SAVED_VIEW_V,
@@ -40,7 +48,7 @@ describe("savedViewPayloads", () => {
     expect(p!.smart).toBe("hot_lead");
     expect(p!.filterTagIds).toEqual(["a", "b"]);
     expect(p!.itemsPerPage).toBe(50);
-    expect(p!.contactView).toBe("grid");
+    expect(p!.contactView).toBe("compact");
     expect(p!.filterIncludeClassIds).toEqual(["cls-1"]);
     expect(p!.filterSubscriptionMode).toBe("not_subscribed");
   });

@@ -13,12 +13,15 @@ import { listingKanbanColumnId, LISTING_PIPELINE_STAGE_OPTIONS } from "@/lib/lis
 import { listingPublicPriceLabel, listingSearchPrice } from "@/lib/listingPriceFields";
 import { partitionInspections } from "@/lib/ofiInspection";
 
+import type { ListingDetailSectionId } from "@/components/listings/ListingDetailSectionNav";
+
 type Props = {
   listing: Listing;
   listingId: string;
   domDays: number | null;
   linkedContactIds: string[];
   onMatchBuyers: () => void;
+  onNavigateSection?: (sectionId: ListingDetailSectionId) => void;
   formatAud: (n: number | null | undefined) => string;
 };
 
@@ -33,6 +36,7 @@ export function ListingDetailRightRail({
   domDays,
   linkedContactIds,
   onMatchBuyers,
+  onNavigateSection,
   formatAud,
 }: Props) {
   const { user } = useAuth();
@@ -132,7 +136,11 @@ export function ListingDetailRightRail({
         </p>
       </Card>
 
-      <ListingCommunicationsRail listingId={listingId} linkedContactIds={linkedContactIds} />
+      <ListingCommunicationsRail
+        listingId={listingId}
+        linkedContactIds={linkedContactIds}
+        onViewAll={() => onNavigateSection?.("listing-activity")}
+      />
 
       <EntityActivitySchedulesPanel appliesTo="listing" listingId={listingId} compact />
       <EntityModificationsPanel entityType="listing" entityId={listingId} compact />

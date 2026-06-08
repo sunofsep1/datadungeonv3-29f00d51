@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activityLogToComm,
+  collapseSimilarCommunications,
   dedupeCommunications,
   interactionToComm,
   mergeCommunicationsTimeline,
@@ -74,6 +75,32 @@ describe("communicationsTimeline", () => {
     const deduped = dedupeCommunications([activity, interaction]);
     expect(deduped).toHaveLength(1);
     expect(deduped[0].source).toBe("activity_log");
+  });
+
+  it("collapses repeated system rows on the same day", () => {
+    const mk = (id: string, at: string) =>
+      activityLogToComm({
+        id,
+        user_id: "u",
+        contact_id: null,
+        property_id: null,
+        listing_id: "l1",
+        activity_type: "system",
+        title: "Tag added",
+        description: null,
+        occurred_at: at,
+        created_at: "",
+        updated_at: "",
+      });
+    const collapsed = collapseSimilarCommunications([
+      mk("1", "2026-05-29T09:00:00Z"),
+      mk("2", "2026-05-29T10:00:00Z"),
+      mk("3", "2026-05-29T11:00:00Z"),
+      mk("4", "2026-05-30T09:00:00Z"),
+    ]);
+    expect(collapsed).toHaveLength(2);
+    expect(collapsed[0].title).toBe("Tag added (3×)");
+    expect(collapsed[1].title).toBe("Tag added");
   });
 
   it("maps sms outbound rows", () => {

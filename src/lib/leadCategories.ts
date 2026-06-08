@@ -117,6 +117,18 @@ export const LEAD_TEMPERATURE_LABELS: Record<LeadTemperature, string> = {
   LEAD_ARCHIVED: "Archived",
 };
 
+/** Tailwind badge classes for lead temperature chips. */
+export const LEAD_TEMPERATURE_BADGE_CLASSES: Record<LeadTemperature, string> = {
+  LEAD_HOT: "bg-red-500/15 text-red-600 border-red-500/30",
+  LEAD_WARM: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  LEAD_COLD: "bg-zinc-500/15 text-zinc-600 border-zinc-500/30",
+  LEAD_ARCHIVED: "bg-muted text-muted-foreground border-border",
+};
+
+export function leadTemperatureBadgeClass(temp: LeadTemperature): string {
+  return LEAD_TEMPERATURE_BADGE_CLASSES[temp];
+}
+
 export const JOURNEY_STAGE_LABELS: Record<JourneyStage, string> = {
   SELLER_LONG_TERM: "Seller — long-term nurture",
   SELLER_CONSIDERING: "Seller — considering / research",

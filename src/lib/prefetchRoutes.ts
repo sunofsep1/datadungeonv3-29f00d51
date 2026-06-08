@@ -11,6 +11,7 @@ const prefetchers: Record<string, () => Promise<unknown>> = {
   "/appointments": () => import("@/pages/CalendarPages").then((m) => m.Appointments),
   "/tasks": () => import("@/pages/CalendarPages").then((m) => m.Tasks),
   "/listings": () => import("@/pages/ListingsSalesBoard"),
+  "/appraisals": () => import("@/pages/Appraisals"),
   "/pricing": () => import("@/pages/PricingIntelligence"),
   "/marketing": () => import("@/pages/Marketing"),
   "/performance": () => import("@/pages/Performance"),

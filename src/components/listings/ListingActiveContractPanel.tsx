@@ -31,7 +31,10 @@ import {
   type ListingContractDocType,
 } from "@/hooks/useListingContractDocuments";
 import { ContractEditDialog } from "@/components/listings/ContractEditDialog";
+import type { ContractEditFocusField } from "@/components/listings/ContractMilestoneSheet";
 import { ContractParseReviewDialog } from "@/components/listings/ContractParseReviewDialog";
+import { ContractTimelineGraph } from "@/components/listings/ContractTimelineGraph";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   pickActiveContractOffer,
   shouldShowActiveContractPanel,
@@ -81,6 +84,7 @@ export function ListingActiveContractPanel({
   const deleteDoc = useDeleteListingContractDocument();
 
   const [editOpen, setEditOpen] = useState(false);
+  const [editFocusField, setEditFocusField] = useState<ContractEditFocusField | undefined>();
   const [parseOpen, setParseOpen] = useState(false);
   const [parsedFile, setParsedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -162,7 +166,42 @@ export function ListingActiveContractPanel({
         description: e instanceof Error ? e.message : "Try again",
         variant: "destructive",
       });
+      throw e;
     }
+  };
+
+  const handleSaveOfferDate = async (field: ContractEditFocusField, dateIso: string) => {
+    const patch: Record<string, string> = {};
+    if (field === "exchange") patch.exchange_date = dateIso;
+    if (field === "unconditional") patch.expected_unconditional_date = dateIso;
+    if (field === "settlement") {
+      patch.expected_settlement_date = dateIso;
+      patch.settlement_date = dateIso;
+    }
+    await updateOffer.mutateAsync({
+      id: activeOffer.id,
+      listing_id: listingId,
+      ...patch,
+    });
+    toast({ title: "Date updated" });
+    onListingUpdated?.();
+  };
+
+  const handleUpdateCondition = async (input: {
+    id: string;
+    offer_id: string;
+    status?: import("@/lib/offerConditions").OfferConditionStatus;
+    due_date?: string;
+    notes?: string | null;
+  }) => {
+    await updateCondition.mutateAsync(input);
+    toast({ title: "Condition updated" });
+    onListingUpdated?.();
+  };
+
+  const openFullEditor = (focusField?: ContractEditFocusField) => {
+    setEditFocusField(focusField);
+    setEditOpen(true);
   };
 
   const handleUpload = async (file: File, docType: ListingContractDocType) => {
@@ -218,7 +257,7 @@ export function ListingActiveContractPanel({
 
   return (
     <>
-      <Card className="zoho-card border-primary/30 bg-primary/5 p-4 sm:p-5 scroll-mt-28" id="listing-active-contract">
+      <Card className="zoho-card border-primary/30 bg-primary/5 p-4 sm:p-5 scroll-mt-28 overflow-hidden min-w-0" id="listing-active-contract">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -236,7 +275,7 @@ export function ListingActiveContractPanel({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setEditOpen(true)}>
+            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => openFullEditor()}>
               <Pencil className="h-3.5 w-3.5" /> Edit contract
             </Button>
             {activeOffer.status === "conditional" && (
@@ -247,7 +286,30 @@ export function ListingActiveContractPanel({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <Tabs defaultValue="timeline" className="mb-4 min-w-0">
+          <TabsList className="mb-4 h-9">
+            <TabsTrigger value="timeline" className="text-xs px-3">
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs px-3">
+              Overview
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="timeline" className="mt-0 min-w-0 overflow-hidden">
+            <ContractTimelineGraph
+              offer={activeOffer}
+              conditions={conditions}
+              listingId={listingId}
+              onSaveOfferDate={handleSaveOfferDate}
+              onUpdateCondition={handleUpdateCondition}
+              onGoUnconditional={handleGoUnconditional}
+              onOpenFullEditor={openFullEditor}
+            />
+          </TabsContent>
+
+          <TabsContent value="overview" className="mt-0 space-y-4 min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-lg border border-border bg-card/80 p-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Sale price</p>
             <p className="text-lg font-semibold tabular-nums">{formatOfferPrice(activeOffer.offer_price)}</p>
@@ -291,7 +353,7 @@ export function ListingActiveContractPanel({
         </div>
 
         {conditions.length > 0 && (
-          <div className="mb-4">
+          <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
               Conditions
               {nextCondition?.eff === "overdue" && (
@@ -340,6 +402,8 @@ export function ListingActiveContractPanel({
             </ul>
           </div>
         )}
+          </TabsContent>
+        </Tabs>
 
         <div className="border-t border-border/60 pt-3">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -439,9 +503,13 @@ export function ListingActiveContractPanel({
 
       <ContractEditDialog
         open={editOpen}
-        onOpenChange={setEditOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditFocusField(undefined);
+        }}
         offer={activeOffer}
         listingId={listingId}
+        focusField={editFocusField}
       />
 
       {parsedFile && activeOffer && (

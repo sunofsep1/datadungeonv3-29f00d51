@@ -102,6 +102,20 @@ describe("parsePropertyReportText — Thornlands 95 sample", () => {
   });
 });
 
+const LINCOLN_STREET_SAMPLE = `
+PROPERTY REPORT 54 LINCOLN STREET, GREENSLOPES, QLD
+54 LINCOLN STREET, GREENSLOPES, QLD 4120 JAMAL DARWAND Owner Name(s):
+Owner Details Owner Type: Owner Occupied Phone(s): ^0450 241 120 Owner Address:
+Property Details RPD: L123 RP456 Property Type: House - Freehold [Issuing]
+`;
+
+describe("parsePropertyReportText — Lincoln Street sample", () => {
+  it("extracts owner name without PDF section label junk", () => {
+    const parsed = parsePropertyReportText(LINCOLN_STREET_SAMPLE);
+    expect(splitOwnerNames(parsed.owner_names)).toEqual(["Jamal Darwand"]);
+  });
+});
+
 describe("parsePropertyReportText — owner label junk regression", () => {
   it("prefers real names before label over Owner Details section labels", () => {
     const text = `

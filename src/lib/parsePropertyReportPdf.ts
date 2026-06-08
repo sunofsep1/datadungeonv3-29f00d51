@@ -4,8 +4,16 @@
  */
 
 import { extractRawTextFromPdfFile } from "@/lib/extractPdfText";
-import { joinOwnerNames, splitOwnerNames } from "@/lib/ownerNameParse";
+import {
+  isPlausibleOwnerName,
+  isPlausibleOwnerNames,
+  joinOwnerNames,
+  sanitizeOwnerNamesRaw,
+  splitOwnerNames,
+} from "@/lib/ownerNameParse";
 import { normalizePropertyType } from "@/lib/propertyType";
+
+export { isPlausibleOwnerName, isPlausibleOwnerNames } from "@/lib/ownerNameParse";
 
 export interface ParsedPropertyReport {
   // Core property fields (map to DB)
@@ -56,46 +64,17 @@ function safeTrim(s: string | undefined | null): string {
   return s == null ? "" : String(s).trim();
 }
 
-const OWNER_NAME_BLOCKLIST = [
-  "owner type",
-  "owner occupied",
-  "owner details",
-  "owner address",
-  "owner name",
-  "property details",
-  "property report",
-  "property type",
-  "phone",
-  "normal sale",
-  "single unit",
-  "land use",
-  "valuation amount",
-  "sales history",
-  "mailing address",
-  "postal address",
-];
+const OWNER_SECTION_HEADER =
+  /(?:Owner\s+Details|Owner\s+Type|Owner\s+Address|Owner\s+Occupied|Owner\s+Name(?:\(s\))?)\s+/gi;
 
-/** Reject PDF label junk mistaken for owner names. */
-export function isPlausibleOwnerNames(raw: string | null | undefined): boolean {
-  const trimmed = safeTrim(raw);
-  if (!trimmed || trimmed.length < 3) return false;
-
-  const lower = trimmed.toLowerCase();
-  if (OWNER_NAME_BLOCKLIST.some((phrase) => lower.includes(phrase))) return false;
-
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  if (words.length < 2 && !/[;&]/.test(trimmed)) return false;
-
-  // Must contain at least one letter sequence that looks like a name (not only labels)
-  if (!/[A-Za-z]{2,}/.test(trimmed)) return false;
-
-  return true;
+function stripOwnerSectionHeaders(value: string): string {
+  return safeTrim(value.replace(OWNER_SECTION_HEADER, " "));
 }
 
 function trySetOwnerNames(result: ParsedPropertyReport, candidate: string | null | undefined): boolean {
-  const trimmed = safeTrim(candidate);
-  if (!trimmed || !isPlausibleOwnerNames(trimmed)) return false;
-  result.owner_names = trimmed;
+  const sanitized = sanitizeOwnerNamesRaw(candidate);
+  if (!sanitized) return false;
+  result.owner_names = sanitized;
   return true;
 }
 
@@ -124,12 +103,15 @@ function extractOwnerNamesFromText(fullText: string): string | null {
     }
   }
 
-  // 2. Name after "Owner Name(s):"
+  // 2. Name after "Owner Name(s):" — skip PDF section headers (Owner Details, Owner Type, …)
   const ownerAfterLabel = fullText.match(
-    /Owner Name\(s\):\s*([A-Za-z][A-Za-z\s&.;'-]{2,120}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
+    /Owner Name\(s\):\s*(?:(?:Owner\s+Details|Owner\s+Type|Owner\s+Address|Owner\s+Occupied)\s+)*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s&.;'-]{2,120}?)\s+(?:Owner\s+Type|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
   );
-  if (ownerAfterLabel?.[1] && isPlausibleOwnerNames(ownerAfterLabel[1])) {
-    return safeTrim(ownerAfterLabel[1]);
+  if (ownerAfterLabel?.[1]) {
+    const candidate = stripOwnerSectionHeaders(ownerAfterLabel[1]);
+    if (isPlausibleOwnerNames(candidate)) {
+      return candidate;
+    }
   }
 
   // 3. ALL-CAPS name in Owner Details section — last resort
@@ -139,8 +121,11 @@ function extractOwnerNamesFromText(fullText: string): string | null {
     const capsNameMatch = ownerSection.match(
       /([A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6}(?:\s*[;&]\s*[A-Z][A-Z'-]{1,30}(?:\s+[A-Z][A-Z'-]{1,30}){1,6})*)/,
     );
-    if (capsNameMatch?.[1] && isPlausibleOwnerNames(capsNameMatch[1])) {
-      return safeTrim(capsNameMatch[1]);
+    if (capsNameMatch?.[1]) {
+      const candidate = stripOwnerSectionHeaders(capsNameMatch[1]);
+      if (isPlausibleOwnerNames(candidate)) {
+        return candidate;
+      }
     }
   }
 
@@ -260,10 +245,10 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
     !/\s&\s|\s+and\s+|,|;|\r|\n/i.test(result.owner_names);
   if (needsTrailingOwnerMerge) {
     const trailingOwner = fullText.match(
-      /Owner Name\(s\):\s*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s.;'-]{1,80}?)\s+(?:Owner|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
+      /Owner Name\(s\):\s*(?:(?:Owner\s+Details|Owner\s+Type|Owner\s+Address|Owner\s+Occupied)\s+)*(?:&\s*|and\s+)?([A-Za-z][A-Za-z\s.;'-]{1,80}?)\s+(?:Owner\s+Type|Phone|Property|Land|Council|Features|Area|Sales|Postal|Address|Mailing)/i,
     );
-    const extra = safeTrim(trailingOwner?.[1] ?? "");
-    if (extra && isPlausibleOwnerNames(extra)) {
+    const extra = stripOwnerSectionHeaders(trailingOwner?.[1] ?? "");
+    if (extra && isPlausibleOwnerName(extra)) {
       const base = result.owner_names.toLowerCase();
       const extraLower = extra.toLowerCase();
       if (!base.includes(extraLower) && !extraLower.includes(base)) {
@@ -277,7 +262,7 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
   }
 
   if (result.owner_names) {
-    result.owner_names = joinOwnerNames(result.owner_names) ?? result.owner_names;
+    result.owner_names = sanitizeOwnerNamesRaw(result.owner_names) ?? joinOwnerNames(result.owner_names);
   }
 
   result.owner_phones = parseOwnerPhonesFromText(fullText);

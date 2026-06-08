@@ -7,6 +7,8 @@ interface AvatarCircleProps {
   initials?: string;
   color?: string;
   size?: "sm" | "md" | "lg";
+  /** Two-tone gradient from the avatar palette (name-hashed). */
+  variant?: "solid" | "duotone";
   className?: string;
 }
 
@@ -27,13 +29,23 @@ const paletteTokens = [
   "--avatar-8",
 ];
 
-function getPaletteTokenForName(name: string | undefined | null): string {
+function hashName(name: string | undefined | null): number {
   const s = name ?? "";
   let hash = 0;
   for (let i = 0; i < s.length; i++) {
     hash = s.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return paletteTokens[Math.abs(hash) % paletteTokens.length];
+  return Math.abs(hash);
+}
+
+function getPaletteTokenForName(name: string | undefined | null): string {
+  return paletteTokens[hashName(name) % paletteTokens.length];
+}
+
+function getDuotoneTokensForName(name: string | undefined | null): [string, string] {
+  const idx = hashName(name) % paletteTokens.length;
+  const secondary = (idx + 3) % paletteTokens.length;
+  return [paletteTokens[idx], paletteTokens[secondary]];
 }
 
 function getInitials(name: string): string {
@@ -45,15 +57,29 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function AvatarCircle({ name, initials: initialsProp, color, size = "md", className }: AvatarCircleProps) {
+export function AvatarCircle({
+  name,
+  initials: initialsProp,
+  color,
+  size = "md",
+  variant = "solid",
+  className,
+}: AvatarCircleProps) {
   const displayName = name ?? "";
   const token = getPaletteTokenForName(displayName);
+  const [duoA, duoB] = getDuotoneTokensForName(displayName);
   const style = color
-    ? { backgroundColor: color }
-    : {
-        backgroundColor: `hsl(var(${token}))`,
-        color: "hsl(var(--avatar-foreground))",
-      };
+    ? { backgroundColor: color, color: "hsl(var(--avatar-foreground))" }
+    : variant === "duotone"
+      ? {
+          backgroundImage: `linear-gradient(145deg, hsl(var(${duoA})) 0%, hsl(var(${duoA})) 38%, hsl(var(${duoB})) 100%)`,
+          color: "hsl(var(--avatar-foreground))",
+          boxShadow: `inset 0 1px 0 hsl(var(${duoA}) / 0.35), inset 0 -8px 16px hsl(var(${duoB}) / 0.25)`,
+        }
+      : {
+          backgroundColor: `hsl(var(${token}))`,
+          color: "hsl(var(--avatar-foreground))",
+        };
   const initials = initialsProp ?? (displayName.trim() ? getInitials(displayName) : "?");
 
   return (
@@ -61,11 +87,18 @@ export function AvatarCircle({ name, initials: initialsProp, color, size = "md",
       style={style}
       className={cn(
         "rounded-full flex items-center justify-center font-semibold",
+        variant === "duotone" && "relative overflow-hidden",
         sizeClasses[size],
         className
       )}
     >
-      {initials}
+      {variant === "duotone" ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-black/10"
+        />
+      ) : null}
+      <span className="relative z-[1] drop-shadow-sm">{initials}</span>
     </div>
   );
 }

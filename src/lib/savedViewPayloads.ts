@@ -4,6 +4,16 @@ export const CONTACTS_SAVED_VIEW_V = 1 as const;
 export const TASKS_SAVED_VIEW_V = 1 as const;
 export const REQUIREMENTS_SEARCH_SAVED_VIEW_V = 1 as const;
 
+export type ContactViewMode = "list" | "compact" | "cards";
+
+/** Legacy `"grid"` maps to compact row cards. */
+export function normalizeContactView(raw: unknown, fallback: ContactViewMode = "cards"): ContactViewMode {
+  if (raw === "list" || raw === "kanban") return "list";
+  if (raw === "compact" || raw === "grid") return "compact";
+  if (raw === "cards") return "cards";
+  return fallback;
+}
+
 /** Serializable contacts list state (v1). */
 export type ContactsSavedViewPayloadV1 = {
   v: typeof CONTACTS_SAVED_VIEW_V;
@@ -27,7 +37,7 @@ export type ContactsSavedViewPayloadV1 = {
   filterClassIncludeMatch: "any" | "all";
   filterSubscriptionKind: string;
   filterSubscriptionMode: "any" | "subscribed" | "not_subscribed";
-  contactView: "list" | "grid";
+  contactView: ContactViewMode;
   itemsPerPage: number;
 };
 
@@ -64,7 +74,7 @@ export function parseContactsSavedViewPayload(raw: unknown): ContactsSavedViewPa
   if (!Array.isArray(o.filterTagIds) || !o.filterTagIds.every((x) => typeof x === "string")) return null;
   if (typeof o.filterSource !== "string") return null;
   if (typeof o.sortBy !== "string") return null;
-  const contactView = o.contactView === "grid" ? "grid" : "list";
+  const contactView = normalizeContactView(o.contactView, "cards");
   const itemsPerPage = typeof o.itemsPerPage === "number" && o.itemsPerPage > 0 ? Math.min(200, o.itemsPerPage) : 25;
   return {
     v: CONTACTS_SAVED_VIEW_V,

@@ -5,6 +5,13 @@ import { computeTotals, lineItemAmount, type InvoiceGstMode } from "@/lib/invoic
 import { computeDueDate } from "@/lib/invoiceStatus";
 import { nextInvoiceNumber } from "@/lib/invoiceNumber";
 import { DEFAULT_AGENCY_COUNTERPARTY, DEFAULT_REIMBURSEMENT_NOTE } from "@/lib/invoiceIssuer";
+import { isAgencyCounterparty } from "@/lib/invoiceCounterparty";
+import {
+  clearInvoiceUndoSnapshot,
+  peekInvoiceUndoSnapshot,
+  saveInvoiceUndoSnapshot,
+  type InvoiceUndoSnapshot,
+} from "@/lib/invoiceUndo";
 import { computeRecoverablePosition, type RecoverablePosition } from "@/lib/recoverablePosition";
 
 const BUCKET = "invoices";
@@ -378,8 +385,13 @@ export function useDeleteInvoice() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      await supabase
+        .from("invoices")
+        .update({ reimbursement_invoice_id: null })
+        .eq("reimbursement_invoice_id", id);
       const { error } = await supabase.from("invoices").delete().eq("id", id);
       if (error) throw new Error(supabaseErrorMessage(error));
+      clearInvoiceUndoSnapshot();
       return id;
     },
     onSuccess: () => {
@@ -442,6 +454,250 @@ export function useMarkInvoicePaid() {
         .select()
         .single();
       if (error) throw new Error(supabaseErrorMessage(error));
+      return data as Invoice;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["invoice", data.id] });
+      qc.invalidateQueries({ queryKey: ["invoice_summary"] });
+      qc.invalidateQueries({ queryKey: ["listing_invoices"] });
+    },
+  });
+}
+
+async function fetchInvoiceUndoSnapshot(id: string, label: string): Promise<InvoiceUndoSnapshot> {
+  const { data: row, error } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
+  if (error) throw new Error(supabaseErrorMessage(error));
+  if (!row) throw new Error("Invoice not found");
+  const invoice = row as Invoice;
+
+  const { data: items, error: itemsErr } = await supabase
+    .from("invoice_line_items")
+    .select("*")
+    .eq("invoice_id", id)
+    .order("position", { ascending: true });
+  if (itemsErr) throw new Error(supabaseErrorMessage(itemsErr));
+
+  return {
+    id,
+    savedAt: new Date().toISOString(),
+    label,
+    header: {
+      direction: invoice.direction,
+      invoice_number: invoice.invoice_number,
+      status: invoice.status,
+      counterparty_name: invoice.counterparty_name,
+      counterparty_abn: invoice.counterparty_abn,
+      listing_id: invoice.listing_id,
+      property_address: invoice.property_address,
+      issue_date: invoice.issue_date,
+      terms_days: invoice.terms_days,
+      due_date: invoice.due_date,
+      gst_mode: invoice.gst_mode,
+      reimbursable: invoice.reimbursable,
+      notes: invoice.notes,
+      subtotal: invoice.subtotal,
+      gst_amount: invoice.gst_amount,
+      total: invoice.total,
+      paid_date: invoice.paid_date,
+      paid_amount: invoice.paid_amount,
+    },
+    lineItems: ((items ?? []) as InvoiceLineItem[]).map((l) => ({
+      description: l.description,
+      quantity: Number(l.quantity),
+      unit_price: Number(l.unit_price),
+      gst_rate: Number(l.gst_rate),
+      position: l.position,
+    })),
+  };
+}
+
+/** Fix supplier bills that are actually agency reimbursements received (wrong direction). */
+export function useConvertToReimbursementReceived() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      saveInvoiceUndoSnapshot(await fetchInvoiceUndoSnapshot(id, "Convert to reimbursement"));
+
+      const { data: row, error: fetchErr } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
+      if (fetchErr) throw new Error(supabaseErrorMessage(fetchErr));
+      if (!row) throw new Error("Invoice not found");
+      const invoice = row as Invoice;
+
+      if (invoice.direction !== "incoming") {
+        throw new Error("Only supplier bills can be converted");
+      }
+      if (!isAgencyCounterparty(invoice.counterparty_name)) {
+        throw new Error("Counterparty does not look like the agency");
+      }
+
+      const { data: items, error: itemsErr } = await supabase
+        .from("invoice_line_items")
+        .select("*")
+        .eq("invoice_id", id)
+        .order("position", { ascending: true });
+      if (itemsErr) throw new Error(supabaseErrorMessage(itemsErr));
+
+      const lineItems: InvoiceLineItemInput[] = ((items ?? []) as InvoiceLineItem[]).map((l) => ({
+        description: l.description,
+        quantity: Number(l.quantity),
+        unit_price: Number(l.unit_price),
+        gst_rate: 0,
+        position: l.position,
+      }));
+      const totals = computeTotals(lineItems, "none");
+
+      const receivedAlready = invoice.status === "paid";
+      const paidDate = invoice.paid_date ?? new Date().toISOString().slice(0, 10);
+      const paidAmount = invoice.paid_amount ?? totals.total;
+
+      const { data, error } = await supabase
+        .from("invoices")
+        .update({
+          direction: "outgoing",
+          counterparty_name: DEFAULT_AGENCY_COUNTERPARTY.name,
+          gst_mode: "none",
+          terms_days: 30,
+          due_date: computeDueDate(invoice.issue_date, 30),
+          reimbursable: true,
+          reimbursement_invoice_id: null,
+          notes: invoice.notes?.trim() || DEFAULT_REIMBURSEMENT_NOTE,
+          subtotal: totals.subtotal,
+          gst_amount: totals.gstAmount,
+          total: totals.total,
+          status: receivedAlready ? "paid" : "sent",
+          paid_date: receivedAlready ? paidDate : null,
+          paid_amount: receivedAlready ? paidAmount : null,
+        })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new Error(supabaseErrorMessage(error));
+
+      if (lineItems.length) {
+        await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
+        const { data: auth } = await supabase.auth.getUser();
+        if (auth.user) await insertLineItems(id, auth.user.id, lineItems);
+      }
+
+      return data as Invoice;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["invoice", data.id] });
+      qc.invalidateQueries({ queryKey: ["invoice_summary"] });
+      qc.invalidateQueries({ queryKey: ["listing_invoices"] });
+    },
+  });
+}
+
+/** Fix reimbursements that should be supplier bills (wrong direction). */
+export function useConvertToSupplierBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: row, error: fetchErr } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
+      if (fetchErr) throw new Error(supabaseErrorMessage(fetchErr));
+      if (!row) throw new Error("Invoice not found");
+      const invoice = row as Invoice;
+
+      if (invoice.direction !== "outgoing") {
+        throw new Error("Only reimbursement invoices can be converted to a supplier bill");
+      }
+
+      const { data: linked, error: linkedErr } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("reimbursement_invoice_id", id);
+      if (linkedErr) throw new Error(supabaseErrorMessage(linkedErr));
+      if ((linked ?? []).length > 0) {
+        throw new Error("This reimbursement has linked supplier bills — delete or edit those first.");
+      }
+
+      saveInvoiceUndoSnapshot(await fetchInvoiceUndoSnapshot(id, "Convert to supplier bill"));
+
+      const { data: items, error: itemsErr } = await supabase
+        .from("invoice_line_items")
+        .select("*")
+        .eq("invoice_id", id)
+        .order("position", { ascending: true });
+      if (itemsErr) throw new Error(supabaseErrorMessage(itemsErr));
+
+      const lineItems: InvoiceLineItemInput[] = ((items ?? []) as InvoiceLineItem[]).map((l) => ({
+        description: l.description,
+        quantity: Number(l.quantity),
+        unit_price: Number(l.unit_price),
+        gst_rate: 10,
+        position: l.position,
+      }));
+      const totals = computeTotals(lineItems, "inclusive");
+
+      const wasPaid = invoice.status === "paid";
+      const paidDate = invoice.paid_date ?? new Date().toISOString().slice(0, 10);
+      const paidAmount = invoice.paid_amount ?? totals.total;
+
+      const { data, error } = await supabase
+        .from("invoices")
+        .update({
+          direction: "incoming",
+          gst_mode: "inclusive",
+          terms_days: 7,
+          due_date: computeDueDate(invoice.issue_date, 7),
+          reimbursable: true,
+          reimbursement_invoice_id: null,
+          notes: null,
+          subtotal: totals.subtotal,
+          gst_amount: totals.gstAmount,
+          total: totals.total,
+          status: wasPaid ? "paid" : "unpaid",
+          paid_date: wasPaid ? paidDate : null,
+          paid_amount: wasPaid ? paidAmount : null,
+        })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new Error(supabaseErrorMessage(error));
+
+      if (lineItems.length) {
+        await supabase.from("invoice_line_items").delete().eq("invoice_id", id);
+        const { data: auth } = await supabase.auth.getUser();
+        if (auth.user) await insertLineItems(id, auth.user.id, lineItems);
+      }
+
+      return data as Invoice;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["invoice", data.id] });
+      qc.invalidateQueries({ queryKey: ["invoice_summary"] });
+      qc.invalidateQueries({ queryKey: ["listing_invoices"] });
+    },
+  });
+}
+
+/** Restore the invoice state saved before the last type conversion. */
+export function useRestoreInvoiceUndo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const snapshot = peekInvoiceUndoSnapshot();
+      if (!snapshot) throw new Error("Nothing to undo");
+
+      const { data, error } = await supabase
+        .from("invoices")
+        .update(snapshot.header)
+        .eq("id", snapshot.id)
+        .select()
+        .single();
+      if (error) throw new Error(supabaseErrorMessage(error));
+
+      await supabase.from("invoice_line_items").delete().eq("invoice_id", snapshot.id);
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user && snapshot.lineItems.length) {
+        await insertLineItems(snapshot.id, auth.user.id, snapshot.lineItems);
+      }
+
+      clearInvoiceUndoSnapshot();
       return data as Invoice;
     },
     onSuccess: (data) => {

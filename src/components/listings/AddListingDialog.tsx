@@ -37,9 +37,11 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   stages: readonly StageOption[];
+  /** When "appraisal", dialog copy targets open-appraisal stock (Appraisals hub). */
+  createMode?: "appraisal" | "listing";
 };
 
-export function AddListingDialog({ open, onOpenChange, stages }: Props) {
+export function AddListingDialog({ open, onOpenChange, stages, createMode = "listing" }: Props) {
   const { toast } = useToast();
   const { data: properties = [], isLoading: propsLoading, isError: propsError } = useProperties();
   const { data: contacts = [] } = useContacts();
@@ -79,6 +81,11 @@ export function AddListingDialog({ open, onOpenChange, stages }: Props) {
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [qldDays, setQldDays] = useState<Partial<Record<QldConditionField, string>>>({});
+
+  const isAppraisalCreate = createMode === "appraisal";
+  const entityNoun = isAppraisalCreate ? "appraisal" : "listing";
+  const entityNounTitle = isAppraisalCreate ? "Appraisal" : "Listing";
+  const showStagePicker = stages.length > 1;
 
   const selectedProperty = useMemo(
     () => (selectedPropertyId ? (properties as PropertyForListing[]).find((p) => p.id === selectedPropertyId) : null),
@@ -173,13 +180,24 @@ export function AddListingDialog({ open, onOpenChange, stages }: Props) {
         .join("\n\n");
     }
 
+    if (stage === "appraisal") {
+      payload.lead_temperature = "LEAD_WARM";
+      payload.journey_stage = "SELLER_CONSIDERING";
+      payload.role_category = "SELLER_OWNER_OCCUPIER";
+      payload.classification_meta = {
+        lead_temperature: { source: "derived" },
+        journey_stage: { source: "derived" },
+        role_category: { source: "derived" },
+      };
+    }
+
     try {
       await createListing.mutateAsync(payload as never);
-      toast({ title: "Listing added" });
+      toast({ title: `${entityNounTitle} added` });
       onOpenChange(false);
     } catch (e) {
       toast({
-        title: "Could not create listing",
+        title: `Could not create ${entityNoun}`,
         description: supabaseErrorMessage(e),
         variant: "destructive",
       });
@@ -190,8 +208,10 @@ export function AddListingDialog({ open, onOpenChange, stages }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[min(640px,96vw)] max-h-[min(92vh,900px)] overflow-y-auto bg-card border-border">
         <DialogHeader>
-          <DialogTitle>Add listing</DialogTitle>
-          <DialogDescription className="sr-only">Create a listing from a property record.</DialogDescription>
+          <DialogTitle>Add {entityNoun}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new {entityNoun} from a property record.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 pt-2">
@@ -342,7 +362,7 @@ export function AddListingDialog({ open, onOpenChange, stages }: Props) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Listing status</Label>
+              <Label>{entityNounTitle} status</Label>
               <Select value={listingStatus} onValueChange={(v) => setListingStatus(v as "active" | "pending")}>
                 <SelectTrigger className="bg-input">
                   <SelectValue />
@@ -353,21 +373,23 @@ export function AddListingDialog({ open, onOpenChange, stages }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Starting column</Label>
-              <Select value={stage} onValueChange={setStage}>
-                <SelectTrigger className="bg-input">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {showStagePicker ? (
+              <div className="space-y-2">
+                <Label>Starting column</Label>
+                <Select value={stage} onValueChange={setStage}>
+                  <SelectTrigger className="bg-input">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -424,7 +446,7 @@ export function AddListingDialog({ open, onOpenChange, stages }: Props) {
           </div>
 
           <Button className="w-full" onClick={() => void handleSave()} disabled={createListing.isPending}>
-            {createListing.isPending ? "Saving…" : "Create listing"}
+            {createListing.isPending ? "Saving…" : `Create ${entityNoun}`}
           </Button>
         </div>
       </DialogContent>

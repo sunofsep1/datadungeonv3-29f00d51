@@ -36,6 +36,7 @@ const WorkWorkspace = lazy(() => import("./pages/WorkWorkspace"));
 const Workshop = lazy(() => import("./pages/Workshop"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
+const Appraisals = lazy(() => import("./pages/Appraisals"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
 const AnnualReviews = lazy(() => import("./pages/AnnualReviews"));
 const Automations = lazy(() => import("./pages/Automations"));
@@ -120,6 +121,7 @@ const App = () => (
                   element={<ProtectedRoute><ListingVendorPreviewPage /></ProtectedRoute>}
                 />
                 <Route path="/listings" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
+                <Route path="/appraisals" element={<ProtectedRoute><MainLayout><Appraisals /></MainLayout></ProtectedRoute>} />
                 <Route path="/pricing" element={<ProtectedRoute><MainLayout><PricingIntelligence /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings-sales" element={<Navigate to="/listings" replace />} />
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />

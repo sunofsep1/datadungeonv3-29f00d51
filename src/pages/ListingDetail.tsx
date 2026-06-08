@@ -30,7 +30,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Share2,
-  Copy,
   ExternalLink,
   ImagePlus,
   Bed,
@@ -44,8 +43,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { formatPhoneDisplay, phoneToTelHref } from "@/lib/formatPhone";
-import { format, differenceInCalendarDays } from "date-fns";
-import { useListing, useUpdateListing, useCloneListing, type Listing } from "@/hooks/useListings";
+import { format, differenceInCalendarDays, parseISO } from "date-fns";
+import { useListing, useUpdateListing, type Listing } from "@/hooks/useListings";
 import { useContact } from "@/hooks/useContact";
 import { useProperty, useUpdateProperty } from "@/hooks/useProperties";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
@@ -58,8 +57,15 @@ import {
   listingKanbanColumnId,
 } from "@/lib/listingKanbanStages";
 import {
+  isAppraisalPipelineListing,
+  pipelineDetailBackPath,
+  pipelineRecordNoun,
+} from "@/lib/appraisalListings";
+import { formatContractWeekday } from "@/lib/contractTimeline";
+import {
   getPrimaryCampaignStage,
   computeListingCampaignHealth,
+  listingStageBannerClass,
   secondaryListingTags,
   daysInPrimaryStage,
 } from "@/lib/listingCampaignDashboard";
@@ -94,7 +100,6 @@ import { addMinutesToIso, DEFAULT_OFI_DURATION_MINUTES } from "@/lib/ofiInspecti
 import { EntityModificationsPanel } from "@/components/shared/EntityModificationsPanel";
 import {
   ListingDetailSectionNav,
-  scrollToListingSection,
   type ListingDetailSectionId,
 } from "@/components/listings/ListingDetailSectionNav";
 import { ListingDetailRightRail } from "@/components/listings/ListingDetailRightRail";
@@ -190,7 +195,6 @@ export default function ListingDetail() {
   const { data: linkedContact } = useContact(contactId);
   const { data: linkedProperty } = useProperty(listing?.property_id ?? undefined);
   const updateListing = useUpdateListing();
-  const cloneListing = useCloneListing();
   const updateProperty = useUpdateProperty();
   const { data: recentActivity = [] } = useActivityLogByListing(id ?? null, 4);
   const createActivityLog = useCreateActivityLog();
@@ -230,7 +234,18 @@ export default function ListingDetail() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroUploading, setHeroUploading] = useState(false);
   const [activeSection, setActiveSection] = useState<ListingDetailSectionId>("listing-overview");
+  const contentRef = useRef<HTMLDivElement>(null);
   const heroFileRef = useRef<HTMLInputElement>(null);
+
+  const handleSectionNavigate = useCallback((sectionId: ListingDetailSectionId) => {
+    setActiveSection(sectionId);
+    requestAnimationFrame(() => {
+      const el = contentRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - 120;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    });
+  }, []);
 
   const [editForm, setEditForm] = useState({
     address: "",
@@ -268,6 +283,33 @@ export default function ListingDetail() {
   const primaryStage = useMemo(() => (listing ? getPrimaryCampaignStage(listing) : null), [listing]);
   const secondaryTags = useMemo(() => (listing ? secondaryListingTags(listing) : []), [listing]);
   const campaignHealth = useMemo(() => (listing ? computeListingCampaignHealth(listing) : null), [listing]);
+  const recordNoun = useMemo(
+    () => (listing ? pipelineRecordNoun(listing.pipeline_stage) : "Listing"),
+    [listing],
+  );
+  const detailBackHref = useMemo(
+    () => (listing ? pipelineDetailBackPath(listing.pipeline_stage) : "/listings"),
+    [listing],
+  );
+  const isAppraisalRecord = listing ? isAppraisalPipelineListing(listing) : false;
+  const isSoldListing = primaryStage?.key === "sold";
+
+  const soldSubtitle = useMemo(() => {
+    if (!listing || !isSoldListing) return null;
+    const ext = listing as Listing & { key_date_settlement?: string | null };
+    const settlementIso = ext.key_date_settlement?.slice(0, 10) ?? null;
+    if (!settlementIso) return "Settlement pending";
+    try {
+      const settlement = parseISO(`${settlementIso}T12:00:00`);
+      const dateLabel = format(settlement, "EEE, d MMMM yyyy");
+      const days = differenceInCalendarDays(settlement, new Date());
+      if (days > 0) return `Settling ${dateLabel}`;
+      if (days === 0) return `Settling today · ${dateLabel}`;
+      return `Settled · ${dateLabel}`;
+    } catch {
+      return `Settling ${formatContractWeekday(settlementIso)}`;
+    }
+  }, [listing, isSoldListing]);
 
   const contactMeta = (linkedContact ?? null) as ContactWithMeta | null;
   const primaryPhone = contactMeta ? getPrimaryPhone(contactMeta) : null;
@@ -326,7 +368,7 @@ export default function ListingDetail() {
         notes: editForm.notes || null,
         listing_image_url: editForm.listing_image_url?.trim() || null,
       });
-      toast({ title: "Success", description: "Listing updated" });
+      toast({ title: "Success", description: `${recordNoun} updated` });
       setEditOpen(false);
       setHeroIndex(0);
       refetch();
@@ -726,21 +768,6 @@ export default function ListingDetail() {
     }
   }, [listing?.address, toast]);
 
-  const handleCloneListing = async () => {
-    if (!listing) return;
-    try {
-      const created = await cloneListing.mutateAsync(listing);
-      toast({ title: "Listing cloned", description: created.address ?? "New copy created" });
-      navigate(`/listings/${created.id}`);
-    } catch (e) {
-      toast({
-        title: "Could not clone",
-        description: e instanceof Error ? e.message : "Try again",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleHeroFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id || !user || !listing) {
@@ -840,38 +867,40 @@ export default function ListingDetail() {
       <PageBreadcrumbs
         items={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: "Listings", href: "/listings" },
-          { label: listing.address || "Listing" },
+          {
+            label: isAppraisalRecord ? "Appraisals" : "Listings",
+            href: detailBackHref,
+          },
+          { label: listing.address || recordNoun },
         ]}
         className="mb-3"
       />
 
-      <div className="sticky top-0 z-40 -mx-3 sm:-mx-0 mb-4 rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-sm px-3 sm:px-4 py-2 sm:py-3">
+      <div
+        className={cn(
+          "sticky top-0 z-40 -mx-3 sm:-mx-0 mb-4 rounded-xl px-3 sm:px-4 py-2 sm:py-3",
+          listingStageBannerClass(primaryStage?.key ?? "appraisal"),
+        )}
+      >
         {primaryStage && campaignHealth ? (
           <ListingDetailHeaderStrip
             listingId={listing.id}
-            address={listing.address || "Listing"}
+            address={listing.address || recordNoun}
             suburb={linkedProperty?.suburb ?? null}
             primaryStage={primaryStage}
             secondaryTags={secondaryTags}
             daysInStage={daysInStage}
             stageLabelForDays={primaryStage.label}
             health={campaignHealth}
+            backHref={detailBackHref}
+            backLabel={isAppraisalRecord ? "Back to appraisals" : "Back to listings"}
+            entityFallback={recordNoun}
+            soldSubtitle={soldSubtitle}
             headerActions={
               <>
                 <Button variant="outline" size="sm" onClick={() => void handleShare()} className="gap-1.5 h-8 text-xs">
                   <Share2 className="w-3.5 h-3.5" />
                   Share
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 h-8 text-xs"
-                  disabled={cloneListing.isPending}
-                  onClick={() => void handleCloneListing()}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Clone
                 </Button>
                 <Button variant="outline" size="sm" asChild className="gap-1.5 h-8 text-xs">
                   <Link to={`/listings/${listing.id}/vendor-preview`} target="_blank" rel="noopener noreferrer">
@@ -909,17 +938,16 @@ export default function ListingDetail() {
         ) : null}
         <ListingDetailSectionNav
           activeSection={activeSection}
-          onNavigate={(sectionId) => {
-            setActiveSection(sectionId);
-            scrollToListingSection(sectionId);
-          }}
+          onNavigate={handleSectionNavigate}
           className="mt-2 pt-2 border-t border-border/60"
         />
         <ListingStickyActionBar onOpenAction={openListingAction} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-6">
-        <div className="min-w-0 space-y-6">
+        <div ref={contentRef} className="min-w-0 space-y-6 scroll-mt-28">
+      {activeSection === "listing-overview" && (
+      <>
       {/* Hero / gallery */}
       <Card id="listing-overview" className="zoho-card mb-0 border-border overflow-hidden rounded-xl shadow-sm scroll-mt-28">
         <div className="relative min-h-[220px] sm:min-h-[320px] md:min-h-[380px] bg-muted">
@@ -1057,81 +1085,7 @@ export default function ListingDetail() {
         />
       ) : null}
 
-      <div id="listing-pricing" className="space-y-6 scroll-mt-28">
-        <ListingForSalePanel
-          listing={
-            listing as Listing & {
-              search_price?: number | null;
-              display_price?: string | null;
-              search_price_min?: number | null;
-              search_price_max?: number | null;
-            }
-          }
-          onUpdated={() => void refetch()}
-        />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 min-w-0">
-            <ListingPricingPanel
-              listingId={listing.id}
-              listingPrice={listingSearchPrice(
-                listing as Listing & { search_price?: number | null; display_price?: string | null },
-              )}
-              onListingUpdated={() => void refetch()}
-            />
-          </div>
-          <div className="lg:col-span-1 min-w-0">
-            <ListingPipelineNextCard pipelineStage={listing.pipeline_stage} />
-          </div>
-        </div>
-      </div>
-
-      <div id="listing-general" className="scroll-mt-28">
-        <ListingGeneralPanel
-          listing={listing as Listing & ListingGeneralFields}
-          onUpdated={() => void refetch()}
-        />
-      </div>
-
-      <div id="listing-details" className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-28">
-        <Card className="zoho-card p-4 border-border md:col-span-1">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Agent</h3>
-          <div className="flex items-center gap-3">
-            <AvatarCircle name={agentLabel} initials={getInitials(undefined, undefined, agentLabel)} size="md" />
-            <div className="min-w-0">
-              <p className="font-medium text-foreground truncate">{agentLabel}</p>
-              {user?.email && (
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              )}
-              <Link to="/settings/automations" className="text-xs text-primary hover:underline mt-0.5 inline-block">
-                Profile settings
-              </Link>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="zoho-card p-4 border-border md:col-span-1">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Recent activity</h3>
-          {recentActivity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No logged activity yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {recentActivity.slice(0, 3).map((row) => (
-                <li key={row.id} className="text-sm border-b border-border/60 last:border-0 pb-2 last:pb-0">
-                  <p className="font-medium text-foreground line-clamp-1">{row.title}</p>
-                  {row.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{row.description}</p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {format(new Date(row.occurred_at), "d MMM yyyy, h:mm a")}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="zoho-card p-6 border-border lg:col-span-2">
           <h3 className="text-sm font-medium text-foreground/90 mb-4">Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -1210,7 +1164,95 @@ export default function ListingDetail() {
           )}
         </Card>
       </div>
+      </>
+      )}
 
+      {activeSection === "listing-pricing" && (
+      <div id="listing-pricing" className="space-y-6 scroll-mt-28">
+        <ListingForSalePanel
+          listing={
+            listing as Listing & {
+              search_price?: number | null;
+              display_price?: string | null;
+              search_price_min?: number | null;
+              search_price_max?: number | null;
+            }
+          }
+          onUpdated={() => void refetch()}
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 min-w-0">
+            <ListingPricingPanel
+              listingId={listing.id}
+              listingPrice={listingSearchPrice(
+                listing as Listing & { search_price?: number | null; display_price?: string | null },
+              )}
+              onListingUpdated={() => void refetch()}
+            />
+          </div>
+          <div className="lg:col-span-1 min-w-0">
+            <ListingPipelineNextCard pipelineStage={listing.pipeline_stage} />
+          </div>
+        </div>
+      </div>
+      )}
+
+      {activeSection === "listing-general" && (
+      <div id="listing-general" className="scroll-mt-28">
+        <ListingGeneralPanel
+          listing={listing as Listing & ListingGeneralFields}
+          onUpdated={() => void refetch()}
+        />
+      </div>
+      )}
+
+      {activeSection === "listing-details" && (
+      <div id="listing-details" className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-28">
+        <Card className="zoho-card p-4 border-border md:col-span-1">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Agent</h3>
+          <div className="flex items-center gap-3">
+            <AvatarCircle name={agentLabel} initials={getInitials(undefined, undefined, agentLabel)} size="md" />
+            <div className="min-w-0">
+              <p className="font-medium text-foreground truncate">{agentLabel}</p>
+              {user?.email && (
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              )}
+              <Link to="/settings/automations" className="text-xs text-primary hover:underline mt-0.5 inline-block">
+                Profile settings
+              </Link>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="zoho-card p-4 border-border md:col-span-1">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Recent activity</h3>
+          {recentActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No logged activity yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recentActivity.slice(0, 3).map((row) => (
+                <li key={row.id} className="text-sm border-b border-border/60 last:border-0 pb-2 last:pb-0">
+                  <p className="font-medium text-foreground line-clamp-1">{row.title}</p>
+                  {row.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{row.description}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {format(new Date(row.occurred_at), "d MMM yyyy, h:mm a")}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {recentActivity.length > 3 ? (
+            <Button type="button" variant="link" className="h-auto p-0 mt-2 text-xs" onClick={() => handleSectionNavigate("listing-activity")}>
+              View all activity →
+            </Button>
+          ) : null}
+        </Card>
+      </div>
+      )}
+
+      {activeSection === "listing-features" && (
       <div id="listing-features" className="scroll-mt-28">
         <ListingFeaturesPanel
           listingId={listing.id}
@@ -1229,7 +1271,9 @@ export default function ListingDetail() {
           onUpdated={() => void refetch()}
         />
       </div>
+      )}
 
+      {activeSection === "listing-resources" && (
       <div id="listing-resources" className="scroll-mt-28">
         <ListingResourcesPanel
           listingId={listing.id}
@@ -1238,24 +1282,38 @@ export default function ListingDetail() {
           onUpdated={() => void refetch()}
         />
       </div>
+      )}
 
-      {id ? (
-        <>
+      {activeSection === "listing-inspections" && id ? (
           <div id="listing-inspections" className="scroll-mt-28">
             <ListingOpenInspectionsPanel listingId={id} listingAddress={listing.address} />
           </div>
+      ) : null}
+
+      {activeSection === "listing-offers" && id ? (
           <div id="listing-offers" className="scroll-mt-28">
             <ListingOffersPanel listingId={id} listingAddress={listing.address} />
           </div>
+      ) : null}
+
+      {activeSection === "listing-commission" && id ? (
           <div id="listing-commission" className="scroll-mt-28">
             <ListingCommissionPanel listing={listing} listingId={id} />
           </div>
+      ) : null}
+
+      {activeSection === "listing-marketing" && id ? (
+        <>
           <div id="listing-marketing" className="scroll-mt-28">
             <ListingMarketingFundsPanel listingId={id} />
           </div>
           <div id="listing-invoices" className="scroll-mt-28">
             <ListingInvoicesPanel listingId={id} />
           </div>
+        </>
+      ) : null}
+
+      {activeSection === "listing-portals" && id ? (
           <div id="listing-portals" className="scroll-mt-28">
             <ListingPortalExportsPanel
               listingId={id}
@@ -1269,6 +1327,10 @@ export default function ListingDetail() {
               onListingUpdated={() => void refetch()}
             />
           </div>
+      ) : null}
+
+      {activeSection === "listing-people" && id ? (
+        <>
           <div id="listing-people" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-28">
             <ListingContactLinksPanel listingId={id} />
             <ListingCompliancePanel
@@ -1288,14 +1350,19 @@ export default function ListingDetail() {
         </>
       ) : null}
 
+      {activeSection === "listing-activity" && (
       <Card id="listing-activity" className="zoho-card p-6 border-border scroll-mt-28">
         <ActivityTimeline
           entityType="listing"
           entityId={id}
           linkedContactIds={linkedContactIds}
           showAddNote={true}
+          compact={true}
+          collapseSimilar={true}
+          pageSize={12}
         />
       </Card>
+      )}
         </div>
 
         {id ? (
@@ -1319,6 +1386,7 @@ export default function ListingDetail() {
               domDays={domDays}
               linkedContactIds={linkedContactIds}
               onMatchBuyers={() => setMatchBuyersOpen(true)}
+              onNavigateSection={handleSectionNavigate}
               formatAud={formatAud}
             />
           </div>

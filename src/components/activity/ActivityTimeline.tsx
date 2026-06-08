@@ -22,7 +22,11 @@ import { format, formatDistanceToNow } from "date-fns";
 import { useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useCommunicationsTimeline } from "@/hooks/useCommunicationsTimeline";
 import { isFeatureEnabled } from "@/lib/featureFlags";
-import type { CommunicationsKind, UnifiedCommItem } from "@/lib/communicationsTimeline";
+import {
+  collapseSimilarCommunications,
+  type CommunicationsKind,
+  type UnifiedCommItem,
+} from "@/lib/communicationsTimeline";
 
 const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   note: MessageSquare,
@@ -53,8 +57,10 @@ interface ActivityTimelineProps {
   limit?: number;
   compact?: boolean;
   embedded?: boolean;
-  /** Override heading (default: Communications or Activity). */
-  title?: string;
+  /** Max rows shown before "Show all". */
+  pageSize?: number;
+  /** Collapse repeated tag/link/stage rows on the same day. */
+  collapseSimilar?: boolean;
 }
 
 export function ActivityTimeline({
@@ -68,6 +74,8 @@ export function ActivityTimeline({
   compact = isFeatureEnabled("compactTimelineV1"),
   embedded = false,
   title,
+  pageSize = 12,
+  collapseSimilar = false,
 }: ActivityTimelineProps) {
   const contactId = entityType === "contact" ? entityId : null;
   const propertyId = entityType === "property" ? entityId : null;
@@ -77,6 +85,7 @@ export function ActivityTimeline({
   const [noteTitle, setNoteTitle] = useState("");
   const [noteDescription, setNoteDescription] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
 
   const createLog = useCreateActivityLog();
 
@@ -108,9 +117,13 @@ export function ActivityTimeline({
   };
 
   const displayItems = useMemo(() => {
-    if (unifiedComms) return items;
-    return items.filter((i) => i.source === "activity_log" || i.source === "appointment");
-  }, [items, unifiedComms]);
+    let rows = unifiedComms ? items : items.filter((i) => i.source === "activity_log" || i.source === "appointment");
+    if (collapseSimilar) rows = collapseSimilarCommunications(rows);
+    return rows;
+  }, [items, unifiedComms, collapseSimilar]);
+
+  const visibleItems = showAll ? displayItems : displayItems.slice(0, pageSize);
+  const hiddenCount = Math.max(0, displayItems.length - pageSize);
 
   if (isLoading) {
     return (
@@ -169,7 +182,7 @@ export function ActivityTimeline({
         )}
       </div>
       <div className={compact ? "space-y-2" : "space-y-4"}>
-        {displayItems.map((item) => (
+        {visibleItems.map((item) => (
           <CommTimelineItem
             key={item.id}
             item={item}
@@ -190,6 +203,20 @@ export function ActivityTimeline({
             {unifiedComms ? "No communications logged yet." : "No activity yet."}
           </p>
         )}
+        {!showAll && hiddenCount > 0 ? (
+          <div className="pt-2 text-center">
+            <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setShowAll(true)}>
+              Show {hiddenCount} more
+            </Button>
+          </div>
+        ) : null}
+        {showAll && displayItems.length > pageSize ? (
+          <div className="pt-2 text-center">
+            <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setShowAll(false)}>
+              Show less
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

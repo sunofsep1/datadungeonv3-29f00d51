@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   allOwnersAlreadyLinked,
   findContactByOwnerName,
+  isPlausibleOwnerName,
   splitFirstLastName,
   splitOwnerNames,
   titleCaseOwnerName,
@@ -40,6 +41,20 @@ describe("splitOwnerNames", () => {
       "Jamie Matthew Joyce",
       "Caren Joy Joyce",
     ]);
+  });
+
+  it("drops PDF section labels mistaken for owner names", () => {
+    expect(splitOwnerNames("Jamal Darwand & Owner Details")).toEqual(["Jamal Darwand"]);
+    expect(splitOwnerNames("Owner Details")).toEqual([]);
+    expect(splitOwnerNames("OWNER TYPE OWNER OCCUPIED")).toEqual([]);
+  });
+});
+
+describe("isPlausibleOwnerName", () => {
+  it("rejects Pricefinder section headers", () => {
+    expect(isPlausibleOwnerName("Owner Details")).toBe(false);
+    expect(isPlausibleOwnerName("Owner Type")).toBe(false);
+    expect(isPlausibleOwnerName("Jamal Darwand")).toBe(true);
   });
 });
 

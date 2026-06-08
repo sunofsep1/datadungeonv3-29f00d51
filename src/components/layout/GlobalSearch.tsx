@@ -29,6 +29,7 @@ const NAV_SHORTCUTS: Array<{ path: string; label: string; icon: typeof Users }> 
   { path: "/tasks", label: "Tasks", icon: ListTodo },
   { path: "/contacts", label: "Contacts", icon: Users },
   { path: "/listings", label: "Listings", icon: Home },
+  { path: "/appraisals", label: "Appraisals", icon: Home },
   { path: "/pricing", label: "Pricing intelligence", icon: LineChart },
   { path: "/scripts", label: "Scripts", icon: FileText },
   ...SETTINGS_SEARCH_INDEX.filter((e) => !e.fieldId)

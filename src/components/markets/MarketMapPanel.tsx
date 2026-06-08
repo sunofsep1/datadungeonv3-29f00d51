@@ -219,7 +219,11 @@ function buildInfoWindowHtml(
   const recordHref = listingPin
     ? `/listings/${escapeHtml(listingPin.listingId)}`
     : `/properties/${escapeHtml(property.id)}`;
-  const recordLabel = listingPin ? "Open listing →" : "Open record →";
+  const recordLabel = listingPin
+    ? listingPin.kind === "appraisal"
+      ? "Open appraisal →"
+      : "Open listing →"
+    : "Open record →";
   const linkedCount = owners.length;
 
   const urgencyRow = (() => {

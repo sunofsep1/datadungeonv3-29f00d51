@@ -49,6 +49,7 @@ import {
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useToast } from "@/hooks/use-toast";
 import { endTimeFromStart } from "@/lib/appointmentTime";
 
 type ViewMode = "day" | "week" | "month";

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useContacts } from "@/hooks/useContacts";
 import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 import type { Database } from "@/integrations/supabase/types";
@@ -34,21 +35,49 @@ export function useContactTasks(contactId?: string | null) {
 
 export function useOpenContactTasksForUser() {
   const { user } = useAuth();
+  const { data: contacts = [] } = useContacts();
 
   return useQuery({
-    queryKey: [...baseKey, "open", user?.id],
+    queryKey: [...baseKey, "open", user?.id, contacts.length],
     queryFn: async (): Promise<ContactTask[]> => {
       if (!user) return [];
-      const { data, error } = await supabase
+
+      const { data: byUser, error } = await supabase
         .from("contact_tasks")
         .select("*")
         .eq("user_id", user.id)
         .is("completed_at", null)
         .order("due_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as ContactTask[];
+
+      const merged = new Map<string, ContactTask>();
+      for (const row of (byUser ?? []) as ContactTask[]) {
+        merged.set(row.id, row);
+      }
+
+      const contactIds = contacts.map((c) => c.id).filter(Boolean);
+      if (contactIds.length > 0) {
+        const { data: byContact, error: contactError } = await supabase
+          .from("contact_tasks")
+          .select("*")
+          .in("contact_id", contactIds)
+          .is("completed_at", null)
+          .order("due_at", { ascending: true, nullsFirst: false });
+        if (contactError) throw contactError;
+        for (const row of (byContact ?? []) as ContactTask[]) {
+          merged.set(row.id, row);
+        }
+      }
+
+      return Array.from(merged.values()).sort((a, b) => {
+        const da = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+        const db = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+        return da - db;
+      });
     },
     enabled: Boolean(user),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -101,12 +130,19 @@ export function useCreateContactTask() {
         .select()
         .single();
       if (error) throw error;
+      const row = data as ContactTask;
+
+      if (input.due_at) {
+        const datePart = input.due_at.slice(0, 10);
+        await supabase.from("contacts").update({ next_touch_date: datePart }).eq("id", input.contact_id);
+      }
+
       await logContactActivity({
         contactId: input.contact_id,
         subject: "Task created",
         body: input.title,
       });
-      return data as ContactTask;
+      return row;
     },
     onSuccess: (_, v) => {
       queryClient.invalidateQueries({ queryKey: baseKey });

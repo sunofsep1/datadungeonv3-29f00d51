@@ -42,14 +42,6 @@ export function useListing(id: string | undefined) {
       if (!contactId) {
         return { ...row, contacts: null } as ListingWithContact;
       }
-      const embedded = await supabase
-        .from("listings")
-        .select("*, contacts(id, name)")
-        .eq("id", id)
-        .single();
-      if (!embedded.error && embedded.data) {
-        return embedded.data as ListingWithContact;
-      }
       const { data: contactRow, error: contactErr } = await supabase
         .from("contacts")
         .select("id, name")

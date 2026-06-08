@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeft,
+  ClipboardList,
   Building2,
   ListTodo,
   Sparkles,
@@ -65,6 +66,7 @@ const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "My Markets", url: "/contacts/markets", icon: MapPin },
   { title: "Listings", url: "/listings", icon: Building2 },
+  { title: "Appraisals", url: "/appraisals", icon: ClipboardList },
   { title: "Pricing", url: "/pricing", icon: LineChart },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
 ];
@@ -124,6 +126,7 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/contacts" && pathname.startsWith("/contacts")) return true;
   if (item.url === "/nurture" && pathname.startsWith("/nurture")) return true;
   if (item.url === "/properties" && pathname.startsWith("/properties")) return true;
+  if (item.url === "/appraisals" && pathname.startsWith("/appraisals")) return true;
   if (item.url === "/listings" && (pathname === "/listings" || pathname.startsWith("/listings/"))) return true;
   if (item.url === "/pricing" && pathname.startsWith("/pricing")) return true;
   if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;

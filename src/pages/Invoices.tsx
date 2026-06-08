@@ -24,6 +24,7 @@ import {
   useInvoices,
   useInvoiceSummary,
   useMarkInvoicePaid,
+  formatInvoiceAud,
   type InvoiceFilters,
 } from "@/hooks/useInvoices";
 import { parseInvoicePdfFile } from "@/lib/parseInvoicePdf";
@@ -61,9 +62,13 @@ export default function Invoices() {
   const uploadRef = useRef<HTMLInputElement>(null);
 
   const openForm = (mode: FormMode, id?: string) => {
+    setDetailId(null);
     setFormMode(mode);
     setEditId(id ?? null);
-    setFormOpen(true);
+    setInitialFile(null);
+    setInitialDraft(null);
+    // Defer so the opening click isn't treated as an outside dismiss (sheet → dialog).
+    window.setTimeout(() => setFormOpen(true), 0);
   };
 
   const handleUploadPdf = async (file: File) => {
@@ -179,17 +184,32 @@ export default function Invoices() {
           <InvoiceList
             rows={rows}
             onOpen={(id) => setDetailId(id)}
-            onMarkPaid={(id) =>
-              void markPaid.mutateAsync({ id }).then(() => toast({ title: "Marked paid" }))
-            }
+            onMarkPaid={(id) => {
+              const row = rows.find((r) => r.id === id);
+              void markPaid
+                .mutateAsync({ id })
+                .then(() =>
+                  toast({
+                    title:
+                      row?.direction === "outgoing" ? "Payment received" : "Bill marked paid",
+                    description:
+                      row?.direction === "outgoing"
+                        ? "Out of pocket has been updated."
+                        : undefined,
+                  }),
+                );
+            }}
             onRaiseReimbursement={(id) => {
               setRaisePreselect([id]);
               setRaiseOpen(true);
             }}
             onEdit={(id) => openForm("edit", id)}
-            onDelete={(id) =>
-              void deleteInvoice.mutateAsync(id).then(() => toast({ title: "Invoice deleted" }))
-            }
+            onDelete={(id) => {
+              const row = rows.find((r) => r.id === id);
+              const label = row ? `${row.invoice_number} (${formatInvoiceAud(row.total)})` : "this invoice";
+              if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+              void deleteInvoice.mutateAsync(id).then(() => toast({ title: "Invoice deleted" }));
+            }}
             onPrint={(id) => navigate(`/invoices/${id}/print`)}
           />
         )}
@@ -197,7 +217,10 @@ export default function Invoices() {
 
       <InvoiceFormDialog
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setEditId(null);
+        }}
         mode={formMode}
         invoiceId={editId}
         onSaved={(id) => setDetailId(id)}
@@ -214,6 +237,9 @@ export default function Invoices() {
         open={!!detailId}
         onOpenChange={(o) => !o && setDetailId(null)}
         onEdit={(id) => openForm("edit", id)}
+        onDelete={(id) =>
+          void deleteInvoice.mutateAsync(id).then(() => toast({ title: "Invoice deleted" }))
+        }
         onPrint={(id) => navigate(`/invoices/${id}/print`)}
         onRaiseReimbursement={(id) => {
           setRaisePreselect([id]);

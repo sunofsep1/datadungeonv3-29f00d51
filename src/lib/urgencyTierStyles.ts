@@ -22,17 +22,17 @@ export function urgencyTierBadgeClass(tier: ContactUrgencyTier): string {
   }
 }
 
-/** Focus / spotlight card chrome on Daily Hub. */
+/** Focus / spotlight card chrome on Daily Hub — flat tints so contact names stay readable. */
 export function urgencyTierSpotlightCardClass(tier: ContactUrgencyTier): string {
   switch (tier) {
     case "immediate":
-      return "border-orange-500/60 bg-gradient-to-r from-orange-500/42 via-orange-600/24 to-background";
+      return "border-orange-500/55 bg-orange-950/35";
     case "priority":
-      return "border-amber-400/45 bg-gradient-to-r from-amber-500/20 via-amber-500/8 to-background";
+      return "border-amber-400/50 bg-amber-950/28";
     case "planned":
-      return "border-sky-400/45 bg-gradient-to-r from-sky-500/20 via-sky-500/8 to-background";
+      return "border-sky-400/50 bg-sky-950/28";
     default:
-      return "border-emerald-400/45 bg-gradient-to-r from-emerald-500/20 via-emerald-500/8 to-background";
+      return "border-emerald-400/45 bg-emerald-950/25";
   }
 }
 
@@ -73,6 +73,20 @@ export function urgencyTierLabel(tier: ContactUrgencyTier): string {
       return "Planned";
     default:
       return "Backlog";
+  }
+}
+
+/** High-contrast contact name on Daily Hub cards (matches tier hue). */
+export function urgencyTierContactNameClass(tier: ContactUrgencyTier): string {
+  switch (tier) {
+    case "immediate":
+      return "text-orange-100";
+    case "priority":
+      return "text-amber-50";
+    case "planned":
+      return "text-sky-100";
+    default:
+      return "text-emerald-100";
   }
 }
 

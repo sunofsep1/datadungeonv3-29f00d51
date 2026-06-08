@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Building2,
   CheckSquare,
+  ClipboardList,
   Workflow,
   Activity,
   Sparkles,
@@ -60,6 +61,7 @@ const navGroups: NavGroup[] = [
       { title: "Home", url: "/dashboard", icon: LayoutDashboard },
       { title: "Contacts", url: "/contacts", icon: Users },
       { title: "Listings", url: "/listings", icon: Building2 },
+      { title: "Appraisals", url: "/appraisals", icon: ClipboardList },
       { title: "Tasks", url: "/tasks", icon: CheckSquare },
     ],
   },
@@ -114,6 +116,7 @@ export function AppSidebar() {
 
   const isActive = (url: string) => {
     if (url === "/dashboard") return location.pathname === "/dashboard";
+    if (url === "/appraisals") return location.pathname.startsWith("/appraisals");
     if (url === "/listings") return location.pathname === "/listings" || location.pathname.startsWith("/listings/");
     if (url === "/calendar") return location.pathname.startsWith("/calendar") || location.pathname.startsWith("/appointments");
     if (url === "/properties") return location.pathname.startsWith("/properties");

@@ -33,10 +33,18 @@ export function getFirstPropertyImageUrl(images: unknown): string | null {
   return typeof u === "string" && u.trim() ? u.trim() : null;
 }
 
+/** First hero URL for cards: listing hero, else first property gallery image. */
+export function getListingHeroImageUrl(
+  listingImageUrl: string | null | undefined,
+  propertyImages: unknown,
+): string | null {
+  return collectListingHeroUrls(listingImageUrl, propertyImages)[0] ?? null;
+}
+
 /** De-duplicated hero URLs: listing hero first, then property gallery order. */
 export function collectListingHeroUrls(
   listingImageUrl: string | null | undefined,
-  propertyImages: unknown
+  propertyImages: unknown,
 ): string[] {
   const out: string[] = [];
   const add = (s: string | null | undefined) => {

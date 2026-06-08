@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ExternalLink, MoreHorizontal } from "lucide-react";
@@ -12,7 +13,8 @@ import {
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
 import { formatInvoiceAud, type Invoice } from "@/hooks/useInvoices";
 import { deriveStatus, daysUntilDue } from "@/lib/invoiceStatus";
-import { reimbursementStateLabel } from "@/lib/recoverablePosition";
+import { markPaidActionLabel, outgoingInvoiceLookup, reimbursementStateLabel } from "@/lib/recoverablePosition";
+import { looksLikeMisclassifiedAgencyPayment } from "@/lib/invoiceCounterparty";
 
 type Props = {
   rows: Invoice[];
@@ -33,6 +35,8 @@ export function InvoiceList({
   onDelete,
   onPrint,
 }: Props) {
+  const outgoingById = useMemo(() => outgoingInvoiceLookup(rows), [rows]);
+
   if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-10 text-center">
@@ -75,6 +79,9 @@ export function InvoiceList({
                 <td className="py-2.5 pr-3 font-medium tabular-nums">{row.invoice_number}</td>
                 <td className="py-2.5 pr-3 capitalize text-muted-foreground">
                   {row.direction === "incoming" ? "Bill" : "Reimb."}
+                  {looksLikeMisclassifiedAgencyPayment(row) ? (
+                    <span className="block text-[10px] text-amber-400 normal-case">Check type</span>
+                  ) : null}
                 </td>
                 <td className="py-2.5 pr-3 max-w-[140px] truncate">{row.counterparty_name}</td>
                 <td className="py-2.5 pr-3 max-w-[160px]">
@@ -103,7 +110,12 @@ export function InvoiceList({
                 <td className="py-2.5 pr-3">
                   {row.direction === "incoming" ? (
                     <Badge variant="outline" className="text-[10px] font-normal">
-                      {reimbursementStateLabel(row)}
+                      {reimbursementStateLabel(
+                        row,
+                        row.reimbursement_invoice_id
+                          ? outgoingById.get(row.reimbursement_invoice_id)
+                          : null,
+                      )}
                     </Badge>
                   ) : (
                     "—"
@@ -119,7 +131,9 @@ export function InvoiceList({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onOpen(row.id)}>View</DropdownMenuItem>
                       {row.status !== "paid" && row.status !== "void" && (
-                        <DropdownMenuItem onClick={() => onMarkPaid(row.id)}>Mark paid</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onMarkPaid(row.id)}>
+                          {markPaidActionLabel(row.direction)}
+                        </DropdownMenuItem>
                       )}
                       {row.direction === "incoming" &&
                         row.status === "paid" &&

@@ -5,7 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { PropertyAddressFields } from "@/components/properties/PropertyAddressFields";
+import {
+  emptyLegalFields,
+  emptyStructuredAddress,
+  googlePlacesToStructured,
+  legalFieldsFromReport,
+  mergeLegalIntoReport,
+  parseAddressLineIntoStructured,
+  structuredAddressToStorage,
+  validateStructuredAddress,
+  type PropertyLegalFields,
+  type StructuredPropertyAddress,
+} from "@/lib/australianPropertyAddress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
@@ -62,6 +74,9 @@ const createEmptyProperty = () => ({
   car_spaces: null as number | null,
   building_size: null as number | null,
   estimated_value: null as number | null,
+  year_built: null as number | null,
+  garages: null as number | null,
+  carports: null as number | null,
   notes: "",
   property_report: null as Record<string, unknown> | null,
 });
@@ -81,14 +96,16 @@ export default function Properties() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<PropertyWithLinks | null>(null);
   const [formData, setFormData] = useState(createEmptyProperty());
+  const [structuredAddress, setStructuredAddress] = useState<StructuredPropertyAddress>(() => emptyStructuredAddress());
+  const [legalFields, setLegalFields] = useState<PropertyLegalFields>(() => emptyLegalFields());
   const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [propertyToDelete, setPropertyToDelete] = useState<PropertyWithLinks | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<PropertyViewMode>("list");
-  const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("address");
+  const [viewMode, setViewMode] = useState<PropertyViewMode>("grid");
+  const [sortBy, setSortBy] = useState<"address" | "price-asc" | "price-desc" | "newest">("newest");
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [uploadReportLoading, setUploadReportLoading] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
@@ -205,6 +222,24 @@ export default function Properties() {
     setOwnerSearchQuery("");
     if (property) {
       setEditingProperty(property);
+      const report =
+        property.property_report && typeof property.property_report === "object"
+          ? (property.property_report as Record<string, unknown>)
+          : null;
+      const parsed = parseAddressLineIntoStructured(property.address_line1 || "", property.address_line2 || "");
+      setStructuredAddress({
+        property_name: String(report?.property_name ?? ""),
+        level_no: parsed.level_no,
+        unit_no: parsed.unit_no,
+        street_no: parsed.street_no,
+        street_name: parsed.street_name,
+        street_type: parsed.street_type,
+        suburb: property.suburb || property.city || "",
+        state: property.state || "",
+        postcode: property.postcode || "",
+        country: property.country || "Australia",
+      });
+      setLegalFields(legalFieldsFromReport(report));
       setFormData({
         address_line1: property.address_line1 || "",
         address_line2: property.address_line2 || "",
@@ -216,12 +251,16 @@ export default function Properties() {
         bedrooms: property.bedrooms,
         bathrooms: property.bathrooms,
         price: property.price,
-        lot_size: property.lot_size ?? null,
+        lot_size: property.lot_size ?? (property as { land_area_sqm?: number | null }).land_area_sqm ?? null,
         car_spaces: property.car_spaces ?? null,
-        building_size: property.building_size ?? null,
+        building_size:
+          property.building_size ?? (property as { floor_area_sqm?: number | null }).floor_area_sqm ?? null,
         estimated_value: property.estimated_value ?? null,
+        year_built: property.year_built ?? null,
+        garages: report?.garages != null ? Number(report.garages) : null,
+        carports: report?.carports != null ? Number(report.carports) : null,
         notes: property.notes || "",
-        property_report: property.property_report ?? null,
+        property_report: report,
       });
       const ownerIds = (property.contact_property_links ?? [])
         .filter((l) => l.role === "owner" || !l.role)
@@ -230,6 +269,8 @@ export default function Properties() {
     } else {
       setEditingProperty(null);
       setFormData(createEmptyProperty());
+      setStructuredAddress(emptyStructuredAddress());
+      setLegalFields(emptyLegalFields());
       setSelectedOwnerIds([]);
     }
     setIsDialogOpen(true);
@@ -282,6 +323,19 @@ export default function Properties() {
           source: "pricefinder_pdf",
         } as Record<string, unknown>,
       }));
+      setStructuredAddress(
+        googlePlacesToStructured({
+          address_line1: parsed.address_line1 || "",
+          address_line2: "",
+          city: parsed.city || "",
+          state: parsed.state || "",
+          postcode: parsed.postcode || "",
+          country: "Australia",
+        }),
+      );
+      if (parsed.lot_plan) {
+        setLegalFields((prev) => ({ ...prev, deposited_plan: parsed.lot_plan ?? prev.deposited_plan }));
+      }
       toast({ title: "Success", description: "Property report parsed. Review and save." });
     } catch (err) {
       toast({
@@ -296,28 +350,27 @@ export default function Properties() {
   };
 
   const handleSaveProperty = async () => {
-    if (!formData.address_line1.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an address",
-        variant: "destructive",
-      });
+    const addressError = validateStructuredAddress(structuredAddress);
+    if (addressError) {
+      toast({ title: "Address incomplete", description: addressError, variant: "destructive" });
       return;
     }
+    const storedAddress = structuredAddressToStorage(structuredAddress);
     const beds = formData.bedrooms;
     const baths = formData.bathrooms;
     const priceVal = formData.price;
+    const isLand = formData.property_type === "land";
     if (!editingProperty) {
       if (!formData.property_type?.trim()) {
         toast({ title: "Error", description: "Please choose a property type.", variant: "destructive" });
         return;
       }
-      if (beds == null || Number.isNaN(Number(beds))) {
-        toast({ title: "Error", description: "Please enter bedrooms for new properties.", variant: "destructive" });
+      if (!isLand && (beds == null || Number.isNaN(Number(beds)))) {
+        toast({ title: "Error", description: "Please enter bedrooms (or choose Land as type).", variant: "destructive" });
         return;
       }
-      if (baths == null || Number.isNaN(Number(baths))) {
-        toast({ title: "Error", description: "Please enter bathrooms for new properties.", variant: "destructive" });
+      if (!isLand && (baths == null || Number.isNaN(Number(baths)))) {
+        toast({ title: "Error", description: "Please enter bathrooms (or choose Land as type).", variant: "destructive" });
         return;
       }
     }
@@ -336,46 +389,41 @@ export default function Properties() {
 
     try {
       let propertyId: string;
+      let reportPayload = mergeLegalIntoReport(formData.property_report, legalFields);
+      if (structuredAddress.property_name.trim()) {
+        reportPayload = { ...reportPayload, property_name: structuredAddress.property_name.trim() };
+      }
+      if (formData.garages != null) reportPayload = { ...reportPayload, garages: formData.garages };
+      if (formData.carports != null) reportPayload = { ...reportPayload, carports: formData.carports };
+
+      const savePayload = {
+        ...storedAddress,
+        property_type: formData.property_type || null,
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        price: formData.price,
+        lot_size: formData.lot_size ?? null,
+        land_area_sqm: formData.lot_size ?? null,
+        car_spaces: formData.car_spaces ?? null,
+        building_size: formData.building_size ?? null,
+        floor_area_sqm: formData.building_size ?? null,
+        estimated_value: formData.estimated_value ?? null,
+        year_built: formData.year_built ?? null,
+        notes: formData.notes || null,
+        property_report: Object.keys(reportPayload).length > 0 ? reportPayload : null,
+      };
+
       if (editingProperty) {
         const updated = await updateProperty.mutateAsync({
           id: editingProperty.id,
-          address_line1: formData.address_line1 || null,
-          address_line2: formData.address_line2 || null,
-          city: formData.city || null,
-          state: formData.state || null,
-          postcode: formData.postcode || null,
-          country: formData.country || null,
-          property_type: formData.property_type || null,
-          bedrooms: formData.bedrooms,
-          bathrooms: formData.bathrooms,
-          price: formData.price,
-          lot_size: formData.lot_size ?? null,
-          car_spaces: formData.car_spaces ?? null,
-          building_size: formData.building_size ?? null,
-          estimated_value: formData.estimated_value ?? null,
-          notes: formData.notes || null,
-          property_report: formData.property_report ?? null,
+          ...savePayload,
         });
         propertyId = updated.id;
         toast({ title: "Success", description: "Property updated!" });
       } else {
         const created = await createProperty.mutateAsync({
-          address_line1: formData.address_line1 || null,
-          address_line2: formData.address_line2 || null,
-          city: formData.city || null,
-          state: formData.state || null,
-          postcode: formData.postcode || null,
-          country: formData.country || null,
-          property_type: formData.property_type || "house", // schema requires NOT NULL
-          bedrooms: formData.bedrooms,
-          bathrooms: formData.bathrooms,
-          price: formData.price,
-          lot_size: formData.lot_size ?? null,
-          car_spaces: formData.car_spaces ?? null,
-          building_size: formData.building_size ?? null,
-          estimated_value: formData.estimated_value ?? null,
-          notes: formData.notes || null,
-          property_report: formData.property_report ?? null,
+          ...savePayload,
+          property_type: formData.property_type || "house",
         });
         propertyId = created.id;
         toast({ title: "Success", description: "Property added!" });
@@ -415,6 +463,8 @@ export default function Properties() {
 
       setIsDialogOpen(false);
       setFormData(createEmptyProperty());
+      setStructuredAddress(emptyStructuredAddress());
+      setLegalFields(emptyLegalFields());
       setSelectedOwnerIds([]);
       setPendingImageFiles([]);
       setEditingProperty(null);
@@ -483,6 +533,8 @@ export default function Properties() {
               setIsDialogOpen(open);
               if (!open) {
                 setFormData(createEmptyProperty());
+                setStructuredAddress(emptyStructuredAddress());
+                setLegalFields(emptyLegalFields());
                 setSelectedOwnerIds([]);
                 setPendingImageFiles([]);
                 setEditingProperty(null);
@@ -495,7 +547,7 @@ export default function Properties() {
                 <span className="hidden sm:inline">Add Property</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-card border-border max-h-[90vh] overflow-hidden flex flex-col text-foreground">
+            <DialogContent className="sm:max-w-[720px] bg-card border-border max-h-[90vh] overflow-hidden flex flex-col text-foreground">
               <DialogHeader>
                 <DialogTitle>
                   {editingProperty ? "Edit Property" : "Add New Property"}
@@ -529,91 +581,20 @@ export default function Properties() {
                     <SegmentedTabsTrigger value="notes">Notes</SegmentedTabsTrigger>
                   </SegmentedTabsList>
                   <TabsContent value="address" className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                    <Label>Address Line 1 *</Label>
-                    <AddressAutocomplete
-                      placeholder="Street address"
-                      className="bg-input"
-                      value={formData.address_line1}
-                      onChange={(value) =>
-                        setFormData((prev) => ({ ...prev, address_line1: value }))
-                      }
-                      onPlaceSelected={(parts) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          address_line1: parts.address_line1 || prev.address_line1,
-                          city: parts.city || prev.city,
-                          state: parts.state || prev.state,
-                          postcode: parts.postcode || prev.postcode,
-                          country: parts.country || prev.country || "Australia",
-                        }))
-                      }
+                    <PropertyAddressFields
+                      address={structuredAddress}
+                      legal={legalFields}
+                      onAddressChange={setStructuredAddress}
+                      onLegalChange={setLegalFields}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Address Line 2</Label>
-                    <Input
-                      placeholder="Unit, apartment, etc."
-                      className="bg-input"
-                      value={formData.address_line2}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address_line2: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>City</Label>
-                      <Input
-                        placeholder="City"
-                        className="bg-input"
-                        value={formData.city}
-                        onChange={(e) =>
-                          setFormData({ ...formData, city: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>State</Label>
-                      <Input
-                        placeholder="State"
-                        className="bg-input"
-                        value={formData.state}
-                        onChange={(e) =>
-                          setFormData({ ...formData, state: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Postcode</Label>
-                      <Input
-                        placeholder="Postcode"
-                        className="bg-input"
-                        value={formData.postcode}
-                        onChange={(e) =>
-                          setFormData({ ...formData, postcode: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Country</Label>
-                      <Input
-                        placeholder="Country"
-                        className="bg-input"
-                        value={formData.country}
-                        onChange={(e) =>
-                          setFormData({ ...formData, country: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
                   </TabsContent>
                   <TabsContent value="details" className="space-y-4 mt-4">
+                    <p className="text-xs text-muted-foreground">
+                      Property specs — matches Agentbox bedrooms, land/home size, parking and year built.
+                    </p>
                     <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Property Type</Label>
+                      <Label>Property type *</Label>
                       <Select
                         value={formData.property_type}
                         onValueChange={(value: PropertyType) =>
@@ -632,7 +613,7 @@ export default function Properties() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Price</Label>
+                      <Label>Guide / last sale price ($)</Label>
                       <Input
                         type="number"
                         placeholder="0"
@@ -646,10 +627,25 @@ export default function Properties() {
                         }
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Estimated value ($)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.estimated_value ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            estimated_value: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Bedrooms</Label>
+                      <Label>Bedrooms{formData.property_type !== "land" ? " *" : ""}</Label>
                       <Input
                         type="number"
                         className="bg-input"
@@ -663,7 +659,7 @@ export default function Properties() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Bathrooms</Label>
+                      <Label>Bathrooms{formData.property_type !== "land" ? " *" : ""}</Label>
                       <Input
                         type="number"
                         step="0.5"
@@ -680,7 +676,7 @@ export default function Properties() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Lot size (m²)</Label>
+                      <Label>Land size (m²)</Label>
                       <Input
                         type="number"
                         placeholder="0"
@@ -695,7 +691,24 @@ export default function Properties() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Car spaces</Label>
+                      <Label>Home / floor area (m²)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.building_size ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            building_size: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Car spaces (total)</Label>
                       <Input
                         type="number"
                         placeholder="0"
@@ -705,6 +718,53 @@ export default function Properties() {
                           setFormData({
                             ...formData,
                             car_spaces: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Garages</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.garages ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            garages: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Carports</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="bg-input"
+                        value={formData.carports ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            carports: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Year built</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 2018"
+                        className="bg-input"
+                        value={formData.year_built ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            year_built: e.target.value ? Number(e.target.value) : null,
                           })
                         }
                       />

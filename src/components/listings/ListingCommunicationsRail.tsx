@@ -3,14 +3,14 @@ import { MessageSquare } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCommunicationsTimeline } from "@/hooks/useCommunicationsTimeline";
-import { scrollToListingSection } from "@/components/listings/ListingDetailSectionNav";
 
 type Props = {
   listingId: string;
   linkedContactIds: string[];
+  onViewAll?: () => void;
 };
 
-export function ListingCommunicationsRail({ listingId, linkedContactIds }: Props) {
+export function ListingCommunicationsRail({ listingId, linkedContactIds, onViewAll }: Props) {
   const { items, isLoading } = useCommunicationsTimeline({
     listingId,
     linkedContactIds,
@@ -30,7 +30,7 @@ export function ListingCommunicationsRail({ listingId, linkedContactIds }: Props
           variant="ghost"
           size="sm"
           className="h-7 text-[10px] text-muted-foreground"
-          onClick={() => scrollToListingSection("listing-activity")}
+          onClick={() => (onViewAll ? onViewAll() : undefined)}
         >
           View all
         </Button>

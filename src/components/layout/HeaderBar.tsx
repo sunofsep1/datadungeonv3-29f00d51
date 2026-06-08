@@ -63,6 +63,7 @@ const MODULE_TITLES: Record<string, string> = {
   "/scripts": "Scripts",
   "/settings": "Settings",
   "/pricing": "Pricing intelligence",
+  "/appraisals": "Appraisals",
   "/annual-reviews": "Reviews & events",
   "/touch-report": "Touch report",
   "/settings": "Settings",
@@ -72,6 +73,7 @@ function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/contacts/markets")) return "My Markets";
   if (pathname.startsWith("/contacts")) return "Contacts";
   if (pathname.startsWith("/properties")) return "Properties";
+  if (pathname.startsWith("/appraisals")) return "Appraisals";
   if (pathname.startsWith("/listings")) return "Listings";
   if (pathname.startsWith("/nurture")) return "Nurture";
   if (pathname.startsWith("/settings")) return "Settings";

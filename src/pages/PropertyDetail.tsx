@@ -45,7 +45,8 @@ import { Input } from "@/components/ui/input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { format } from "date-fns";
 import { useProperty, useUpdateProperty, useProperties, formatPropertyAddress } from "@/hooks/useProperties";
-import { useContacts } from "@/hooks/useContacts";
+import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
 import { useToast } from "@/hooks/use-toast";
 import { PropertyContactsCard } from "@/components/properties/PropertyContactsCard";
@@ -134,8 +135,13 @@ export default function PropertyDetail() {
     [links]
   );
   const availableContacts = useMemo(
-    () => (contacts as { id: string; name: string }[]).filter((c) => !linkedContactIds.has(c.id)),
-    [contacts, linkedContactIds]
+    () => (contacts ?? []).filter((c) => !linkedContactIds.has(c.id)),
+    [contacts, linkedContactIds],
+  );
+
+  const selectedLinkContact = useMemo(
+    () => availableContacts.find((c) => c.id === addOwnerContactId),
+    [availableContacts, addOwnerContactId],
   );
 
   if (isLoading) {
@@ -933,34 +939,56 @@ export default function PropertyDetail() {
         <ActivityTimeline entityType="property" entityId={id} showAddNote={true} />
       </Card>
 
-      <Dialog open={addOwnerOpen} onOpenChange={setAddOwnerOpen}>
-        <DialogContent className="sm:max-w-[420px] bg-[#242424] border-white/10">
+      <Dialog
+        open={addOwnerOpen}
+        onOpenChange={(open) => {
+          setAddOwnerOpen(open);
+          if (!open) setAddOwnerContactId("");
+        }}
+      >
+        <DialogContent className="sm:max-w-md bg-[#242424] border-white/10">
           <DialogHeader>
             <DialogTitle>Link contact to property</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>Contact</Label>
-              <Select
-                value={addOwnerContactId}
-                onValueChange={setAddOwnerContactId}
-                disabled={availableContacts.length === 0}
-              >
-                <SelectTrigger className="w-full bg-input">
-                  <SelectValue placeholder={availableContacts.length === 0 ? "No contacts available" : "Select contact..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableContacts.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {availableContacts.length === 0 && (
-                <p className="text-xs text-white/60">
+              {availableContacts.length === 0 ? (
+                <p className="text-sm text-white/60 rounded-md border border-white/10 px-3 py-2">
                   Create contacts first, or they may all be linked already.
                 </p>
+              ) : (
+                <>
+                  {selectedLinkContact ? (
+                    <p className="text-sm text-foreground">
+                      Selected:{" "}
+                      <span className="font-medium text-teal">{getContactDisplayName(selectedLinkContact)}</span>
+                    </p>
+                  ) : null}
+                  <Command className="rounded-md border border-white/10 bg-input">
+                    <CommandInput placeholder="Search contacts…" />
+                    <CommandList className="max-h-[220px]">
+                      <CommandEmpty>No contacts found.</CommandEmpty>
+                      <CommandGroup>
+                        {availableContacts.map((c) => {
+                          const label = getContactDisplayName(c);
+                          const searchValue = [label, (c as { email?: string }).email, (c as { phone?: string }).phone]
+                            .filter(Boolean)
+                            .join(" ");
+                          return (
+                          <CommandItem
+                            key={c.id}
+                            value={searchValue}
+                            onSelect={() => setAddOwnerContactId(c.id)}
+                          >
+                            {label}
+                          </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </>
               )}
             </div>
             <div className="space-y-2">
