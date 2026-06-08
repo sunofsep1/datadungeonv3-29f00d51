@@ -8,7 +8,7 @@ cd "$ROOT"
 
 npm run verify
 npx supabase db push --linked --yes
-npx supabase functions deploy --use-api
+bash scripts/deploy-supabase-functions.sh
 
 echo ""
 echo "Supabase deploy finished (migrations + functions)."
