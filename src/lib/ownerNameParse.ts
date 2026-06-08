@@ -38,95 +38,9 @@ function splitSharedSurnameNames(raw: string): string[] {
 }
 
 /**
- * Tokens that are commonly given/middle names in Pricefinder owner strings.
- * When a co-owner segment ends with one of these, the shared couple surname is
- * usually on the last person only (e.g. "JAMIE MATTHEW & CAREN JOY JOYCE").
+ * Split ampersand-separated co-owners. In Pricefinder, `&` means shared surname
+ * (surname usually appears only on the last person). Use `;` for different surnames.
  */
-const LIKELY_GIVEN_NOT_SURNAME = new Set([
-  "matthew",
-  "john",
-  "james",
-  "michael",
-  "david",
-  "william",
-  "robert",
-  "richard",
-  "joseph",
-  "thomas",
-  "charles",
-  "daniel",
-  "mark",
-  "paul",
-  "steven",
-  "andrew",
-  "joshua",
-  "kevin",
-  "brian",
-  "george",
-  "timothy",
-  "ronald",
-  "edward",
-  "jason",
-  "jeffrey",
-  "ryan",
-  "jacob",
-  "gary",
-  "nicholas",
-  "eric",
-  "stephen",
-  "jonathan",
-  "mary",
-  "patricia",
-  "jennifer",
-  "linda",
-  "elizabeth",
-  "barbara",
-  "susan",
-  "jessica",
-  "sarah",
-  "karen",
-  "lisa",
-  "nancy",
-  "betty",
-  "helen",
-  "sandra",
-  "donna",
-  "carol",
-  "ruth",
-  "sharon",
-  "michelle",
-  "laura",
-  "kimberly",
-  "deborah",
-  "amy",
-  "angela",
-  "melissa",
-  "brenda",
-  "emma",
-  "olivia",
-  "sophia",
-  "isabella",
-  "charlotte",
-  "mia",
-  "amelia",
-  "harper",
-  "evelyn",
-  "abigail",
-  "emily",
-  "ella",
-  "julian",
-  "francis",
-  "joy",
-  "ann",
-  "anne",
-  "lee",
-  "rose",
-  "may",
-  "caren",
-  "jamie",
-]);
-
-/** Split ampersand-separated co-owners; propagate shared surname from the last fully-named person. */
 function expandSameSurnameCouple(segment: string): string[] {
   const parts = segment
     .split(/\s+&\s+|\s+and\s+/i)
@@ -148,26 +62,16 @@ function expandSameSurnameCouple(segment: string): string[] {
   }
   if (!coupleSurname) return titledParts;
 
-  const trailingTokens = wordGroups
-    .filter((words) => words.length >= 2)
-    .map((words) => words[words.length - 1]!.toLowerCase());
-  const multipleDistinctTrailing =
-    new Set(trailingTokens).size >= 2 && trailingTokens.length >= 2;
-
   return titledParts.map((tc, i) => {
     const words = wordGroups[i]!;
     const hasCoupleSurname = words.some((w) => w.toLowerCase() === coupleSurname!.toLowerCase());
     if (hasCoupleSurname) return tc;
 
-    const lastToken = words[words.length - 1]?.toLowerCase() ?? "";
-    const missingFullName =
-      (lastGroup.length >= 2 && (words.length <= 1 || words.length === lastGroup.length - 1)) ||
+    const needsSurname =
+      (lastGroup.length >= 2 && words.length < lastGroup.length) ||
       (lastGroup.length === 1 && words.length === 1 && i > 0 && firstGroup.length >= 2);
 
-    // Same-surname couple: earlier person has given names only, surname on last person.
-    if (missingFullName && (!multipleDistinctTrailing || LIKELY_GIVEN_NOT_SURNAME.has(lastToken))) {
-      return `${tc} ${coupleSurname}`;
-    }
+    if (needsSurname) return `${tc} ${coupleSurname}`;
 
     return tc;
   });
@@ -197,11 +101,22 @@ export function splitOwnerNames(raw: string | null | undefined): string[] {
   return pieces.filter(Boolean);
 }
 
-/** Collapse parsed owner list into a canonical "A & B" string for storage. */
+/** Last token when 2+ words, else empty. */
+function ownerSurnameToken(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return words.length >= 2 ? words[words.length - 1]!.toLowerCase() : "";
+}
+
+/** Collapse parsed owner list into canonical storage string (`&` shared, `;` different surnames). */
 export function joinOwnerNames(raw: string | null | undefined): string | null {
   const parts = splitOwnerNames(raw);
   if (parts.length === 0) return null;
   if (parts.length === 1) return parts[0]!;
+
+  const surnames = parts.map(ownerSurnameToken).filter(Boolean);
+  if (new Set(surnames).size >= 2) {
+    return parts.join("; ");
+  }
   return parts.join(" & ");
 }
 

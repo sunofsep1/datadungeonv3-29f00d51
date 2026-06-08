@@ -13,7 +13,7 @@ const PENZANCE_SAMPLE = `
 PROPERTY REPORT
 83 PENZANCE DRIVE OF, REDLAND BAY, QLD
 83 PENZANCE DRIVE OF, REDLAND BAY, QLD 4165
-MARI-ANN MAJELA & JULIAN FRANCIS MCDONNELL Owner Name(s):
+MARI-ANN MAJELA; JULIAN FRANCIS MCDONNELL Owner Name(s):
 Owner Type: Owner Occupied Phone(s):
 RPD: L57 SP149557
 Property Type: House - Freehold [Issuing]
@@ -112,5 +112,22 @@ describe("parsePropertyReportText — owner label junk regression", () => {
     `;
     const parsed = parsePropertyReportText(text);
     expect(splitOwnerNames(parsed.owner_names)).toEqual(["John Smith", "Jane Doe"]);
+  });
+});
+
+const FRESHWATER_SAMPLE = `
+PROPERTY REPORT 7 FRESHWATER STREET, THORNLANDS, QLD
+7 FRESHWATER STREET, THORNLANDS, QLD 4164 WARREN CRAIG & SONIA LILY NEWBY Owner Name(s):
+Owner Details Owner Type: Owner Occupied Phone(s): Owner Address:
+Property Details RPD: L56 SP273844 Property Type: House - Freehold [Issuing]
+`;
+
+describe("parsePropertyReportText — Freshwater Street sample", () => {
+  it("propagates shared surname to first co-owner", () => {
+    const parsed = parsePropertyReportText(FRESHWATER_SAMPLE);
+    expect(parsed.address_line1).toMatch(/7 FRESHWATER STREET/i);
+    expect(parsed.postcode).toBe("4164");
+    expect(splitOwnerNames(parsed.owner_names)).toEqual(["Warren Craig Newby", "Sonia Lily Newby"]);
+    expect(parsed.lot_plan).toBe("L56 SP273844");
   });
 });

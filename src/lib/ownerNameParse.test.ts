@@ -9,10 +9,10 @@ import {
 } from "@/lib/ownerNameParse";
 
 describe("splitOwnerNames", () => {
-  it("splits ampersand and and separators", () => {
-    expect(splitOwnerNames("MARY-ANN MAJELA & JULIAN FRANCIS MCDONNELL")).toEqual([
-      "Mary-Ann Majela",
-      "Julian Francis Mcdonnell",
+  it("splits ampersand and and separators with shared surname", () => {
+    expect(splitOwnerNames("WARREN CRAIG & SONIA LILY NEWBY")).toEqual([
+      "Warren Craig Newby",
+      "Sonia Lily Newby",
     ]);
   });
 
@@ -50,7 +50,7 @@ describe("allOwnersAlreadyLinked", () => {
 
   it("returns true when all owners are linked", () => {
     expect(
-      allOwnersAlreadyLinked("Mary-Ann Majela & Julian Francis Mcdonnell", [
+      allOwnersAlreadyLinked("Mary-Ann Majela; Julian Francis Mcdonnell", [
         "Mary-Ann Majela",
         "Julian Francis Mcdonnell",
       ]),
@@ -91,6 +91,13 @@ describe("splitFirstLastName", () => {
     expect(splitFirstLastName("Jamie Matthew Joyce")).toEqual({
       first_name: "Jamie Matthew",
       last_name: "Joyce",
+    });
+  });
+
+  it("splits Freshwater couple with middle name", () => {
+    expect(splitFirstLastName("Warren Craig Newby")).toEqual({
+      first_name: "Warren Craig",
+      last_name: "Newby",
     });
   });
 });

@@ -267,7 +267,11 @@ export function parsePropertyReportText(text: string | undefined | null): Parsed
       const base = result.owner_names.toLowerCase();
       const extraLower = extra.toLowerCase();
       if (!base.includes(extraLower) && !extraLower.includes(base)) {
-        result.owner_names = `${result.owner_names} & ${extra}`;
+        const baseSurname = base.split(/\s+/).pop()?.toLowerCase() ?? "";
+        const extraSurname = extra.split(/\s+/).pop()?.toLowerCase() ?? "";
+        const joiner =
+          baseSurname && extraSurname && baseSurname !== extraSurname ? "; " : " & ";
+        result.owner_names = `${result.owner_names}${joiner}${extra}`;
       }
     }
   }
