@@ -54,6 +54,7 @@ function persistTriage(
 ): Record<string, import("@/lib/dailyHubTriage").DailyHubTriageAssignment> {
   const nextAssignments = assignmentsFromColumnIds(columnIds);
   saveDailyHubTriage(userId, { v: 1, assignments: nextAssignments });
+  console.log("[DailyHub] SAVE userId=", userId, "assignments=", JSON.stringify(nextAssignments));
   return nextAssignments;
 }
 
@@ -124,6 +125,7 @@ export function DailyHubKanbanBoard({
     // and write that back to localStorage, permanently destroying the saved triage.
     const loaded = loadDailyHubTriage(userId);
     const validIds = new Set(scheduleRowIds);
+    console.log("[DailyHub] RECONCILE userId=", userId, "validIds.size=", validIds.size, "loaded=", JSON.stringify(loaded.assignments));
 
     if (validIds.size === 0) {
       // Data hasn't arrived yet — restore assignments so they are ready for the
@@ -134,6 +136,7 @@ export function DailyHubKanbanBoard({
     }
 
     const pruned = pruneStaleAssignments(loaded.assignments, validIds);
+    console.log("[DailyHub] RECONCILE pruned=", JSON.stringify(pruned), "scheduleRowIds=", scheduleRowIds.slice(0,5));
     if (Object.keys(pruned).length !== Object.keys(loaded.assignments).length) {
       saveDailyHubTriage(userId, { v: 1, assignments: pruned });
     }
@@ -205,6 +208,7 @@ export function DailyHubKanbanBoard({
           next = applyDragToColumnIds(current, activeItemId, overId) ?? current;
         }
       }
+      console.log("[DailyHub] DRAG END userId=", userId, "focus=", next.focus, "working=", next.working, "holding=", next.holding, "parked=", next.parked);
       // Call setColumnIds and persistTriage as plain top-level calls (not inside a
       // state-updater). Keeping side-effects out of updaters avoids double-invocation
       // in React Strict Mode and unexpected interactions in concurrent rendering.
