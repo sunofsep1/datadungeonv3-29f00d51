@@ -40,7 +40,7 @@ export function ListingPipelineNextCard({ pipelineStage }: ListingPipelineNextCa
           </Link>
         </Button>
         <Button variant="ghost" size="sm" className="justify-between h-9 text-xs text-muted-foreground" asChild>
-          <Link to="/settings">
+          <Link to="/settings/automations">
             <span className="flex items-center gap-2 min-w-0">
               <Settings2 className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Settings · workflows</span>

@@ -7,6 +7,8 @@ export type MapProspectPick = {
   addressLine?: string;
   addressParts?: ParsedAddressParts | null;
   resolving?: boolean;
+  /** Set when reverse geocode failed — user can enter address manually. */
+  geocodeError?: string | null;
 };
 
 export function mapPickToAddressLine(pick: MapProspectPick): string {

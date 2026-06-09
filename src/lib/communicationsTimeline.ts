@@ -118,6 +118,58 @@ function normalizeKey(title: string): string {
 }
 
 /** Drop legacy interaction rows that duplicate a nearby activity_log entry. */
+/** System noise that repeats often on listings (tags, links, stage moves). */
+function isCollapsibleCommTitle(title: string): boolean {
+  const t = title.trim().toLowerCase();
+  return (
+    t.includes("tag added") ||
+    t.includes("property linked") ||
+    t.includes("pipeline stage") ||
+    t.includes("task completed")
+  );
+}
+
+function commDayKey(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+/** Collapse repeated same-title items on the same day into one row (e.g. "Tag added (5×)"). */
+export function collapseSimilarCommunications(items: UnifiedCommItem[]): UnifiedCommItem[] {
+  const result: UnifiedCommItem[] = [];
+  let i = 0;
+  while (i < items.length) {
+    const item = items[i];
+    if (!isCollapsibleCommTitle(item.title)) {
+      result.push(item);
+      i += 1;
+      continue;
+    }
+    const day = commDayKey(item.occurredAt);
+    const key = `${item.kind}:${normalizeKey(item.title)}:${day}`;
+    let count = 1;
+    let j = i + 1;
+    while (j < items.length) {
+      const next = items[j];
+      const nextKey = `${next.kind}:${normalizeKey(next.title)}:${commDayKey(next.occurredAt)}`;
+      if (nextKey !== key) break;
+      count += 1;
+      j += 1;
+    }
+    if (count > 1) {
+      result.push({
+        ...item,
+        id: `${item.id}:collapsed:${count}`,
+        title: `${item.title} (${count}×)`,
+      });
+      i = j;
+    } else {
+      result.push(item);
+      i += 1;
+    }
+  }
+  return result;
+}
+
 export function dedupeCommunications(items: UnifiedCommItem[]): UnifiedCommItem[] {
   const activityKeys = new Set<string>();
   for (const item of items) {

@@ -93,7 +93,7 @@ export function ProspectiveBuyersPanel({ listing, listingId, onMatchBuyers }: Pr
       });
     }
 
-    return rows.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0)).slice(0, 8);
+    return rows.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0)).slice(0, 5);
   }, [links, offers, matchScores, contactsById]);
 
   return (

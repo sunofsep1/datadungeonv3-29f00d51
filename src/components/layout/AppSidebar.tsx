@@ -17,14 +17,12 @@ import {
   Home,
   ClipboardCheck,
   ChevronDown,
-  Search,
   Building2,
   CheckSquare,
+  ClipboardList,
   Workflow,
   Activity,
-  Flame,
   Sparkles,
-  Clock,
   MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,8 +60,8 @@ const navGroups: NavGroup[] = [
     items: [
       { title: "Home", url: "/dashboard", icon: LayoutDashboard },
       { title: "Contacts", url: "/contacts", icon: Users },
-      { title: "Contact research", url: "/contact-research", icon: Search },
       { title: "Listings", url: "/listings", icon: Building2 },
+      { title: "Appraisals", url: "/appraisals", icon: ClipboardList },
       { title: "Tasks", url: "/tasks", icon: CheckSquare },
     ],
   },
@@ -71,7 +69,6 @@ const navGroups: NavGroup[] = [
     label: "Automation & content",
     defaultOpen: true,
     items: [
-      { title: "Automations", url: "/automations", icon: Workflow },
       { title: "Scripts", url: "/scripts", icon: FileText },
       { title: "Marketing", url: "/marketing", icon: Megaphone },
     ],
@@ -89,11 +86,8 @@ const navGroups: NavGroup[] = [
     label: "Insights",
     defaultOpen: false,
     items: [
-      { title: "Data health", url: "/data-health", icon: Activity },
       { title: "Performance", url: "/performance", icon: BarChart3 },
-      { title: "Hot leads", url: "/hot-leads", icon: Flame },
       { title: "Nurture", url: "/nurture", icon: Sparkles },
-      { title: "Recent", url: "/recent", icon: Clock },
     ],
   },
 ];
@@ -122,6 +116,7 @@ export function AppSidebar() {
 
   const isActive = (url: string) => {
     if (url === "/dashboard") return location.pathname === "/dashboard";
+    if (url === "/appraisals") return location.pathname.startsWith("/appraisals");
     if (url === "/listings") return location.pathname === "/listings" || location.pathname.startsWith("/listings/");
     if (url === "/calendar") return location.pathname.startsWith("/calendar") || location.pathname.startsWith("/appointments");
     if (url === "/properties") return location.pathname.startsWith("/properties");
@@ -326,18 +321,6 @@ export function AppSidebar() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-52 mb-2 max-h-[70vh] overflow-y-auto">
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/automations" className="flex items-center gap-2">
-                        <Workflow className="w-4 h-4" />
-                        Automations
-                      </NavLink>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <NavLink to="/data-health" className="flex items-center gap-2">
-                        <Activity className="w-4 h-4" />
-                        Data health
-                      </NavLink>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <NavLink to="/annual-reviews" className="flex items-center gap-2">
                         <ClipboardCheck className="w-4 h-4" />

@@ -48,7 +48,7 @@ export default function Automations() {
           </div>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/settings">Open in Settings</Link>
+          <Link to="/settings/automations">Open in Settings</Link>
         </Button>
       </Card>
 

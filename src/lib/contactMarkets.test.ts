@@ -4,6 +4,7 @@ import {
   contactMatchesMarket,
   getOwnerPropertySuburbs,
   getPropertiesForMarket,
+  normalizeMarketSuburb,
   propertyMatchesMarket,
   type ContactForMarket,
   type ContactMarket,
@@ -137,5 +138,17 @@ describe("contactMarkets", () => {
     const stats = buildMarketStats(contacts, [victoriaPointMarket], properties);
     expect(stats[0]?.total).toBe(1);
     expect(stats[0]?.propertyCount).toBe(2);
+  });
+
+  it("matches suburb aliases like Mt Gravatt vs Mount Gravatt", () => {
+    const market: ContactMarket = {
+      id: "mt-gravatt",
+      label: "Mount Gravatt",
+      suburbs: ["Mount Gravatt"],
+      state: "QLD",
+    };
+    const p = property({ suburb: "Mt Gravatt", state: "QLD", address_line1: "1 Main St" });
+    expect(normalizeMarketSuburb("Mt Gravatt")).toBe("mount gravatt");
+    expect(propertyMatchesMarket(p, market)).toBe(true);
   });
 });

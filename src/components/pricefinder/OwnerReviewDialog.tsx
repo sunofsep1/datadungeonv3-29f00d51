@@ -203,6 +203,14 @@ export function OwnerReviewDialog({
                 {row.phone ? (
                   <p className="text-xs text-muted-foreground tabular-nums">{row.phone}</p>
                 ) : null}
+                {(() => {
+                  const { first_name, last_name } = splitFirstLastName(row.name);
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      First: {first_name || "—"} · Last: {last_name || "—"}
+                    </p>
+                  );
+                })()}
                 {row.alreadyLinked ? (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400">Already linked to this property</p>
                 ) : row.existingContactName ? (
@@ -227,7 +235,7 @@ export function OwnerReviewDialog({
                 Working…
               </>
             ) : pendingCount > 0 ? (
-              `Create selected (${pendingCount})`
+              `Create & link selected (${pendingCount})`
             ) : linkedCount > 0 ? (
               "All owners already linked"
             ) : (

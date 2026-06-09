@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
   isContactUnreachableForAutomation,
 } from "@/lib/contactAutomationReachability";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
-import { Activity, Users, Home, ArrowRight, PieChart, Copy, LayoutGrid, Workflow } from "lucide-react";
+import { Activity, Users, Home, ArrowRight, PieChart, Copy, LayoutGrid, Workflow, RefreshCw } from "lucide-react";
 import { BuyerEnquiryRepairPanel } from "@/components/data-health/BuyerEnquiryRepairPanel";
 
 function pctComplete(total: number, missing: number): number {
@@ -28,9 +29,23 @@ const MAX_DUPLICATE_CLUSTERS = 6;
 const MAX_AUTOMATION_SAMPLE = 6;
 
 export default function DataHealth() {
-  const { data, isLoading, isError, refetch } = useDataHealth();
-  const { data: contacts = [], isLoading: contactsLoading } = useContacts();
-  const { data: listings = [], isLoading: listingsLoading } = useListings();
+  const { data, isLoading, isError, refetch, isFetching, dataUpdatedAt } = useDataHealth();
+  const { data: contacts = [], isLoading: contactsLoading, refetch: refetchContacts } = useContacts();
+  const { data: listings = [], isLoading: listingsLoading, refetch: refetchListings } = useListings();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetch(), refetchContacts(), refetchListings()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const lastUpdatedLabel = dataUpdatedAt
+    ? `Updated ${formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}`
+    : "Not loaded yet";
 
   const duplicateClusters = useMemo(
     () =>
@@ -74,6 +89,20 @@ export default function DataHealth() {
         title="Data health"
         description="Database completeness and hygiene — turn gaps into fixable queues."
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <p className="text-[11px] text-muted-foreground">{lastUpdatedLabel}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 text-xs"
+          onClick={() => void handleRefresh()}
+          disabled={refreshing || isFetching}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing || isFetching ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
 
       {isLoading ? (
         <div className="space-y-4">

@@ -20,7 +20,6 @@ export const DRAKO_ROUTE_HOME: Record<string, DrakoRouteHome> = {
   "/contacts": HOME,
   "/tasks": { anchor: "stage", mood: "working" },
   "/todos": { anchor: "stage", mood: "working" },
-  "/hot-leads": { anchor: "stage", mood: "fire-breath" },
   "/listings": { anchor: "stage", mood: "growth-chart" },
   "/pipeline": { anchor: "stage", mood: "growth-chart" },
   "/nurture": { anchor: "stage", mood: "teacher" },

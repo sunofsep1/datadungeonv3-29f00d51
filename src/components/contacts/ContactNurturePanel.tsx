@@ -22,6 +22,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
+import { isoFromDateInput, parseDateOnlyLocal, todayDateInputValue } from "@/lib/localDateParse";
 import {
   useContactTasks,
   useCreateContactTask,
@@ -100,7 +101,7 @@ export function ContactNurturePanel({
   const advanceNurtureStep = useAdvanceNurtureEnrollmentStep();
 
   const [newTitle, setNewTitle] = useState("");
-  const [newDue, setNewDue] = useState("");
+  const [newDue, setNewDue] = useState(() => todayDateInputValue());
   const [sequencePick, setSequencePick] = useState<string>("");
   /** Per-enrollment target sequence id for "Switch to" */
   const [switchToSequenceId, setSwitchToSequenceId] = useState<Record<string, string>>({});
@@ -177,16 +178,17 @@ export function ContactNurturePanel({
   const handleAddTask = () => {
     const title = newTitle.trim();
     if (!title) return;
+    const startDate = newDue.trim() ? isoFromDateInput(newDue) : isoFromDateInput(todayDateInputValue());
     createTask.mutate(
       {
         contact_id: contactId,
         title,
-        due_at: newDue ? new Date(newDue).toISOString() : null,
+        due_at: startDate,
       },
       {
         onSuccess: () => {
           setNewTitle("");
-          setNewDue("");
+          setNewDue(todayDateInputValue());
           toast.success("Task added");
         },
         onError: (e) => toast.error(errorMessageFromUnknown(e)),
@@ -364,7 +366,13 @@ export function ContactNurturePanel({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{t.title}</p>
                   {t.due_at && (
-                    <p className="text-xs text-muted-foreground">Due {format(new Date(t.due_at), "d MMM yyyy")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Start{" "}
+                      {(() => {
+                        const start = parseDateOnlyLocal(t.due_at);
+                        return start ? format(start, "EEE d MMM yyyy") : t.due_at;
+                      })()}
+                    </p>
                   )}
                   {t.notes && <p className="text-xs text-muted-foreground mt-2">{t.notes}</p>}
                 </div>
@@ -466,7 +474,13 @@ export function ContactNurturePanel({
             className="bg-input flex-1"
             onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
           />
-          <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} className="bg-input w-full sm:w-[140px]" />
+          <Input
+            type="date"
+            value={newDue}
+            onChange={(e) => setNewDue(e.target.value)}
+            className="bg-input w-full sm:w-[140px]"
+            aria-label="Start date"
+          />
           <Button size="sm" onClick={handleAddTask} disabled={!newTitle.trim() || createTask.isPending}>
             Add
           </Button>

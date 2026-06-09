@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
+import { appendEmailSignatureHtml } from "@/lib/appointmentTime";
 
 function getSendEmailUrl() {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -31,6 +32,7 @@ export function EmailComposeDialog({
   onSent,
 }: EmailComposeDialogProps) {
   const { toast } = useToast();
+  const { data: commSettings } = useUserCommunicationSettings();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -52,6 +54,9 @@ export function EmailComposeDialog({
         toast({ title: "Error", description: "Please sign in to send email", variant: "destructive" });
         return;
       }
+      const emailSignature = commSettings?.email_signature;
+      const fromName = commSettings?.email_from_name?.trim();
+      const html = appendEmailSignatureHtml(body.trim().replace(/\n/g, "<br>") || "", emailSignature);
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -61,7 +66,8 @@ export function EmailComposeDialog({
         body: JSON.stringify({
           to,
           subject: subject.trim(),
-          html: body.trim().replace(/\n/g, "<br>") || "<p></p>",
+          html,
+          ...(fromName ? { from_name: fromName } : {}),
           ...(contactId ? { contact_id: contactId, log_to_timeline: true } : {}),
         }),
       });

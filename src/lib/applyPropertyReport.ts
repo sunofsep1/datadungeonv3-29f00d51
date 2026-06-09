@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ParsedPropertyReport } from "@/lib/parsePropertyReportPdf";
+import { sanitizeOwnerNamesRaw } from "@/lib/ownerNameParse";
 import { normalizePropertyType } from "@/lib/propertyType";
 
 type PostgrestColumnError = { code?: string | null; message?: string | null };
@@ -88,7 +89,7 @@ export function buildPropertyUpdatesFromReport(
     bedrooms: parsed.bedrooms,
     bathrooms: parsed.bathrooms,
     car_spaces: parsed.car_spaces,
-    owner_names: parsed.owner_names,
+    owner_names: sanitizeOwnerNamesRaw(parsed.owner_names),
     owner_phones: parsed.owner_phones,
     owner_type: parsed.owner_type,
     sales_history: parsed.sales_history?.slice(0, 10) ?? null,

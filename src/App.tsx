@@ -28,18 +28,16 @@ const Marketing = lazy(() => import("./pages/Marketing"));
 const Performance = lazy(() => import("./pages/Performance"));
 const Scripts = lazy(() => import("./pages/Scripts"));
 const Settings = lazy(() => import("./pages/Settings"));
-const HotLeads = lazy(() => import("./pages/HotLeads"));
 const Nurture = lazy(() => import("./pages/Nurture"));
 const NurtureBacklogPrintPage = lazy(() => import("./pages/NurtureBacklogPrintPage"));
 const TodoList = lazy(() => import("./pages/TodoList"));
 const AttentionHub = lazy(() => import("./pages/AttentionHub"));
 const WorkWorkspace = lazy(() => import("./pages/WorkWorkspace"));
 const Workshop = lazy(() => import("./pages/Workshop"));
-const Recent = lazy(() => import("./pages/Recent"));
 const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const ListingsSalesBoard = lazy(() => import("./pages/ListingsSalesBoard"));
+const Appraisals = lazy(() => import("./pages/Appraisals"));
 const VisionCardDetail = lazy(() => import("./pages/VisionCardDetail"));
-const ContactResearch = lazy(() => import("./pages/ContactResearch"));
 const AnnualReviews = lazy(() => import("./pages/AnnualReviews"));
 const Automations = lazy(() => import("./pages/Automations"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
@@ -93,14 +91,14 @@ const App = () => (
                 <Route path="/training" element={<ProtectedRoute><MainLayout><ErrorBoundary><DrakoTraining /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/work" element={<ProtectedRoute><MainLayout><WorkWorkspace /></MainLayout></ProtectedRoute>} />
                 <Route path="/workshop" element={<ProtectedRoute><MainLayout><Workshop /></MainLayout></ProtectedRoute>} />
-                <Route path="/hot-leads" element={<ProtectedRoute><MainLayout><HotLeads /></MainLayout></ProtectedRoute>} />
-                <Route path="/recent" element={<ProtectedRoute><MainLayout><Recent /></MainLayout></ProtectedRoute>} />
+                <Route path="/hot-leads" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/recent" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/markets" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactMarkets /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/requirements-search" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactRequirementsSearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
-                <Route path="/contact-research" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactResearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/contact-research" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/nurture" element={<ProtectedRoute><MainLayout><Nurture /></MainLayout></ProtectedRoute>} />
                 <Route path="/nurture/print" element={<ProtectedRoute><NurtureBacklogPrintPage /></ProtectedRoute>} />
                 <Route path="/contacts/:id" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactDetail /></ErrorBoundary></MainLayout></ProtectedRoute>} />
@@ -123,6 +121,7 @@ const App = () => (
                   element={<ProtectedRoute><ListingVendorPreviewPage /></ProtectedRoute>}
                 />
                 <Route path="/listings" element={<ProtectedRoute><MainLayout><ListingsSalesBoard /></MainLayout></ProtectedRoute>} />
+                <Route path="/appraisals" element={<ProtectedRoute><MainLayout><Appraisals /></MainLayout></ProtectedRoute>} />
                 <Route path="/pricing" element={<ProtectedRoute><MainLayout><PricingIntelligence /></MainLayout></ProtectedRoute>} />
                 <Route path="/listings-sales" element={<Navigate to="/listings" replace />} />
                 <Route path="/properties" element={<ProtectedRoute><MainLayout><ErrorBoundary><Properties /></ErrorBoundary></MainLayout></ProtectedRoute>} />
@@ -142,7 +141,7 @@ const App = () => (
                 <Route path="/invoices" element={<ProtectedRoute><MainLayout><ErrorBoundary><Invoices /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/invoices/:id/print" element={<ProtectedRoute><InvoicePrintPage /></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+                <Route path="/settings/*" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />
                 <Route path="/agent-ops/*" element={<Navigate to="/performance" replace />} />
                 <Route path="*" element={<NotFound />} />

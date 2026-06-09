@@ -31,7 +31,7 @@
     "drako:videos": "bash scripts/process-drako-videos.sh",
     "verify": "npm run build && npx vitest run",
     "verify:lint": "npm run lint",
-    "deploy:supabase": "npx supabase db push --linked --yes && npx supabase functions deploy --use-api",
+    "deploy:supabase": "npx supabase db push --linked --yes && bash scripts/deploy-supabase-functions.sh",
     "deploy:all": "npm run verify && npm run deploy:supabase"
   },
   "dependencies": {

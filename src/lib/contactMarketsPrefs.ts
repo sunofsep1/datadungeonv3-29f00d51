@@ -5,6 +5,7 @@ import {
 } from "@/lib/contactMarkets";
 
 const STORAGE_KEY = "contact_markets_v1";
+const LAST_MARKET_KEY = "contact_markets_last_v1";
 
 function parseMarkets(raw: unknown): ContactMarket[] | null {
   if (!Array.isArray(raw)) return null;
@@ -52,3 +53,20 @@ export function saveContactMarkets(markets: ContactMarket[]): void {
 }
 
 export const CONTACT_MARKETS_EVENT = "contact-markets-updated";
+
+export function loadLastMarketId(): string | null {
+  try {
+    return localStorage.getItem(LAST_MARKET_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastMarketId(marketId: string | null): void {
+  try {
+    if (marketId) localStorage.setItem(LAST_MARKET_KEY, marketId);
+    else localStorage.removeItem(LAST_MARKET_KEY);
+  } catch {
+    // ignore
+  }
+}

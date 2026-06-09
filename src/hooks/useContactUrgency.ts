@@ -36,15 +36,25 @@ export function useContactUrgency() {
       const contactTasks = tasks.filter((task) => task.contact_id === contact.id);
       const contactAppointments = appointments.filter((appointment) => appointment.contact_id === contact.id);
 
+      const c = contact as {
+        category?: string | null;
+        last_activity_at?: string | null;
+        lead_temperature?: string | null;
+        next_touch_date?: string | null;
+        contact_category?: string | null;
+      };
       const result = buildContactUrgency({
         contactId: contact.id,
-        manualTier: normalizeManualUrgencyTier((contact as { category?: string | null }).category),
-        lastActivityAt: (contact as { last_activity_at?: string | null }).last_activity_at ?? null,
+        manualTier: normalizeManualUrgencyTier(c.category),
+        lastActivityAt: c.last_activity_at ?? null,
         taskDueAts: contactTasks.map((task) => task.due_at),
         sequenceTaskDueAts: contactTasks
           .filter((task) => Boolean(task.sequence_enrollment_id))
           .map((task) => task.due_at),
         appointmentDates: contactAppointments.map((appointment) => appointment.date),
+        leadTemperature: c.lead_temperature ?? null,
+        nextTouchDate: c.next_touch_date ?? null,
+        contactCategory: c.contact_category ?? null,
       });
 
       contactMap.set(contact.id, result);

@@ -12,6 +12,7 @@ import {
   parseJourneyStage,
   parseRoleCategory,
 } from "@/lib/leadCategories";
+import { listingKanbanColumnId } from "@/lib/listingKanbanStages";
 
 /**
  * Primary nurture pack names — must match rows user created from starter packs
@@ -111,6 +112,18 @@ export function deriveLeadTemperature(input: DeriveLeadTemperatureInput): LeadTe
   }
 
   return "LEAD_COLD";
+}
+
+/** Appraisal / prep listings default to warm unless already hot or manually set elsewhere. */
+export function leadTemperatureForListingPipelineStage(
+  pipelineStage: string | null | undefined,
+  derived: LeadTemperature,
+): LeadTemperature {
+  if (listingKanbanColumnId(pipelineStage) === "appraisal") {
+    if (derived === "LEAD_HOT" || derived === "LEAD_ARCHIVED") return derived;
+    return "LEAD_WARM";
+  }
+  return derived;
 }
 
 export type DefaultJourneyStageInput = {

@@ -85,17 +85,6 @@ export function DailyHubPriorityAndSmartLists() {
 
   const healthScore = Math.max(0, Math.min(100, Math.round(Number(dataHealth?.health_score ?? 0))));
 
-  const hotLeadCount = useMemo(
-    () =>
-      contacts.filter((c) => {
-        const cat = String(c.contact_category ?? "").toLowerCase();
-        if (cat === "hot_lead") return true;
-        const temp = String(c.lead_temperature ?? "").toLowerCase();
-        return temp.includes("hot");
-      }).length,
-    [contacts],
-  );
-
   const overdueTaskCount = useMemo(() => {
     const now = Date.now();
     return openTasks.filter((t) => {
@@ -151,16 +140,6 @@ export function DailyHubPriorityAndSmartLists() {
 
       <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
         <CarouselContent className="-ml-0">
-          <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
-          <PriorityTile
-            to="/contacts?smart=hot_lead"
-            label="Hot leads"
-            sub="Playbook + temperature"
-            count={hotLeadCount}
-            icon={Flame}
-            emphasize
-          />
-          </CarouselItem>
           <CarouselItem className="pl-0 basis-[min(90vw,320px)] sm:basis-[280px]">
           <PriorityTile
             to="/tasks"

@@ -9,6 +9,12 @@ export type ContactUrgencySignals = {
   taskDueAts: Array<string | null>;
   sequenceTaskDueAts: Array<string | null>;
   appointmentDates: Array<string | null>;
+  /** e.g. "LEAD_HOT", "LEAD_WARM", "LEAD_COLD". Used to enforce per-temperature cadences. */
+  leadTemperature?: string | null;
+  /** ISO date string. Absence on a high-value contact is itself an urgency signal. */
+  nextTouchDate?: string | null;
+  /** DB contact_category value, e.g. "top_100", "past_client", "hot_lead". */
+  contactCategory?: string | null;
 };
 
 export type ContactUrgencyResult = {
@@ -115,6 +121,19 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
     reasons.push(`nurture sequence action${dueSequenceTasks.length > 1 ? "s" : ""} pending`);
   }
 
+  // ── Sequence steps due within 24–72h → early warning ────────────────────
+  // Gives a day or two of prep time rather than a same-day scramble.
+  const upcomingSequenceTasks = sequenceDates.filter((date) => {
+    const hrs = hoursUntil(date);
+    return hrs > 24 && hrs <= 72;
+  });
+  if (upcomingSequenceTasks.length > 0) {
+    score += 22 + Math.min(upcomingSequenceTasks.length * 4, 12);
+    reasons.push(
+      `nurture sequence action${upcomingSequenceTasks.length > 1 ? "s" : ""} due within 72h`,
+    );
+  }
+
   // ── Appointment window ───────────────────────────────────────────────────
   const nextAppointment = appointmentDates
     .filter((date) => hoursUntil(date) > -2)
@@ -143,6 +162,61 @@ export function buildContactUrgency(signals: ContactUrgencySignals): ContactUrge
         reasons.push("contact activity is going stale");
       }
     }
+  }
+
+  // ── Lead temperature cadence enforcement ─────────────────────────────────
+  // Hot leads: touch every 7 days. Warn at 5 days, flag overdue at 7.
+  // Warm leads: touch every 14 days. Warn at 12 days, flag overdue at 14.
+  // These fire independently of the generic inactivity signal above.
+  const tempNorm = (signals.leadTemperature ?? "").trim().toLowerCase().replace("lead_", "");
+  const isHot = tempNorm === "hot";
+  const isWarm = tempNorm === "warm";
+
+  if (isHot || isWarm) {
+    // Measure inactivity. If no lastActivityAt treat the contact as never touched.
+    const inactiveDays = signals.lastActivityAt
+      ? (() => {
+          const last = new Date(signals.lastActivityAt);
+          return Number.isNaN(last.getTime()) ? Infinity : daysSince(last);
+        })()
+      : Infinity;
+
+    if (isHot) {
+      if (inactiveDays >= 7) {
+        score += 85;
+        const label =
+          inactiveDays === Infinity
+            ? "hot lead — no touch on record"
+            : `hot lead — 7-day cadence overdue (${Math.floor(inactiveDays)}d since last touch)`;
+        reasons.push(label);
+      } else if (inactiveDays >= 5) {
+        score += 45;
+        reasons.push(`hot lead — approaching 7-day cadence (${Math.floor(inactiveDays)}d since last touch)`);
+      }
+    } else {
+      // Warm
+      if (inactiveDays >= 14) {
+        score += 50;
+        const label =
+          inactiveDays === Infinity
+            ? "warm lead — no touch on record"
+            : `warm lead — 14-day cadence overdue (${Math.floor(inactiveDays)}d since last touch)`;
+        reasons.push(label);
+      } else if (inactiveDays >= 12) {
+        score += 25;
+        reasons.push(`warm lead — approaching 14-day cadence (${Math.floor(inactiveDays)}d since last touch)`);
+      }
+    }
+  }
+
+  // ── No next-touch date on a high-value contact ───────────────────────────
+  // Top 100, hot, or warm contacts without a scheduled next touch are at risk
+  // of slipping through without any follow-up plan.
+  const categoryNorm = (signals.contactCategory ?? "").trim().toLowerCase();
+  const isHighValue = isHot || isWarm || categoryNorm === "top_100";
+  if (isHighValue && !signals.nextTouchDate) {
+    score += 25;
+    reasons.push("no next-touch date scheduled");
   }
 
   score = Math.min(score, MAX_SCORE);

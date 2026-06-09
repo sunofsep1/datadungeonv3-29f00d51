@@ -33,7 +33,8 @@ import { useProperties } from "@/hooks/useProperties";
 import { useListings } from "@/hooks/useListings";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addHours } from "date-fns";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { endTimeFromStart } from "@/lib/appointmentTime";
 
 type AppointmentType = "valuation" | "meeting" | "call" | "inspection" | "open_home";
 
@@ -67,6 +68,8 @@ const createEmptyAppointment = () => ({
 export default function Appointments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { data: profile } = useUserProfile();
+  const defaultDuration = profile?.default_appointment_duration ?? 60;
   const { data: appointments, isLoading } = useAppointments();
   const { data: contacts = [] } = useContacts();
   const { data: properties = [] } = useProperties();
@@ -176,7 +179,11 @@ export default function Appointments() {
 
     try {
       const dateTime = `${formData.date}T${formData.startTime}:00`;
-      const endDateTime = formData.endTime ? `${formData.date}T${formData.endTime}:00` : null;
+      const endDateTime = formData.endTime
+        ? `${formData.date}T${formData.endTime}:00`
+        : formData.startTime
+          ? `${formData.date}T${endTimeFromStart(formData.startTime, defaultDuration)}:00`
+          : null;
       
       // Combine all rich data into notes
       const combinedNotes = [
@@ -393,7 +400,14 @@ export default function Appointments() {
                         type="time"
                         className="bg-input"
                         value={formData.startTime}
-                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                        onChange={(e) => {
+                          const startTime = e.target.value;
+                          setFormData({
+                            ...formData,
+                            startTime,
+                            endTime: startTime ? endTimeFromStart(startTime, defaultDuration) : "",
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">

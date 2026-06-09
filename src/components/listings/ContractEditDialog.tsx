@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import {
 import { formatOfferPrice } from "@/lib/listingOffers";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import type { ContractEditFocusField } from "@/components/listings/ContractMilestoneSheet";
 
 type Props = {
   open: boolean;
@@ -40,9 +41,17 @@ type Props = {
   offer: ListingOffer | null;
   listingId: string;
   commissionPct?: number;
+  focusField?: ContractEditFocusField;
 };
 
-export function ContractEditDialog({ open, onOpenChange, offer, listingId, commissionPct = 2.5 }: Props) {
+export function ContractEditDialog({
+  open,
+  onOpenChange,
+  offer,
+  listingId,
+  commissionPct = 2.5,
+  focusField,
+}: Props) {
   const { toast } = useToast();
   const { data: contacts = [] } = useContacts();
   const updateOffer = useUpdateListingOffer();
@@ -70,6 +79,25 @@ export function ContractEditDialog({ open, onOpenChange, offer, listingId, commi
   const [ibdBsb, setIbdBsb] = useState("");
   const [ibdBank, setIbdBank] = useState("");
   const [ibdBranch, setIbdBranch] = useState("");
+
+  const exchangeRef = useRef<HTMLInputElement>(null);
+  const unconditionalRef = useRef<HTMLInputElement>(null);
+  const settlementRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open || !focusField) return;
+    const ref =
+      focusField === "exchange"
+        ? exchangeRef
+        : focusField === "unconditional"
+          ? unconditionalRef
+          : settlementRef;
+    const timer = window.setTimeout(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      ref.current?.focus();
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [open, focusField]);
 
   useEffect(() => {
     if (!open || !offer) return;
@@ -164,7 +192,13 @@ export function ContractEditDialog({ open, onOpenChange, offer, listingId, commi
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Contract date</Label>
-            <Input type="date" className="mt-1" value={exchangeDate} onChange={(e) => setExchangeDate(e.target.value)} />
+            <Input
+              ref={exchangeRef}
+              type="date"
+              className={cn("mt-1", focusField === "exchange" && "ring-2 ring-primary")}
+              value={exchangeDate}
+              onChange={(e) => setExchangeDate(e.target.value)}
+            />
           </div>
           <div>
             <Label>Contract price</Label>
@@ -172,11 +206,23 @@ export function ContractEditDialog({ open, onOpenChange, offer, listingId, commi
           </div>
           <div>
             <Label>Expected unconditional</Label>
-            <Input type="date" className="mt-1" value={expUnconditional} onChange={(e) => setExpUnconditional(e.target.value)} />
+            <Input
+              ref={unconditionalRef}
+              type="date"
+              className={cn("mt-1", focusField === "unconditional" && "ring-2 ring-primary")}
+              value={expUnconditional}
+              onChange={(e) => setExpUnconditional(e.target.value)}
+            />
           </div>
           <div>
             <Label>Expected settlement</Label>
-            <Input type="date" className="mt-1" value={expSettlement} onChange={(e) => setExpSettlement(e.target.value)} />
+            <Input
+              ref={settlementRef}
+              type="date"
+              className={cn("mt-1", focusField === "settlement" && "ring-2 ring-primary")}
+              value={expSettlement}
+              onChange={(e) => setExpSettlement(e.target.value)}
+            />
           </div>
         </div>
 

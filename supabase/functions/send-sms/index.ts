@@ -33,6 +33,40 @@ Deno.serve(async (req) => {
   }
 
   if (req.method === "GET") {
+    const url = new URL(req.url);
+    if (url.searchParams.get("action") === "status") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "No authorization header" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const token = authHeader.replace("Bearer ", "").trim();
+      if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        return new Response(JSON.stringify({ configured: false }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: claimData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+      if (claimsError || !claimData?.claims?.sub) {
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const twilioConfigured = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE_NUMBER);
+      const configured = useMobileMessage ? Boolean(mmCreds) : twilioConfigured;
+      const provider = configured ? (useMobileMessage ? "mobile_message" : "twilio") : null;
+      return new Response(JSON.stringify({ configured, provider }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

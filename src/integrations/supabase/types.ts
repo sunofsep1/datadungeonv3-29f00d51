@@ -4643,13 +4643,16 @@ export type Database = {
           estimated_value: number | null
           features: string[] | null
           floor_area_sqm: number | null
+          geocoded_at: string | null
           id: string
           images: Json | null
           land_area_sqm: number | null
+          latitude: number | null
           list_price: number | null
           listed_at: string | null
           listing_agent_id: string | null
           listing_status: string | null
+          longitude: number | null
           notes: string | null
           owner_contact_id: string | null
           owner_id: string | null
@@ -4668,9 +4671,6 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
           year_built: number | null
-          latitude: number | null
-          longitude: number | null
-          geocoded_at: string | null
         }
         Insert: {
           address?: string | null
@@ -4687,13 +4687,16 @@ export type Database = {
           estimated_value?: number | null
           features?: string[] | null
           floor_area_sqm?: number | null
+          geocoded_at?: string | null
           id?: string
           images?: Json | null
           land_area_sqm?: number | null
+          latitude?: number | null
           list_price?: number | null
           listed_at?: string | null
           listing_agent_id?: string | null
           listing_status?: string | null
+          longitude?: number | null
           notes?: string | null
           owner_contact_id?: string | null
           owner_id?: string | null
@@ -4712,9 +4715,6 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           year_built?: number | null
-          latitude?: number | null
-          longitude?: number | null
-          geocoded_at?: string | null
         }
         Update: {
           address?: string | null
@@ -4731,13 +4731,16 @@ export type Database = {
           estimated_value?: number | null
           features?: string[] | null
           floor_area_sqm?: number | null
+          geocoded_at?: string | null
           id?: string
           images?: Json | null
           land_area_sqm?: number | null
+          latitude?: number | null
           list_price?: number | null
           listed_at?: string | null
           listing_agent_id?: string | null
           listing_status?: string | null
+          longitude?: number | null
           notes?: string | null
           owner_contact_id?: string | null
           owner_id?: string | null
@@ -4756,9 +4759,6 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           year_built?: number | null
-          latitude?: number | null
-          longitude?: number | null
-          geocoded_at?: string | null
         }
         Relationships: [
           {
@@ -5495,16 +5495,22 @@ export type Database = {
       }
       user_communication_settings: {
         Row: {
+          email_from_name: string
+          email_signature: string
           sms_signature: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          email_from_name?: string
+          email_signature?: string
           sms_signature?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          email_from_name?: string
+          email_signature?: string
           sms_signature?: string
           updated_at?: string
           user_id?: string
@@ -5530,6 +5536,45 @@ export type Database = {
           access_token?: string
           expires_at?: string
           refresh_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          agency_name: string
+          avatar_url: string | null
+          default_appointment_duration: number
+          default_calendar_view: string
+          default_follow_up_days: number
+          display_name: string
+          license_number: string
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_name?: string
+          avatar_url?: string | null
+          default_appointment_duration?: number
+          default_calendar_view?: string
+          default_follow_up_days?: number
+          display_name?: string
+          license_number?: string
+          phone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_name?: string
+          avatar_url?: string | null
+          default_appointment_duration?: number
+          default_calendar_view?: string
+          default_follow_up_days?: number
+          display_name?: string
+          license_number?: string
+          phone?: string
           updated_at?: string
           user_id?: string
         }
@@ -6024,6 +6069,7 @@ export type Database = {
         Args: { p_listing_id: string }
         Returns: undefined
       }
+      touch_text_signals_match: { Args: { p_text: string }; Returns: boolean }
       update_contact_with_address: { Args: { payload: Json }; Returns: Json }
       user_can_access_contact: { Args: { cid: string }; Returns: boolean }
     }

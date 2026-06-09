@@ -9,7 +9,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MarketMapPanel, type PropertyOwnerLink } from "@/components/markets/MarketMapPanel";
-import { MapProspectPickBar } from "@/components/markets/MapProspectPickBar";
+import { ProspectDrawer } from "@/components/markets/ProspectDrawer";
 import { MarketPropertyList } from "@/components/markets/MarketPropertyList";
 import { MarketStreetViewPanel } from "@/components/markets/MarketStreetViewPanel";
 import { MarketSuburbStats } from "@/components/markets/MarketSuburbStats";
@@ -18,19 +18,21 @@ import { PropertyReportUploadDialog } from "@/components/pricefinder/PropertyRep
 import { PricefinderResearchPanel } from "@/components/pricefinder/PricefinderResearchPanel";
 import { usePricefinderMode } from "@/hooks/usePricefinderMode";
 import { usePropertyGeocode } from "@/hooks/usePropertyGeocode";
+import { useToast } from "@/hooks/use-toast";
 import type { MarketStats, PropertyForMarket, PropertyPinUrgency } from "@/lib/contactMarkets";
 import { listingIdFromMapPropertyId, type PropertyListingPinMeta } from "@/lib/marketListingPins";
 import { getGoogleMapsApiKey } from "@/lib/loadGoogleMaps";
 import {
   formatPropertyGeocodeAddress,
   geocodePropertiesBatch,
+  geocodeStatusMessage,
   getGeocodeBlockedMessage,
   hasValidCoordinates,
   isGeocodeServiceBlocked,
   propertyNeedsGeocode,
   reverseGeocodeLatLng,
 } from "@/lib/propertyGeocode";
-import { mapPickToProspectSeed, type MapProspectPick } from "@/lib/mapProspectPick";
+import { type MapProspectPick } from "@/lib/mapProspectPick";
 import type { PricefinderPropertyData } from "@/lib/pricefinderTypes";
 import { formatPropertyAddress, type Property } from "@/hooks/useProperties";
 import { intelFromPropertyReport } from "@/lib/propertyReportIntel";
@@ -47,6 +49,7 @@ type Props = {
   ownerLinksByPropertyId: Record<string, PropertyOwnerLink[]>;
   propertyUrgencyById: Record<string, PropertyPinUrgency>;
   propertyListingPinById: Record<string, PropertyListingPinMeta>;
+  propertyLastTouchById?: Record<string, Date>;
 };
 
 function mergeCoords(
@@ -66,12 +69,14 @@ export function MarketMapWorkspace({
   ownerLinksByPropertyId,
   propertyUrgencyById,
   propertyListingPinById,
+  propertyLastTouchById = {},
 }: Props) {
   const { market } = stats;
   const suburbName = market.suburbs[0] ?? market.label;
   const { mode } = usePricefinderMode();
   const { saveCoordsBatch, saveCoords } = usePropertyGeocode();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [localCoords, setLocalCoords] = useState<Record<string, { lat: number; lng: number }>>({});
   const [plotting, setPlotting] = useState(false);
@@ -82,6 +87,8 @@ export function MarketMapWorkspace({
   const [prospectSeed, setProspectSeed] = useState<ProspectMapSeed | null>(null);
   const [pinDropMode, setPinDropMode] = useState(false);
   const [draftPick, setDraftPick] = useState<MapProspectPick | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [keepDropModeAfterSave, setKeepDropModeAfterSave] = useState(true);
   const resolvePickRequestRef = useRef(0);
   const [propertyListOpen, setPropertyListOpen] = useState(false);
   const [pfToolsOpen, setPfToolsOpen] = useState(false);
@@ -95,6 +102,24 @@ export function MarketMapWorkspace({
     () => mergeCoords(properties, localCoords),
     [properties, localCoords],
   );
+
+  const statsBar = useMemo(() => {
+    const overdue = displayProperties.filter((p) => propertyUrgencyById[p.id] === "immediate").length;
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 86_400_000;
+    const contactedThisMonth = displayProperties.filter((p) => {
+      const d = propertyLastTouchById[p.id];
+      return d && now - d.getTime() <= thirtyDaysMs;
+    }).length;
+    const touchedProps = displayProperties
+      .map((p) => propertyLastTouchById[p.id])
+      .filter((d): d is Date => !!d);
+    const avgDays =
+      touchedProps.length > 0
+        ? Math.round(touchedProps.reduce((sum, d) => sum + (now - d.getTime()) / 86_400_000, 0) / touchedProps.length)
+        : null;
+    return { overdue, contactedThisMonth, avgDays };
+  }, [displayProperties, propertyUrgencyById, propertyLastTouchById]);
 
   const pfByPropertyId = useMemo(() => {
     const map: Record<string, PricefinderPropertyData> = {};
@@ -123,7 +148,7 @@ export function MarketMapWorkspace({
   const plotProperties = useCallback(async () => {
     const apiKey = getGoogleMapsApiKey();
     if (!apiKey) {
-      setPlotError("Google Maps API key missing");
+      setPlotError("Google Maps API key missing — set VITE_GOOGLE_MAPS_API_KEY in .env");
       return;
     }
     if (isGeocodeServiceBlocked()) {
@@ -131,11 +156,28 @@ export function MarketMapWorkspace({
       return;
     }
 
+    if (displayProperties.length === 0) {
+      setPlotError("No CRM properties in this market yet — use Drop pin or Search address to prospect.");
+      toast({
+        title: "Nothing to plot",
+        description: "No properties in this market. Drop a pin on the map or search an address to add one.",
+      });
+      return;
+    }
+
+    const noAddressExamples = displayProperties
+      .filter((p) => !formatPropertyGeocodeAddress(p) && !hasValidCoordinates(p))
+      .slice(0, 2)
+      .map((p) => p.address_line1 || p.suburb || p.city || "Unknown")
+      .filter(Boolean);
+
     setPlotting(true);
     setPlotError(null);
     try {
       let coordsAcc = { ...localCoords };
       let totalSaved = 0;
+      let totalFailed = 0;
+      let sampleFailedAddress: string | undefined;
       let emptyRounds = 0;
       const pendingSave: Array<{ propertyId: string; lat: number; lng: number }> = [];
 
@@ -143,7 +185,8 @@ export function MarketMapWorkspace({
         const pending = mergeCoords(properties, coordsAcc).filter(propertyNeedsGeocode);
         if (pending.length === 0) break;
 
-        const { results, blockedStatus } = await geocodePropertiesBatch(pending, apiKey, {
+        const { results, blockedStatus, failedCount, sampleFailedAddress: batchSample } =
+          await geocodePropertiesBatch(pending, apiKey, {
           limit: 50,
           delayMs: 150,
         });
@@ -151,6 +194,8 @@ export function MarketMapWorkspace({
           setPlotError(getGeocodeBlockedMessage() ?? "Geocoding API not enabled");
           break;
         }
+        totalFailed += failedCount ?? 0;
+        if (!sampleFailedAddress && batchSample) sampleFailedAddress = batchSample;
         if (results.length === 0) {
           emptyRounds += 1;
           if (emptyRounds >= 3) break;
@@ -171,14 +216,41 @@ export function MarketMapWorkspace({
       setLocalCoords(coordsAcc);
 
       const stillPending = mergeCoords(properties, coordsAcc).filter(propertyNeedsGeocode).length;
-      if (stillPending === 0) setPlotError(null);
-      else if (totalSaved === 0) setPlotError("Could not geocode — check addresses or retry Drop pins.");
+      const skippedNoAddress = displayProperties.filter(
+        (p) => !formatPropertyGeocodeAddress(p) && !hasValidCoordinates(p),
+      ).length;
+
+      if (stillPending === 0 && totalSaved > 0) {
+        setPlotError(null);
+        toast({
+          title: `Plotted ${totalSaved} pin${totalSaved === 1 ? "" : "s"}`,
+          description:
+            skippedNoAddress > 0
+              ? `${skippedNoAddress} propert${skippedNoAddress === 1 ? "y" : "ies"} skipped (incomplete address${noAddressExamples.length ? `: ${noAddressExamples.join(", ")}` : ""})`
+              : undefined,
+        });
+      } else if (totalSaved === 0) {
+        const msg = isGeocodeServiceBlocked()
+          ? (getGeocodeBlockedMessage() ?? "Geocoding API blocked — enable Geocoding + Places API on your Google key.")
+          : skippedNoAddress > 0
+            ? `Could not geocode — ${skippedNoAddress} propert${skippedNoAddress === 1 ? "y has" : "ies have"} incomplete addresses${noAddressExamples.length ? ` (e.g. ${noAddressExamples.join(", ")})` : ""}. Add street numbers or use Drop pin.`
+            : totalFailed > 0
+              ? `${totalFailed} address${totalFailed === 1 ? "" : "es"} could not be matched${sampleFailedAddress ? ` (e.g. ${sampleFailedAddress})` : ""}. Check Google Cloud: Geocoding API + Places API enabled on your browser key, then hard-refresh.`
+              : "Could not geocode — check addresses or retry Drop pins.";
+        setPlotError(msg);
+        toast({ title: "Geocoding failed", description: msg, variant: "destructive" });
+      } else if (stillPending > 0) {
+        toast({
+          title: `Plotted ${totalSaved} pin${totalSaved === 1 ? "" : "s"}`,
+          description: `${stillPending} still need geocoding — retry Drop pins.`,
+        });
+      }
     } catch (e: unknown) {
       setPlotError(e instanceof Error ? e.message : "Geocoding failed");
     } finally {
       setPlotting(false);
     }
-  }, [properties, localCoords, saveCoordsBatch]);
+  }, [properties, localCoords, saveCoordsBatch, displayProperties, toast]);
 
   useEffect(() => {
     setSelectedPropertyId(null);
@@ -189,46 +261,89 @@ export function MarketMapWorkspace({
     setProspectSeed(null);
     setPinDropMode(false);
     setDraftPick(null);
+    setDrawerOpen(false);
   }, [market.id]);
 
-  const resolveDraftPick = useCallback((pick: MapProspectPick) => {
-    setDraftPick(pick);
-    setPinDropMode(true);
-    const apiKey = getGoogleMapsApiKey();
-    if (!apiKey) {
-      setDraftPick({ ...pick, resolving: false });
-      return;
-    }
-    const requestId = ++resolvePickRequestRef.current;
-    void reverseGeocodeLatLng(pick.lat, pick.lng, apiKey).then((outcome) => {
-      if (requestId !== resolvePickRequestRef.current) return;
-      if (outcome.ok) {
-        setDraftPick({
-          lat: outcome.lat,
-          lng: outcome.lng,
-          addressParts: outcome.addressParts,
-          addressLine: outcome.formattedAddress,
-          resolving: false,
-        });
-      } else {
-        setDraftPick((prev) => (prev ? { ...prev, resolving: false } : null));
+  const resolveDraftPick = useCallback(
+    (pick: MapProspectPick) => {
+      setDraftPick({ ...pick, resolving: true, geocodeError: null });
+      setDrawerOpen(true);
+      setPinDropMode(true);
+      const apiKey = getGoogleMapsApiKey();
+      if (!apiKey) {
+        const err = "Google Maps API key missing — enter address manually";
+        setDraftPick({ ...pick, resolving: false, geocodeError: err });
+        toast({ title: "Address lookup unavailable", description: err, variant: "destructive" });
+        return;
       }
-    });
-  }, []);
-
-  const handleConfirmDraftPick = useCallback(() => {
-    if (!draftPick) return;
-    setProspectSeed(mapPickToProspectSeed(draftPick));
-    setProspectDialogOpen(true);
-    setDraftPick(null);
-    setPinDropMode(false);
-  }, [draftPick]);
+      if (isGeocodeServiceBlocked()) {
+        const err = getGeocodeBlockedMessage() ?? "Geocoding unavailable — enter address manually";
+        setDraftPick({ ...pick, resolving: false, geocodeError: err });
+        toast({ title: "Address lookup blocked", description: err, variant: "destructive" });
+        return;
+      }
+      const requestId = ++resolvePickRequestRef.current;
+      void reverseGeocodeLatLng(pick.lat, pick.lng, apiKey).then((outcome) => {
+        if (requestId !== resolvePickRequestRef.current) return;
+        if (outcome.ok) {
+          setDraftPick({
+            lat: outcome.lat,
+            lng: outcome.lng,
+            addressParts: outcome.addressParts,
+            addressLine: outcome.formattedAddress,
+            resolving: false,
+            geocodeError: null,
+          });
+        } else {
+          const err = geocodeStatusMessage(outcome.status);
+          setDraftPick({
+            lat: pick.lat,
+            lng: pick.lng,
+            addressLine: "",
+            resolving: false,
+            geocodeError: err,
+          });
+          toast({
+            title: "Could not look up address",
+            description: `${err} Enter the address manually below.`,
+            variant: "destructive",
+          });
+        }
+      });
+    },
+    [toast],
+  );
 
   const handleCancelDraftPick = useCallback(() => {
     resolvePickRequestRef.current += 1;
     setDraftPick(null);
+    setDrawerOpen(false);
     setPinDropMode(false);
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "d" || e.key === "D") {
+        setPinDropMode((v) => {
+          const next = !v;
+          if (!next) {
+            setDraftPick(null);
+            setDrawerOpen(false);
+          }
+          return next;
+        });
+      }
+      if (e.key === "Escape") {
+        if (drawerOpen) {
+          handleCancelDraftPick();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen, handleCancelDraftPick]);
 
   const handleProspectPinMoved = useCallback(
     async (propertyId: string, lat: number, lng: number) => {
@@ -258,6 +373,18 @@ export function MarketMapWorkspace({
     [handleProspectingComplete],
   );
 
+  const handleDrawerClose = useCallback(() => {
+    resolvePickRequestRef.current += 1;
+    setDraftPick(null);
+    setDrawerOpen(false);
+    if (!keepDropModeAfterSave) setPinDropMode(false);
+  }, [keepDropModeAfterSave]);
+
+  const handleDrawerDone = useCallback(() => {
+    handleDrawerClose();
+    if (keepDropModeAfterSave) setPinDropMode(true);
+  }, [handleDrawerClose, keepDropModeAfterSave]);
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border/50 px-2 py-1.5 sm:px-3">
@@ -276,7 +403,10 @@ export function MarketMapWorkspace({
             onClick={() => {
               setPinDropMode((v) => {
                 const next = !v;
-                if (!next) setDraftPick(null);
+                if (!next) {
+                  setDraftPick(null);
+                  setDrawerOpen(false);
+                }
                 return next;
               });
             }}
@@ -290,8 +420,15 @@ export function MarketMapWorkspace({
             size="sm"
             className="h-7 px-2 text-xs"
             onClick={() => {
-              setProspectSeed(null);
-              setProspectDialogOpen(true);
+              setDraftPick({
+                lat: -27.5877,
+                lng: 153.2667,
+                resolving: false,
+                addressLine: "",
+                geocodeError: null,
+              });
+              setDrawerOpen(true);
+              setPinDropMode(false);
             }}
           >
             <MapPin className="h-3.5 w-3.5 mr-1" />
@@ -328,6 +465,30 @@ export function MarketMapWorkspace({
         </div>
       </div>
 
+      <div className="flex shrink-0 items-center gap-3 border-b border-border/30 bg-muted/20 px-2 py-1 sm:px-3">
+        <div className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-red-500" />
+          <span className="text-[10px] text-muted-foreground">
+            <span className="font-semibold text-foreground">{statsBar.overdue}</span> overdue
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-cyan-500" />
+          <span className="text-[10px] text-muted-foreground">
+            <span className="font-semibold text-foreground">{statsBar.contactedThisMonth}</span> touched this month
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">
+            Avg{" "}
+            <span className="font-semibold text-foreground">
+              {statsBar.avgDays != null ? `${statsBar.avgDays}d` : "—"}
+            </span>{" "}
+            since touch
+          </span>
+        </div>
+      </div>
+
       <Collapsible open={pfToolsOpen} onOpenChange={setPfToolsOpen}>
         <CollapsibleContent className="shrink-0 border-b border-border/50 px-2 py-2 sm:px-3">
           <PricefinderResearchPanel variant="compact" address={suburbName} showWidgetSlot={false} />
@@ -337,7 +498,22 @@ export function MarketMapWorkspace({
       {mode === "api" ? <MarketSuburbStats market={market} className="shrink-0" /> : null}
 
       {plotError ? (
-        <p className="shrink-0 px-2 py-0.5 text-[10px] text-destructive sm:px-3">{plotError}</p>
+        <div className="flex shrink-0 items-center justify-between gap-2 px-2 py-0.5 sm:px-3">
+          <p className="text-[10px] text-destructive">{plotError}</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-5 px-1.5 text-[10px] text-muted-foreground shrink-0"
+            onClick={() => setPlotError(null)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      ) : displayProperties.length === 0 ? (
+        <p className="shrink-0 px-2 py-0.5 text-[10px] text-muted-foreground sm:px-3">
+          No CRM properties in this market yet — use Drop pin or Search address to prospect.
+        </p>
       ) : null}
 
       <div className="relative min-h-0 flex-1">
@@ -348,6 +524,7 @@ export function MarketMapWorkspace({
           propertyUrgencyById={propertyUrgencyById}
           propertyListingPinById={propertyListingPinById}
           pfByPropertyId={pfByPropertyId}
+          propertyLastTouchById={propertyLastTouchById}
           pricefinderMode={mode}
           selectedPropertyId={selectedPropertyId}
           onSelectProperty={setSelectedPropertyId}
@@ -364,11 +541,22 @@ export function MarketMapWorkspace({
         />
 
         {draftPick ? (
-          <MapProspectPickBar
+          <ProspectDrawer
+            open={drawerOpen}
             pick={draftPick}
+            market={market}
             pinDropMode={pinDropMode}
-            onConfirm={handleConfirmDraftPick}
-            onCancel={handleCancelDraftPick}
+            keepDropModeAfterSave={keepDropModeAfterSave}
+            onKeepDropModeChange={setKeepDropModeAfterSave}
+            onPickChange={(next) => {
+              setDraftPick(next);
+              if (next.resolving) {
+                resolveDraftPick({ lat: next.lat, lng: next.lng });
+              }
+            }}
+            onClose={handleDrawerClose}
+            onDone={handleDrawerDone}
+            onPropertyCreated={handlePropertyCreated}
           />
         ) : null}
 
@@ -390,6 +578,9 @@ export function MarketMapWorkspace({
               properties={displayProperties}
               selectedPropertyId={selectedPropertyId}
               onSelect={setSelectedPropertyId}
+              propertyUrgencyById={propertyUrgencyById}
+              propertyLastTouchById={propertyLastTouchById}
+              ownerLinksByPropertyId={ownerLinksByPropertyId}
               className="max-h-[calc(38vh-2rem)] border-0"
             />
           </div>

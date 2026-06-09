@@ -51,8 +51,6 @@ const MODULE_TITLES: Record<string, string> = {
   "/lair": "Drako's Lair",
   "/training": "Drako's Trials",
   "/nurture": "Nurture",
-  "/hot-leads": "Hot Leads",
-  "/recent": "Recent",
   "/tasks": "Tasks",
   "/contacts": "Contacts",
   "/contacts/markets": "My Markets",
@@ -63,9 +61,9 @@ const MODULE_TITLES: Record<string, string> = {
   "/reports": "Reports",
   "/invoices": "Invoices",
   "/scripts": "Scripts",
-  "/automations": "Automations",
-  "/data-health": "Data health",
+  "/settings": "Settings",
   "/pricing": "Pricing intelligence",
+  "/appraisals": "Appraisals",
   "/annual-reviews": "Reviews & events",
   "/touch-report": "Touch report",
   "/settings": "Settings",
@@ -75,10 +73,12 @@ function getModuleTitle(pathname: string): string {
   if (pathname.startsWith("/contacts/markets")) return "My Markets";
   if (pathname.startsWith("/contacts")) return "Contacts";
   if (pathname.startsWith("/properties")) return "Properties";
+  if (pathname.startsWith("/appraisals")) return "Appraisals";
   if (pathname.startsWith("/listings")) return "Listings";
   if (pathname.startsWith("/nurture")) return "Nurture";
-  if (pathname.startsWith("/automations")) return "Automations";
-  if (pathname.startsWith("/data-health")) return "Data health";
+  if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname.startsWith("/automations")) return "Settings";
+  if (pathname.startsWith("/data-health")) return "Settings";
   if (pathname.startsWith("/pricing")) return "Pricing intelligence";
   if (pathname.startsWith("/annual-reviews")) return "Reviews & events";
   if (pathname.startsWith("/reports")) return "Reports";
@@ -101,7 +101,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { user } = useAuth();
-  const { nurtureDueCount, recentCount, tasksCount } = useNavCounts();
+  const { nurtureDueCount, tasksCount } = useNavCounts();
   const { data: notifications = [] } = useNotifications(48);
   const notificationGroups = groupNotificationsForDrawer(notifications);
   const { data: unreadCount = 0 } = useUnreadNotificationsCount();
@@ -160,7 +160,6 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
         <div className="hidden md:flex items-center gap-2 ml-2 min-w-0">
           <NavHeadingButtons
             nurtureDueCount={nurtureDueCount}
-            recentCount={recentCount}
             tasksCount={tasksCount}
           />
         </div>
@@ -325,7 +324,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
                 Daily CRM digest email is configured separately from this list — it uses Resend and does not mirror every bell item.
               </p>
               <Button variant="ghost" size="sm" className="h-auto py-1.5 px-0 text-xs text-primary hover:text-primary hover:bg-transparent" asChild>
-                <Link to="/settings#settings-notifications" onClick={() => setNotificationsOpen(false)}>
+                <Link to="/settings/notifications" onClick={() => setNotificationsOpen(false)}>
                   Notification settings & digest
                 </Link>
               </Button>
@@ -404,9 +403,13 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
               Performance
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem className="text-popover-foreground/90 focus:bg-accent focus:text-foreground" onClick={() => navigate("/settings")}>
+            <DropdownMenuItem className="text-popover-foreground/90 focus:bg-accent focus:text-foreground" onClick={() => navigate("/settings/account")}>
               <Settings className="h-4 w-4 mr-2" />
               Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-popover-foreground/90 focus:bg-accent focus:text-foreground" onClick={() => navigate("/settings/security")}>
+              <Settings className="h-4 w-4 mr-2" />
+              Security
             </DropdownMenuItem>
             <DropdownMenuItem className="text-popover-foreground/90 focus:bg-accent focus:text-foreground" onClick={() => navigate("/scripts")}>
               <FileText className="h-4 w-4 mr-2" />
@@ -418,7 +421,7 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
           variant="ghost"
           size="icon"
           className="h-9 w-9 text-muted-foreground hover:bg-accent hover:text-primary"
-          onClick={() => navigate("/settings")}
+          onClick={() => navigate("/settings/account")}
           title="Settings"
         >
           <Settings className="h-5 w-5" />
@@ -445,9 +448,21 @@ export function HeaderBar({ onMenuClick, sidebarCollapsed }: HeaderBarProps) {
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
               className="text-popover-foreground/90 focus:bg-accent focus:text-foreground"
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/settings/account")}
             >
-              Settings
+              My account
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-popover-foreground/90 focus:bg-accent focus:text-foreground"
+              onClick={() => navigate("/settings/notifications")}
+            >
+              Notifications
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-popover-foreground/90 focus:bg-accent focus:text-foreground"
+              onClick={() => navigate("/settings/security")}
+            >
+              Security
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-popover-foreground/90 focus:bg-accent focus:text-foreground"

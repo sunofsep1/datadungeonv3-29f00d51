@@ -17,7 +17,6 @@ dist-ssr
 .env.rtf
 .env.local
 .env.*.local
-.env.save
 
 # Editor directories and files
 .vscode/*
@@ -29,30 +28,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Supabase local
 supabase/.temp/
 supabase/.branches/
 
 # Local Netlify folder
 .netlify
 
-# Archives
+.env.save
 *.zip
 
-# Python / tooling
-*.pyc
-__pycache__/
+.env.save
+*.zip
 
-# OpenClaw / local agent state
-.clawhub/
-.openclaw/
-state/
-exports/
-
-# Large / generated local files
-*.pdf
+# Large asset folders / non-app files
+Canva Stock/
+New Ideas Selling Social/
+agentbox-export/
+datadungeonv3-29f00d51/
 *.csv
-*.json.bak
-audio_*
-file_*.txt
+*.docx
+*.html
+*.mp4
+*.pyc
+prospect_contacts.csv
+Pipeline_*

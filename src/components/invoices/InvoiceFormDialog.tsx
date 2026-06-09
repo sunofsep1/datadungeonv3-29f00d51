@@ -34,6 +34,7 @@ import {
 import { useListings } from "@/hooks/useListings";
 import { computeTotals, type InvoiceGstMode } from "@/lib/invoiceTotals";
 import { DEFAULT_AGENCY_COUNTERPARTY, DEFAULT_REIMBURSEMENT_NOTE } from "@/lib/invoiceIssuer";
+import { isAgencyCounterparty } from "@/lib/invoiceCounterparty";
 import { parseInvoicePdfFile } from "@/lib/parseInvoicePdf";
 import type { ParsedInvoiceDraft } from "@/lib/parseInvoiceText";
 
@@ -90,8 +91,13 @@ export function InvoiceFormDialog({
   const { data: listings = [] } = useListings();
 
   const direction: InvoiceDirection =
-    mode === "log_bill" ? "incoming" : "outgoing";
+    mode === "edit"
+      ? recordDirection
+      : mode === "log_bill"
+        ? "incoming"
+        : "outgoing";
 
+  const [recordDirection, setRecordDirection] = useState<InvoiceDirection>("outgoing");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [counterparty, setCounterparty] = useState("");
   const [counterpartyAbn, setCounterpartyAbn] = useState("");
@@ -147,7 +153,9 @@ export function InvoiceFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    if (mode === "edit" && existing) {
+    if (mode === "edit") {
+      if (!existing) return;
+      setRecordDirection(existing.direction);
       setInvoiceNumber(existing.invoice_number);
       setCounterparty(existing.counterparty_name);
       setCounterpartyAbn(existing.counterparty_abn ?? "");
@@ -196,6 +204,9 @@ export function InvoiceFormDialog({
 
   const totals = useMemo(() => computeTotals(lines, gstMode), [lines, gstMode]);
 
+  const agencyCounterpartyWarning =
+    direction === "incoming" && isAgencyCounterparty(counterparty);
+
   const title =
     mode === "edit"
       ? "Edit invoice"
@@ -242,6 +253,7 @@ export function InvoiceFormDialog({
         await updateInvoice.mutateAsync({
           id: invoiceId,
           patch: {
+            direction: recordDirection,
             invoice_number: invoiceNumber.trim(),
             counterparty_name: counterparty.trim(),
             counterparty_abn: counterpartyAbn.trim() || null,
@@ -290,11 +302,46 @@ export function InvoiceFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} modal onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[min(92vh,900px)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
+
+        {mode === "edit" && invoiceId && !existing ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading invoice…
+          </div>
+        ) : (
+        <>
+          {mode === "edit" ? (
+            <div className="space-y-1.5 mb-3">
+              <Label>Type</Label>
+              <Select
+                value={recordDirection}
+                onValueChange={(v) => {
+                  const next = v as InvoiceDirection;
+                  setRecordDirection(next);
+                  if (next === "incoming") {
+                    setGstMode("inclusive");
+                    setTermsDays("7");
+                  } else {
+                    setGstMode("none");
+                    setTermsDays("30");
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="incoming">Supplier bill (you pay the trade)</SelectItem>
+                  <SelectItem value="outgoing">Reimbursement (agency pays you)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
         <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3 bg-muted/30">
           <Label htmlFor="invoice-pdf-upload">Upload PDF to auto-fill</Label>
@@ -326,6 +373,12 @@ export function InvoiceFormDialog({
           <div className="space-y-1.5">
             <Label>Counterparty</Label>
             <Input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} />
+            {agencyCounterpartyWarning ? (
+              <p className="text-xs text-amber-400">
+                This looks like Sotheby&apos;s / agency — use <strong>New invoice</strong> for reimbursements you
+                receive, not Log a bill.
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label>ABN</Label>
@@ -455,6 +508,8 @@ export function InvoiceFormDialog({
             Save
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

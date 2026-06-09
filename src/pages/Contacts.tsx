@@ -99,7 +99,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { SlidersHorizontal, LayoutList, LayoutGrid } from "lucide-react";
+import { SlidersHorizontal, LayoutList, LayoutGrid, Rows3 } from "lucide-react";
+import { ContactThumbnailCard } from "@/components/contacts/ContactThumbnailCard";
 import { ContactsFilterPanel } from "@/components/contacts/ContactsFilterPanel";
 import {
   contactPassesClassFilter,
@@ -121,6 +122,7 @@ import { SendSmsDialog } from "@/components/contacts/SendSmsDialog";
 import { getDaysSinceLastTouch, getLastTouchDate } from "@/lib/contactLastTouch";
 import { openLogTouch } from "@/lib/openLogTouch";
 import { useCreateContactTask } from "@/hooks/useContactTasks";
+import { isoFromDateInput } from "@/lib/localDateParse";
 import {
   CONTACT_SMART_LISTS,
   parseSmartListParam,
@@ -137,7 +139,9 @@ import { isContactUnreachableForAutomation } from "@/lib/contactAutomationReacha
 import { SavedViewsMenu } from "@/components/saved-views/SavedViewsMenus";
 import {
   CONTACTS_SAVED_VIEW_V,
+  normalizeContactView,
   parseContactsSavedViewPayload,
+  type ContactViewMode,
   type ContactsSavedViewPayloadV1,
 } from "@/lib/savedViewPayloads";
 import { useSavedViews } from "@/hooks/useSavedViews";
@@ -176,7 +180,8 @@ function coerceContactClassificationFilter(raw: string): "all" | ContactClassifi
   return "all";
 }
 
-const CONTACTS_LIST_PREFS_KEY = "datadungeon_contacts_list_prefs_v1";
+const CONTACTS_LIST_PREFS_KEY = "datadungeon_contacts_list_prefs_v2";
+const CONTACTS_LIST_PREFS_LEGACY_KEY = "datadungeon_contacts_list_prefs_v1";
 
 type ContactsListPersistedPrefs = {
   searchQuery: string;
@@ -185,7 +190,7 @@ type ContactsListPersistedPrefs = {
   sortBy: SortOption;
   filterHasProperty: boolean | null;
   filterLastTouched: string;
-  contactView: "list" | "grid";
+  contactView: ContactViewMode;
   itemsPerPage: number;
 };
 
@@ -197,7 +202,7 @@ function defaultContactsPrefs(): ContactsListPersistedPrefs {
     sortBy: "name-asc",
     filterHasProperty: null,
     filterLastTouched: "all",
-    contactView: "list",
+    contactView: "cards",
     itemsPerPage: 25,
   };
 }
@@ -206,15 +211,45 @@ function loadContactsListPrefs(): ContactsListPersistedPrefs {
   const defaults = defaultContactsPrefs();
   if (typeof window === "undefined") return defaults;
   try {
-    const raw = localStorage.getItem(CONTACTS_LIST_PREFS_KEY);
-    if (!raw) return defaults;
+    let raw = localStorage.getItem(CONTACTS_LIST_PREFS_KEY);
+    if (!raw) {
+      const legacyRaw = localStorage.getItem(CONTACTS_LIST_PREFS_LEGACY_KEY);
+      if (legacyRaw) {
+        const legacy = JSON.parse(legacyRaw) as Partial<ContactsListPersistedPrefs>;
+        const migrated: ContactsListPersistedPrefs = {
+          ...defaults,
+          searchQuery: typeof legacy.searchQuery === "string" ? legacy.searchQuery : defaults.searchQuery,
+          filterTagIds: Array.isArray(legacy.filterTagIds)
+            ? legacy.filterTagIds.filter((id) => typeof id === "string")
+            : defaults.filterTagIds,
+          filterSource: typeof legacy.filterSource === "string" ? legacy.filterSource : defaults.filterSource,
+          sortBy:
+            typeof legacy.sortBy === "string" && SORT_OPTIONS.includes(legacy.sortBy as SortOption)
+              ? (legacy.sortBy as SortOption)
+              : defaults.sortBy,
+          filterHasProperty:
+            legacy.filterHasProperty === true || legacy.filterHasProperty === false
+              ? legacy.filterHasProperty
+              : defaults.filterHasProperty,
+          filterLastTouched:
+            typeof legacy.filterLastTouched === "string" ? legacy.filterLastTouched : defaults.filterLastTouched,
+          contactView: "cards",
+          itemsPerPage:
+            typeof legacy.itemsPerPage === "number" && legacy.itemsPerPage > 0 && legacy.itemsPerPage <= 200
+              ? legacy.itemsPerPage
+              : defaults.itemsPerPage,
+        };
+        localStorage.setItem(CONTACTS_LIST_PREFS_KEY, JSON.stringify(migrated));
+        return migrated;
+      }
+      return defaults;
+    }
     const p = JSON.parse(raw) as Partial<ContactsListPersistedPrefs>;
     const sortBy =
       typeof p.sortBy === "string" && SORT_OPTIONS.includes(p.sortBy as SortOption)
         ? (p.sortBy as SortOption)
         : defaults.sortBy;
-    const rawView = p.contactView === "grid" || p.contactView === "list" || p.contactView === "kanban" ? p.contactView : defaults.contactView;
-    const contactView = rawView === "kanban" ? "list" : rawView;
+    const contactView = normalizeContactView(p.contactView, defaults.contactView);
     const itemsPerPage =
       typeof p.itemsPerPage === "number" && p.itemsPerPage > 0 && p.itemsPerPage <= 200
         ? p.itemsPerPage
@@ -525,9 +560,7 @@ export default function Contacts() {
   const [itemsPerPage, setItemsPerPage] = useState(initialPrefs.itemsPerPage);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [actionsPopoverOpen, setActionsPopoverOpen] = useState(false);
-  const [contactView, setContactView] = useState<"list" | "grid">(
-    initialPrefs.contactView === "kanban" ? "list" : initialPrefs.contactView
-  );
+  const [contactView, setContactView] = useState<ContactViewMode>(initialPrefs.contactView);
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const prevSmartUrlRef = useRef<string | null | undefined>(undefined);
@@ -1585,7 +1618,11 @@ export default function Contacts() {
       return;
     }
     createContactTask.mutate(
-      { contact_id: quickTaskContact.id, title },
+      {
+        contact_id: quickTaskContact.id,
+        title,
+        due_at: isoFromDateInput(new Date().toISOString().slice(0, 10)),
+      },
       {
         onSuccess: () => {
           toast({ title: "Task created", description: `Added for ${getContactDisplayName(quickTaskContact)}.` });
@@ -1718,7 +1755,7 @@ export default function Contacts() {
     );
   }
 
-  function renderContactCard(contact: ContactWithMeta, _layout: "list" | "grid") {
+  function renderContactCard(contact: ContactWithMeta, _layout: "compact") {
     if (!contact?.id) return null;
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
@@ -2484,7 +2521,8 @@ export default function Contacts() {
             <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
               <button
                 type="button"
-                aria-label="List view"
+                aria-label="Table view"
+                title="Table"
                 onClick={() => setContactView("list")}
                 className={`rounded-md px-3 py-1.5 ${contactView === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
@@ -2492,9 +2530,19 @@ export default function Contacts() {
               </button>
               <button
                 type="button"
-                aria-label="Grid view"
-                onClick={() => setContactView("grid")}
-                className={`rounded-md px-3 py-1.5 ${contactView === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                aria-label="Compact rows"
+                title="Compact rows"
+                onClick={() => setContactView("compact")}
+                className={`rounded-md px-3 py-1.5 ${contactView === "compact" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Rows3 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Card thumbnails"
+                title="Cards"
+                onClick={() => setContactView("cards")}
+                className={`rounded-md px-3 py-1.5 ${contactView === "cards" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <LayoutGrid className="h-4 w-4" />
               </button>
@@ -2895,9 +2943,42 @@ export default function Contacts() {
             {Math.min(currentPage * itemsPerPage, filteredAndSortedContacts.length)} of{" "}
             {filteredAndSortedContacts.length} contacts
           </p>
-          {contactView === "grid" ? (
-            <div className="grid grid-cols-1 gap-1">
-              {paginatedContacts.map((contact) => renderContactCard(contact, "grid"))}
+          {contactView === "cards" ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-4">
+              {paginatedContacts.map((contact, index) => {
+                const effectiveCategory = getEffectiveCategory(contact);
+                const primaryPhone = getPrimaryPhone(contact);
+                const categoryMeta = effectiveCategory
+                  ? CONTACT_CATEGORIES.find((c) => c.value === effectiveCategory)
+                  : undefined;
+                return (
+                  <ContactThumbnailCard
+                    key={contact.id}
+                    contact={contact}
+                    alternateTone={index % 2 === 1}
+                    categoryLabel={
+                      effectiveCategory ? getCategoryLabel({ category: effectiveCategory }) : null
+                    }
+                    categoryDotClass={categoryMeta?.bg ?? null}
+                    selected={selectedContactIds.has(contact.id)}
+                    onOpen={() => navigate(`/contacts/${contact.id}`)}
+                    onLogTouch={() => openLogTouch({ contactId: contact.id })}
+                    onSms={() => {
+                      if (primaryPhone) {
+                        setQuickSmsContact(contact);
+                        setQuickSmsTo(primaryPhone);
+                        setQuickSmsOpen(true);
+                      } else {
+                        openLogTouch({ contactId: contact.id });
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ) : contactView === "compact" ? (
+            <div className="grid grid-cols-1 gap-2">
+              {paginatedContacts.map((contact) => renderContactCard(contact, "compact"))}
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border-2 border-border bg-card shadow-sm">

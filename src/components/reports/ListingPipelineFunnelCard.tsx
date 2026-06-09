@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { ChevronRight, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -245,7 +245,11 @@ function FunnelStageTable({
         </tbody>
       </table>
       <p className="text-[10px] text-muted-foreground mt-2">
-        GCI uses search price × {commissionRate}% — set your rate in Settings.
+        GCI uses search price × {commissionRate}% —{" "}
+        <Link to="/settings/business#commission-rate" className="text-primary hover:underline">
+          set your rate in Settings
+        </Link>
+        .
       </p>
     </div>
   );

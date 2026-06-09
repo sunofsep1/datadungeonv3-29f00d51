@@ -12,6 +12,7 @@ import {
   buildDeriveInputFromContact,
   deriveLeadTemperature,
   defaultJourneyStageForNewLead,
+  leadTemperatureForListingPipelineStage,
   mapListingPipelineStageToJourneyStage,
   suggestedSequenceNamesForJourneyStage,
 } from "@/lib/leadCategoryDerivation";
@@ -236,7 +237,8 @@ export async function updateLeadCategoriesFromDealChange(
     recentHighEngagement: metadata?.recentHighEngagement,
   });
   if (meta.lead_temperature?.source !== "manual") {
-    const t = deriveLeadTemperature(deriveIn);
+    const derived = deriveLeadTemperature(deriveIn);
+    const t = leadTemperatureForListingPipelineStage(newPipelineStage, derived);
     updates.lead_temperature = t;
     updates.classification_meta = mergeMeta(updates.classification_meta as ClassificationMeta, {
       lead_temperature: { source: "derived" },

@@ -5,9 +5,11 @@ import {
   hasValidCoordinates,
   isGeocodeServiceBlocked,
   parseCompoundAustralianAddress,
+  parseInlineAustralianAddress,
   propertyNeedsGeocode,
   resetGeocodeServiceStateForTests,
   setGeocodeBlockedForTests,
+  stripTrailingSuburbFromLine,
 } from "@/lib/propertyGeocode";
 
 describe("propertyGeocode", () => {
@@ -80,6 +82,32 @@ describe("propertyGeocode", () => {
       state: "QLD",
       postcode: "4165",
     });
+  });
+
+  it("parseInlineAustralianAddress splits space-separated lines", () => {
+    expect(parseInlineAustralianAddress("42 David Road Holland Park QLD 4121")).toEqual({
+      street: "42 David Road",
+      suburb: "Holland Park",
+      state: "QLD",
+      postcode: "4121",
+    });
+  });
+
+  it("strips trailing suburb duplicated in street line", () => {
+    expect(
+      formatPropertyGeocodeAddress({
+        address_line1: "42 David Road Holland Park",
+        suburb: "Holland Park",
+        state: "QLD",
+        postcode: "4121",
+      }),
+    ).toBe("42 David Road, Holland Park, QLD, 4121, Australia");
+  });
+
+  it("stripTrailingSuburbFromLine removes suburb suffix", () => {
+    expect(stripTrailingSuburbFromLine("83 Diamond Street Holland Park", "Holland Park")).toBe(
+      "83 Diamond Street",
+    );
   });
 
   it("flags properties needing geocode", () => {
