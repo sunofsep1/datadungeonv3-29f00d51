@@ -135,7 +135,7 @@ export function DailyHubKanbanBoard({
       saveDailyHubTriage(userId, { v: 1, assignments: pruned });
     }
     setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, pruned)));
-  }, [scheduleRowIdsKey, userId, scheduleRowIds]); // eslint-disable-line react-hooks/exhaustive-deps -- scheduleRows intentionally read via ref-like closure; changes tracked via scheduleRowIds
+  }, [scheduleRowIdsKey, userId]); // eslint-disable-line react-hooks/exhaustive-deps -- scheduleRowIds/scheduleRows read via closure; scheduleRowIdsKey (string) is the meaningful change signal
 
   const displayColumns = useMemo(
     () => columnsFromIds(columnIds, rowMap),
@@ -189,18 +189,23 @@ export function DailyHubKanbanBoard({
       const { active, over } = event;
       setActiveId(null);
 
-      setColumnIds((prev) => {
-        let next = prev;
-        if (over) {
-          const activeItemId = String(active.id);
-          const overId = String(over.id);
-          if (activeItemId !== overId) {
-            next = applyDragToColumnIds(prev, activeItemId, overId) ?? prev;
-          }
+      // Read the current columnIds synchronously via ref. By the time onDragEnd fires
+      // (a separate pointer-event from onDragOver), React has already committed all
+      // handleDragOver state updates, so the ref is guaranteed to be up-to-date.
+      const current = columnIdsRef.current;
+      let next = current;
+      if (over) {
+        const activeItemId = String(active.id);
+        const overId = String(over.id);
+        if (activeItemId !== overId) {
+          next = applyDragToColumnIds(current, activeItemId, overId) ?? current;
         }
-        setAssignments(persistTriage(userId, next));
-        return next;
-      });
+      }
+      // Call setColumnIds and persistTriage as plain top-level calls (not inside a
+      // state-updater). Keeping side-effects out of updaters avoids double-invocation
+      // in React Strict Mode and unexpected interactions in concurrent rendering.
+      setColumnIds(next);
+      setAssignments(persistTriage(userId, next));
     },
     [userId],
   );
