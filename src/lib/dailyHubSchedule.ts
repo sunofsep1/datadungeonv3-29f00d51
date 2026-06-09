@@ -1,6 +1,6 @@
-import { format, formatDistanceToNow, isSameDay, isToday, startOfDay } from "date-fns";
+import { format, formatDistance, isSameDay, startOfDay } from "date-fns";
 import type { ContactUrgencyResult, ContactUrgencyTier } from "@/lib/contactUrgency";
-import { isDueOverdue, isDueToday, parseDateOnlyLocal } from "@/lib/localDateParse";
+import { parseDateOnlyLocal } from "@/lib/localDateParse";
 import { compareAttentionItemsByTierScoreDue } from "@/lib/urgencyTierStyles";
 
 export type DailyHubItemKind =
@@ -66,8 +66,8 @@ function fallbackScoreByUrgency(
   dueAt: Date | null,
   kind: DailyHubItemKind,
   priority?: "low" | "medium" | "high",
+  now: number = Date.now(),
 ): { urgency: ContactUrgencyTier; score: number } {
-  const now = Date.now();
   const due = dueAt ? dueAt.getTime() : now + 1000 * 60 * 60 * 24 * 14;
   const deltaHours = (due - now) / (1000 * 60 * 60);
   const priorityWeight = priority === "high" ? 20 : priority === "medium" ? 10 : 0;
@@ -90,21 +90,30 @@ function fallbackScoreByUrgency(
   return { urgency: "backlog", score: 100 - Math.min(deltaHours, 72) + kindWeight + priorityWeight };
 }
 
+function isDueTodayAt(dueAt: Date, now: number): boolean {
+  return isSameDay(dueAt, new Date(now));
+}
+
+function isDueOverdueAt(dueAt: Date, now: number): boolean {
+  return startOfDay(dueAt) < startOfDay(new Date(now));
+}
+
 /** Task date = when to start work (not a completion deadline). */
-function startWhenText(dueAt: Date | null, emptyLabel: string): string {
+function startWhenText(dueAt: Date | null, emptyLabel: string, now: number): string {
   if (dueAt == null) return emptyLabel;
   const dateLabel = format(dueAt, "EEE d MMM yyyy");
-  if (isDueOverdue(dueAt)) return `Should have started · ${dateLabel}`;
-  if (isDueToday(dueAt)) return `Start today · ${dateLabel}`;
-  return `Start ${formatDistanceToNow(dueAt, { addSuffix: true })} · ${dateLabel}`;
+  if (isDueOverdueAt(dueAt, now)) return `Should have started · ${dateLabel}`;
+  if (isDueTodayAt(dueAt, now)) return `Start today · ${dateLabel}`;
+  return `Start ${formatDistance(dueAt, new Date(now), { addSuffix: true })} · ${dateLabel}`;
 }
 
 function scoreContactTaskItem(
   dueAt: Date | null,
   kind: "sequenceTask" | "contactTask",
   contactUrgency: ContactUrgencyResult | undefined,
+  now: number,
 ): { urgency: ContactUrgencyTier; score: number } {
-  const taskScore = fallbackScoreByUrgency(dueAt, kind, "high");
+  const taskScore = fallbackScoreByUrgency(dueAt, kind, "high", now);
   const contactBoost = (contactUrgency?.score ?? 0) / 5;
   return {
     urgency: taskScore.urgency,
@@ -150,14 +159,14 @@ export function buildDailyHubItems(input: {
     const contactName = contactNameById.get(task.contact_id) ?? "Contact";
     const kind: DailyHubItemKind = task.sequence_enrollment_id ? "sequenceTask" : "contactTask";
     const contactUrgency = urgencyByContactId.get(task.contact_id);
-    const scored = scoreContactTaskItem(dueAt, kind, contactUrgency);
+    const scored = scoreContactTaskItem(dueAt, kind, contactUrgency, now);
     const reason =
       contactUrgency?.reasons[0] ??
       (task.sequence_enrollment_id
         ? "Sequence step ready to start."
-        : dueAt && isDueOverdue(dueAt)
+        : dueAt && isDueOverdueAt(dueAt, now)
           ? "Start date has passed — pick this up first."
-          : dueAt && isDueToday(dueAt)
+          : dueAt && isDueTodayAt(dueAt, now)
             ? "Scheduled to start today."
             : "Upcoming work on your calendar.");
 
@@ -168,7 +177,7 @@ export function buildDailyHubItems(input: {
       score: scored.score,
       title: contactName,
       detail: task.title,
-      whenText: startWhenText(dueAt, "No start date"),
+      whenText: startWhenText(dueAt, "No start date", now),
       dueAt,
       contactId: task.contact_id,
       contactTaskId: task.id,
@@ -182,13 +191,13 @@ export function buildDailyHubItems(input: {
     .filter((todo) => !todo.completed)
     .forEach((todo) => {
       const dueAt = parseDateOnlyLocal(todo.due_at);
-      const scored = fallbackScoreByUrgency(dueAt, "todoTask", todo.priority);
+      const scored = fallbackScoreByUrgency(dueAt, "todoTask", todo.priority, now);
       const reason =
         todo.priority === "high"
           ? "High-priority personal task."
-          : dueAt && isDueOverdue(dueAt)
+          : dueAt && isDueOverdueAt(dueAt, now)
             ? "Start date has passed."
-            : dueAt && isDueToday(dueAt)
+            : dueAt && isDueTodayAt(dueAt, now)
               ? "Start today."
               : "General task on your list.";
 
@@ -199,7 +208,7 @@ export function buildDailyHubItems(input: {
         score: scored.score,
         title: todo.title,
         detail: `General task (${todo.priority})`,
-        whenText: startWhenText(dueAt, "No start date"),
+        whenText: startWhenText(dueAt, "No start date", now),
         dueAt,
         todoId: todo.id,
         canComplete: true,
@@ -212,14 +221,14 @@ export function buildDailyHubItems(input: {
     .slice(0, 20)
     .forEach((appointment) => {
       const dueAt = new Date(appointment.date);
-      const base = fallbackScoreByUrgency(dueAt, "appointment", "medium");
+      const base = fallbackScoreByUrgency(dueAt, "appointment", "medium", now);
       const contactName = appointment.contact_id ? contactNameById.get(appointment.contact_id) : null;
       const contactUrgency = appointment.contact_id ? urgencyByContactId.get(appointment.contact_id) : null;
       const scored = {
         urgency: base.urgency,
         score: base.score + (contactUrgency?.score ?? 0) / 12,
       };
-      const reason = isToday(dueAt)
+      const reason = isDueTodayAt(dueAt, now)
         ? "Appointment is today and prep should happen now."
         : "Upcoming appointment with prep window opening soon.";
       nextItems.push({
@@ -229,9 +238,9 @@ export function buildDailyHubItems(input: {
         score: scored.score,
         title: appointment.title || "Appointment",
         detail: contactName ? `Prep with ${contactName}` : "Prepare and review notes",
-        whenText: isToday(dueAt)
+        whenText: isDueTodayAt(dueAt, now)
           ? `Today at ${format(dueAt, "h:mm a")}`
-          : `${formatDistanceToNow(dueAt, { addSuffix: true })}`,
+          : `${formatDistance(dueAt, new Date(now), { addSuffix: true })}`,
         dueAt,
         appointmentId: appointment.id,
         contactId: appointment.contact_id ?? undefined,
@@ -245,12 +254,12 @@ export function buildDailyHubItems(input: {
     if (!nextTouchRaw) return;
     const dueAt = parseDateOnlyLocal(nextTouchRaw);
     if (!dueAt) return;
-    if (!isDueOverdue(dueAt) && !isDueToday(dueAt)) return;
+    if (!isDueOverdueAt(dueAt, now) && !isDueTodayAt(dueAt, now)) return;
     if (contactHasOpenTaskOnDay(contact.id, dueAt, openContactTasks)) return;
 
     const contactName = contactNameById.get(contact.id) ?? "Contact";
     const contactUrgency = urgencyByContactId.get(contact.id);
-    const scored = scoreContactTaskItem(dueAt, "contactTask", contactUrgency);
+    const scored = scoreContactTaskItem(dueAt, "contactTask", contactUrgency, now);
 
     nextItems.push({
       id: `next-touch-${contact.id}`,
@@ -259,11 +268,11 @@ export function buildDailyHubItems(input: {
       score: scored.score - 4,
       title: contactName,
       detail: "Scheduled next touch",
-      whenText: startWhenText(dueAt, "Next touch"),
+      whenText: startWhenText(dueAt, "Next touch", now),
       dueAt,
       contactId: contact.id,
       canComplete: false,
-      reason: isDueOverdue(dueAt) ? "Next touch date is overdue." : "Next touch scheduled for today.",
+      reason: isDueOverdueAt(dueAt, now) ? "Next touch date is overdue." : "Next touch scheduled for today.",
     });
   });
 
@@ -275,9 +284,9 @@ export function buildDailyHubItems(input: {
   });
 }
 
-export function bucketDailyHubItem(item: DailyHubItem): DailyHubScheduleBucket {
-  if (item.dueAt && isDueOverdue(item.dueAt)) return "overdue";
-  if (item.dueAt && isDueToday(item.dueAt)) return "today";
+export function bucketDailyHubItem(item: DailyHubItem, now: number = Date.now()): DailyHubScheduleBucket {
+  if (item.dueAt && isDueOverdueAt(item.dueAt, now)) return "overdue";
+  if (item.dueAt && isDueTodayAt(item.dueAt, now)) return "today";
   return "coming_up";
 }
 
@@ -288,7 +297,7 @@ function sortComingUp(a: DailyHubItem, b: DailyHubItem): number {
   return b.score - a.score;
 }
 
-export function partitionDailyHubItems(items: DailyHubItem[]): {
+export function partitionDailyHubItems(items: DailyHubItem[], now: number = Date.now()): {
   overdueItems: DailyHubItem[];
   todayItems: DailyHubItem[];
   comingUpItems: DailyHubItem[];
@@ -299,7 +308,7 @@ export function partitionDailyHubItems(items: DailyHubItem[]): {
   const comingUpItems: DailyHubItem[] = [];
 
   items.forEach((item) => {
-    const bucket = bucketDailyHubItem(item);
+    const bucket = bucketDailyHubItem(item, now);
     if (bucket === "overdue") overdueItems.push(item);
     else if (bucket === "today") todayItems.push(item);
     else comingUpItems.push(item);
@@ -318,8 +327,8 @@ export function partitionDailyHubItems(items: DailyHubItem[]): {
   return { overdueItems, todayItems, comingUpItems, scheduleRows };
 }
 
-export function dailyHubPriorityItems(items: DailyHubItem[]): DailyHubItem[] {
-  const { overdueItems, todayItems } = partitionDailyHubItems(items);
+export function dailyHubPriorityItems(items: DailyHubItem[], now: number = Date.now()): DailyHubItem[] {
+  const { overdueItems, todayItems } = partitionDailyHubItems(items, now);
   return [...overdueItems, ...todayItems];
 }
 
@@ -332,8 +341,8 @@ export function dailyHubKindLabel(kind: DailyHubItemKind): string {
 }
 
 /** @deprecated Use dailyHubPriorityItems */
-export function dailyHubStartHereItems(items: DailyHubItem[]): DailyHubItem[] {
-  return dailyHubPriorityItems(items);
+export function dailyHubStartHereItems(items: DailyHubItem[], now: number = Date.now()): DailyHubItem[] {
+  return dailyHubPriorityItems(items, now);
 }
 
 export function dailyHubBucketLabel(bucket: DailyHubScheduleBucket): string {

@@ -6,6 +6,7 @@ import {
 } from "@/lib/dailyHubSchedule";
 
 const TODAY_NOON = new Date("2026-06-08T12:00:00");
+const TODAY_NOON_MS = TODAY_NOON.getTime();
 
 describe("buildDailyHubItems", () => {
   it("puts a contact task starting today in the today bucket", () => {
@@ -34,16 +35,16 @@ describe("buildDailyHubItems", () => {
           },
         ],
       ]),
-      now: TODAY_NOON.getTime(),
+      now: TODAY_NOON_MS,
     });
 
     expect(items).toHaveLength(1);
     expect(items[0].whenText).toContain("Start today");
     expect(items[0].urgency).not.toBe("backlog");
 
-    const { todayItems } = partitionDailyHubItems(items);
+    const { todayItems } = partitionDailyHubItems(items, TODAY_NOON_MS);
     expect(todayItems).toHaveLength(1);
-    expect(dailyHubPriorityItems(items)[0].id).toBe("contact-task-t1");
+    expect(dailyHubPriorityItems(items, TODAY_NOON_MS)[0].id).toBe("contact-task-t1");
   });
 
   it("puts future start dates in coming up", () => {
@@ -62,9 +63,9 @@ describe("buildDailyHubItems", () => {
       contacts: [],
       contactNameById: new Map([["c1", "Chau"]]),
       urgencyByContactId: new Map(),
-      now: TODAY_NOON.getTime(),
+      now: TODAY_NOON_MS,
     });
-    const { comingUpItems } = partitionDailyHubItems(items);
+    const { comingUpItems } = partitionDailyHubItems(items, TODAY_NOON_MS);
     expect(comingUpItems).toHaveLength(1);
     expect(comingUpItems[0].whenText).toContain("Start");
   });
@@ -85,9 +86,9 @@ describe("buildDailyHubItems", () => {
       contacts: [],
       contactNameById: new Map([["c1", "Chau"]]),
       urgencyByContactId: new Map(),
-      now: TODAY_NOON.getTime(),
+      now: TODAY_NOON_MS,
     });
-    const { comingUpItems } = partitionDailyHubItems(items);
+    const { comingUpItems } = partitionDailyHubItems(items, TODAY_NOON_MS);
     expect(comingUpItems).toHaveLength(1);
   });
 });
