@@ -30,7 +30,6 @@ import {
   findZoneForItemId,
   loadDailyHubTriage,
   pruneStaleAssignments,
-  reconcileColumnIds,
   saveDailyHubTriage,
   zoneFromColumnId,
   type DailyHubTriageZone,
@@ -112,6 +111,8 @@ export function DailyHubKanbanBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const columnIdsRef = useRef(columnIds);
   columnIdsRef.current = columnIds;
+  const assignmentsRef = useRef(assignments);
+  assignmentsRef.current = assignments;
 
   useEffect(() => {
     const loaded = loadDailyHubTriage(userId);
@@ -120,15 +121,21 @@ export function DailyHubKanbanBoard({
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps -- reload layout when account changes
 
   useEffect(() => {
+    // Rebuild columns from saved assignments whenever the item list changes.
+    // Using assignmentsRef (not the state value) avoids a stale-closure problem: when this
+    // effect fires after the userId effect ran with empty scheduleRows, the columnIds state is
+    // all-empty but assignmentsRef still holds the localStorage-loaded zone assignments. Without
+    // this, reconcileColumnIds(prev, scheduleRowIds) would put every item into Schedule because
+    // there is nothing in `prev` to preserve.
     const validIds = new Set(scheduleRowIds);
-    setAssignments((prev) => {
-      const pruned = pruneStaleAssignments(prev, validIds);
-      if (Object.keys(pruned).length === Object.keys(prev).length) return prev;
+    const prevAssignments = assignmentsRef.current;
+    const pruned = pruneStaleAssignments(prevAssignments, validIds);
+    if (Object.keys(pruned).length !== Object.keys(prevAssignments).length) {
+      setAssignments(pruned);
       saveDailyHubTriage(userId, { v: 1, assignments: pruned });
-      return pruned;
-    });
-    setColumnIds((prev) => reconcileColumnIds(prev, scheduleRowIds));
-  }, [scheduleRowIdsKey, userId, scheduleRowIds]);
+    }
+    setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, pruned)));
+  }, [scheduleRowIdsKey, userId, scheduleRowIds]); // eslint-disable-line react-hooks/exhaustive-deps -- scheduleRows intentionally read via ref-like closure; changes tracked via scheduleRowIds
 
   const displayColumns = useMemo(
     () => columnsFromIds(columnIds, rowMap),
