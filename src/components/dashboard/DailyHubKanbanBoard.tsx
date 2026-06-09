@@ -30,7 +30,6 @@ import {
   findZoneForItemId,
   loadDailyHubTriage,
   pruneStaleAssignments,
-  reconcileColumnIds,
   saveDailyHubTriage,
   zoneFromColumnId,
   type DailyHubTriageZone,
@@ -114,21 +113,33 @@ export function DailyHubKanbanBoard({
   columnIdsRef.current = columnIds;
 
   useEffect(() => {
+    // Load the saved triage state fresh from localStorage on every trigger.
+    // Loading directly (not from React state/refs) is necessary because this effect
+    // can fire in the same flush as the userId effect — at that moment React state
+    // hasn't committed the userId effect's setAssignments yet, so any ref or state
+    // variable would carry the pre-auth-resolve value and wipe the saved layout.
+    //
+    // Guard: when validIds is empty (scheduleRows not yet loaded), skip pruning.
+    // pruneStaleAssignments against an empty set would delete every saved assignment
+    // and write that back to localStorage, permanently destroying the saved triage.
     const loaded = loadDailyHubTriage(userId);
-    setAssignments(loaded.assignments);
-    setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, loaded.assignments)));
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps -- reload layout when account changes
-
-  useEffect(() => {
     const validIds = new Set(scheduleRowIds);
-    setAssignments((prev) => {
-      const pruned = pruneStaleAssignments(prev, validIds);
-      if (Object.keys(pruned).length === Object.keys(prev).length) return prev;
+
+    if (validIds.size === 0) {
+      // Data hasn't arrived yet — restore assignments so they are ready for the
+      // next fire (when data loads and validIds becomes non-empty), but don't prune.
+      setAssignments(loaded.assignments);
+      setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, loaded.assignments)));
+      return;
+    }
+
+    const pruned = pruneStaleAssignments(loaded.assignments, validIds);
+    if (Object.keys(pruned).length !== Object.keys(loaded.assignments).length) {
       saveDailyHubTriage(userId, { v: 1, assignments: pruned });
-      return pruned;
-    });
-    setColumnIds((prev) => reconcileColumnIds(prev, scheduleRowIds));
-  }, [scheduleRowIdsKey, userId, scheduleRowIds]);
+    }
+    setAssignments(pruned);
+    setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, pruned)));
+  }, [scheduleRowIdsKey, userId]); // eslint-disable-line react-hooks/exhaustive-deps -- scheduleRowIds/scheduleRows read via closure; scheduleRowIdsKey (string) is the meaningful change signal
 
   const displayColumns = useMemo(
     () => columnsFromIds(columnIds, rowMap),
@@ -182,18 +193,23 @@ export function DailyHubKanbanBoard({
       const { active, over } = event;
       setActiveId(null);
 
-      setColumnIds((prev) => {
-        let next = prev;
-        if (over) {
-          const activeItemId = String(active.id);
-          const overId = String(over.id);
-          if (activeItemId !== overId) {
-            next = applyDragToColumnIds(prev, activeItemId, overId) ?? prev;
-          }
+      // Read the current columnIds synchronously via ref. By the time onDragEnd fires
+      // (a separate pointer-event from onDragOver), React has already committed all
+      // handleDragOver state updates, so the ref is guaranteed to be up-to-date.
+      const current = columnIdsRef.current;
+      let next = current;
+      if (over) {
+        const activeItemId = String(active.id);
+        const overId = String(over.id);
+        if (activeItemId !== overId) {
+          next = applyDragToColumnIds(current, activeItemId, overId) ?? current;
         }
-        setAssignments(persistTriage(userId, next));
-        return next;
-      });
+      }
+      // Call setColumnIds and persistTriage as plain top-level calls (not inside a
+      // state-updater). Keeping side-effects out of updaters avoids double-invocation
+      // in React Strict Mode and unexpected interactions in concurrent rendering.
+      setColumnIds(next);
+      setAssignments(persistTriage(userId, next));
     },
     [userId],
   );
