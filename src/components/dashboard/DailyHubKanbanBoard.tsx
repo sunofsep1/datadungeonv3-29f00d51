@@ -133,10 +133,15 @@ export function DailyHubKanbanBoard({
       return;
     }
 
+    // Prune assignments whose items have genuinely been removed (completed/deleted).
+    // IMPORTANT: do NOT write the pruned state back to localStorage here.
+    // TanStack Query loads data in multiple batches (contacts arrive before contact-tasks,
+    // etc.). If this effect fires during a partial batch, saved contact-task-* assignments
+    // look "stale" (their IDs aren't in validIds yet) and would be permanently wiped before
+    // the rest of the data arrives. Writes to localStorage only happen through explicit
+    // user actions: drag-end (persistTriage), complete-item (handleCompleteItem), or
+    // return-to-schedule (commitColumnIds).
     const pruned = pruneStaleAssignments(loaded.assignments, validIds);
-    if (Object.keys(pruned).length !== Object.keys(loaded.assignments).length) {
-      saveDailyHubTriage(userId, { v: 1, assignments: pruned });
-    }
     setAssignments(pruned);
     setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, pruned)));
   }, [scheduleRowIdsKey, userId]); // eslint-disable-line react-hooks/exhaustive-deps -- scheduleRowIds/scheduleRows read via closure; scheduleRowIdsKey (string) is the meaningful change signal
