@@ -111,29 +111,33 @@ export function DailyHubKanbanBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const columnIdsRef = useRef(columnIds);
   columnIdsRef.current = columnIds;
-  const assignmentsRef = useRef(assignments);
-  assignmentsRef.current = assignments;
 
   useEffect(() => {
+    // Load the saved triage state fresh from localStorage on every trigger.
+    // Loading directly (not from React state/refs) is necessary because this effect
+    // can fire in the same flush as the userId effect — at that moment React state
+    // hasn't committed the userId effect's setAssignments yet, so any ref or state
+    // variable would carry the pre-auth-resolve value and wipe the saved layout.
+    //
+    // Guard: when validIds is empty (scheduleRows not yet loaded), skip pruning.
+    // pruneStaleAssignments against an empty set would delete every saved assignment
+    // and write that back to localStorage, permanently destroying the saved triage.
     const loaded = loadDailyHubTriage(userId);
-    setAssignments(loaded.assignments);
-    setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, loaded.assignments)));
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps -- reload layout when account changes
-
-  useEffect(() => {
-    // Rebuild columns from saved assignments whenever the item list changes.
-    // Using assignmentsRef (not the state value) avoids a stale-closure problem: when this
-    // effect fires after the userId effect ran with empty scheduleRows, the columnIds state is
-    // all-empty but assignmentsRef still holds the localStorage-loaded zone assignments. Without
-    // this, reconcileColumnIds(prev, scheduleRowIds) would put every item into Schedule because
-    // there is nothing in `prev` to preserve.
     const validIds = new Set(scheduleRowIds);
-    const prevAssignments = assignmentsRef.current;
-    const pruned = pruneStaleAssignments(prevAssignments, validIds);
-    if (Object.keys(pruned).length !== Object.keys(prevAssignments).length) {
-      setAssignments(pruned);
+
+    if (validIds.size === 0) {
+      // Data hasn't arrived yet — restore assignments so they are ready for the
+      // next fire (when data loads and validIds becomes non-empty), but don't prune.
+      setAssignments(loaded.assignments);
+      setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, loaded.assignments)));
+      return;
+    }
+
+    const pruned = pruneStaleAssignments(loaded.assignments, validIds);
+    if (Object.keys(pruned).length !== Object.keys(loaded.assignments).length) {
       saveDailyHubTriage(userId, { v: 1, assignments: pruned });
     }
+    setAssignments(pruned);
     setColumnIds(columnIdsFromColumns(buildKanbanColumns(scheduleRows, pruned)));
   }, [scheduleRowIdsKey, userId]); // eslint-disable-line react-hooks/exhaustive-deps -- scheduleRowIds/scheduleRows read via closure; scheduleRowIdsKey (string) is the meaningful change signal
 
