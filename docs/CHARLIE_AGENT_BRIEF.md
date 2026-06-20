@@ -126,11 +126,12 @@ FROM ins;
 
 ### Status / classification fields (all have defaults)
 
-| Field | Default | Valid values |
+| Field | Default | Valid values (check constraint — exact match required) |
 |---|---|---|
-| `lead_status` | `'new'` | `'new'` `'contacted'` `'qualified'` `'lost'` etc. |
-| `lifecycle_stage` | `'lead'` | `'lead'` `'prospect'` `'client'` `'past_client'` |
-| `contact_category` | `'warm_lead'` | `'hot_lead'` `'warm_lead'` `'cold_lead'` `'client'` `'past_client'` |
+| `lead_status` | `'new'` | `'new'` `'contacted'` `'qualified'` `'nurture'` `'unqualified'` `'customer'` |
+| `lifecycle_stage` | `'lead'` | `'subscriber'` `'lead'` `'marketing_qualified'` `'sales_qualified'` `'opportunity'` `'customer'` `'past_customer'` |
+| `contact_type` | — | `'buyer'` `'seller'` `'landlord'` `'tenant'` `'investor'` `'both'` |
+| `contact_category` | `'warm_lead'` | `'top_100'` `'past_client'` `'referral_partner'` `'hot_lead'` `'warm_lead'` `'seller_nurture'` `'active_buyer'` `'seller_lead'` `'prospect'` |
 | `timeframe_category` | `'TIMEFRAME_UNKNOWN'` | leave as default unless known |
 | `lead_temperature` | `'LEAD_COLD'` | `'LEAD_HOT'` `'LEAD_WARM'` `'LEAD_COLD'` |
 | `country` | `'Australia'` | |
