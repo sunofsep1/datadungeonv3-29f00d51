@@ -263,3 +263,65 @@ LIMIT 20;
 - Invoice `direction` must be `'incoming'` or `'outgoing'`.
 - Invoice `gst_mode` must be `'none'` `'inclusive'` or `'exclusive'`.
 - After inserting anything, the app picks it up automatically on next page load — no cache flush needed.
+
+---
+
+## Telegram → CRM Command Vocabulary
+
+Greg will send commands via Telegram. Parse and execute them using the SQL patterns above.
+
+### Commands
+
+**`/crm contact [First Last] - [phone] - [notes]`**
+Upsert a contact. Dedup: check `phone` first, then `first_name + last_name`. If exists, append notes. If new, insert with `lead_status: 'new'`, `contact_category: 'warm_lead'`.
+
+**`/crm task [contact name] | [task title] | [due date]`**
+Find contact by name (use ILIKE), insert into `contact_tasks` with `user_id`, `contact_id`, `title`, `due_at`.
+
+**`/crm note [contact name] | [note text]`**
+Find contact by name. Insert into `activity_log` (`activity_type: 'note'`, `title` = first 100 chars of note, `description` = full note, `contact_id`). Then insert into `touches` (`touch_type: 'other'`, `logged_by: OWNER_USER_ID`).
+
+**`/crm meeting [freeform description of meeting]`**
+Parse the description with Claude to extract contacts, properties, tasks, and a summary. Then:
+1. Upsert contacts (dedup by phone → name)
+2. Insert `activity_log` row (`activity_type: 'meeting'`)
+3. Insert `touches` per contact (`touch_type: 'call'` or `'other'`)
+4. Insert `contact_tasks` for any action items mentioned
+
+**`/crm property [address] | [details]`**
+Insert into `properties`. Parse beds/baths/type from details. Link `owner_contact_id` if a contact name is mentioned and found.
+
+**`[photo of business card or document]`**
+Use Claude Vision to extract: first_name, last_name, phone, email, company, job_title. Upsert as contact (dedup by phone → name). Confirm back what was extracted before inserting.
+
+**`[voice note with no prefix]`**
+Transcribe. Ask: "Add to CRM as meeting note?" If yes, treat as `/crm meeting`.
+
+### Dedup SQL (use before every contact insert)
+
+```sql
+-- Check by phone
+SELECT id FROM public.contacts
+WHERE user_id = 'e1bd63ad-b120-4a5a-91c0-c3189bc8938c'
+  AND (phone = '[phone]' OR mobile = '[phone]')
+LIMIT 1;
+
+-- If not found, check by name
+SELECT id FROM public.contacts
+WHERE user_id = 'e1bd63ad-b120-4a5a-91c0-c3189bc8938c'
+  AND first_name ILIKE '[first]' AND last_name ILIKE '[last]'
+LIMIT 1;
+```
+
+### Insert touch after every contact interaction
+
+```sql
+INSERT INTO public.touches (contact_id, touch_type, notes, logged_by, touch_date)
+VALUES ('[contact_id]', 'other', '[brief note]', 'e1bd63ad-b120-4a5a-91c0-c3189bc8938c', now());
+```
+
+Valid `touch_type` values: `'call'` `'email'` `'sms'` `'handwritten_card'` `'break_bread'` `'pop_by'` `'housing_update_video'` `'weekly_email'` `'monthly_mailer'` `'birthday_card'` `'annual_review'` `'community_event'` `'social_media'` `'other'`
+
+### activity_log valid types
+
+`'note'` `'call'` `'email'` `'inspection'` `'status_change'` `'system'` `'open_house'` `'settlement'` `'meeting'` `'voice_recording'`
