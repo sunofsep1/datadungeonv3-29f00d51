@@ -1,5 +1,18 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import { Capacitor } from "@capacitor/core";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { StatusBar, Style } from "@capacitor/status-bar";
+
+async function initNativeShell() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await StatusBar.setStyle({ style: Style.Dark });
+  } catch {
+    // No-op on platforms without a mutable status bar
+  }
+  await SplashScreen.hide({ fadeOutDuration: 200 });
+}
 
 function showMissingEnvScreen() {
   const el = document.getElementById("root");
@@ -21,4 +34,5 @@ if (!url || !key) {
 } else {
   const { default: App } = await import("./App.tsx");
   createRoot(document.getElementById("root")!).render(<App />);
+  void initNativeShell();
 }

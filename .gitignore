@@ -40,6 +40,16 @@ supabase/.branches/
 .env.save
 *.zip
 
+# Capacitor / Xcode build artifacts
+ios/App/App/public/
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+
 # Large asset folders / non-app files
 Canva Stock/
 New Ideas Selling Social/
