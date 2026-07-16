@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMarkNotificationRead, useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
+import { parseSellerLeadDraftReply } from "@/lib/sellerLeadNotifications";
+import { SellerLeadDraftReplyButton } from "@/components/dashboard/SellerLeadDraftReplyButton";
 
 export function DailyHubNotificationsStrip() {
   const { data = [], isLoading } = useNotifications(10);
@@ -44,7 +46,9 @@ export function DailyHubNotificationsStrip() {
         </Button>
       </div>
       <ul className="space-y-2.5">
-        {data.map((n) => (
+        {data.map((n) => {
+          const draftReply = parseSellerLeadDraftReply(n);
+          return (
           <li
             key={n.id}
             className="flex flex-wrap items-start justify-between gap-2 border-b border-border/60 pb-2.5 last:border-0 last:pb-0"
@@ -64,6 +68,11 @@ export function DailyHubNotificationsStrip() {
               {n.body ? (
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
               ) : null}
+              {draftReply ? (
+                <div className="mt-1.5">
+                  <SellerLeadDraftReplyButton draft={draftReply} />
+                </div>
+              ) : null}
             </div>
             <Badge
               variant="outline"
@@ -76,7 +85,8 @@ export function DailyHubNotificationsStrip() {
               {n.priority === "action_required" ? "Action" : n.priority}
             </Badge>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </Card>
   );

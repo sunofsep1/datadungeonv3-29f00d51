@@ -1,0 +1,119 @@
+/* =========================================================================
+   Queensland Sotheby's International Realty — Seller Appraisal Funnel
+   Brand: navy #172849 primary, gold #B99A50 hairline accents, off-white ground,
+   serif navy headlines (Cormorant Garamond), Source Sans body. Quiet luxury.
+   Critical hero/button styles are inlined in index.html; this is everything else.
+   ========================================================================= */
+
+:root{
+  --navy:#172849;--gold:#B99A50;--ink:#0A0A0A;
+  --cream:#FEFBF5;--grey:#E2E3E5;--white:#fff;
+  --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --sans:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --maxw:1120px;
+}
+
+img{max-width:100%;display:block}
+a{color:var(--navy)}
+
+/* ---------- Reusable button variants (base .btn is inlined) ---------- */
+.btn--ghost{background:transparent;color:var(--navy);border:1px solid var(--grey);border-radius:2px;padding:1rem 1.75rem;font-family:var(--sans);font-weight:600;font-size:1.05rem;cursor:pointer;transition:border-color .18s,color .18s}
+.btn--ghost:hover{border-color:var(--navy)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+
+/* ---------- Logo placeholders (shown only if SVG missing) ---------- */
+.logo-placeholder{display:inline-block;font-family:var(--serif);font-weight:600;font-size:.9rem;letter-spacing:.12em;color:var(--navy);border:1px dashed var(--gold);padding:.5rem .75rem;line-height:1.2;max-width:220px}
+.logo-placeholder--sm{font-size:.72rem;padding:.4rem .6rem}
+.logo-placeholder--rev{color:var(--cream);border-color:var(--gold)}
+
+/* ---------- Header ---------- */
+.site-header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1.5rem;background:rgba(254,251,245,.92);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--grey)}
+.brand-badge__logo{height:40px;width:auto}
+.header-cta{font-family:var(--sans);font-weight:600;font-size:.95rem;color:var(--navy);text-decoration:none;padding:.55rem 1.1rem;border:1px solid var(--gold);border-radius:2px;white-space:nowrap;transition:background .18s,color .18s}
+.header-cta:hover{background:var(--gold);color:var(--white)}
+
+/* ---------- Hero extras (core inlined) ---------- */
+.hero::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(23,40,73,.92) 0%,rgba(23,40,73,.72) 45%,rgba(23,40,73,.35) 100%)}
+.hero__eyebrow{font-family:var(--sans);font-weight:600;letter-spacing:.16em;font-size:.82rem;color:var(--gold);margin:0 0 1.1rem}
+.hero__reassure{font-size:.95rem;color:#D8D0BE;margin:1.1rem 0 0}
+#suburb-token{color:var(--gold);font-style:italic}
+
+/* ---------- Trust strip ---------- */
+.trust{background:var(--white);border-bottom:1px solid var(--grey)}
+.trust__inner{max-width:var(--maxw);margin:0 auto;padding:1.6rem 1.5rem;display:flex;align-items:center;gap:1.75rem;flex-wrap:wrap;justify-content:center}
+.trust__agent{display:flex;align-items:center;gap:.85rem}
+.trust__avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)}
+.trust__name{font-family:var(--serif);font-weight:600;font-size:1.25rem;color:var(--navy);margin:0}
+.trust__role{font-size:.9rem;color:#555;margin:.1rem 0 0}
+.trust__divider{width:1px;height:44px;background:var(--gold);opacity:.6}
+.trust__badge-logo{height:38px;width:auto}
+.trust__stat-num{font-family:var(--serif);font-size:1.05rem;color:var(--navy);margin:0;font-weight:600}
+.trust__stat-label{font-size:.82rem;color:#666;margin:.15rem 0 0}
+
+/* ---------- Form section ---------- */
+.form-section{padding:4rem 1.5rem 4.5rem;background:var(--cream)}
+.form-shell{max-width:640px;margin:0 auto;background:var(--white);border:1px solid var(--grey);border-top:3px solid var(--gold);border-radius:3px;padding:2.5rem clamp(1.25rem,4vw,2.75rem);box-shadow:0 18px 48px -28px rgba(23,40,73,.35)}
+.form-head{text-align:center;margin-bottom:1.75rem}
+.form-kicker{font-family:var(--sans);font-weight:600;letter-spacing:.16em;font-size:.78rem;color:var(--gold);margin:0 0 .6rem}
+.form-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.8rem,4.5vw,2.6rem);color:var(--navy);margin:0 0 .6rem;line-height:1.1}
+.form-sub{color:#4a4a4a;font-size:1rem;margin:0;max-width:46ch;margin-inline:auto}
+
+/* Progress */
+.progress{margin:0 0 2rem}
+.progress__bar{height:4px;background:var(--grey);border-radius:2px;overflow:hidden}
+.progress__fill{display:block;height:100%;width:25%;background:var(--gold);border-radius:2px;transition:width .3s ease}
+.progress__label{text-align:right;font-size:.8rem;color:#888;margin:.5rem 0 0;letter-spacing:.04em}
+
+/* Steps (wizard: one screen at a time) */
+.step{border:0;padding:0;margin:0;display:none;animation:fade .25s ease}
+.step.is-active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.step__q{font-family:var(--serif);font-weight:600;font-size:clamp(1.5rem,3.6vw,2rem);color:var(--navy);padding:0;margin:0 0 .35rem;line-height:1.15}
+.step__hint{color:#6a6a6a;font-size:.95rem;margin:0 0 1.4rem}
+.step__nav{display:flex;gap:.75rem;margin-top:1.75rem;flex-wrap:wrap}
+.step__nav .btn,.step__nav .btn--ghost{flex:1;min-width:130px}
+
+/* Fields */
+.field{width:100%;font-family:var(--sans);font-size:1.05rem;padding:.9rem 1rem;border:1px solid var(--grey);border-radius:2px;background:var(--white);color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.field:focus{outline:0;border-color:var(--navy);box-shadow:0 0 0 3px rgba(23,40,73,.1)}
+.field-label{display:block;font-weight:600;font-size:.9rem;color:var(--navy);margin:1.1rem 0 .4rem}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.field-row .field-label:first-child{margin-top:0}
+
+/* Choice buttons */
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.choice-grid--3{grid-template-columns:repeat(3,1fr)}
+.choice{position:relative;display:flex}
+.choice input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.choice span{flex:1;text-align:center;padding:1rem .75rem;border:1px solid var(--grey);border-radius:2px;font-weight:600;color:var(--navy);cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+.choice input:hover+span{border-color:var(--gold)}
+.choice input:checked+span{background:var(--navy);color:var(--white);border-color:var(--navy)}
+.choice input:focus-visible+span{box-shadow:0 0 0 3px rgba(23,40,73,.18)}
+
+/* Errors + consent */
+.form-error{color:#a11;font-size:.92rem;margin:1rem 0 0;font-weight:600}
+.field.is-invalid{border-color:#a11;box-shadow:0 0 0 3px rgba(170,17,17,.08)}
+.consent{font-size:.8rem;color:#777;margin:1.25rem 0 0;text-align:center;line-height:1.5}
+
+/* Honeypot */
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* ---------- Footer ---------- */
+.site-footer{background:var(--navy);color:#cbd2df}
+.footer__inner{max-width:var(--maxw);margin:0 auto;padding:3rem 1.5rem;text-align:center}
+.footer__logo{height:44px;width:auto;margin:0 auto 1.25rem;opacity:.95}
+.footer__agency{font-family:var(--serif);font-size:1.15rem;color:var(--white);margin:0 0 1rem}
+.footer__fine{font-size:.82rem;line-height:1.6;max-width:60ch;margin:0 auto 1rem;color:#9aa4b8}
+.footer__fine a,.footer__copy a{color:var(--gold);text-decoration:none}
+.footer__copy{font-size:.78rem;color:#7c869c;margin:0}
+
+/* ---------- Responsive ---------- */
+@media (max-width:560px){
+  .field-row{grid-template-columns:1fr}
+  .choice-grid,.choice-grid--3{grid-template-columns:1fr 1fr}
+  .trust__divider{display:none}
+  .form-shell{padding:1.75rem 1.25rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}

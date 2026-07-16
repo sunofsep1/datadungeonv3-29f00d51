@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thank you — your appraisal request is in | Greg Leigh</title>
+  <meta name="robots" content="noindex, follow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- ============================================================= -->
+  <!-- Meta Pixel base code + Lead conversion event on load.         -->
+  <!-- Replace __META_PIXEL_ID__ with your Pixel ID (same as index). -->
+  <!-- ============================================================= -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '__META_PIXEL_ID__');
+    fbq('track', 'PageView');
+    fbq('track', 'Lead');   /* the conversion Meta optimises toward */
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=__META_PIXEL_ID__&ev=Lead&noscript=1" /></noscript>
+
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    .ty{min-height:100vh;display:flex;flex-direction:column}
+    .ty__main{flex:1;display:flex;align-items:center;justify-content:center;padding:4rem 1.5rem;background:var(--cream)}
+    .ty__card{max-width:600px;text-align:center;background:var(--white);border:1px solid var(--grey);border-top:3px solid var(--gold);border-radius:3px;padding:clamp(2rem,5vw,3.5rem);box-shadow:0 18px 48px -28px rgba(23,40,73,.35)}
+    .ty__tick{width:64px;height:64px;border-radius:50%;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 1.5rem}
+    .ty__card h1{font-family:var(--serif);font-weight:600;font-size:clamp(2rem,5vw,3rem);color:var(--navy);margin:0 0 1rem;line-height:1.1}
+    .ty__card p{color:#4a4a4a;font-size:1.08rem;margin:0 auto 1.75rem;max-width:44ch}
+    .ty__book{font-size:1.1rem;padding:1.1rem 2.25rem}
+    .ty__or{font-size:.9rem;color:#888;margin-top:1.5rem}
+  </style>
+</head>
+<body class="ty">
+  <header class="site-header">
+    <a class="brand-badge" href="/" aria-label="Queensland Sotheby's International Realty">
+      <img src="assets/qsir-logo-navy.png" alt="Queensland Sotheby's International Realty"
+           class="brand-badge__logo" width="200" height="44"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
+    </a>
+  </header>
+
+  <main class="ty__main">
+    <div class="ty__card">
+      <div class="ty__tick" aria-hidden="true">&#10003;</div>
+      <h1>Thank you &mdash; you&rsquo;re all set</h1>
+      <p>Your appraisal request is in. <strong>Greg will text or call you shortly</strong> to arrange a time that suits &mdash; usually within the hour during business hours.</p>
+      <p>Want to lock it in now? Book your appraisal directly into Greg&rsquo;s calendar:</p>
+
+      <!-- Booking CTA. Replace __BOOKING_LINK__ with Greg's Google Calendar /
+           Calendly booking page (Part A #7). -->
+      <a class="btn btn--gold ty__book" href="__BOOKING_LINK__" data-cta="book" rel="noopener">
+        Book your appraisal now
+      </a>
+
+      <p class="ty__or">Prefer to wait for Greg&rsquo;s call? No problem &mdash; he&rsquo;ll be in touch.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer__inner">
+      <img src="assets/qsir-logo-white.png" alt="Queensland Sotheby's International Realty"
+           class="footer__logo" width="220" height="48"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder logo-placeholder--rev',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
+      <p class="footer__agency">Greg Leigh &middot; Queensland Sotheby&rsquo;s International Realty, Redlands QLD</p>
+      <p class="footer__fine">Each office is independently owned and operated. Licensed real estate agent (QLD).</p>
+    </div>
+  </footer>
+</body>
+</html>

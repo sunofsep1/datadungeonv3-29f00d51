@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What's Your Home Worth? | Free Appraisal — Greg Leigh, Redlands</title>
+  <meta name="description" content="Get a free, no-obligation property appraisal from Greg Leigh, your local Redlands specialist with Queensland Sotheby's International Realty. Takes 30 seconds." />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="What's Your Home Worth? | Free Appraisal in the Redlands" />
+  <meta property="og:description" content="A free, no-obligation appraisal from Greg Leigh — your local Redlands specialist with Queensland Sotheby's International Realty." />
+  <meta property="og:type" content="website" />
+
+  <!-- Fonts: elegant serif headlines (Cormorant Garamond) + clean sans body (Source Sans 3) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Critical CSS inlined for fast first paint; full styles in assets/styles.css -->
+  <style>
+    :root{
+      --navy:#172849;--gold:#B99A50;--ink:#0A0A0A;
+      --cream:#FEFBF5;--grey:#E2E3E5;--white:#fff;
+      --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+      --sans:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{font-family:var(--sans);color:var(--ink);background:var(--cream);line-height:1.55;-webkit-font-smoothing:antialiased}
+    .hero{position:relative;min-height:82vh;display:flex;align-items:center;background:var(--navy);color:var(--white);overflow:hidden}
+    .hero__media{position:absolute;inset:0;background:#0f1c34 center/cover no-repeat;opacity:.55}
+    .hero__inner{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:5rem 1.5rem;width:100%}
+    .hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.4rem,6vw,4.2rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.5px}
+    .hero p{font-size:clamp(1.05rem,2.2vw,1.35rem);max-width:36ch;color:#EDE7DA;margin:0 0 2rem}
+    .btn{display:inline-block;font-family:var(--sans);font-weight:600;font-size:1.05rem;padding:1rem 2rem;border:0;border-radius:2px;cursor:pointer;text-decoration:none;transition:background .18s,color .18s,transform .05s}
+    .btn--gold{background:var(--gold);color:var(--navy)}
+    .btn--gold:hover{background:#a4863f;color:var(--white)}
+    .btn--gold:active{transform:translateY(1px)}
+  </style>
+
+  <!-- ============================================================= -->
+  <!-- Meta Pixel base code. Replace __META_PIXEL_ID__ with your ID. -->
+  <!-- (See Part A #2 — create the Pixel in Events Manager.)         -->
+  <!-- ============================================================= -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '__META_PIXEL_ID__');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=__META_PIXEL_ID__&ev=PageView&noscript=1" /></noscript>
+
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+
+  <!-- ============================ HEADER ============================ -->
+  <header class="site-header">
+    <a class="brand-badge" href="/" aria-label="Queensland Sotheby's International Realty">
+      <!-- Navy lockup on light ground. Drop qsir-logo-navy.png into assets/. -->
+      <img src="assets/qsir-logo-navy.png" alt="Queensland Sotheby's International Realty"
+           class="brand-badge__logo" width="200" height="44"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
+    </a>
+    <a class="header-cta" href="#appraisal-form">Get my free appraisal</a>
+  </header>
+
+  <!-- ============================= HERO ============================= -->
+  <section class="hero" id="top">
+    <!-- Hero image = Greg on location. Drop assets/greg-hero.jpg into assets/. -->
+    <div class="hero__media" style="background-image:url('assets/greg-hero.jpg')" role="img" aria-label="Greg Leigh, Redlands property specialist"></div>
+    <div class="hero__inner">
+      <p class="hero__eyebrow">GREG LEIGH &middot; YOUR LOCAL REDLANDS SPECIALIST</p>
+      <h1>What&rsquo;s your home worth in <span id="suburb-token">the Redlands</span>?</h1>
+      <p>Get a free, no-obligation appraisal from Greg Leigh, your local Redlands specialist &mdash; with Queensland Sotheby&rsquo;s International Realty.</p>
+      <a class="btn btn--gold" href="#appraisal-form" data-cta="hero">Get my free appraisal</a>
+      <p class="hero__reassure">Takes 30 seconds &middot; No obligation &middot; A local expert, not a call centre</p>
+    </div>
+  </section>
+
+  <!-- ========================= TRUST STRIP ========================= -->
+  <section class="trust" aria-label="Why Greg">
+    <div class="trust__inner">
+      <div class="trust__agent">
+        <img src="assets/greg-avatar.jpg" alt="Greg Leigh" class="trust__avatar"
+             onerror="this.style.display='none'" />
+        <div>
+          <p class="trust__name">Greg Leigh</p>
+          <p class="trust__role">Local Redlands property specialist</p>
+        </div>
+      </div>
+      <div class="trust__divider" aria-hidden="true"></div>
+      <div class="trust__badge">
+        <img src="assets/qsir-logo-navy.png" alt="with Queensland Sotheby's International Realty"
+             class="trust__badge-logo" width="180" height="40"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder logo-placeholder--sm',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
+      </div>
+      <div class="trust__divider" aria-hidden="true"></div>
+      <div class="trust__stat">
+        <p class="trust__stat-num">Cleveland &middot; Wellington Point &middot; Ormiston</p>
+        <p class="trust__stat-label">Homes appraised across the bayside Redlands</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== MULTI-STEP FORM ======================== -->
+  <section class="form-section" id="appraisal-form">
+    <div class="form-shell">
+      <div class="form-head">
+        <p class="form-kicker">FREE APPRAISAL</p>
+        <h2>Find out what your home is worth</h2>
+        <p class="form-sub">Four quick questions. No obligation, no pressure &mdash; just a local expert&rsquo;s honest read on your property&rsquo;s value.</p>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress" aria-hidden="true">
+        <div class="progress__bar"><span class="progress__fill" id="progress-fill"></span></div>
+        <p class="progress__label"><span id="progress-step">1</span> of 4</p>
+      </div>
+
+      <form id="appraisal" novalidate autocomplete="on">
+        <!-- Honeypot: bots fill this; humans never see it -->
+        <div class="hp" aria-hidden="true">
+          <label>Do not fill this field<input type="text" name="company" tabindex="-1" autocomplete="off" /></label>
+        </div>
+
+        <!-- STEP 1 — Address -->
+        <fieldset class="step is-active" data-step="1">
+          <legend class="step__q">What&rsquo;s the property address?</legend>
+          <p class="step__hint">Start typing and select your address.</p>
+          <input type="text" id="address" name="address" class="field" placeholder="e.g. 12 Shore Street, Cleveland QLD" autocomplete="street-address" />
+          <div class="step__nav">
+            <button type="button" class="btn btn--gold" data-next>Continue</button>
+          </div>
+        </fieldset>
+
+        <!-- STEP 2 — Timeline -->
+        <fieldset class="step" data-step="2">
+          <legend class="step__q">When are you thinking of selling?</legend>
+          <p class="step__hint">No wrong answer &mdash; it just helps me tailor the appraisal.</p>
+          <div class="choice-grid" role="radiogroup" aria-label="Selling timeline">
+            <label class="choice"><input type="radio" name="timeline" value="Ready now" /><span>Ready now</span></label>
+            <label class="choice"><input type="radio" name="timeline" value="0-3 months" /><span>0&ndash;3 months</span></label>
+            <label class="choice"><input type="radio" name="timeline" value="3-6 months" /><span>3&ndash;6 months</span></label>
+            <label class="choice"><input type="radio" name="timeline" value="6-12 months" /><span>6&ndash;12 months</span></label>
+            <label class="choice"><input type="radio" name="timeline" value="Just curious" /><span>Just curious</span></label>
+          </div>
+          <div class="step__nav">
+            <button type="button" class="btn btn--ghost" data-prev>Back</button>
+          </div>
+        </fieldset>
+
+        <!-- STEP 3 — Property type / beds (optional) -->
+        <fieldset class="step" data-step="3">
+          <legend class="step__q">Tell me about the property</legend>
+          <p class="step__hint">Optional &mdash; skip if you&rsquo;re not sure.</p>
+          <div class="choice-grid choice-grid--3" role="radiogroup" aria-label="Property type">
+            <label class="choice"><input type="radio" name="ptype" value="House" /><span>House</span></label>
+            <label class="choice"><input type="radio" name="ptype" value="Unit/Apartment" /><span>Unit / Apt</span></label>
+            <label class="choice"><input type="radio" name="ptype" value="Land" /><span>Land</span></label>
+          </div>
+          <label class="field-label" for="beds">Bedrooms</label>
+          <select id="beds" name="beds" class="field">
+            <option value="">Select&hellip;</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5+">5+</option>
+          </select>
+          <div class="step__nav">
+            <button type="button" class="btn btn--ghost" data-prev>Back</button>
+            <button type="button" class="btn btn--gold" data-next>Continue</button>
+          </div>
+        </fieldset>
+
+        <!-- STEP 4 — Contact -->
+        <fieldset class="step" data-step="4">
+          <legend class="step__q">Where should I send your appraisal?</legend>
+          <p class="step__hint">I&rsquo;ll be in touch personally &mdash; no call centres.</p>
+          <div class="field-row">
+            <div>
+              <label class="field-label" for="first_name">First name</label>
+              <input type="text" id="first_name" name="first_name" class="field" autocomplete="given-name" required />
+            </div>
+            <div>
+              <label class="field-label" for="last_name">Last name</label>
+              <input type="text" id="last_name" name="last_name" class="field" autocomplete="family-name" required />
+            </div>
+          </div>
+          <label class="field-label" for="email">Email</label>
+          <input type="email" id="email" name="email" class="field" autocomplete="email" inputmode="email" required />
+          <label class="field-label" for="phone">Mobile</label>
+          <input type="tel" id="phone" name="phone" class="field" autocomplete="tel" inputmode="tel" placeholder="04XX XXX XXX" required />
+
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+
+          <div class="step__nav">
+            <button type="button" class="btn btn--ghost" data-prev>Back</button>
+            <button type="submit" class="btn btn--gold" id="submit-btn">Get my free appraisal</button>
+          </div>
+          <p class="consent">By submitting you agree to be contacted about your appraisal. See our
+            <a href="#privacy">privacy policy</a>.</p>
+        </fieldset>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============================ FOOTER ============================ -->
+  <footer class="site-footer" id="privacy">
+    <div class="footer__inner">
+      <img src="assets/qsir-logo-white.png" alt="Queensland Sotheby's International Realty"
+           class="footer__logo" width="220" height="48"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder logo-placeholder--rev',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
+      <p class="footer__agency">Greg Leigh &middot; Queensland Sotheby&rsquo;s International Realty, Redlands QLD</p>
+      <p class="footer__fine">
+        Each office is independently owned and operated. Licensed real estate agent (QLD).
+        <a href="#privacy">Privacy policy</a> &middot;
+        By submitting an appraisal request you agree to be contacted about your appraisal.
+      </p>
+      <p class="footer__copy">&copy; <span id="year">2026</span> Greg Leigh. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Google Places (optional). If VITE_GOOGLE_MAPS_API_KEY is available, replace
+       __GOOGLE_MAPS_API_KEY__ below and uncomment. Otherwise the plain text field works. -->
+  <!--
+  <script src="https://maps.googleapis.com/maps/api/js?key=__GOOGLE_MAPS_API_KEY__&libraries=places&callback=initPlaces" async defer></script>
+  -->
+
+  <script src="assets/funnel.js" defer></script>
+</body>
+</html>

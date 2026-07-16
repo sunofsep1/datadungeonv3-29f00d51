@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -30,6 +30,8 @@ interface SendSmsDialogProps {
   contactName?: string;
   firstName?: string | null;
   lastName?: string | null;
+  /** Pre-fill the composer body (e.g. an approved draft reply for one-tap send). */
+  initialBody?: string;
   onSent?: () => void;
 }
 
@@ -41,12 +43,18 @@ export function SendSmsDialog({
   contactName,
   firstName,
   lastName,
+  initialBody,
   onSent,
 }: SendSmsDialogProps) {
   const { toast } = useToast();
   const { data: commSettings } = useUserCommunicationSettings();
   const smsSignature = commSettings?.sms_signature ?? "";
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialBody ?? "");
+
+  // Seed the composer with the incoming draft each time the dialog opens.
+  useEffect(() => {
+    if (open && initialBody != null) setBody(initialBody);
+  }, [open, initialBody]);
   const [custom, setCustom] = useState<SmsComposerCustomFields>(() => defaultSmsComposerCustomFields());
   const [includeOptOutIfMissing, setIncludeOptOutIfMissing] = useState(true);
   const [sending, setSending] = useState(false);

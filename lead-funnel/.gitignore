@@ -1,0 +1,4 @@
+# The repo-root .gitignore ignores *.html (main-app build artifacts).
+# The funnel's HTML pages are SOURCE — keep them tracked.
+!index.html
+!thankyou.html
