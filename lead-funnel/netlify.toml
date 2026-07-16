@@ -1,0 +1,25 @@
+# Queensland Sotheby's International Realty — seller appraisal funnel
+# Standalone static multi-page site + one Netlify Function proxy.
+# This is a SECOND Netlify site, separate from the main CRM app.
+# Set the site's "Base directory" to `lead-funnel/` in the Netlify UI.
+
+[build]
+  # Static site — nothing to compile. Publish this directory as-is.
+  publish = "."
+  functions = "netlify/functions"
+  command = ""
+
+[functions]
+  node_bundler = "esbuild"
+
+# Security headers for all pages.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# NOTE: intentionally NO SPA catch-all redirect. This is a static multi-page
+# site (index.html + thankyou.html); a `/* -> /index.html` rule would break it.

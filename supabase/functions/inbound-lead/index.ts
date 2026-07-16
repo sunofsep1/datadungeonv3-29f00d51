@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isMetaSellerLead, runSellerLeadAutomation } from "../_shared/sellerLeadAutomation.ts";
 
 /**
  * Inbound lead capture for forms, landing pages, or Zapier/Make.
@@ -240,6 +241,26 @@ Deno.serve(async (req) => {
         .eq("id", leadRow.id);
       if (linkErr) {
         console.error("[inbound-lead] lead contact_id link:", linkErr);
+      }
+    }
+
+    // Speed-to-lead automation for Meta seller leads (Task 6). Best-effort —
+    // must never fail the lead/contact creation, so it is fully guarded.
+    if (contactId && isMetaSellerLead(source, contactCategory)) {
+      try {
+        const automation = await runSellerLeadAutomation(supabase, {
+          ownerUserId,
+          contactId,
+          firstName,
+          lastName,
+          phone,
+          address: propertyInterest,
+          timeline,
+          source,
+        });
+        console.log("[inbound-lead] seller-lead automation:", JSON.stringify(automation));
+      } catch (autoErr) {
+        console.error("[inbound-lead] seller-lead automation failed:", autoErr);
       }
     }
   }
