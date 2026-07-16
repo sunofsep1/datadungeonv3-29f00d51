@@ -28,11 +28,12 @@
     *,*::before,*::after{box-sizing:border-box}
     html,body{margin:0;padding:0}
     body{font-family:var(--sans);color:var(--ink);background:var(--cream);line-height:1.55;-webkit-font-smoothing:antialiased}
-    .hero{position:relative;min-height:82vh;display:flex;align-items:center;background:var(--navy);color:var(--white);overflow:hidden}
-    .hero__media{position:absolute;inset:0;background:#0f1c34 center/cover no-repeat;opacity:.55}
-    .hero__inner{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:5rem 1.5rem;width:100%}
-    .hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.4rem,6vw,4.2rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.5px}
-    .hero p{font-size:clamp(1.05rem,2.2vw,1.35rem);max-width:36ch;color:#EDE7DA;margin:0 0 2rem}
+    .hero{position:relative;background:var(--navy);color:var(--white);overflow:hidden}
+    .hero__inner{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:clamp(3rem,6vw,5.5rem) 1.5rem;width:100%;display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(2rem,5vw,4.5rem);align-items:center}
+    .hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.4rem,5.2vw,4rem);line-height:1.05;margin:0 0 1.1rem;letter-spacing:-.5px}
+    .hero__lead{font-family:var(--serif);font-weight:600;font-size:clamp(1.25rem,2.6vw,1.7rem);color:var(--white);margin:0 0 .55rem;line-height:1.2}
+    .hero__suburbs{font-size:clamp(.98rem,1.7vw,1.12rem);color:#EDE7DA;margin:0 0 2rem;letter-spacing:.01em}
+    @media (max-width:820px){.hero__inner{grid-template-columns:1fr;gap:2.25rem}}
     .btn{display:inline-block;font-family:var(--sans);font-weight:600;font-size:1.05rem;padding:1rem 2rem;border:0;border-radius:2px;cursor:pointer;text-decoration:none;transition:background .18s,color .18s,transform .05s}
     .btn--gold{background:var(--gold);color:var(--navy)}
     .btn--gold:hover{background:#a4863f;color:var(--white)}
@@ -72,14 +73,22 @@
 
   <!-- ============================= HERO ============================= -->
   <section class="hero" id="top">
-    <!-- Hero image = Greg on location. Drop assets/greg-hero.jpg into assets/. -->
-    <div class="hero__media" style="background-image:url('assets/greg-hero.jpg')" role="img" aria-label="Greg Leigh, Redlands property specialist"></div>
     <div class="hero__inner">
-      <p class="hero__eyebrow">GREG LEIGH &middot; YOUR LOCAL REDLANDS SPECIALIST</p>
-      <h1>What&rsquo;s your home worth in <span id="suburb-token">the Redlands</span>?</h1>
-      <p>Get a free, no-obligation appraisal from Greg Leigh, your local Redlands specialist &mdash; with Queensland Sotheby&rsquo;s International Realty.</p>
-      <a class="btn btn--gold" href="#appraisal-form" data-cta="hero">Get my free appraisal</a>
-      <p class="hero__reassure">Takes 30 seconds &middot; No obligation &middot; A local expert, not a call centre</p>
+      <!-- LEFT: copy -->
+      <div class="hero__copy">
+        <p class="hero__eyebrow">GREG LEIGH &middot; YOUR LOCAL REDLANDS SPECIALIST</p>
+        <h1>What&rsquo;s your home worth in <span id="suburb-token">the Redlands</span>?</h1>
+        <p class="hero__lead">Appraisals right across the Redlands.</p>
+        <p class="hero__suburbs">Cleveland &middot; Capalaba &middot; Victoria Point &middot; Redland Bay &middot; Thornlands</p>
+        <a class="btn btn--gold" href="#appraisal-form" data-cta="hero">Get my free appraisal</a>
+        <p class="hero__reassure">Takes 30 seconds &middot; No obligation &middot; A local expert, not a call centre</p>
+      </div>
+      <!-- RIGHT: portrait. Drop assets/greg-portrait.jpg into assets/ (vertical headshot). -->
+      <figure class="hero__figure">
+        <img src="assets/greg-portrait.jpg" alt="Greg Leigh, Redlands property specialist with Queensland Sotheby&rsquo;s International Realty"
+             class="hero__portrait" width="520" height="640" loading="eager"
+             onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'hero__portrait-ph',textContent:'Add assets/greg-portrait.jpg'}))" />
+      </figure>
     </div>
   </section>
 
@@ -102,8 +111,8 @@
       </div>
       <div class="trust__divider" aria-hidden="true"></div>
       <div class="trust__stat">
-        <p class="trust__stat-num">Cleveland &middot; Wellington Point &middot; Ormiston</p>
-        <p class="trust__stat-label">Homes appraised across the bayside Redlands</p>
+        <p class="trust__stat-num">Cleveland &middot; Capalaba &middot; Victoria Point &middot; Redland Bay &middot; Thornlands</p>
+        <p class="trust__stat-label">Appraisals right across the Redlands</p>
       </div>
     </div>
   </section>
