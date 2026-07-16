@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"^    [a-zA-Z_]*: {$\" /Users/gregleigh/datadungeon-1/src/integrations/supabase/types.ts)",
+      "Bash(grep -n \"^\\\\s\\\\{6\\\\}[a-z_]*: {$\" /Users/gregleigh/datadungeon-1/src/integrations/supabase/types.ts)"
+    ]
+  }
+}

@@ -75,6 +75,12 @@ export function composeAgentAlertSms(ctx: SellerLeadContext): string {
   return `🔔 New appraisal lead: ${name}, ${addr}, timeline ${timeline}. Ph ${phone}. Approve reply in CRM.`;
 }
 
+/** Instant acknowledgement SMS sent to the prospect automatically. */
+export function composeProspectAutoAckSms(ctx: SellerLeadContext): string {
+  const first = ctx.firstName || "there";
+  return `Hi ${first}, thanks for requesting a property appraisal — it's Greg Leigh from Queensland Sotheby's International Realty. I'll be in touch shortly to arrange a time. Reply STOP to opt out.`;
+}
+
 /** The pre-written reply Greg approves and sends to the lead (one tap). */
 export function composeLeadReplyDraft(ctx: SellerLeadContext, bookingLink: string | null): string {
   const first = ctx.firstName || "there";
@@ -247,17 +253,34 @@ export async function runSellerLeadAutomation(
       const to = toE164Australia(agentMobile);
       const msg = composeAgentAlertSms(ctx);
       const batch = await postMobileMessageBatch(creds, [{ to, message: msg }]);
-      const first = (batch.data?.results as Array<{ message_id?: string; status?: string }> | undefined)?.[0];
-      result.agentAlertSms = batch.ok ? "sent" : "failed";
+      const first = (batch.data?.results as Array<{ message_id?: string; status?: string; error?: string }> | undefined)?.[0];
+      // Check actual delivery status from Mobile Message response, not just HTTP status
+      // Mobile Message returns multiple success statuses: success, sent, queued, delivered, ok
+      const mmDelivered = (status: string | undefined): boolean => {
+        return ["sent", "success", "queued", "delivered", "ok"].includes(status ?? "");
+      };
+      const isDelivered = batch.ok && mmDelivered(first?.status);
+      result.agentAlertSms = isDelivered ? "sent" : "failed";
+
+      // Build error message with nested error details if available
+      let errorMsg: string | null = null;
+      if (!isDelivered) {
+        if (first?.error) {
+          errorMsg = `Mobile Message: ${first.error}`;
+        } else {
+          errorMsg = `Mobile Message: ${first?.status ?? `HTTP ${batch.status}`}`;
+        }
+      }
+
       await logOutboundSms(supabase, {
         user_id: ctx.ownerUserId,
         contact_id: ctx.contactId,
         to_phone: to,
         body: msg,
         provider: "mobile_message",
-        provider_message_id: first?.message_id ?? first?.status ?? null,
-        status: batch.ok ? "sent" : "failed",
-        error: batch.ok ? null : `Mobile Message HTTP ${batch.status}`,
+        provider_message_id: first?.message_id ?? null,
+        status: isDelivered ? "sent" : "failed",
+        error: errorMsg,
       });
     } else {
       result.notes.push(
@@ -267,6 +290,42 @@ export async function runSellerLeadAutomation(
   } catch (e) {
     result.agentAlertSms = "failed";
     result.notes.push(`agent alert error: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // --- Action 1b: instant acknowledgement SMS to the prospect ---------
+  try {
+    if (ctx.phone) {
+      const to = toE164Australia(ctx.phone);
+      const msg = composeProspectAutoAckSms(ctx);
+      const batch = await postMobileMessageBatch(creds || { apiUser: "", apiPassword: "", sender: "" }, [{ to, message: msg }]);
+      const first = (batch.data?.results as Array<{ message_id?: string; status?: string; error?: string }> | undefined)?.[0];
+      const mmDelivered = (status: string | undefined): boolean => {
+        return ["sent", "success", "queued", "delivered", "ok"].includes(status ?? "");
+      };
+      const isDelivered = batch.ok && mmDelivered(first?.status);
+      
+      let errorMsg: string | null = null;
+      if (!isDelivered) {
+        if (first?.error) {
+          errorMsg = `Mobile Message: ${first.error}`;
+        } else {
+          errorMsg = `Mobile Message: ${first?.status ?? `HTTP ${batch.status}`}`;
+        }
+      }
+
+      await logOutboundSms(supabase, {
+        user_id: ctx.ownerUserId,
+        contact_id: ctx.contactId,
+        to_phone: to,
+        body: msg,
+        provider: "mobile_message",
+        provider_message_id: first?.message_id ?? null,
+        status: isDelivered ? "sent" : "failed",
+        error: errorMsg,
+      });
+    }
+  } catch (e) {
+    result.notes.push(`prospect ack error: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // Also drop an urgent in-app notification so the lead is impossible to miss.
