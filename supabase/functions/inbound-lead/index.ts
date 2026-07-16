@@ -254,6 +254,7 @@ Deno.serve(async (req) => {
           firstName,
           lastName,
           phone,
+          email,
           address: propertyInterest,
           timeline,
           source,
