@@ -1,7 +1,7 @@
 /* =========================================================================
-   Seller appraisal funnel — step logic + submit to the Netlify proxy.
-   Vanilla JS, no framework. The proxy (/.netlify/functions/lead-intake) injects
-   the webhook secret + owner_user_id server-side; the browser never sees them.
+   Seller appraisal funnel — two-path (online / in-person), expanded questions.
+   Vanilla JS, no framework. Posts to the Netlify proxy (/.netlify/functions/
+   lead-intake), which injects the webhook secret + owner_user_id server-side.
    ========================================================================= */
 (function () {
   "use strict";
@@ -13,53 +13,58 @@
   var TOTAL = steps.length;
   var current = 0;
   var initiateFired = false;
+  var appraisalType = ""; // "online" | "in_person"
 
   var progressFill = document.getElementById("progress-fill");
   var progressStep = document.getElementById("progress-step");
+  var progressTotal = document.getElementById("progress-total");
   var errorEl = document.getElementById("form-error");
   var submitBtn = document.getElementById("submit-btn");
 
-  document.getElementById("year").textContent = String(new Date().getFullYear());
+  var yearEl = document.getElementById("year");
+  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+  if (progressTotal) progressTotal.textContent = String(TOTAL);
 
   // ---- Navigation -------------------------------------------------------
-  function showStep(i) {
-    steps.forEach(function (s, idx) {
-      s.classList.toggle("is-active", idx === i);
-    });
+  function showStep(i, skipScroll) {
+    steps.forEach(function (s, idx) { s.classList.toggle("is-active", idx === i); });
     current = i;
     var pct = ((i + 1) / TOTAL) * 100;
     if (progressFill) progressFill.style.width = pct + "%";
     if (progressStep) progressStep.textContent = String(i + 1);
-    // Focus first control on the newly shown step
-    var firstField = steps[i].querySelector("input, select, button");
-    if (firstField) {
-      try { firstField.focus({ preventScroll: true }); } catch (e) { firstField.focus(); }
+    var firstField = steps[i].querySelector("input, select, textarea, button[data-path]");
+    if (firstField) { try { firstField.focus({ preventScroll: true }); } catch (e) { firstField.focus(); } }
+    // Never auto-scroll on first paint (avoids the mobile "lands halfway down" issue).
+    if (!skipScroll) {
+      var anchor = document.getElementById("appraisal-form");
+      if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    document.getElementById("appraisal-form").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // Validate the CURRENT step by inspecting its contents (order-independent).
   function validateStep(i) {
     clearError();
     var step = steps[i];
-    // Step 1: address required
-    if (i === 0) {
-      var addr = form.address.value.trim();
-      if (addr.length < 4) { markInvalid(form.address); return false; }
+
+    // Address step
+    var addr = step.querySelector("#address");
+    if (addr) {
+      if (addr.value.trim().length < 4) { markInvalid(addr); showError("Please enter the property address."); return false; }
     }
-    // Step 2: timeline required
-    if (i === 1) {
-      if (!form.querySelector('input[name="timeline"]:checked')) {
-        showError("Please pick a timeline so I can tailor your appraisal.");
-        return false;
+    // Timeframe step (required radio group)
+    var tl = step.querySelector('input[name="timeline"]');
+    if (tl) {
+      if (!step.querySelector('input[name="timeline"]:checked')) {
+        showError("Please pick a timeframe so I can tailor your appraisal."); return false;
       }
     }
-    // Step 3: optional — always valid
-    // Step 4: contact fields
-    if (i === 3) {
+    // Contact step
+    var fn = step.querySelector("#first_name");
+    if (fn) {
       var ok = true;
       ["first_name", "last_name", "email", "phone"].forEach(function (n) {
         var el = form[n];
-        if (!el.value.trim()) { markInvalid(el); ok = false; }
+        if (el && !el.value.trim()) { markInvalid(el); ok = false; }
       });
       if (ok && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.value.trim())) {
         markInvalid(form.email); showError("Please enter a valid email address."); ok = false;
@@ -70,6 +75,7 @@
       if (!ok && !errorEl.textContent) showError("Please complete the highlighted fields.");
       return ok;
     }
+    // All other steps are optional
     return true;
   }
 
@@ -77,9 +83,21 @@
     el.classList.add("is-invalid");
     el.addEventListener("input", function h() { el.classList.remove("is-invalid"); el.removeEventListener("input", h); });
   }
-  function showError(msg) { errorEl.textContent = msg; errorEl.hidden = false; }
-  function clearError() { errorEl.textContent = ""; errorEl.hidden = true; }
+  function showError(msg) { if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; } }
+  function clearError() { if (errorEl) { errorEl.textContent = ""; errorEl.hidden = true; } }
 
+  // ---- Path choice cards (step 1) --------------------------------------
+  form.querySelectorAll("[data-path]").forEach(function (card) {
+    card.addEventListener("click", function () {
+      appraisalType = card.getAttribute("data-path") || "";
+      form.querySelectorAll("[data-path]").forEach(function (c) { c.classList.remove("is-selected"); });
+      card.classList.add("is-selected");
+      fireInitiate();
+      setTimeout(function () { showStep(Math.min(current + 1, TOTAL - 1)); }, 160);
+    });
+  });
+
+  // ---- Next / Prev ------------------------------------------------------
   form.addEventListener("click", function (e) {
     var next = e.target.closest("[data-next]");
     var prev = e.target.closest("[data-prev]");
@@ -87,86 +105,125 @@
     if (prev) { showStep(Math.max(current - 1, 0)); }
   });
 
-  // Fire Meta Pixel InitiateCheckout on first interaction (form start)
+  // Meta Pixel InitiateCheckout on first interaction
   function fireInitiate() {
     if (initiateFired) return;
     initiateFired = true;
     if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout");
   }
-  form.addEventListener("input", fireInitiate, { once: false });
+  form.addEventListener("input", fireInitiate);
   form.addEventListener("focusin", fireInitiate);
 
-  // Timeline choice can auto-advance for a snappy wizard feel
+  // Timeframe auto-advance for a snappy wizard feel
   form.querySelectorAll('input[name="timeline"]').forEach(function (el) {
     el.addEventListener("change", function () {
-      setTimeout(function () { if (current === 1) showStep(2); }, 220);
+      var stepIdx = steps.indexOf(el.closest(".step"));
+      setTimeout(function () { if (current === stepIdx) showStep(Math.min(stepIdx + 1, TOTAL - 1)); }, 220);
     });
   });
 
-  // ---- Compose the qualification notes string -------------------------
-  function composeNotes(data) {
-    var parts = ["Valuation LP"];
-    if (data.timeline) parts.push("Timeline: " + data.timeline);
-    var typeBits = [];
-    if (data.ptype) typeBits.push(data.ptype);
-    if (data.beds) typeBits.push(data.beds + "bed");
-    if (typeBits.length) parts.push("Type: " + typeBits.join(" "));
-    if (data.address) parts.push("Address: " + data.address);
+  // ---- Helpers to read fields ------------------------------------------
+  function val(name) { var el = form[name]; return el && typeof el.value === "string" ? el.value.trim() : ""; }
+  function radio(name) { var el = form.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ""; }
+  function checks(name) {
+    return Array.prototype.slice
+      .call(form.querySelectorAll('input[name="' + name + '"]:checked'))
+      .map(function (el) { return el.value; });
+  }
+
+  // ---- Compose the qualification notes string --------------------------
+  function composeNotes(d) {
+    var parts = [d.appraisal_type === "in_person" ? "In-person appraisal" : "Online appraisal"];
+    if (d.timeline) parts.push("Timeline: " + d.timeline);
+    var cfg = [];
+    if (d.property_type) cfg.push(d.property_type);
+    if (d.bedrooms) cfg.push(d.bedrooms + "bd");
+    if (d.bathrooms) cfg.push(d.bathrooms + "ba");
+    if (d.car_spaces) cfg.push(d.car_spaces + "car");
+    if (d.storeys) cfg.push(d.storeys);
+    if (cfg.length) parts.push("Property: " + cfg.join(" "));
+    if (d.land_size) parts.push("Land: " + d.land_size);
+    if (d.construction) parts.push("Construction: " + d.construction);
+    if (d.era) parts.push("Era: " + d.era);
+    if (d.condition) parts.push("Condition: " + d.condition);
+    if (d.renovations && d.renovations.length) parts.push("Renos: " + d.renovations.join(", "));
+    if (d.features && d.features.length) parts.push("Features: " + d.features.join(", "));
+    if (d.occupancy) parts.push("Currently: " + d.occupancy);
+    if (d.extra_notes) parts.push("Notes: " + d.extra_notes);
+    if (d.address) parts.push("Address: " + d.address);
     return parts.join(" | ");
   }
 
   // ---- Submit -----------------------------------------------------------
   form.addEventListener("submit", function (e) {
     e.preventDefault();
-    if (!validateStep(3)) return;
+    if (!validateStep(current)) return;
 
     var honeypot = (form.company && form.company.value) || "";
-    if (honeypot.trim() !== "") {
-      // Bot: pretend success, do not POST.
-      window.location.href = "thankyou.html";
-      return;
-    }
+    if (honeypot.trim() !== "") { window.location.href = "thankyou.html"; return; }
 
-    var data = {
-      first_name: form.first_name.value.trim(),
-      last_name: form.last_name.value.trim(),
-      email: form.email.value.trim(),
-      phone: form.phone.value.trim(),
-      address: form.address.value.trim(),
-      timeline: (form.querySelector('input[name="timeline"]:checked') || {}).value || "",
-      ptype: (form.querySelector('input[name="ptype"]:checked') || {}).value || "",
-      beds: form.beds.value || "",
+    var d = {
+      appraisal_type: appraisalType || "online",
+      first_name: val("first_name"),
+      last_name: val("last_name"),
+      email: val("email"),
+      phone: val("phone"),
+      address: val("address"),
+      timeline: radio("timeline"),
+      property_type: radio("ptype"),
+      bedrooms: val("beds"),
+      bathrooms: val("baths"),
+      car_spaces: val("cars"),
+      storeys: radio("storeys"),
+      land_size: val("land_size"),
+      construction: val("construction"),
+      era: val("era"),
+      condition: val("condition"),
+      occupancy: radio("occupancy"),
+      renovations: checks("renovations"),
+      features: checks("features"),
+      extra_notes: val("extra_notes"),
       company: honeypot
     };
 
     var payload = {
-      first_name: data.first_name,
-      last_name: data.last_name,
-      email: data.email,
-      phone: data.phone,
-      property_interest: data.address,
-      timeline: data.timeline,
-      notes: composeNotes(data),
+      first_name: d.first_name,
+      last_name: d.last_name,
+      email: d.email,
+      phone: d.phone,
+      property_interest: d.address,
+      timeline: d.timeline,
+      notes: composeNotes(d),
       source: "meta_valuation_lp",
-      company: data.company // honeypot forwarded for server-side check
+      appraisal_type: d.appraisal_type,
+      property_type: d.property_type,
+      bedrooms: d.bedrooms,
+      bathrooms: d.bathrooms,
+      car_spaces: d.car_spaces,
+      storeys: d.storeys,
+      land_size: d.land_size,
+      construction: d.construction,
+      era: d.era,
+      condition: d.condition,
+      occupancy: d.occupancy,
+      renovations: d.renovations,
+      features: d.features,
+      company: d.company
     };
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Sending…";
     clearError();
 
+    if (typeof window.fbq === "function") window.fbq("track", "Lead");
+
     fetch("/.netlify/functions/lead-intake", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json().catch(function () { return {}; });
-      })
-      .then(function () {
-        window.location.href = "thankyou.html";
-      })
+      .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json().catch(function () { return {}; }); })
+      .then(function () { window.location.href = "thankyou.html"; })
       .catch(function () {
         submitBtn.disabled = false;
         submitBtn.textContent = "Get my free appraisal";
@@ -174,8 +231,7 @@
       });
   });
 
-  // ---- Optional Google Places autocomplete ----------------------------
-  // Wired to the Google Maps callback if the script tag in index.html is enabled.
+  // ---- Optional Google Places autocomplete -----------------------------
   window.initPlaces = function () {
     if (!(window.google && google.maps && google.maps.places)) return;
     var input = document.getElementById("address");
@@ -191,5 +247,5 @@
     });
   };
 
-  showStep(0);
+  showStep(0, true);
 })();
