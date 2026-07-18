@@ -67,6 +67,11 @@ exports.handler = async (event) => {
   }
 
   const str = (v) => (typeof v === "string" ? v.trim() : "");
+  const arr = (v) =>
+    Array.isArray(v)
+      ? v.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim())
+      : [];
+
   const first_name = str(body.first_name);
   const last_name = str(body.last_name);
   const email = str(body.email);
@@ -74,6 +79,21 @@ exports.handler = async (event) => {
   const address = str(body.property_interest);
   const timeline = str(body.timeline);
   const notes = str(body.notes);
+
+  // Expanded property detail (all optional) — forwarded through to the edge function.
+  const appraisal_type = str(body.appraisal_type); // "online" | "in_person"
+  const property_type = str(body.property_type);
+  const bedrooms = str(body.bedrooms);
+  const bathrooms = str(body.bathrooms);
+  const car_spaces = str(body.car_spaces);
+  const storeys = str(body.storeys);
+  const land_size = str(body.land_size);
+  const construction = str(body.construction);
+  const era = str(body.era);
+  const condition = str(body.condition);
+  const occupancy = str(body.occupancy);
+  const renovations = arr(body.renovations);
+  const features = arr(body.features);
 
   // Required-field validation (mirror the landing page).
   if (!first_name || !last_name) {
@@ -111,6 +131,20 @@ exports.handler = async (event) => {
     timeline: timeline || undefined,
     notes: notes || undefined, // composed qualification string
     source,
+    // Expanded appraisal detail (only sent when present):
+    appraisal_type: appraisal_type || undefined,
+    property_type: property_type || undefined,
+    bedrooms: bedrooms || undefined,
+    bathrooms: bathrooms || undefined,
+    car_spaces: car_spaces || undefined,
+    storeys: storeys || undefined,
+    land_size: land_size || undefined,
+    construction: construction || undefined,
+    era: era || undefined,
+    condition: condition || undefined,
+    occupancy: occupancy || undefined,
+    renovations: renovations.length ? renovations : undefined,
+    features: features.length ? features : undefined,
   };
 
   try {
