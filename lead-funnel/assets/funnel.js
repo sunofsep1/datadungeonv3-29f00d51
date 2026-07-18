@@ -34,6 +34,9 @@
     if (progressStep) progressStep.textContent = String(i + 1);
     var firstField = steps[i].querySelector("input, select, textarea, button[data-path]");
     if (firstField) { try { firstField.focus({ preventScroll: true }); } catch (e) { firstField.focus(); } }
+    // Wire Google autocomplete only once the address step is visible (Google
+    // mis-positions the suggestions dropdown if initialised on a hidden field).
+    if (steps[i].querySelector("#address")) wireAutocomplete();
     // Never auto-scroll on first paint (avoids the mobile "lands halfway down" issue).
     if (!skipScroll) {
       var anchor = document.getElementById("appraisal-form");
@@ -241,11 +244,17 @@
       });
   });
 
-  // ---- Optional Google Places autocomplete -----------------------------
-  window.initPlaces = function () {
-    if (!(window.google && google.maps && google.maps.places)) return;
+  // ---- Google Places autocomplete --------------------------------------
+  // The address field lives on step 2 (hidden at first paint). Google mis-positions
+  // the suggestions dropdown if the Autocomplete is created while the input is hidden,
+  // so we wire it lazily — when the address step becomes visible / the field is focused.
+  var acWired = false;
+  function wireAutocomplete() {
+    if (acWired) return;
+    if (!(window.google && google.maps && google.maps.places && google.maps.places.Autocomplete)) return;
     var input = document.getElementById("address");
     if (!input) return;
+    if (input.offsetParent === null) return; // still hidden — wait until its step is visible
     var ac = new google.maps.places.Autocomplete(input, {
       componentRestrictions: { country: "au" },
       fields: ["formatted_address"],
@@ -269,7 +278,15 @@
       }
       input.value = fa;
     });
-  };
+    acWired = true;
+  }
+  // Google Maps (loaded via the site's Places snippet) calls this callback when
+  // the library is ready. Wiring itself happens on step-show / focus, above.
+  window.initPlaces = function () { wireAutocomplete(); };
+  (function () {
+    var a = document.getElementById("address");
+    if (a) a.addEventListener("focus", wireAutocomplete, false);
+  })();
 
   showStep(0, true);
 })();
