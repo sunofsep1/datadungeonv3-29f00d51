@@ -194,8 +194,17 @@
         <!-- STEP 2 — Address -->
         <fieldset class="step" data-step="2">
           <legend class="step__q">What&rsquo;s the property address?</legend>
-          <p class="step__hint">Start typing and select your address.</p>
-          <input type="text" id="address" name="address" class="field" placeholder="e.g. 12 Shore Street, Cleveland QLD" autocomplete="street-address" />
+          <p class="step__hint">Start typing and select your address. Add your unit number if it applies.</p>
+          <div class="select-grid select-grid--2" style="grid-template-columns:1fr 2.6fr">
+            <div>
+              <label class="field-mini" for="unit">Unit / Apt no.</label>
+              <input type="text" id="unit" name="unit" class="field" placeholder="e.g. 33" autocomplete="off" inputmode="text" />
+            </div>
+            <div>
+              <label class="field-mini" for="address">Street address</label>
+              <input type="text" id="address" name="address" class="field" placeholder="e.g. 30-46 Edina Street, Thornlands QLD" autocomplete="street-address" />
+            </div>
+          </div>
           <div class="step__nav">
             <button type="button" class="btn btn--ghost" data-prev>Back</button>
             <button type="button" class="btn btn--gold" data-next>Continue</button>
