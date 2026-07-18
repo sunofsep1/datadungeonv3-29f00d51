@@ -130,6 +130,16 @@
       .call(form.querySelectorAll('input[name="' + name + '"]:checked'))
       .map(function (el) { return el.value; });
   }
+  // Combine the dedicated unit field with the street address (units get dropped
+  // by Google autocomplete, so we re-attach them here). Avoids double-prefixing.
+  function composeAddress() {
+    var addr = val("address");
+    var unit = val("unit");
+    if (!unit) return addr;
+    var esc = unit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp("^\\s*" + esc + "\\s*[\\/,]").test(addr)) return addr;
+    return unit + "/" + addr;
+  }
 
   // ---- Compose the qualification notes string --------------------------
   function composeNotes(d) {
@@ -168,7 +178,7 @@
       last_name: val("last_name"),
       email: val("email"),
       phone: val("phone"),
-      address: val("address"),
+      address: composeAddress(),
       timeline: radio("timeline"),
       property_type: radio("ptype"),
       bedrooms: val("beds"),
@@ -242,8 +252,22 @@
       types: ["address"]
     });
     ac.addListener("place_changed", function () {
+      var typed = input.value;
       var p = ac.getPlace();
-      if (p && p.formatted_address) input.value = p.formatted_address;
+      if (!(p && p.formatted_address)) return;
+      var fa = p.formatted_address;
+      // If the user typed a leading unit (e.g. "33/…" or "33,…") that Google
+      // dropped, re-attach it. Only "/" or "," count as unit separators — never
+      // "-" (that's a street range like 30-46). Also mirror it into the unit field.
+      var m = typed.match(/^\s*(?:unit\s*|u\s*|apt\s*|apartment\s*)?(\d+[a-zA-Z]?)\s*[\/,]\s*/i);
+      if (m) {
+        var u = m[1];
+        var esc = u.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        if (!new RegExp("^\\s*" + esc + "\\s*[\\/,]").test(fa)) fa = u + "/" + fa;
+        var unitEl = document.getElementById("unit");
+        if (unitEl && !unitEl.value.trim()) unitEl.value = u;
+      }
+      input.value = fa;
     });
   };
 
