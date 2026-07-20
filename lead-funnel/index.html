@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>What's Your Home Worth? | Free Appraisal — Greg Leigh, Redlands</title>
-  <meta name="description" content="Get a free, no-obligation property appraisal from Greg Leigh, your local Redlands specialist with Queensland Sotheby's International Realty. Start online in 2 minutes, or book an in-person appraisal." />
+  <meta name="description" content="Get a free, no-obligation property appraisal from Greg Leigh, your local Redlands specialist with Queensland Sotheby's International Realty. Start online in 1 minute, or book an in-person appraisal." />
   <meta name="robots" content="index, follow" />
 
   <!-- Open Graph -->
@@ -115,7 +115,7 @@
       <div class="hero__copy">
         <p class="hero__eyebrow">GREG LEIGH &middot; YOUR LOCAL REDLANDS SPECIALIST</p>
         <h1>What&rsquo;s your home worth in <span id="suburb-token">the Redlands</span>?</h1>
-        <p class="hero__lead">Two ways to find out &mdash; online in 2 minutes, or in person.</p>
+        <p class="hero__lead">Two ways to find out &mdash; online in 1 minute, or in person.</p>
         <p class="hero__suburbs">Cleveland &middot; Capalaba &middot; Victoria Point &middot; Redland Bay &middot; Thornlands</p>
         <a class="btn btn--gold" href="#appraisal-form" data-cta="hero">Get my free appraisal</a>
         <p class="hero__reassure">No obligation &middot; A local expert, not a call centre</p>
@@ -163,7 +163,7 @@
 
       <div class="progress" aria-hidden="true">
         <div class="progress__bar"><span class="progress__fill" id="progress-fill"></span></div>
-        <p class="progress__label"><span id="progress-step">1</span> of <span id="progress-total">6</span></p>
+        <p class="progress__label"><span id="progress-step">1</span> of <span id="progress-total">5</span></p>
       </div>
 
       <form id="appraisal" novalidate autocomplete="on">
@@ -174,7 +174,7 @@
         <!-- STEP 1 — Path choice -->
         <fieldset class="step is-active" data-step="1">
           <legend class="step__q">How would you like your appraisal?</legend>
-          <p class="step__hint">Start online in about 2 minutes, or book me to visit in person.</p>
+          <p class="step__hint">Start online in about 1 minute, or book me to visit in person.</p>
           <div class="path-grid">
             <button type="button" class="path-card" data-path="online">
               <span class="path-card__title">Online appraisal</span>
@@ -211,40 +211,45 @@
           </div>
         </fieldset>
 
-        <!-- STEP 3 — Timeframe -->
+        <!-- STEP 3 — Timeframe (dropdown) -->
         <fieldset class="step" data-step="3">
           <legend class="step__q">When are you thinking of selling?</legend>
           <p class="step__hint">No wrong answer &mdash; it just helps me tailor the appraisal.</p>
-          <div class="choice-grid" role="radiogroup" aria-label="Selling timeframe">
-            <label class="choice"><input type="radio" name="timeline" value="Ready now" /><span>Ready now</span></label>
-            <label class="choice"><input type="radio" name="timeline" value="0-3 months" /><span>0&ndash;3 months</span></label>
-            <label class="choice"><input type="radio" name="timeline" value="3-6 months" /><span>3&ndash;6 months</span></label>
-            <label class="choice"><input type="radio" name="timeline" value="6-12 months" /><span>6&ndash;12 months</span></label>
-            <label class="choice"><input type="radio" name="timeline" value="Just curious" /><span>Just curious</span></label>
-          </div>
+          <label class="field-mini" for="timeline">Timeframe</label>
+          <select id="timeline" name="timeline" class="field">
+            <option value="">&mdash; Select &mdash;</option>
+            <option value="Ready now">Ready now</option>
+            <option value="0-3 months">0&ndash;3 months</option>
+            <option value="3-6 months">3&ndash;6 months</option>
+            <option value="6-12 months">6&ndash;12 months</option>
+            <option value="Just curious">Just curious</option>
+          </select>
           <div class="step__nav">
             <button type="button" class="btn btn--ghost" data-prev>Back</button>
+            <button type="button" class="btn btn--gold" data-next>Continue</button>
           </div>
         </fieldset>
 
-        <!-- STEP 4 — About the property -->
+        <!-- STEP 4 — Property basics (dropdowns only) -->
         <fieldset class="step" data-step="4">
           <legend class="step__q">Tell me about the property</legend>
-          <p class="step__hint">The more you share, the sharper your estimate. Skip anything you&rsquo;re unsure of.</p>
-
-          <label class="field-label">Property type</label>
-          <div class="choice-grid choice-grid--3" role="radiogroup" aria-label="Property type">
-            <label class="choice"><input type="radio" name="ptype" value="House" /><span>House</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Townhouse" /><span>Townhouse</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Unit/Apartment" /><span>Unit / Apt</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Duplex/Semi" /><span>Duplex / Semi</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Villa" /><span>Villa</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Dual living" /><span>Dual living</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Acreage/Lifestyle" /><span>Acreage</span></label>
-            <label class="choice"><input type="radio" name="ptype" value="Vacant land" /><span>Vacant land</span></label>
-          </div>
+          <p class="step__hint">Just the basics &mdash; pick from the dropdowns. Skip anything you&rsquo;re unsure of.</p>
 
           <div class="select-grid">
+            <div>
+              <label class="field-mini" for="ptype">Property type</label>
+              <select id="ptype" name="ptype" class="field">
+                <option value="">&mdash;</option>
+                <option value="House">House</option>
+                <option value="Townhouse">Townhouse</option>
+                <option value="Unit/Apartment">Unit / Apartment</option>
+                <option value="Duplex/Semi">Duplex / Semi</option>
+                <option value="Villa">Villa</option>
+                <option value="Dual living">Dual living</option>
+                <option value="Acreage/Lifestyle">Acreage / Lifestyle</option>
+                <option value="Vacant land">Vacant land</option>
+              </select>
+            </div>
             <div>
               <label class="field-mini" for="beds">Bedrooms</label>
               <select id="beds" name="beds" class="field">
@@ -260,20 +265,6 @@
                 <option value="2">2</option><option value="3">3</option><option value="4+">4+</option>
               </select>
             </div>
-            <div>
-              <label class="field-mini" for="cars">Car spaces</label>
-              <select id="cars" name="cars" class="field">
-                <option value="">&mdash;</option><option value="0">0</option><option value="1">1</option>
-                <option value="2">2</option><option value="3">3</option><option value="4+">4+</option>
-              </select>
-            </div>
-          </div>
-
-          <label class="field-label">Storeys</label>
-          <div class="choice-grid choice-grid--3" role="radiogroup" aria-label="Storeys">
-            <label class="choice"><input type="radio" name="storeys" value="Single" /><span>Single</span></label>
-            <label class="choice"><input type="radio" name="storeys" value="Double" /><span>Double</span></label>
-            <label class="choice"><input type="radio" name="storeys" value="Three+" /><span>Three+</span></label>
           </div>
 
           <div class="step__nav">
@@ -282,79 +273,8 @@
           </div>
         </fieldset>
 
-        <!-- STEP 5 — Specifics -->
+        <!-- STEP 5 — Contact -->
         <fieldset class="step" data-step="5">
-          <legend class="step__q">A few specifics</legend>
-          <p class="step__hint">Optional &mdash; these help me match the right comparable sales.</p>
-
-          <div class="select-grid select-grid--2">
-            <div>
-              <label class="field-mini" for="land_size">Land size (approx)</label>
-              <input type="text" id="land_size" name="land_size" class="field" placeholder="e.g. 610 m² / not sure" />
-            </div>
-            <div>
-              <label class="field-mini" for="construction">Construction</label>
-              <select id="construction" name="construction" class="field">
-                <option value="">&mdash;</option><option>Brick</option><option>Rendered</option>
-                <option>Weatherboard/Timber</option><option>Hardiplank/Clad</option><option>Block/Besser</option><option>Other</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-mini" for="era">Age / era</label>
-              <select id="era" name="era" class="field">
-                <option value="">&mdash;</option><option>New (0–5 yrs)</option><option>Modern (5–20)</option>
-                <option>Established (20–40)</option><option>Original/Character (40+)</option><option>Not sure</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-mini" for="condition">Condition</label>
-              <select id="condition" name="condition" class="field">
-                <option value="">&mdash;</option><option>Original</option><option>Tidy &amp; maintained</option>
-                <option>Partly updated</option><option>Fully renovated</option><option>Near-new</option>
-              </select>
-            </div>
-          </div>
-
-          <label class="field-label">Renovations done</label>
-          <div class="choice-grid choice-grid--3">
-            <label class="choice"><input type="checkbox" name="renovations" value="Kitchen" /><span>Kitchen</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Bathroom(s)" /><span>Bathroom(s)</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Extension" /><span>Extension</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Pool" /><span>Pool</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Solar" /><span>Solar</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Flooring" /><span>Flooring</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Repaint" /><span>Repaint</span></label>
-            <label class="choice"><input type="checkbox" name="renovations" value="Landscaping" /><span>Landscaping</span></label>
-          </div>
-
-          <label class="field-label">Standout features</label>
-          <div class="choice-grid choice-grid--3">
-            <label class="choice"><input type="checkbox" name="features" value="Water views" /><span>Water views</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Waterfront" /><span>Waterfront</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Corner block" /><span>Corner block</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Dual living" /><span>Dual living</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Shed/workshop" /><span>Shed / workshop</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Air-conditioning" /><span>Air-con</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Side access" /><span>Side access</span></label>
-            <label class="choice"><input type="checkbox" name="features" value="Elevated/breezes" /><span>Elevated</span></label>
-          </div>
-
-          <label class="field-label">Currently</label>
-          <p class="field-mini" style="margin:-.15rem 0 .45rem;font-weight:400;color:#6b7280">Selling with a tenant in place? No problem &mdash; I&rsquo;ll coordinate access around your tenants.</p>
-          <div class="choice-grid choice-grid--3" role="radiogroup" aria-label="Occupancy">
-            <label class="choice"><input type="radio" name="occupancy" value="Owner-occupied" /><span>Owner-occupied</span></label>
-            <label class="choice"><input type="radio" name="occupancy" value="Tenanted" /><span>Tenanted</span></label>
-            <label class="choice"><input type="radio" name="occupancy" value="Vacant" /><span>Vacant</span></label>
-          </div>
-
-          <div class="step__nav">
-            <button type="button" class="btn btn--ghost" data-prev>Back</button>
-            <button type="button" class="btn btn--gold" data-next>Continue</button>
-          </div>
-        </fieldset>
-
-        <!-- STEP 6 — Contact -->
-        <fieldset class="step" data-step="6">
           <legend class="step__q">Where should I send your appraisal?</legend>
           <p class="step__hint">I&rsquo;ll personally review your details and be in touch &mdash; no call centres.</p>
           <div class="field-row">
@@ -371,9 +291,6 @@
           <input type="email" id="email" name="email" class="field" autocomplete="email" inputmode="email" required />
           <label class="field-label" for="phone">Mobile</label>
           <input type="tel" id="phone" name="phone" class="field" autocomplete="tel" inputmode="tel" placeholder="04XX XXX XXX" required />
-
-          <label class="field-label" for="extra_notes">Anything else about the property? (optional)</label>
-          <input type="text" id="extra_notes" name="extra_notes" class="field" placeholder="e.g. recently painted, thinking of selling before spring" />
 
           <p class="form-error" id="form-error" role="alert" hidden></p>
 
