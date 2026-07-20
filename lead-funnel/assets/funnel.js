@@ -54,10 +54,10 @@
     if (addr) {
       if (addr.value.trim().length < 4) { markInvalid(addr); showError("Please enter the property address."); return false; }
     }
-    // Timeframe step (required radio group)
-    var tl = step.querySelector('input[name="timeline"]');
+    // Timeframe step (required dropdown)
+    var tl = step.querySelector('[name="timeline"]');
     if (tl) {
-      if (!step.querySelector('input[name="timeline"]:checked')) {
+      if (!tl.value) {
         showError("Please pick a timeframe so I can tailor your appraisal."); return false;
       }
     }
@@ -117,11 +117,11 @@
   form.addEventListener("input", fireInitiate);
   form.addEventListener("focusin", fireInitiate);
 
-  // Timeframe auto-advance for a snappy wizard feel
-  form.querySelectorAll('input[name="timeline"]').forEach(function (el) {
+  // Timeframe auto-advance for a snappy wizard feel (dropdown)
+  form.querySelectorAll('[name="timeline"]').forEach(function (el) {
     el.addEventListener("change", function () {
       var stepIdx = steps.indexOf(el.closest(".step"));
-      setTimeout(function () { if (current === stepIdx) showStep(Math.min(stepIdx + 1, TOTAL - 1)); }, 220);
+      setTimeout(function () { if (current === stepIdx && el.value) showStep(Math.min(stepIdx + 1, TOTAL - 1)); }, 220);
     });
   });
 
@@ -182,8 +182,8 @@
       email: val("email"),
       phone: val("phone"),
       address: composeAddress(),
-      timeline: radio("timeline"),
-      property_type: radio("ptype"),
+      timeline: val("timeline"),
+      property_type: val("ptype"),
       bedrooms: val("beds"),
       bathrooms: val("baths"),
       car_spaces: val("cars"),
