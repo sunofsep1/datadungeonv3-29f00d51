@@ -18,6 +18,92 @@ import {
 } from "@/hooks/useMessageTemplates";
 import { useCommunicationsHistory } from "@/hooks/useCommunicationsHistory";
 import { TemplateEditorDialog } from "@/components/communications/TemplateEditorDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
+import { useCompose } from "@/components/communications/ComposeProvider";
+
+function NewMessageButton() {
+  const { openEmail, openSms } = useCompose();
+  const { toast } = useToast();
+  const { data: contacts = [] } = useContacts();
+  const [open, setOpen] = useState(false);
+  const [channel, setChannel] = useState<"email" | "sms">("email");
+  const [q, setQ] = useState("");
+
+  const results = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    const list = query
+      ? contacts.filter(
+          (c: any) =>
+            getContactDisplayName(c).toLowerCase().includes(query) ||
+            (c.email ?? "").toLowerCase().includes(query) ||
+            (c.phone ?? "").toLowerCase().includes(query),
+        )
+      : contacts;
+    return list.slice(0, 40);
+  }, [contacts, q]);
+
+  const pick = (c: any) => {
+    const name = getContactDisplayName(c);
+    if (channel === "email") {
+      if (!c.email) {
+        toast({ title: "No email", description: `${name} has no email address.`, variant: "destructive" });
+        return;
+      }
+      openEmail({ to: c.email, contactId: c.id, contactName: name, firstName: c.first_name });
+    } else {
+      if (!c.phone) {
+        toast({ title: "No mobile", description: `${name} has no phone number.`, variant: "destructive" });
+        return;
+      }
+      openSms({ to: c.phone, contactId: c.id, contactName: name, firstName: c.first_name, lastName: c.last_name });
+    }
+    setOpen(false);
+    setQ("");
+  };
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <Plus className="h-4 w-4 mr-1" /> New message
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md bg-popover border-border">
+          <DialogHeader>
+            <DialogTitle>New message</DialogTitle>
+            <DialogDescription>Pick a channel and a contact — the branded composer opens next.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Button variant={channel === "email" ? "default" : "outline"} size="sm" onClick={() => setChannel("email")}>
+                <Mail className="h-4 w-4 mr-1" /> Email
+              </Button>
+              <Button variant={channel === "sms" ? "default" : "outline"} size="sm" onClick={() => setChannel("sms")}>
+                <MessageSquare className="h-4 w-4 mr-1" /> SMS
+              </Button>
+            </div>
+            <Input autoFocus className="bg-input" placeholder="Search contacts…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="max-h-72 overflow-y-auto divide-y divide-border rounded-md border border-border">
+              {results.length === 0 && <p className="p-3 text-sm text-muted-foreground">No contacts found.</p>}
+              {results.map((c: any) => (
+                <button
+                  key={c.id}
+                  onClick={() => pick(c)}
+                  className="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="text-sm font-medium">{getContactDisplayName(c)}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {channel === "email" ? c.email || "no email" : c.phone || "no mobile"}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 function ChannelBadge({ channel }: { channel: string }) {
   const label = channel === "email" ? "Email" : channel === "sms" ? "SMS" : "Email + SMS";
@@ -183,9 +269,12 @@ export default function Communications() {
   return (
     <div className="space-y-4 p-4 sm:p-6 max-w-6xl mx-auto">
       <PageBreadcrumbs items={[{ label: "Communications" }, { label: "Templates & history" }]} />
-      <div>
-        <h1 className="text-2xl font-semibold">Communications</h1>
-        <p className="text-sm text-muted-foreground">Your branded email &amp; SMS templates, and everything you've sent — in one place.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Communications</h1>
+          <p className="text-sm text-muted-foreground">Your branded email &amp; SMS templates, and everything you've sent — in one place.</p>
+        </div>
+        <NewMessageButton />
       </div>
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <SegmentedTabsList className="grid-cols-2 max-w-sm">

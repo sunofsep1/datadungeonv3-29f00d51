@@ -3,6 +3,7 @@ import { HeaderBar } from "./HeaderBar";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { GlobalSearch } from "./GlobalSearch";
 import { LogTouchDialog } from "./LogTouchDialog";
+import { ComposeProvider } from "@/components/communications/ComposeProvider";
 import { DrakoBoot } from "@/components/drako";
 import { layout } from "@/lib/designTokens";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, [sidebarWidth]);
 
   return (
+    <ComposeProvider>
     <div className="zoho-layout flex min-h-dvh w-full max-w-[100vw] overflow-x-clip bg-background">
       <DrakoBoot />
       <SidebarNavigation
@@ -50,5 +52,6 @@ export function MainLayout({ children }: MainLayoutProps) {
         </main>
       </div>
     </div>
+    </ComposeProvider>
   );
 }
