@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildDailyHubItems,
   dailyHubPriorityItems,
@@ -6,6 +6,17 @@ import {
 } from "@/lib/dailyHubSchedule";
 
 const TODAY_NOON = new Date("2026-06-08T12:00:00");
+
+// The scheduler classifies "today"/"overdue"/"coming up" against the real clock, so pin
+// the clock to the reference date to keep these date-based buckets deterministic in CI.
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(TODAY_NOON);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("buildDailyHubItems", () => {
   it("puts a contact task starting today in the today bucket", () => {
