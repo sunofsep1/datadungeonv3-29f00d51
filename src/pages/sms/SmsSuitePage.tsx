@@ -39,12 +39,13 @@ import { useContacts, getContactDisplayName, type ContactWithMeta } from "@/hook
 import {
   useSmsContactLists,
   useSmsListMembers,
-  useSmsUserTemplates,
   useSmsScheduledBroadcasts,
   useSmsOutboundHistory,
   useSmsSuiteMutations,
   invokeProcessScheduledSms,
 } from "@/hooks/useSmsSuite";
+import { useMessageTemplates } from "@/hooks/useMessageTemplates";
+import { Link } from "react-router-dom";
 import { useUserCommunicationSettings } from "@/hooks/useUserCommunicationSettings";
 import { isSignatureUnfilled } from "@/lib/smsTemplateMerge";
 import {
@@ -62,7 +63,14 @@ function getBroadcastUrl() {
 export default function SmsSuitePage() {
   const { toast } = useToast();
   const { data: lists = [] } = useSmsContactLists();
-  const { data: templates = [] } = useSmsUserTemplates();
+  const { data: rawTemplates = [] } = useMessageTemplates("sms");
+  const templates = useMemo(
+    () =>
+      rawTemplates
+        .filter((t) => (t.sms_body ?? "").trim())
+        .map((t) => ({ id: t.id, name: t.name, body: t.sms_body ?? "" })),
+    [rawTemplates],
+  );
   const { data: scheduled = [] } = useSmsScheduledBroadcasts();
   const { data: history = [] } = useSmsOutboundHistory(300);
   const { data: contacts = [] } = useContacts();
@@ -171,7 +179,20 @@ export default function SmsSuitePage() {
           <SmsListsPanel lists={lists} contacts={contacts} mutations={m} />
         </TabsContent>
         <TabsContent value="templates">
-          <SmsTemplatesPanel templates={templates} mutations={m} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Templates now live in Communications</CardTitle>
+              <CardDescription>
+                Your branded email &amp; SMS templates are managed in one place — with live preview. The Send tab above
+                pulls from that same library.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link to="/communications">Open Communications → Templates</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="scheduled">
           <SmsScheduledPanel scheduled={scheduled} mutations={m} />

@@ -43,6 +43,7 @@ const Automations = lazy(() => import("./pages/Automations"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
 const PricingIntelligence = lazy(() => import("./pages/PricingIntelligence"));
 const SmsSuitePage = lazy(() => import("./pages/sms/SmsSuitePage"));
+const Communications = lazy(() => import("./pages/Communications"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -140,6 +141,7 @@ const App = () => (
                 <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
                 <Route path="/invoices" element={<ProtectedRoute><MainLayout><ErrorBoundary><Invoices /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/invoices/:id/print" element={<ProtectedRoute><InvoicePrintPage /></ProtectedRoute>} />
+                <Route path="/communications" element={<ProtectedRoute><MainLayout><ErrorBoundary><Communications /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/settings/*" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />
