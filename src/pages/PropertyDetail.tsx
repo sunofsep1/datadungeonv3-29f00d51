@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { format } from "date-fns";
 import { useProperty, useUpdateProperty, useProperties, formatPropertyAddress } from "@/hooks/useProperties";
+import { InvestmentControls } from "@/components/properties/InvestmentControls";
 import { useContacts, getContactDisplayName } from "@/hooks/useContacts";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useCreateContactPropertyLink } from "@/hooks/useContactPropertyLinks";
@@ -531,6 +532,7 @@ export default function PropertyDetail() {
                   {displayPrice}
                 </Badge>
               ) : null}
+              <InvestmentControls propertyId={property.id} ownershipType={(property as { ownership_type?: string | null }).ownership_type} />
             </div>
           </div>
         </div>

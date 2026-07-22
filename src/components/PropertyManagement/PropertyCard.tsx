@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
+import { InvestmentBadge } from "@/components/properties/InvestmentControls";
 
 interface PropertyCardProps {
   property: PropertyWithLinks;
@@ -83,6 +84,7 @@ export function PropertyCard({
                 {property.property_type}
               </Badge>
             )}
+            <InvestmentBadge ownershipType={(property as { ownership_type?: string | null }).ownership_type} />
             {property.bedrooms != null && (
               <span>{property.bedrooms} bed</span>
             )}

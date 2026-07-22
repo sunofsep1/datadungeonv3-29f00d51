@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/pagination";
 import { PropertyCard } from "./PropertyCard";
 import { formatPropertyAddress, type PropertyWithLinks } from "@/hooks/useProperties";
+import { InvestmentBadge } from "@/components/properties/InvestmentControls";
 import { cn } from "@/lib/utils";
 
 export type PropertyViewMode = "grid" | "list";
@@ -193,6 +194,7 @@ export function PropertyList({
                         <span className="font-medium text-foreground truncate">
                           {formatPropertyAddress(p) || "—"}
                         </span>
+                        <InvestmentBadge ownershipType={(p as { ownership_type?: string | null }).ownership_type} />
                       </div>
                     </td>
                     <td className="py-2 px-3 md:py-2 md:px-4 hidden sm:table-cell">
