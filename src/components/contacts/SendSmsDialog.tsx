@@ -15,6 +15,9 @@ import {
   defaultSmsComposerCustomFields,
   type SmsComposerCustomFields,
 } from "@/components/contacts/SmsProspectingComposer";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMessageTemplates } from "@/hooks/useMessageTemplates";
+import { applyTemplateMerge } from "@/lib/emailBrand";
 
 function getSendSmsUrl() {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -58,11 +61,27 @@ export function SendSmsDialog({
   const [custom, setCustom] = useState<SmsComposerCustomFields>(() => defaultSmsComposerCustomFields());
   const [includeOptOutIfMissing, setIncludeOptOutIfMissing] = useState(true);
   const [sending, setSending] = useState(false);
+  const [templateId, setTemplateId] = useState("");
+  const { data: smsTemplates = [] } = useMessageTemplates("sms");
+
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const t = smsTemplates.find((x) => x.id === id);
+    if (!t?.sms_body) return;
+    setBody(
+      applyTemplateMerge(t.sms_body, {
+        first_name: firstName,
+        last_name: lastName,
+        name: contactName,
+      }),
+    );
+  };
 
   const resetComposition = useCallback(() => {
     setBody("");
     setCustom(defaultSmsComposerCustomFields());
     setIncludeOptOutIfMissing(true);
+    setTemplateId("");
   }, []);
 
   const handleSend = async () => {
@@ -195,6 +214,21 @@ export function SendSmsDialog({
           <div className="space-y-2">
             <Label>To</Label>
             <Input className="bg-input" value={to} disabled readOnly placeholder="+61412345678" />
+          </div>
+          <div className="space-y-2">
+            <Label>Template</Label>
+            <Select value={templateId} onValueChange={applyTemplate}>
+              <SelectTrigger className="bg-input">
+                <SelectValue placeholder="Start from a template (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {smsTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <SmsProspectingComposer
             body={body}

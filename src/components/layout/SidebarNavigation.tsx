@@ -93,7 +93,10 @@ const businessItems: NavItem[] = [
 
 const insightsItems: NavItem[] = [];
 
-const communicationsItems: NavItem[] = [{ title: "SMS suite", url: "/communications/sms", icon: MessageSquare }];
+const communicationsItems: NavItem[] = [
+  { title: "Templates & history", url: "/communications", icon: FileText },
+  { title: "SMS suite", url: "/communications/sms", icon: MessageSquare },
+];
 
 const navItems: NavItem[] = [
   ...homeItems,
@@ -130,7 +133,8 @@ function isNavActive(item: { url: string }, pathname: string): boolean {
   if (item.url === "/listings" && (pathname === "/listings" || pathname.startsWith("/listings/"))) return true;
   if (item.url === "/pricing" && pathname.startsWith("/pricing")) return true;
   if (item.url === "/annual-reviews" && pathname.startsWith("/annual-reviews")) return true;
-  if (item.url === "/communications/sms" && pathname.startsWith("/communications")) return true;
+  if (item.url === "/communications/sms" && pathname.startsWith("/communications/sms")) return true;
+  if (item.url === "/communications" && pathname === "/communications") return true;
   if (item.url === "/invoices" && pathname.startsWith("/invoices")) return true;
   return false;
 }
