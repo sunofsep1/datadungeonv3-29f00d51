@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, CheckSquare, Users, Plus, Trash2, Loader2, FileText } from "lucide-react";
 import { useAppointments } from "@/hooks/useAppointments";
 import { useContacts } from "@/hooks/useContacts";
-import { useOpenContactTasksForUser, useUpdateContactTask } from "@/hooks/useContactTasks";
+import { useOpenContactTasksForUser, useUpdateContactTask, type ContactTask } from "@/hooks/useContactTasks";
 import {
   usePendingStepRunsByTaskIds,
   useCompleteNurtureStepAndAdvance,
@@ -174,6 +174,89 @@ function PersonalTodoCarouselStrip({
   );
 }
 
+/** Compact tile for a contact-linked task, styled to match personal to-do tiles. */
+function ContactTaskCarouselCard({
+  task,
+  contactName,
+  onToggle,
+  onOpen,
+  isToggling,
+}: {
+  task: ContactTask;
+  contactName: string;
+  onToggle: () => void;
+  onOpen: () => void;
+  isToggling: boolean;
+}) {
+  const dueLabel = task.due_at ? format(new Date(task.due_at), "d MMM") : null;
+  const isSequence = Boolean(task.sequence_enrollment_id);
+  return (
+    <Card className="group h-full flex flex-col gap-1 border border-border bg-background/90 p-2 shadow-sm transition-colors hover:border-border hover:bg-muted/30">
+      <div className="flex items-start gap-1.5">
+        <Checkbox
+          checked={false}
+          onCheckedChange={(v) => {
+            if (v === true) onToggle();
+          }}
+          disabled={isToggling}
+          className="mt-0.5 shrink-0"
+          aria-label="Mark complete"
+        />
+        {isToggling ? (
+          <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+        ) : null}
+        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+          <p className="line-clamp-3 text-[13px] font-medium leading-snug">{task.title}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-primary/25 bg-primary/15 px-1 py-0.5 text-[9px] font-semibold uppercase leading-none text-primary">
+              <Users className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{contactName}</span>
+            </span>
+            {isSequence ? (
+              <span className="text-[9px] font-semibold uppercase leading-none text-primary/80">Sequence</span>
+            ) : null}
+            {dueLabel ? <span className="text-[10px] text-muted-foreground">Due {dueLabel}</span> : null}
+          </div>
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+/** Generic carousel strip that renders arbitrary tiles (personal + contact tasks together). */
+function TodoCarouselStrip({
+  title,
+  count,
+  emptyText,
+  children,
+}: {
+  title: string;
+  count: number;
+  emptyText: string;
+  children: ReactNode;
+}) {
+  const plugins = useTasksTodoWheelPlugins();
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+        <Badge variant="outline" className="border-border/70 text-[10px]">
+          {count}
+        </Badge>
+      </div>
+      {count === 0 ? (
+        <p className="px-1 py-2 text-xs text-muted-foreground">{emptyText}</p>
+      ) : (
+        <div className="touch-pan-x w-full min-w-0">
+          <Carousel opts={TASKS_TODO_CAROUSEL_OPTS} plugins={plugins} className="w-full">
+            <CarouselContent className="-ml-2 md:-ml-3">{children}</CarouselContent>
+          </Carousel>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Tasks() {
   const navigate = useNavigate();
   const { setMood } = useDrako();
@@ -244,6 +327,69 @@ export default function Tasks() {
     [todos]
   );
   const completedPersonal = useMemo(() => todos.filter((t) => t.completed), [todos]);
+
+  /** Open contact tasks sorted by due date, for the merged To-do carousel. */
+  const openContactTasksByDue = useMemo(
+    () =>
+      [...contactTasks].sort((a, b) => {
+        const da = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+        const db = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+        return da - db;
+      }),
+    [contactTasks],
+  );
+
+  /** Complete a contact task, routing nurture-sequence steps through the sequence engine. */
+  const handleCompleteContactTask = useCallback(
+    (t: ContactTask) => {
+      const run = pendingRunByTaskId.get(t.id);
+      if (t.sequence_enrollment_id && run) {
+        completeStep.mutate(
+          {
+            enrollment_id: run.enrollment_id,
+            step_run_id: run.id,
+            contact_id: t.contact_id,
+            contact_task_id: t.id,
+            outcome: "completed",
+          },
+          {
+            onSuccess: () => {
+              toast.success("Step completed. Next step scheduled.");
+              setMood("wave", { caption: pickDrakoLine("nurtureStep") });
+              grantXp("nurtureStep");
+            },
+            onError: (e) => {
+              if (isNurtureNoActiveStepError(e)) {
+                updateContactTask.mutate(
+                  { id: t.id, contact_id: t.contact_id, completed_at: new Date().toISOString() },
+                  {
+                    onSuccess: () =>
+                      toast.success("Task marked done. The nurture sequence had already moved on."),
+                    onError: (e2) => toast.error(e2 instanceof Error ? e2.message : "Failed"),
+                  },
+                );
+                return;
+              }
+              toast.error(e instanceof Error ? e.message : "Failed");
+            },
+          },
+        );
+        return;
+      }
+      updateContactTask.mutate(
+        { id: t.id, contact_id: t.contact_id, completed_at: new Date().toISOString() },
+        {
+          onSuccess: () => {
+            toast.success("Done");
+            setMood("celebrate", { caption: pickDrakoLine("taskDone") });
+            grantXp("taskDone");
+          },
+          onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+        },
+      );
+    },
+    [pendingRunByTaskId, completeStep, updateContactTask, setMood, grantXp],
+  );
 
   const tasks = useMemo(() => {
     const sorted = [...appointments].sort(
@@ -350,8 +496,8 @@ export default function Tasks() {
           <div className="mt-0.5 text-xl font-semibold text-amber-500">{overdueCount}</div>
         </Card>
         <Card className="zoho-card border border-border p-3">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">Personal to-dos</div>
-          <div className="mt-0.5 text-xl font-semibold">{incompletePersonal.length}</div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">Open to-dos</div>
+          <div className="mt-0.5 text-xl font-semibold">{incompletePersonal.length + contactTasks.length}</div>
         </Card>
       </div>
 
@@ -415,51 +561,74 @@ export default function Tasks() {
           </div>
         </div>
 
-        {todosLoading ? (
+        {todosLoading || ctLoading ? (
           <div className="mt-3 flex gap-2 overflow-hidden pt-1">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-[92px] w-[200px] shrink-0 rounded-lg" />
             ))}
           </div>
-        ) : todos.length === 0 ? (
+        ) : todos.length === 0 && contactTasks.length === 0 ? (
           <p className="mt-3 border-t border-border/50 px-1 py-4 text-center text-xs text-muted-foreground">
-            No general tasks yet. Add one above.
+            No tasks yet. Add one above, or set a follow-up on a contact.
           </p>
         ) : (
           <div className="mt-3 space-y-4 border-t border-border/50 pt-3">
-            <PersonalTodoCarouselStrip
+            <TodoCarouselStrip
               title="To do"
-              todos={incompletePersonal}
+              count={incompletePersonal.length + openContactTasksByDue.length}
               emptyText="Nothing open."
-              renderCard={(todo) => (
-                <PersonalTodoCarouselCard
-                  todo={todo}
-                  onToggle={() => {
-                    const markingComplete = !todo.completed;
-                    updateTodo.mutate(
-                      { id: todo.id, completed: markingComplete },
-                      {
-                        onSuccess: () => {
-                          if (markingComplete) {
-                            setMood("celebrate", { caption: pickDrakoLine("taskDone") });
-                            grantXp("taskDone");
-                          }
+            >
+              {incompletePersonal.map((todo) => (
+                <CarouselItem key={`todo-${todo.id}`} className={TASKS_TODO_SLIDE_CLASS}>
+                  <PersonalTodoCarouselCard
+                    todo={todo}
+                    onToggle={() => {
+                      const markingComplete = !todo.completed;
+                      updateTodo.mutate(
+                        { id: todo.id, completed: markingComplete },
+                        {
+                          onSuccess: () => {
+                            if (markingComplete) {
+                              setMood("celebrate", { caption: pickDrakoLine("taskDone") });
+                              grantXp("taskDone");
+                            }
+                          },
+                          onError: (e) => toast.error(e.message || "Failed to update"),
                         },
-                        onError: (e) => toast.error(e.message || "Failed to update"),
-                      },
-                    );
-                  }}
-                  onDelete={() =>
-                    deleteTodo.mutate(todo.id, {
-                      onSuccess: () => toast.success("Removed"),
-                      onError: (e) => toast.error(e.message || "Failed to delete"),
-                    })
-                  }
-                  isToggling={updateTodo.isPending && updateTodo.variables?.id === todo.id}
-                  isDeleting={deleteTodo.isPending && deleteTodo.variables === todo.id}
-                />
-              )}
-            />
+                      );
+                    }}
+                    onDelete={() =>
+                      deleteTodo.mutate(todo.id, {
+                        onSuccess: () => toast.success("Removed"),
+                        onError: (e) => toast.error(e.message || "Failed to delete"),
+                      })
+                    }
+                    isToggling={updateTodo.isPending && updateTodo.variables?.id === todo.id}
+                    isDeleting={deleteTodo.isPending && deleteTodo.variables === todo.id}
+                  />
+                </CarouselItem>
+              ))}
+              {openContactTasksByDue.map((t) => (
+                <CarouselItem key={`ct-${t.id}`} className={TASKS_TODO_SLIDE_CLASS}>
+                  <ContactTaskCarouselCard
+                    task={t}
+                    contactName={contactNameById.get(t.contact_id) ?? "Contact"}
+                    onToggle={() => handleCompleteContactTask(t)}
+                    onOpen={() =>
+                      navigate(
+                        t.sequence_enrollment_id
+                          ? `/contacts/${t.contact_id}?nurtureFocus=1`
+                          : `/contacts/${t.contact_id}`,
+                      )
+                    }
+                    isToggling={
+                      (updateContactTask.isPending && updateContactTask.variables?.id === t.id) ||
+                      (completeStep.isPending && completeStep.variables?.contact_task_id === t.id)
+                    }
+                  />
+                </CarouselItem>
+              ))}
+            </TodoCarouselStrip>
             {completedPersonal.length > 0 ? (
               <PersonalTodoCarouselStrip
                 title="Done"
