@@ -66,9 +66,21 @@ export function composeAgentAlertSms(ctx: SellerLeadContext): string {
   return `New appraisal lead: ${name}, ${addr}. Timeline: ${timeline}. Call ${phone}.`;
 }
 
+/** Greg's own mobile (last 9 digits). Self-tests to this number skip the STOP
+ * footer — replying STOP from his own phone once unsubscribed him at the
+ * provider and silently killed ALL his alert SMS. Real prospects always get
+ * the compliant opt-out line. */
+const AGENT_MOBILE_LAST9 = "466805992";
+
+function isAgentOwnNumber(phone: string | null | undefined): boolean {
+  const digits = (phone ?? "").replace(/\D+/g, "");
+  return digits.length >= 9 && digits.endsWith(AGENT_MOBILE_LAST9);
+}
+
 export function composeProspectAckSms(ctx: SellerLeadContext): string {
   const first = ctx.firstName || "there";
   const base = `Hi ${first}, Greg Leigh from Sotheby's Redlands - got your appraisal request, I'll be in touch shortly.`;
+  if (isAgentOwnNumber(ctx.phone)) return base; // self-test: no opt-out footer
   return appendCommercialOptOutIfMissing(base);
 }
 
