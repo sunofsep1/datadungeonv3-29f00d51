@@ -45,6 +45,7 @@ const DataHealth = lazy(() => import("./pages/DataHealth"));
 const PricingIntelligence = lazy(() => import("./pages/PricingIntelligence"));
 const SmsSuitePage = lazy(() => import("./pages/sms/SmsSuitePage"));
 const Communications = lazy(() => import("./pages/Communications"));
+const Injector = lazy(() => import("./pages/Injector"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -145,6 +146,7 @@ const App = () => (
                 <Route path="/invoices/:id/print" element={<ProtectedRoute><InvoicePrintPage /></ProtectedRoute>} />
                 <Route path="/communications" element={<ProtectedRoute><MainLayout><ErrorBoundary><Communications /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/communications/sms" element={<ProtectedRoute><MainLayout><ErrorBoundary><SmsSuitePage /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/injector" element={<ProtectedRoute><MainLayout><ErrorBoundary><Injector /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/settings/*" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                 <Route path="/campaigns" element={<Navigate to="/marketing" replace />} />
                 <Route path="/agent-ops/*" element={<Navigate to="/performance" replace />} />
