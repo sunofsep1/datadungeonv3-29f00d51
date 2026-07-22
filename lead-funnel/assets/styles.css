@@ -54,15 +54,15 @@ a{color:var(--navy)}
 
 /* ---------- Trust strip ---------- */
 .trust{background:var(--white);border-bottom:1px solid var(--grey)}
-.trust__inner{max-width:var(--maxw);margin:0 auto;padding:1.6rem 1.5rem;display:flex;align-items:center;gap:1.75rem;flex-wrap:wrap;justify-content:center}
+.trust__inner{max-width:var(--maxw);margin:0 auto;padding:2.4rem 1.5rem;display:flex;align-items:center;gap:2.5rem;flex-wrap:wrap;justify-content:center}
 .trust__agent{display:flex;align-items:center;gap:.85rem}
-.trust__avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:center 30%;border:2px solid var(--gold)}
-.trust__name{font-family:var(--serif);font-weight:600;font-size:1.25rem;color:var(--navy);margin:0}
-.trust__role{font-size:.9rem;color:#555;margin:.1rem 0 0}
-.trust__divider{width:1px;height:44px;background:var(--gold);opacity:.6}
-.trust__badge-logo{height:38px;width:auto}
-.trust__stat-num{font-family:var(--serif);font-size:1.05rem;color:var(--navy);margin:0;font-weight:600}
-.trust__stat-label{font-size:.82rem;color:#666;margin:.15rem 0 0}
+.trust__avatar{width:76px;height:76px;border-radius:50%;object-fit:cover;object-position:center 30%;border:2px solid var(--gold)}
+.trust__name{font-family:var(--serif);font-weight:600;font-size:1.5rem;color:var(--navy);margin:0}
+.trust__role{font-size:1rem;color:#555;margin:.15rem 0 0}
+.trust__divider{width:1px;height:58px;background:var(--gold);opacity:.6}
+.trust__badge-logo{height:48px;width:auto}
+.trust__stat-num{font-family:var(--serif);font-size:1.7rem;color:var(--navy);margin:0;font-weight:600;line-height:1.15}
+.trust__stat-label{font-size:.95rem;color:#666;margin:.25rem 0 0}
 
 /* ---------- Form section ---------- */
 .form-section{padding:4rem 1.5rem 4.5rem;background:var(--cream)}

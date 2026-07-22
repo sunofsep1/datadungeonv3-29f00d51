@@ -109,7 +109,7 @@ ${header}
         <tr><td style="padding:46px 48px 40px;font-family:Georgia,'Times New Roman',serif;color:#20242e;">
           <p style="margin:0 0 10px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#b08d3f;font-family:Arial,Helvetica,sans-serif;">Your Free Appraisal</p>
           <h1 style="margin:0 0 24px;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:33px;line-height:1.2;color:#0e2140;">Thank you, ${escapeHtml(first)}.</h1>
-          <p style="margin:0 0 18px;font-size:16px;line-height:1.75;">I&#39;ve received your request for a free, no-obligation appraisal${addr}. I&#39;ll personally be in touch very shortly to arrange a time that suits &mdash; no call centres, just a local expert&#39;s honest read on your home.</p>
+          <p style="margin:0 0 18px;font-size:16px;line-height:1.75;">I&#39;ve received your request for a free, no-obligation appraisal${addr}. I&#39;ll personally be in touch very shortly to arrange a time that suits &mdash; no call centres, just an honest read on your home from a local expert with more than 300 homes sold across Brisbane over the past nine years.</p>
           <p style="margin:0 0 26px;font-size:16px;line-height:1.75;">In the meantime, if there&#39;s anything you&#39;d like to ask, simply reply to this email.</p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 34px;"><tr>
             <td bgcolor="#b08d3f" style="border-radius:2px;">
