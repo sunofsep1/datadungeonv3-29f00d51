@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useContacts } from "@/hooks/useContacts";
 import { logContactActivity, invalidateContactInteractions } from "@/lib/contactActivityLog";
 import { invalidateContactScoreQueries } from "@/lib/contactScoreQuery";
 import type { Database } from "@/integrations/supabase/types";
@@ -35,13 +34,13 @@ export function useContactTasks(contactId?: string | null) {
 
 export function useOpenContactTasksForUser() {
   const { user } = useAuth();
-  const { data: contacts = [] } = useContacts();
 
   return useQuery({
-    queryKey: [...baseKey, "open", user?.id, contacts.length],
+    queryKey: [...baseKey, "open", user?.id],
     queryFn: async (): Promise<ContactTask[]> => {
       if (!user) return [];
 
+      // (1) Tasks explicitly owned by the user.
       const { data: byUser, error } = await supabase
         .from("contact_tasks")
         .select("*")
@@ -50,23 +49,27 @@ export function useOpenContactTasksForUser() {
         .order("due_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
 
+      // (2) Tasks whose linked contact belongs to the user (covers rows with a
+      // null user_id). Uses an embedded inner-join filter on the contact's owner
+      // rather than a contact_id=in.(...) list — the old id-list approach built a
+      // ~25KB URL for large address books and the request failed (URI too long),
+      // which collapsed the whole task list on refetch.
+      const { data: byContact, error: contactError } = await supabase
+        .from("contact_tasks")
+        .select("*, contacts!inner(user_id)")
+        .eq("contacts.user_id", user.id)
+        .is("completed_at", null)
+        .order("due_at", { ascending: true, nullsFirst: false });
+      if (contactError) throw contactError;
+
       const merged = new Map<string, ContactTask>();
       for (const row of (byUser ?? []) as ContactTask[]) {
         merged.set(row.id, row);
       }
-
-      const contactIds = contacts.map((c) => c.id).filter(Boolean);
-      if (contactIds.length > 0) {
-        const { data: byContact, error: contactError } = await supabase
-          .from("contact_tasks")
-          .select("*")
-          .in("contact_id", contactIds)
-          .is("completed_at", null)
-          .order("due_at", { ascending: true, nullsFirst: false });
-        if (contactError) throw contactError;
-        for (const row of (byContact ?? []) as ContactTask[]) {
-          merged.set(row.id, row);
-        }
+      for (const row of (byContact ?? []) as Array<ContactTask & { contacts?: unknown }>) {
+        // Drop the embedded contacts object so the stored shape stays ContactTask.
+        const { contacts: _ownerJoin, ...task } = row;
+        merged.set(task.id, task as ContactTask);
       }
 
       return Array.from(merged.values()).sort((a, b) => {
