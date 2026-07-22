@@ -771,6 +771,16 @@ export function MarketMapPanel({
               if (pin.element) pin.element.style.cursor = isProspect ? "grab" : "pointer";
               return pin.element;
             })();
+        // Investment properties: overlay a small violet marker (keeps the urgency colour).
+        const isInvestment = (property as { ownership_type?: string | null }).ownership_type === "investment";
+        if (isInvestment && markerContent) {
+          markerContent.style.position = markerContent.style.position || "relative";
+          const invDot = document.createElement("div");
+          invDot.style.cssText =
+            "position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#8b5cf6;border:1.5px solid #ffffff;box-shadow:0 0 4px rgba(139,92,246,0.9);pointer-events:none;z-index:2;";
+          invDot.title = "Investment property";
+          markerContent.appendChild(invDot);
+        }
         const marker = new AdvancedMarkerElement({
           map: useCluster ? null : map,
           position,
