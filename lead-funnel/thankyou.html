@@ -37,6 +37,11 @@
     .ty__card p{color:#4a4a4a;font-size:1.08rem;margin:0 auto 1.75rem;max-width:44ch}
     .ty__book{font-size:1.1rem;padding:1.1rem 2.25rem}
     .ty__or{font-size:.9rem;color:#888;margin-top:1.5rem}
+    .ty__meet{margin-top:2.25rem;padding-top:1.75rem;border-top:1px solid var(--grey)}
+    .ty__meet p{font-size:.95rem;color:#6a6a6a;margin:0 0 1rem}
+    .ty__meet-links{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center}
+    .ty__meet-links a{display:inline-block;padding:.65rem 1.15rem;border:1px solid var(--navy);border-radius:2px;color:var(--navy);text-decoration:none;font-weight:600;font-size:.92rem;transition:background .15s,color .15s}
+    .ty__meet-links a:hover{background:var(--navy);color:var(--gold)}
   </style>
 </head>
 <body class="ty">
@@ -62,6 +67,16 @@
       </a>
 
       <p class="ty__or">Prefer to wait for Greg&rsquo;s call? No problem &mdash; he&rsquo;ll be in touch.</p>
+
+      <!-- While you wait: meet Greg on his site -->
+      <div class="ty__meet">
+        <p>While you wait, get to know Greg &mdash; recent results, reviews and the local story:</p>
+        <div class="ty__meet-links">
+          <a href="https://gregleighproperty.com.au/sales" data-cta="site-sales" rel="noopener">Recent sales</a>
+          <a href="https://gregleighproperty.com.au/about" data-cta="site-about" rel="noopener">About Greg</a>
+          <a href="https://gregleighproperty.com.au/testimonials" data-cta="site-reviews" rel="noopener">Client reviews</a>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -70,8 +85,8 @@
       <img src="assets/qsir-logo-white.png" alt="Queensland Sotheby's International Realty"
            class="footer__logo" width="220" height="48"
            onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder logo-placeholder--rev',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
-      <p class="footer__agency">Greg Leigh &middot; Queensland Sotheby&rsquo;s International Realty, Redlands QLD</p>
-      <p class="footer__fine">Each office is independently owned and operated. Licensed real estate agent (QLD).</p>
+      <p class="footer__agency"><a href="https://gregleighproperty.com.au" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Greg Leigh</a> &middot; Queensland Sotheby&rsquo;s International Realty, Redlands QLD</p>
+      <p class="footer__fine">Each office is independently owned and operated. Licensed real estate agent (QLD). &middot; <a href="https://gregleighproperty.com.au" rel="noopener" style="color:inherit;">gregleighproperty.com.au</a></p>
     </div>
   </footer>
 </body>

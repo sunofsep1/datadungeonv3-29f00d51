@@ -110,10 +110,15 @@ ${header}
           <p style="margin:0 0 10px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#b08d3f;font-family:Arial,Helvetica,sans-serif;">Your Free Appraisal</p>
           <h1 style="margin:0 0 24px;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:33px;line-height:1.2;color:#0e2140;">Thank you, ${escapeHtml(first)}.</h1>
           <p style="margin:0 0 18px;font-size:16px;line-height:1.75;">I&#39;ve received your request for a free, no-obligation appraisal${addr}. I&#39;ll personally be in touch very shortly to arrange a time that suits &mdash; no call centres, just a local expert&#39;s honest read on your home.</p>
-          <p style="margin:0 0 34px;font-size:16px;line-height:1.75;">In the meantime, if there&#39;s anything you&#39;d like to ask, simply reply to this email.</p>
+          <p style="margin:0 0 26px;font-size:16px;line-height:1.75;">In the meantime, if there&#39;s anything you&#39;d like to ask, simply reply to this email.</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 34px;"><tr>
+            <td bgcolor="#b08d3f" style="border-radius:2px;">
+              <a href="https://gregleighproperty.com.au/sales" rel="noopener" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:.04em;color:#0e2140;text-decoration:none;">See my recent sales &rarr;</a>
+            </td>
+          </tr></table>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e8e1d4;"><tr><td style="padding-top:24px;">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;color:#0e2140;line-height:1.2;">Greg Leigh</div>
-            <div style="margin-top:5px;font-size:13px;line-height:1.7;color:#6b6b6b;font-family:Arial,Helvetica,sans-serif;">Local Redlands Property Specialist<br>Queensland Sotheby&#39;s International Realty</div>
+            <div style="margin-top:5px;font-size:13px;line-height:1.7;color:#6b6b6b;font-family:Arial,Helvetica,sans-serif;">Local Redlands Property Specialist<br>Queensland Sotheby&#39;s International Realty<br><a href="https://gregleighproperty.com.au" rel="noopener" style="color:#b08d3f;text-decoration:none;">gregleighproperty.com.au</a></div>
           </td></tr></table>
         </td></tr>
         <tr><td style="background:#f3efe7;padding:22px 40px;text-align:center;border-top:1px solid #e8e1d4;">

@@ -93,11 +93,11 @@ export function renderBrandedEmailHtml(opts: {
           ${paras}
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e8e1d4;"><tr><td style="padding-top:24px;">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;color:#0e2140;line-height:1.2;">Greg Leigh</div>
-            <div style="margin-top:5px;font-size:13px;line-height:1.7;color:#6b6b6b;font-family:Arial,Helvetica,sans-serif;">Local Redlands Property Specialist<br>Queensland Sotheby&#39;s International Realty</div>
+            <div style="margin-top:5px;font-size:13px;line-height:1.7;color:#6b6b6b;font-family:Arial,Helvetica,sans-serif;">Local Redlands Property Specialist<br>Queensland Sotheby&#39;s International Realty<br><a href="https://gregleighproperty.com.au" rel="noopener" style="color:#b08d3f;text-decoration:none;">gregleighproperty.com.au</a></div>
           </td></tr></table>
         </td></tr>
         <tr><td style="background:#f3efe7;padding:22px 40px;text-align:center;border-top:1px solid #e8e1d4;">
-          <p style="margin:0;font-size:11px;line-height:1.7;color:#8a8a8a;font-family:Arial,Helvetica,sans-serif;">Greg Leigh · Queensland Sotheby&#39;s International Realty · Redlands. Prefer not to hear from me? Just reply and let me know.<br>Each office is independently owned and operated.</p>
+          <p style="margin:0;font-size:11px;line-height:1.7;color:#8a8a8a;font-family:Arial,Helvetica,sans-serif;">Greg Leigh · Queensland Sotheby&#39;s International Realty · Redlands · <a href="https://gregleighproperty.com.au" rel="noopener" style="color:#8a8a8a;">gregleighproperty.com.au</a><br>Prefer not to hear from me? Just reply and let me know. Each office is independently owned and operated.</p>
         </td></tr>
       </table>
     </td></tr>
