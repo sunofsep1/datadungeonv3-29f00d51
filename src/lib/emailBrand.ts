@@ -83,10 +83,8 @@ export function renderBrandedEmailHtml(opts: {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3efe7;padding:32px 12px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e8e1d4;">
-        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:38px 40px;text-align:center;">
-          <div style="font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:#c6b58a;font-family:Arial,Helvetica,sans-serif;">Queensland</div>
-          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:33px;line-height:1.1;color:#ffffff;margin:4px 0;">Sotheby&#39;s</div>
-          <div style="font-size:10px;letter-spacing:.36em;text-transform:uppercase;color:#c6b58a;font-family:Arial,Helvetica,sans-serif;">International Realty</div>
+        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:34px 40px;text-align:center;">
+          <img src="https://tiny-brioche-b979f7.netlify.app/qsir-email-logo.png" width="360" alt="Queensland Sotheby&#39;s International Realty" style="display:inline-block;width:100%;max-width:360px;height:auto;border:0;">
         </td></tr>
         <tr><td style="height:3px;line-height:3px;font-size:0;background:#b08d3f;">&nbsp;</td></tr>
         <tr><td style="padding:46px 48px 40px;font-family:Georgia,'Times New Roman',serif;color:#20242e;">
