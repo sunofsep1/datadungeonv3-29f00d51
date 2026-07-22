@@ -12,6 +12,7 @@ import {
 import { format, parseISO, isValid } from "date-fns";
 import { AvatarCircle } from "@/components/ui/avatar-circle";
 import { Badge } from "@/components/ui/badge";
+import { useContactOwnsInvestment } from "@/hooks/useContactInvestment";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ContactWithMeta } from "@/hooks/useContacts";
@@ -246,6 +247,7 @@ export function ContactProfileHero({
   const hasExtraChannels = extraEmailCount + extraPhoneCount > 0;
 
   const statusActive = (ext.status ?? "active").toLowerCase() === "active";
+  const ownsInvestment = useContactOwnsInvestment(contact?.id).data === true;
   const pref = preferredMethodLabel(ext.preferred_contact_method);
 
   const anniversary = ext.anniversary_date?.trim();
@@ -300,6 +302,11 @@ export function ContactProfileHero({
 
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {urgencyBadge}
+                {ownsInvestment ? (
+                  <Badge className="gap-1 border border-violet-500/40 bg-violet-500/15 text-violet-300 text-[10px]">
+                    Investment owner
+                  </Badge>
+                ) : null}
                 {contact.lead_score != null ? (
                   <Badge variant="secondary" className="tabular-nums text-xs">
                     Lead score {contact.lead_score}
