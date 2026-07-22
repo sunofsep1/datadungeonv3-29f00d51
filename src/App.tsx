@@ -16,6 +16,7 @@ import { DrakoProvider, DrakoCompanion } from "@/components/drako";
 // Route-level splits to avoid one oversized "core pages" bundle.
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Contacts = lazy(() => import("./pages/Contacts"));
+const ProspectingNotes = lazy(() => import("./pages/ProspectingNotes"));
 const ContactDetail = lazy(() => import("./pages/ContactDetail"));
 const Properties = lazy(() => import("./pages/Properties"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
@@ -97,6 +98,7 @@ const App = () => (
                 <Route path="/tasks" element={<ProtectedRoute><MainLayout><Tasks /></MainLayout></ProtectedRoute>} />
                 <Route path="/todos" element={<ProtectedRoute><MainLayout><TodoList /></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts" element={<ProtectedRoute><MainLayout><ErrorBoundary><Contacts /></ErrorBoundary></MainLayout></ProtectedRoute>} />
+                <Route path="/prospecting-notes" element={<ProtectedRoute><MainLayout><ErrorBoundary><ProspectingNotes /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/markets" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactMarkets /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contacts/requirements-search" element={<ProtectedRoute><MainLayout><ErrorBoundary><ContactRequirementsSearch /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/contact-research" element={<Navigate to="/dashboard" replace />} />

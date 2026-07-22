@@ -28,6 +28,7 @@ import {
   LineChart,
   Receipt,
   MapPin,
+  NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ const homeItems: NavItem[] = [
 
 const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
+  { title: "Prospecting Notes", url: "/prospecting-notes", icon: NotebookPen },
   { title: "My Markets", url: "/contacts/markets", icon: MapPin },
   { title: "Listings", url: "/listings", icon: Building2 },
   { title: "Appraisals", url: "/appraisals", icon: ClipboardList },

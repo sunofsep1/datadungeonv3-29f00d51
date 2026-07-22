@@ -69,6 +69,7 @@ import { ContactNurtureSummaryStrip } from "@/components/contacts/ContactNurture
 import { ContactActivitySummaryStrip } from "@/components/contacts/ContactActivitySummaryStrip";
 import { ContactRelationshipBrief } from "@/components/contacts/ContactRelationshipBrief";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
+import { ContactConversationHub } from "@/components/contacts/ContactConversationHub";
 import { ContactDuplicateAlert } from "@/components/contacts/ContactDuplicateAlert";
 import { PropertyIntelligenceStrip } from "@/components/pricefinder/PropertyIntelligenceStrip";
 import { ContactBuyerRequirementsPanel } from "@/components/contacts/ContactBuyerRequirementsPanel";
@@ -946,6 +947,7 @@ export default function ContactDetail() {
               </SegmentedTabsList>
 
               <TabsContent value="overview" className="mt-4 space-y-5">
+              <ContactConversationHub contactId={id} />
               <ContactExpandableSection
                 title="Nurture & tasks"
                 defaultOpen={false}
