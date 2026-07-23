@@ -2,19 +2,20 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   Inbox, Check, X, RotateCcw, UserRoundSearch, User, Home, CheckSquare, Loader2, Sparkles,
-  ChevronDown, ChevronUp, Plus, Trash2, FileText, Link2,
+  ChevronDown, ChevronUp, Plus, Trash2, FileText, Link2, AlignLeft, MousePointerClick,
 } from "lucide-react";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { InvestmentBadge } from "@/components/properties/InvestmentControls";
 import {
-  useInjectorInbox, useInjectorMutations, useContactSearch,
+  useInjectorInbox, useInjectorMutations, useContactSearch, useNoteTranscript,
   type InjectorNote, type InjectorProposal,
 } from "@/hooks/useInjector";
 
@@ -80,7 +81,6 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
   const { toast } = useToast();
   const rejected = p.status === "rejected";
   const pr = p.proposed ?? {};
-  const isCreate = p.action === "create";
   // Hand-added rows are created with confidence 1 and action "create" — offer a hard remove for those.
   const isManual = p.confidence === 1 && p.action === "create";
 
@@ -110,11 +110,11 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-muted-foreground">{icon}</div>
         <div className="flex-1 min-w-0">
-          {/* CONTACT */}
+          {/* CONTACT — every field editable, matched or new */}
           {p.entity_type === "contact" && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                {isCreate && !rejected ? (
+                {!rejected ? (
                   <Input defaultValue={str(pr.name)} placeholder="Contact name" className="h-8 text-sm font-medium max-w-[16rem]" onBlur={(e) => e.target.value !== str(pr.name) && setName(e.target.value)} />
                 ) : (
                   <span className="font-medium text-white">{str(pr.name) || "New contact"}</span>
@@ -128,24 +128,28 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
                 <ConfidenceDot c={p.confidence} />
               </div>
               {!rejected && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Input defaultValue={str(pr.mobile)} placeholder="Mobile" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.mobile) && editField("mobile", e.target.value)} />
-                  <Input defaultValue={str(pr.email)} placeholder="Email" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.email) && editField("email", e.target.value)} />
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input defaultValue={str(pr.mobile)} placeholder="Mobile" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.mobile) && editField("mobile", e.target.value)} />
+                    <Input defaultValue={str(pr.email)} placeholder="Email" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.email) && editField("email", e.target.value)} />
+                  </div>
+                  <Input defaultValue={str(pr.residential_address)} placeholder="Home / residential address" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.residential_address) && editField("residential_address", e.target.value)} />
+                  <Textarea
+                    defaultValue={str(pr.note)}
+                    placeholder="Conversation note — this is what gets saved to the contact's Conversation Hub"
+                    className="text-sm min-h-[3.25rem]"
+                    onBlur={(e) => e.target.value !== str(pr.note) && editField("note", e.target.value)}
+                  />
+                </>
               )}
-              {isCreate && !rejected ? (
-                <Input defaultValue={str(pr.residential_address)} placeholder="Home / residential address" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.residential_address) && editField("residential_address", e.target.value)} />
-              ) : (
-                pr.residential_address ? <p className="text-xs text-muted-foreground">Lives: {str(pr.residential_address)}</p> : null
-              )}
-              {pr.note ? <p className="text-xs text-white/70 italic">“{str(pr.note)}”</p> : null}
+              {rejected && pr.note ? <p className="text-xs text-white/70 italic">“{str(pr.note)}”</p> : null}
             </div>
           )}
 
-          {/* PROPERTY */}
+          {/* PROPERTY — always editable */}
           {p.entity_type === "property" && (
             <div className="space-y-2">
-              {isCreate && !rejected ? (
+              {!rejected ? (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input defaultValue={str(pr.address)} placeholder="Property address" className="h-8 text-sm flex-1" onBlur={(e) => e.target.value !== str(pr.address) && editField("address", e.target.value)} />
                   <select
@@ -171,10 +175,10 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
             </div>
           )}
 
-          {/* TASK */}
+          {/* TASK — always editable */}
           {p.entity_type === "task" && (
             <div className="space-y-2">
-              {isCreate && !rejected ? (
+              {!rejected ? (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input defaultValue={str(pr.title)} placeholder="Task / follow-up" className="h-8 text-sm flex-1" onBlur={(e) => e.target.value !== str(pr.title) && editField("title", e.target.value)} />
                   <Input type="date" defaultValue={str(pr.due)} className="h-8 text-sm sm:w-40" onChange={(e) => e.target.value !== str(pr.due) && editField("due", e.target.value)} />
@@ -258,10 +262,84 @@ function AddProposalBar({ noteId }: { noteId: string }) {
   );
 }
 
+/** Floating action bar for text selected in the summary / transcript — the dispersal tools.
+ * Turn any highlighted phrase into a task, a new contact, or a note attached to an existing contact. */
+function SelectionToolbar({ noteId, selection, onDone }: { noteId: string; selection: string; onDone: () => void }) {
+  const { addProposal } = useInjectorMutations();
+  const { toast } = useToast();
+  const [attachMode, setAttachMode] = useState(false);
+  const [term, setTerm] = useState("");
+  const { data: results = [], isFetching } = useContactSearch(term);
+  const snippet = selection.length > 70 ? selection.slice(0, 70) + "…" : selection;
+
+  const make = (entity_type: "task" | "contact", proposed: Record<string, unknown>) => {
+    addProposal.mutate(
+      { note_id: noteId, entity_type, proposed },
+      {
+        onSuccess: () => { toast({ title: entity_type === "task" ? "Task drafted below" : "Contact drafted below" }); onDone(); },
+        onError: (e) => toast({ title: "Couldn’t add", description: String((e as Error).message), variant: "destructive" }),
+      },
+    );
+  };
+  const attach = (contactId: string, contactName: string | null) => {
+    addProposal.mutate(
+      { note_id: noteId, entity_type: "contact", match_contact_id: contactId, action: "update", proposed: { name: contactName, match_name: contactName, note: selection } },
+      {
+        onSuccess: () => { toast({ title: `Note drafted for ${contactName ?? "contact"}`, description: "Review it below, then Inject." }); onDone(); },
+        onError: (e) => toast({ title: "Couldn’t attach", description: String((e as Error).message), variant: "destructive" }),
+      },
+    );
+  };
+
+  return (
+    <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <MousePointerClick className="w-3.5 h-3.5 text-primary shrink-0" />
+        <span className="text-xs text-white/80 italic flex-1 min-w-0 truncate">“{snippet}”</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDone}><X className="w-3.5 h-3.5" /></Button>
+      </div>
+      {!attachMode ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => make("task", { title: selection })}>
+            <CheckSquare className="w-3.5 h-3.5" /> Make it a task
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => make("contact", { name: selection })}>
+            <User className="w-3.5 h-3.5" /> New contact
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setAttachMode(true)}>
+            <Link2 className="w-3.5 h-3.5" /> Attach to contact…
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <Input autoFocus placeholder="Search contacts…" value={term} onChange={(e) => setTerm(e.target.value)} className="h-8 text-sm" />
+          <div className="mt-1.5 max-h-44 overflow-y-auto">
+            {isFetching && <p className="text-xs text-muted-foreground px-1 py-1.5">Searching…</p>}
+            {results.map((r) => (
+              <button key={r.id} className="w-full text-left px-2 py-1.5 rounded hover:bg-white/5 text-sm" onClick={() => attach(r.id, r.name)}>
+                <span className="text-white">{r.name || "—"}</span>
+                <span className="text-xs text-muted-foreground ml-2">{[r.mobile, r.suburb].filter(Boolean).join(" · ")}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NoteCard({ note }: { note: InjectorNote }) {
   const { applyNote, dismissNote } = useInjectorMutations();
   const { toast } = useToast();
   const [showSummary, setShowSummary] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [selection, setSelection] = useState("");
+  const { data: transcript, isFetching: transcriptLoading } = useNoteTranscript(showTranscript ? note.id : null);
+
+  const captureSelection = () => {
+    const s = window.getSelection()?.toString().trim() ?? "";
+    if (s.length >= 3) setSelection(s.slice(0, 2000));
+  };
   const pendingCount = note.proposals.filter((p) => p.status === "pending").length;
   const canReview = note.status === "extracted" || note.status === "error";
 
@@ -294,22 +372,51 @@ function NoteCard({ note }: { note: InjectorNote }) {
             </div>
           )}
         </div>
-        {note.summary_md && (
+        <div className="mt-2 flex items-center gap-4 flex-wrap">
+          {note.summary_md && (
+            <button
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 w-fit"
+              onClick={() => setShowSummary((s) => !s)}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {showSummary ? "Hide summary" : "Read full summary"}
+              {showSummary ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          )}
           <button
-            className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 w-fit"
-            onClick={() => setShowSummary((s) => !s)}
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 w-fit"
+            onClick={() => setShowTranscript((s) => !s)}
           >
-            <FileText className="w-3.5 h-3.5" />
-            {showSummary ? "Hide summary" : "Read full summary"}
-            {showSummary ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <AlignLeft className="w-3.5 h-3.5" />
+            {showTranscript ? "Hide transcript" : "Read transcript"}
+            {showTranscript ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
+        </div>
+        {(showSummary || showTranscript) && (
+          <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+            <MousePointerClick className="w-3 h-3" /> Highlight any text to turn it into a task, contact, or a note on a contact.
+          </p>
         )}
       </CardHeader>
       <CardContent className="space-y-2">
         {showSummary && note.summary_md && (
-          <div className="rounded-lg border border-white/10 bg-black/20 p-3 max-h-96 overflow-y-auto">
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3 max-h-96 overflow-y-auto" onMouseUp={captureSelection}>
             <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">{note.summary_md}</p>
           </div>
+        )}
+        {showTranscript && (
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3 max-h-96 overflow-y-auto" onMouseUp={captureSelection}>
+            {transcriptLoading ? (
+              <p className="text-sm text-muted-foreground">Loading transcript…</p>
+            ) : transcript ? (
+              <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{transcript}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No transcript stored for this note.</p>
+            )}
+          </div>
+        )}
+        {selection && (
+          <SelectionToolbar noteId={note.id} selection={selection} onDone={() => setSelection("")} />
         )}
         {note.status === "error" && (
           <p className="text-sm text-rose-400/90">{note.error || "The Note Master couldn’t read this note. You can still read the summary above and add records by hand."}</p>

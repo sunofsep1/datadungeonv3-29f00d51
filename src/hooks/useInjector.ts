@@ -92,9 +92,17 @@ export function useInjectorMutations() {
   const invalidate = () => qc.invalidateQueries({ queryKey: KEY });
 
   /** Add a proposal by hand (e.g. when the Note Master found nothing, or you spotted
-   * something it missed). Creates a blank pending row you then fill in and Apply. */
+   * something it missed). Creates a pending row you then fill in and Apply. Pass
+   * `proposed` to prefill (used by select-text dispersal) and `match_contact_id`
+   * to attach it to an existing contact straight away. */
   const addProposal = useMutation({
-    mutationFn: async (input: { note_id: string; entity_type: ProposalEntityType }) => {
+    mutationFn: async (input: {
+      note_id: string;
+      entity_type: ProposalEntityType;
+      proposed?: Record<string, unknown>;
+      match_contact_id?: string | null;
+      action?: string;
+    }) => {
       const defaults: Record<ProposalEntityType, Record<string, unknown>> = {
         contact: { name: "" },
         task: { title: "" },
@@ -104,11 +112,11 @@ export function useInjectorMutations() {
         note_id: input.note_id,
         user_id: user?.id,
         entity_type: input.entity_type,
-        action: "create",
-        match_contact_id: null,
+        action: input.action ?? (input.match_contact_id ? "update" : "create"),
+        match_contact_id: input.match_contact_id ?? null,
         confidence: 1,
         status: "pending",
-        proposed: defaults[input.entity_type],
+        proposed: { ...defaults[input.entity_type], ...(input.proposed ?? {}) },
       });
       if (error) throw new Error(error.message);
     },
@@ -181,6 +189,37 @@ export function useInjectorMutations() {
   });
 
   return { updateProposal, setProposalStatus, applyNote, dismissNote, addProposal, deleteProposal };
+}
+
+/** Lazy transcript fetch for one note (only when the user expands it — transcripts are big). */
+export function useNoteTranscript(noteId: string | null) {
+  return useQuery({
+    queryKey: ["injector-transcript", noteId],
+    enabled: Boolean(noteId),
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<string> => {
+      const { data, error } = await db
+        .from("injector_notes")
+        .select("transcript,action_items")
+        .eq("id", noteId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const t = data?.transcript;
+      if (t == null) return "";
+      if (typeof t === "string") return t;
+      // jsonb: either a plain string, an array of segments, or an object — render best-effort
+      if (Array.isArray(t)) {
+        return t
+          .map((seg: unknown) => {
+            if (typeof seg === "string") return seg;
+            const s = seg as { speaker?: string; text?: string; content?: string };
+            return [s.speaker ? `${s.speaker}:` : "", s.text ?? s.content ?? ""].filter(Boolean).join(" ");
+          })
+          .join("\n");
+      }
+      return JSON.stringify(t, null, 1);
+    },
+  });
 }
 
 /** Lightweight contact search for the re-match picker. */
