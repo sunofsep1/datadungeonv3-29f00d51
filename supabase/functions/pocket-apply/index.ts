@@ -53,16 +53,21 @@ Deno.serve(async (req) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* */ }
   const noteId = body?.note_id as string | undefined;
+  const proposalIds = Array.isArray(body?.proposal_ids)
+    ? (body.proposal_ids as unknown[]).filter((x): x is string => typeof x === "string")
+    : null;
   if (!noteId) return json({ error: "note_id required" }, 400);
 
   const { data: note } = await svc.from("injector_notes").select("id,title,summary_md").eq("id", noteId).maybeSingle();
   if (!note) return json({ error: "note not found" }, 404);
 
-  const { data: proposals, error: pErr } = await svc
+  let pq = svc
     .from("injector_proposals")
     .select("*")
     .eq("note_id", noteId)
     .eq("status", "pending");
+  if (proposalIds && proposalIds.length) pq = pq.in("id", proposalIds);
+  const { data: proposals, error: pErr } = await pq;
   if (pErr) return json({ error: pErr.message }, 500);
 
   const applied: string[] = [];
@@ -121,15 +126,20 @@ Deno.serve(async (req) => {
 
     if (contactId && pr.name) nameToContact.set(String(pr.name).toLowerCase(), contactId);
 
-    // timeline entry citing the note
+    // Conversation Hub entry citing the note — save the FULL call summary so it reads richly,
+    // with the contact-specific takeaway kept as the "next / context" line.
     if (contactId) {
+      const convoSummary = note.summary_md
+        ? String(note.summary_md)
+        : (pr.note ? String(pr.note) : `From Pocket note: ${note.title ?? "(untitled)"}`);
       await svc.from("contact_conversations").insert({
         user_id: OWNER_USER_ID,
         contact_id: contactId,
         occurred_at: now,
         channel: "note",
         source: "pocket_injector",
-        summary: pr.note ? String(pr.note) : `From Pocket note: ${note.title ?? "(untitled)"}`,
+        summary: convoSummary,
+        next_steps: note.summary_md && pr.note ? String(pr.note) : null,
       });
     }
     await svc.from("injector_proposals").update({ status: "applied", applied_at: now }).eq("id", p.id);
@@ -211,9 +221,13 @@ Deno.serve(async (req) => {
     applied.push(p.id);
   }
 
-  // mark the note applied if nothing pending remains
-  const { count } = await svc.from("injector_proposals").select("id", { count: "exact", head: true }).eq("note_id", noteId).eq("status", "pending");
-  if (!count) await svc.from("injector_notes").update({ status: "applied", updated_at: now }).eq("id", noteId);
+  // Do NOT auto-complete the note — leave it in the inbox (with its summary) so the user can
+  // keep injecting items or add records by hand, until they explicitly Dismiss it.
+  const { count: remaining } = await svc
+    .from("injector_proposals")
+    .select("id", { count: "exact", head: true })
+    .eq("note_id", noteId)
+    .eq("status", "pending");
 
-  return json({ ok: true, applied: applied.length });
+  return json({ ok: true, applied: applied.length, remaining: remaining ?? 0 });
 });

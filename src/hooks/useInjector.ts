@@ -147,18 +147,27 @@ export function useInjectorMutations() {
     onSuccess: invalidate,
   });
 
-  /** Apply all still-pending proposals for a note (writes to the CRM via edge fn). */
+  /** Apply proposals for a note (writes to the CRM via edge fn). Pass a noteId to apply ALL
+   * still-pending proposals, or { noteId, proposalIds } to inject just those. The note is left
+   * in the inbox afterwards (not auto-completed) so you can keep going until you Dismiss it. */
   const applyNote = useMutation({
-    mutationFn: async (noteId: string): Promise<{ applied: number }> => {
-      const { data, error } = await supabase.functions.invoke("pocket-apply", { body: { note_id: noteId } });
+    mutationFn: async (
+      input: string | { noteId: string; proposalIds?: string[] },
+    ): Promise<{ applied: number; remaining: number }> => {
+      const noteId = typeof input === "string" ? input : input.noteId;
+      const proposalIds = typeof input === "string" ? undefined : input.proposalIds;
+      const { data, error } = await supabase.functions.invoke("pocket-apply", {
+        body: { note_id: noteId, ...(proposalIds && proposalIds.length ? { proposal_ids: proposalIds } : {}) },
+      });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(String(data.error));
-      return { applied: data?.applied ?? 0 };
+      return { applied: data?.applied ?? 0, remaining: data?.remaining ?? 0 };
     },
     onSuccess: () => {
       invalidate();
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["properties"] });
+      qc.invalidateQueries({ queryKey: ["contact-conversations"] });
     },
   });
 

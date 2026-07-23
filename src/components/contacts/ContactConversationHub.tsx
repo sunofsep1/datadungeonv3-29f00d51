@@ -35,20 +35,40 @@ function ConversationRow({
   isDeleting: boolean;
 }) {
   const when = convo.occurred_at ? new Date(convo.occurred_at) : null;
+  const summary = convo.summary ?? "";
+  // Long or multi-paragraph summaries (e.g. a full Pocket call summary) collapse to a preview
+  // you can click to open; short one-liners just show in full.
+  const isLong = summary.length > 140 || summary.includes("\n");
+  const [expanded, setExpanded] = useState(!isLong);
+  const via =
+    convo.source === "pocket_injector" ? "via Pocket"
+    : convo.source === "note_master" ? "via Note Master"
+    : null;
+
   return (
-    <Card className="group border border-border bg-background/60 p-3">
+    <Card className="group border border-border bg-background/60 p-3 transition-colors hover:border-primary/40">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => isLong && setExpanded((v) => !v)}
+          className={cn("flex flex-1 flex-wrap items-center gap-2 text-left", isLong && "cursor-pointer")}
+          aria-expanded={isLong ? expanded : undefined}
+        >
           <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[10px] uppercase text-primary">
             {channelLabel(convo.channel)}
           </Badge>
           {when ? (
             <span className="text-xs text-muted-foreground">{format(when, "d MMM yyyy · h:mma")}</span>
           ) : null}
-          {convo.source === "note_master" ? (
-            <span className="text-[10px] uppercase text-muted-foreground">via Note Master</span>
+          {via ? <span className="text-[10px] uppercase text-muted-foreground">{via}</span> : null}
+          {isLong ? (
+            expanded ? (
+              <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            )
           ) : null}
-        </div>
+        </button>
         <Button
           variant="ghost"
           size="icon"
@@ -60,17 +80,34 @@ function ConversationRow({
           {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
         </Button>
       </div>
-      {convo.summary ? (
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-snug text-foreground">{convo.summary}</p>
+      {summary ? (
+        <p
+          className={cn(
+            "mt-2 whitespace-pre-wrap text-sm leading-snug text-foreground",
+            !expanded && "line-clamp-2 cursor-pointer",
+          )}
+          onClick={() => isLong && !expanded && setExpanded(true)}
+        >
+          {summary}
+        </p>
       ) : null}
-      {Array.isArray(convo.highlights) && convo.highlights.length > 0 ? (
+      {isLong && !expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-1 text-xs font-medium text-primary hover:underline"
+        >
+          Read full conversation →
+        </button>
+      ) : null}
+      {expanded && Array.isArray(convo.highlights) && convo.highlights.length > 0 ? (
         <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
           {convo.highlights.map((h, i) => (
             <li key={i}>{h}</li>
           ))}
         </ul>
       ) : null}
-      {convo.next_steps ? (
+      {expanded && convo.next_steps ? (
         <p className="mt-2 text-xs text-foreground">
           <span className="font-semibold text-primary/90">Next: </span>
           {convo.next_steps}

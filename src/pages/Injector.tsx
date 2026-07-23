@@ -76,7 +76,8 @@ function ContactPickPopover({
 }
 
 function ProposalRow({ p }: { p: InjectorProposal }) {
-  const { updateProposal, setProposalStatus, deleteProposal } = useInjectorMutations();
+  const { updateProposal, setProposalStatus, deleteProposal, applyNote } = useInjectorMutations();
+  const { toast } = useToast();
   const rejected = p.status === "rejected";
   const pr = p.proposed ?? {};
   const isCreate = p.action === "create";
@@ -191,6 +192,25 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
 
         {/* per-item actions */}
         <div className="flex items-center gap-1 shrink-0">
+          {!rejected && (
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              title="Inject just this item into the CRM"
+              disabled={applyNote.isPending}
+              onClick={() =>
+                applyNote.mutate(
+                  { noteId: p.note_id, proposalIds: [p.id] },
+                  {
+                    onSuccess: () => toast({ title: "Added to CRM", description: `“${str(pr.name) || str(pr.title) || str(pr.address) || "Item"}” saved.` }),
+                    onError: (e) => toast({ title: "Couldn’t add", description: String((e as Error).message), variant: "destructive" }),
+                  },
+                )
+              }
+            >
+              {applyNote.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Inject
+            </Button>
+          )}
           {p.entity_type === "contact" && !rejected && (
             <ContactPickPopover
               proposal={p}
@@ -269,7 +289,7 @@ function NoteCard({ note }: { note: InjectorNote }) {
               <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => dismissNote.mutate(note.id)}>Dismiss</Button>
               <Button size="sm" className="gap-1" disabled={pendingCount === 0 || applyNote.isPending} onClick={onApply}>
                 {applyNote.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Apply {pendingCount > 0 ? `(${pendingCount})` : ""}
+                Apply all {pendingCount > 0 ? `(${pendingCount})` : ""}
               </Button>
             </div>
           )}
