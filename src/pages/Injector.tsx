@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   Inbox, Check, X, RotateCcw, UserRoundSearch, User, Home, CheckSquare, Loader2, Sparkles,
+  ChevronDown, ChevronUp, Plus, Trash2, FileText, Link2,
 } from "lucide-react";
 import { PageBreadcrumbs } from "@/components/layout/PageBreadcrumbs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -27,8 +28,15 @@ function ConfidenceDot({ c }: { c: number | null }) {
   return <span className={`text-xs font-medium ${tone}`}>{pct}%</span>;
 }
 
-/** Re-match a proposal to a different existing contact. */
-function ReMatchPopover({ proposal, onPick }: { proposal: InjectorProposal; onPick: (id: string | null, name: string | null) => void }) {
+/** Search + pick an existing contact — used to re-match a contact proposal or to link a task to a contact. */
+function ContactPickPopover({
+  proposal, onPick, label = "Re-match", clearLabel,
+}: {
+  proposal: InjectorProposal;
+  onPick: (id: string | null, name: string | null) => void;
+  label?: string;
+  clearLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
   const { data: results = [], isFetching } = useContactSearch(term);
@@ -36,7 +44,7 @@ function ReMatchPopover({ proposal, onPick }: { proposal: InjectorProposal; onPi
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
-          <UserRoundSearch className="w-3.5 h-3.5" /> Re-match
+          {label === "Re-match" ? <UserRoundSearch className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />} {label}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-2" align="start">
@@ -58,7 +66,7 @@ function ReMatchPopover({ proposal, onPick }: { proposal: InjectorProposal; onPi
           ))}
           {proposal.match_contact_id && (
             <button className="w-full text-left px-2 py-1.5 rounded hover:bg-white/5 text-xs text-amber-400" onClick={() => { onPick(null, null); setOpen(false); }}>
-              Clear match — create as a new contact
+              {clearLabel ?? "Clear match — create as a new contact"}
             </button>
           )}
         </div>
@@ -68,12 +76,27 @@ function ReMatchPopover({ proposal, onPick }: { proposal: InjectorProposal; onPi
 }
 
 function ProposalRow({ p }: { p: InjectorProposal }) {
-  const { updateProposal, setProposalStatus } = useInjectorMutations();
+  const { updateProposal, setProposalStatus, deleteProposal } = useInjectorMutations();
   const rejected = p.status === "rejected";
   const pr = p.proposed ?? {};
+  const isCreate = p.action === "create";
+  // Hand-added rows are created with confidence 1 and action "create" — offer a hard remove for those.
+  const isManual = p.confidence === 1 && p.action === "create";
 
   const editField = (key: string, value: string) => {
     updateProposal.mutate({ id: p.id, proposed: { ...pr, [key]: value || null } });
+  };
+  const setName = (value: string) => {
+    const parts = value.trim().split(/\s+/);
+    updateProposal.mutate({
+      id: p.id,
+      proposed: {
+        ...pr,
+        name: value || null,
+        first_name: parts[0] || null,
+        last_name: parts.length > 1 ? parts.slice(1).join(" ") : null,
+      },
+    });
   };
 
   const icon =
@@ -90,7 +113,11 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
           {p.entity_type === "contact" && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-white">{str(pr.name) || "New contact"}</span>
+                {isCreate && !rejected ? (
+                  <Input defaultValue={str(pr.name)} placeholder="Contact name" className="h-8 text-sm font-medium max-w-[16rem]" onBlur={(e) => e.target.value !== str(pr.name) && setName(e.target.value)} />
+                ) : (
+                  <span className="font-medium text-white">{str(pr.name) || "New contact"}</span>
+                )}
                 {p.match_contact_id ? (
                   <Badge variant="secondary" className="text-xs">matches {str(pr.match_name) || "existing"} · {str(pr.match_by) || "matched"}</Badge>
                 ) : (
@@ -105,20 +132,39 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
                   <Input defaultValue={str(pr.email)} placeholder="Email" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.email) && editField("email", e.target.value)} />
                 </div>
               )}
-              {pr.residential_address ? <p className="text-xs text-muted-foreground">Lives: {str(pr.residential_address)}</p> : null}
+              {isCreate && !rejected ? (
+                <Input defaultValue={str(pr.residential_address)} placeholder="Home / residential address" className="h-8 text-sm" onBlur={(e) => e.target.value !== str(pr.residential_address) && editField("residential_address", e.target.value)} />
+              ) : (
+                pr.residential_address ? <p className="text-xs text-muted-foreground">Lives: {str(pr.residential_address)}</p> : null
+              )}
               {pr.note ? <p className="text-xs text-white/70 italic">“{str(pr.note)}”</p> : null}
             </div>
           )}
 
           {/* PROPERTY */}
           {p.entity_type === "property" && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-white">{str(pr.address)}</span>
-                {str(pr.ownership_type) === "investment"
-                  ? <InvestmentBadge ownershipType="investment" />
-                  : <Badge variant="outline" className="text-xs capitalize">{str(pr.ownership_type).replace(/_/g, " ") || "unknown"}</Badge>}
-              </div>
+            <div className="space-y-2">
+              {isCreate && !rejected ? (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input defaultValue={str(pr.address)} placeholder="Property address" className="h-8 text-sm flex-1" onBlur={(e) => e.target.value !== str(pr.address) && editField("address", e.target.value)} />
+                  <select
+                    defaultValue={str(pr.ownership_type) || "unknown"}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-sm text-white"
+                    onChange={(e) => editField("ownership_type", e.target.value)}
+                  >
+                    <option value="unknown">Ownership: unknown</option>
+                    <option value="owner_occupier">Owner-occupier</option>
+                    <option value="investment">Investment</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-white">{str(pr.address)}</span>
+                  {str(pr.ownership_type) === "investment"
+                    ? <InvestmentBadge ownershipType="investment" />
+                    : <Badge variant="outline" className="text-xs capitalize">{str(pr.ownership_type).replace(/_/g, " ") || "unknown"}</Badge>}
+                </div>
+              )}
               {pr.ownership_reason ? <p className="text-xs text-muted-foreground">{str(pr.ownership_reason)}</p> : null}
               {pr.owner_name ? <p className="text-xs text-white/60">Owner: {str(pr.owner_name)}</p> : null}
             </div>
@@ -126,12 +172,19 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
 
           {/* TASK */}
           {p.entity_type === "task" && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-white">{str(pr.title)}</span>
-                {pr.due ? <Badge variant="outline" className="text-xs">due {str(pr.due)}</Badge> : null}
-              </div>
-              <p className="text-xs text-white/60">{pr.contact_name ? `For ${str(pr.contact_name)}` : "Personal to-do"}</p>
+            <div className="space-y-2">
+              {isCreate && !rejected ? (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input defaultValue={str(pr.title)} placeholder="Task / follow-up" className="h-8 text-sm flex-1" onBlur={(e) => e.target.value !== str(pr.title) && editField("title", e.target.value)} />
+                  <Input type="date" defaultValue={str(pr.due)} className="h-8 text-sm sm:w-40" onChange={(e) => e.target.value !== str(pr.due) && editField("due", e.target.value)} />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-white">{str(pr.title)}</span>
+                  {pr.due ? <Badge variant="outline" className="text-xs">due {str(pr.due)}</Badge> : null}
+                </div>
+              )}
+              <p className="text-xs text-white/60">{p.match_contact_id || pr.contact_name ? `For ${str(pr.contact_name) || "linked contact"}` : "Personal to-do"}</p>
             </div>
           )}
         </div>
@@ -139,12 +192,24 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
         {/* per-item actions */}
         <div className="flex items-center gap-1 shrink-0">
           {p.entity_type === "contact" && !rejected && (
-            <ReMatchPopover
+            <ContactPickPopover
               proposal={p}
               onPick={(id, name) => updateProposal.mutate({ id: p.id, match_contact_id: id, proposed: { ...pr, match_name: name } })}
             />
           )}
-          {rejected ? (
+          {p.entity_type === "task" && !rejected && (
+            <ContactPickPopover
+              proposal={p}
+              label="Link contact"
+              clearLabel="Clear — leave as a personal to-do"
+              onPick={(id, name) => updateProposal.mutate({ id: p.id, match_contact_id: id, proposed: { ...pr, contact_name: name } })}
+            />
+          )}
+          {isManual ? (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-rose-400 hover:text-rose-300" title="Remove" onClick={() => deleteProposal.mutate(p.id)}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          ) : rejected ? (
             <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => setProposalStatus.mutate({ id: p.id, status: "pending" })}>
               <RotateCcw className="w-3.5 h-3.5" /> Restore
             </Button>
@@ -159,10 +224,26 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
   );
 }
 
+/** Buttons to add a contact / property / task by hand to a note. */
+function AddProposalBar({ noteId }: { noteId: string }) {
+  const { addProposal } = useInjectorMutations();
+  const add = (entity_type: "contact" | "property" | "task") => addProposal.mutate({ note_id: noteId, entity_type });
+  return (
+    <div className="flex items-center gap-2 flex-wrap pt-1">
+      <span className="text-xs text-muted-foreground">Add manually:</span>
+      <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => add("contact")}><Plus className="w-3.5 h-3.5" /><User className="w-3.5 h-3.5" /> Contact</Button>
+      <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => add("task")}><Plus className="w-3.5 h-3.5" /><CheckSquare className="w-3.5 h-3.5" /> Task</Button>
+      <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => add("property")}><Plus className="w-3.5 h-3.5" /><Home className="w-3.5 h-3.5" /> Property</Button>
+    </div>
+  );
+}
+
 function NoteCard({ note }: { note: InjectorNote }) {
   const { applyNote, dismissNote } = useInjectorMutations();
   const { toast } = useToast();
+  const [showSummary, setShowSummary] = useState(false);
   const pendingCount = note.proposals.filter((p) => p.status === "pending").length;
+  const canReview = note.status === "extracted" || note.status === "error";
 
   const onApply = () => {
     applyNote.mutate(note.id, {
@@ -183,7 +264,7 @@ function NoteCard({ note }: { note: InjectorNote }) {
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(note.created_at), "d MMM yyyy, h:mma")}</p>
           </div>
-          {note.status === "extracted" && (
+          {canReview && (
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => dismissNote.mutate(note.id)}>Dismiss</Button>
               <Button size="sm" className="gap-1" disabled={pendingCount === 0 || applyNote.isPending} onClick={onApply}>
@@ -193,18 +274,34 @@ function NoteCard({ note }: { note: InjectorNote }) {
             </div>
           )}
         </div>
+        {note.summary_md && (
+          <button
+            className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 w-fit"
+            onClick={() => setShowSummary((s) => !s)}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            {showSummary ? "Hide summary" : "Read full summary"}
+            {showSummary ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        )}
       </CardHeader>
       <CardContent className="space-y-2">
+        {showSummary && note.summary_md && (
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3 max-h-96 overflow-y-auto">
+            <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">{note.summary_md}</p>
+          </div>
+        )}
         {note.status === "error" && (
-          <p className="text-sm text-rose-400/90">{note.error || "Extraction failed. It will retry automatically."}</p>
+          <p className="text-sm text-rose-400/90">{note.error || "The Note Master couldn’t read this note. You can still read the summary above and add records by hand."}</p>
         )}
         {note.status === "received" && (
           <p className="text-sm text-muted-foreground">Waiting for the Note Master to read this note…</p>
         )}
-        {note.status === "extracted" && note.proposals.length === 0 && (
-          <p className="text-sm text-muted-foreground">No CRM changes found in this note.</p>
+        {canReview && note.proposals.length === 0 && (
+          <p className="text-sm text-muted-foreground">The Note Master didn’t find anything to add. Read the summary, then add any contacts, tasks or properties yourself below.</p>
         )}
         {note.proposals.map((p) => <ProposalRow key={p.id} p={p} />)}
+        {canReview && <AddProposalBar noteId={note.id} />}
       </CardContent>
     </Card>
   );
@@ -223,7 +320,7 @@ export default function Injector() {
         {reviewable.length > 0 && <Badge variant="secondary">{reviewable.length}</Badge>}
       </div>
       <p className="text-sm text-muted-foreground">
-        Dictated notes from Pocket, read by the Note Master. Review each proposed change and click <span className="text-white">Apply</span> to write it into the CRM — nothing is saved until you approve it.
+        Dictated notes from Pocket, read by the Note Master. Open a note to read the full summary, review each proposed change — or add contacts, tasks and properties yourself — then click <span className="text-white">Apply</span> to write it into the CRM. Nothing is saved until you approve it.
       </p>
 
       {isLoading ? (

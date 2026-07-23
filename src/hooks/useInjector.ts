@@ -88,7 +88,41 @@ export function useInjectorPendingCount() {
 
 export function useInjectorMutations() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const invalidate = () => qc.invalidateQueries({ queryKey: KEY });
+
+  /** Add a proposal by hand (e.g. when the Note Master found nothing, or you spotted
+   * something it missed). Creates a blank pending row you then fill in and Apply. */
+  const addProposal = useMutation({
+    mutationFn: async (input: { note_id: string; entity_type: ProposalEntityType }) => {
+      const defaults: Record<ProposalEntityType, Record<string, unknown>> = {
+        contact: { name: "" },
+        task: { title: "" },
+        property: { address: "", ownership_type: "unknown" },
+      };
+      const { error } = await db.from("injector_proposals").insert({
+        note_id: input.note_id,
+        user_id: user?.id,
+        entity_type: input.entity_type,
+        action: "create",
+        match_contact_id: null,
+        confidence: 1,
+        status: "pending",
+        proposed: defaults[input.entity_type],
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: invalidate,
+  });
+
+  /** Permanently remove a proposal (used for a hand-added row you no longer want). */
+  const deleteProposal = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await db.from("injector_proposals").delete().eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: invalidate,
+  });
 
   /** Edit a proposal's extracted fields and/or re-match it to a different contact. */
   const updateProposal = useMutation({
@@ -137,7 +171,7 @@ export function useInjectorMutations() {
     onSuccess: invalidate,
   });
 
-  return { updateProposal, setProposalStatus, applyNote, dismissNote };
+  return { updateProposal, setProposalStatus, applyNote, dismissNote, addProposal, deleteProposal };
 }
 
 /** Lightweight contact search for the re-match picker. */
