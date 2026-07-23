@@ -94,9 +94,14 @@ function parseEnquiry(subject: string, body: string): Enquiry | null {
     };
   }
   if (isDomain) {
-    const name = grab(b, /From:\s*([^\n<]+?)(?:\n|<|$)/i) ?? "there";
+    // Forwarded emails carry an Outlook "From: Domain.com.au Property Enquiry" header line —
+    // the buyer's name is the "From:" immediately followed by an "Email:" line.
+    const name =
+      grab(b, /From:\s*([^\n<]+?)\s*\n+\s*Email:/i) ??
+      grab(b, /From:\s*([^\n<]+?)(?:\n|<|$)/i) ??
+      "there";
     const addr =
-      grab(b, /property at\s*([^\n(]+)/i) ??
+      grab(b, /property at\s*([^\n(<]+)/i) ??
       grab(subject, /Enquiry for\s*(?:FW:\s*)?(.+)/i);
     return {
       source: "domain",
