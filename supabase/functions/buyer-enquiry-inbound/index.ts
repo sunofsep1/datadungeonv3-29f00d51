@@ -42,7 +42,9 @@ function esc(s: string): string {
 }
 function grab(body: string, re: RegExp): string | null {
   const m = body.match(re);
-  return m ? m[1].trim() : null;
+  if (!m) return null;
+  const v = (m[1] ?? "").trim();
+  return v.length ? v : null;
 }
 function normalizePhone(p: string | null): string | null {
   if (!p) return null;
@@ -86,8 +88,8 @@ function parseEnquiry(subject: string, body: string): Enquiry | null {
       property_url: grab(b, /Property URL:\s*([^\n]+)/i),
       name,
       first_name: name.split(/\s+/)[0] ?? "there",
-      email: grab(b, /Email:\s*([^\n]+)/i),
-      phone: normalizePhone(grab(b, /Phone:\s*([^\n]+)/i)),
+      email: grab(b, /Email:[ \t]*([^\n]*)/i),
+      phone: normalizePhone(grab(b, /Phone:[ \t]*([^\n]*)/i)),
       about: grab(b, /About me:\s*([^\n]+)/i),
       wants: grab(b, /I would like to:\s*([^\n]+)/i),
       comments: grab(b, /Comments:\s*([\s\S]*?)(?:\n\s*\n|You can only use|$)/i),
@@ -110,8 +112,8 @@ function parseEnquiry(subject: string, body: string): Enquiry | null {
       property_url: null,
       name,
       first_name: name.split(/\s+/)[0] ?? "there",
-      email: grab(b, /Email:\s*([^\n]+)/i),
-      phone: normalizePhone(grab(b, /Phone:\s*([^\n]+)/i)),
+      email: grab(b, /Email:[ \t]*([^\n]*)/i),
+      phone: normalizePhone(grab(b, /Phone:[ \t]*([^\n]*)/i)),
       about: null,
       wants: null,
       comments: grab(b, /Message:\s*([\s\S]*?)(?:Security Policy|Domain Holdings|$)/i),
