@@ -16,8 +16,20 @@ import { useToast } from "@/hooks/use-toast";
 import { InvestmentBadge } from "@/components/properties/InvestmentControls";
 import {
   useInjectorInbox, useInjectorMutations, useContactSearch, useNoteTranscript,
+  useNoteMasterRules, useSaveNoteMasterRules,
   type InjectorNote, type InjectorProposal,
 } from "@/hooks/useInjector";
+
+/** Small gold-edged verbatim quote showing where a proposal came from. */
+function EvidenceQuote({ pr }: { pr: Record<string, unknown> }) {
+  const ev = pr?.evidence == null ? "" : String(pr.evidence);
+  if (!ev) return null;
+  return (
+    <p className="text-xs text-white/55 italic border-l-2 border-amber-500/50 pl-2">
+      “{ev}”
+    </p>
+  );
+}
 
 function str(v: unknown): string {
   return v == null ? "" : String(v);
@@ -143,6 +155,7 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
                 </>
               )}
               {rejected && pr.note ? <p className="text-xs text-white/70 italic">“{str(pr.note)}”</p> : null}
+              <EvidenceQuote pr={pr} />
             </div>
           )}
 
@@ -172,6 +185,7 @@ function ProposalRow({ p }: { p: InjectorProposal }) {
               )}
               {pr.ownership_reason ? <p className="text-xs text-muted-foreground">{str(pr.ownership_reason)}</p> : null}
               {pr.owner_name ? <p className="text-xs text-white/60">Owner: {str(pr.owner_name)}</p> : null}
+              <EvidenceQuote pr={pr} />
             </div>
           )}
 
@@ -329,7 +343,7 @@ function SelectionToolbar({ noteId, selection, onDone }: { noteId: string; selec
 }
 
 function NoteCard({ note }: { note: InjectorNote }) {
-  const { applyNote, dismissNote } = useInjectorMutations();
+  const { applyNote, dismissNote, reExtract } = useInjectorMutations();
   const { toast } = useToast();
   const [showSummary, setShowSummary] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -364,6 +378,17 @@ function NoteCard({ note }: { note: InjectorNote }) {
           </div>
           {canReview && (
             <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1"
+                title="Clear pending proposals and have the Note Master read this note again (uses your latest rules)"
+                disabled={reExtract.isPending}
+                onClick={() => reExtract.mutate(note.id, {
+                  onSuccess: () => toast({ title: "Note re-read", description: "Fresh proposals below, using your latest rules." }),
+                  onError: (e) => toast({ title: "Couldn’t re-run", description: String((e as Error).message), variant: "destructive" }),
+                })}
+              >
+                {reExtract.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />} Re-run
+              </Button>
               <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => dismissNote.mutate(note.id)}>Dismiss</Button>
               <Button size="sm" className="gap-1" disabled={pendingCount === 0 || applyNote.isPending} onClick={onApply}>
                 {applyNote.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -421,6 +446,9 @@ function NoteCard({ note }: { note: InjectorNote }) {
         {note.status === "error" && (
           <p className="text-sm text-rose-400/90">{note.error || "The Note Master couldn’t read this note. You can still read the summary above and add records by hand."}</p>
         )}
+        {note.status === "extracted" && note.error && (
+          <p className="text-xs text-amber-400/90 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5">⚠ {note.error} If it’s the same call twice, Inject from one and Dismiss the other.</p>
+        )}
         {note.status === "received" && (
           <p className="text-sm text-muted-foreground">Waiting for the Note Master to read this note…</p>
         )}
@@ -430,6 +458,47 @@ function NoteCard({ note }: { note: InjectorNote }) {
         {note.proposals.map((p) => <ProposalRow key={p.id} p={p} />)}
         {canReview && <AddProposalBar noteId={note.id} />}
       </CardContent>
+    </Card>
+  );
+}
+
+/** Collapsible editor for the Note Master's learned rules — the "teach Claude" panel. */
+function RulesEditor() {
+  const { data: rules } = useNoteMasterRules();
+  const save = useSaveNoteMasterRules();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? rules?.rules_md ?? "";
+
+  return (
+    <Card className="zoho-card border-white/10">
+      <CardHeader className="py-3">
+        <button className="flex items-center gap-2 text-left w-full" onClick={() => setOpen((o) => !o)}>
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-medium text-white flex-1">Note Master rules — what it knows about you</span>
+          {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </button>
+      </CardHeader>
+      {open && (
+        <CardContent className="space-y-2 pt-0">
+          <p className="text-xs text-muted-foreground">
+            These rules are given to the Note Master on every note: your name and aliases, staff who should never become contacts, suburbs, and what to ignore. Edit freely — then hit <span className="text-white">Re-run</span> on a note to see the difference.
+          </p>
+          <Textarea value={value} onChange={(e) => setDraft(e.target.value)} className="text-sm font-mono min-h-[16rem]" />
+          <div className="flex justify-end">
+            <Button
+              size="sm" disabled={save.isPending || draft === null || draft === (rules?.rules_md ?? "")}
+              onClick={() => save.mutate({ id: rules?.id ?? null, rules_md: value }, {
+                onSuccess: () => { toast({ title: "Rules saved", description: "Every future note (and any Re-run) uses these." }); setDraft(null); },
+                onError: (e) => toast({ title: "Couldn’t save", description: String((e as Error).message), variant: "destructive" }),
+              })}
+            >
+              {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Save rules
+            </Button>
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -446,6 +515,7 @@ export default function Injector() {
         <h1 className="text-xl font-semibold text-white">Note Inbox</h1>
         {reviewable.length > 0 && <Badge variant="secondary">{reviewable.length}</Badge>}
       </div>
+      <RulesEditor />
       <p className="text-sm text-muted-foreground">
         Dictated notes from Pocket, read by the Note Master. Open a note to read the full summary, review each proposed change — or add contacts, tasks and properties yourself — then click <span className="text-white">Apply</span> to write it into the CRM. Nothing is saved until you approve it.
       </p>

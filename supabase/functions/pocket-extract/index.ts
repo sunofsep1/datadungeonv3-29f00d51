@@ -65,6 +65,7 @@ type Entity = {
   ownership?: "owner_occupier" | "investor_absentee" | "buyer" | "unknown";
   confidence?: number;
   note?: string | null;
+  evidence?: string | null;
   tasks?: { title: string; due?: string | null }[];
 };
 type Extraction = {
@@ -104,6 +105,7 @@ const EXTRACTION_TOOL = {
             },
             confidence: { type: "number", description: "0-1 confidence this is a real, correctly-read entity." },
             note: { type: ["string", "null"], description: "Key business context (e.g. 'Listed with Ray White, appraisal in 2 weeks')." },
+            evidence: { type: ["string", "null"], description: "Short VERBATIM quote from the summary/transcript that supports this entity (max ~140 chars)." },
             tasks: {
               type: "array",
               items: {
@@ -137,9 +139,12 @@ const SYSTEM_PROMPT =
   "(2) Never invent people, phone numbers, emails or addresses — only capture what is actually stated. If unsure, lower the confidence. " +
   "(3) Australian context: mobiles look like 04xx xxx xxx; addresses include a suburb, a state (QLD/NSW/ACT/VIC) and a 4-digit postcode. " +
   "(4) Distinguish where a person LIVES (residential_address) from the PROPERTY being discussed (subject_property_address). If they live somewhere different from a property they own, they are investor_absentee. " +
+  "(5) Prefer including an uncertain person/property with LOW confidence over omitting them — the agent reviews every proposal. " +
+  "(6) For every entity include a short verbatim evidence quote. " +
+  "(7) Relative dates ('in 12 months', 'next spring', 'when the lease ends in October') must be computed from the NOTE RECORDED date given in the input, output as YYYY-MM-DD; Australian spring is Sep-Nov. " +
   "Always call the record_extraction tool.";
 
-async function callClaude(userText: string, model: string): Promise<{ ok: boolean; data?: Extraction; status: number; error?: string }> {
+async function callClaude(userText: string, model: string, extraSystem: string): Promise<{ ok: boolean; data?: Extraction; status: number; error?: string }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -149,8 +154,8 @@ async function callClaude(userText: string, model: string): Promise<{ ok: boolea
     },
     body: JSON.stringify({
       model,
-      max_tokens: 2000,
-      system: SYSTEM_PROMPT,
+      max_tokens: 3000,
+      system: extraSystem ? SYSTEM_PROMPT + "\n\nAGENT-SPECIFIC RULES (highest priority, learned from the agent):\n" + extraSystem : SYSTEM_PROMPT,
       tools: [EXTRACTION_TOOL],
       tool_choice: { type: "tool", name: "record_extraction" },
       messages: [{ role: "user", content: userText }],
@@ -256,20 +261,21 @@ function classifyOwnership(ent: Entity): { type: string; reason: string } {
 }
 
 // deno-lint-ignore no-explicit-any
-async function processNote(svc: any, note: any): Promise<{ note_id: string; proposals: number; note_type: string }> {
+async function processNote(svc: any, note: any, rules: string): Promise<{ note_id: string; proposals: number; note_type: string }> {
   const parts: string[] = [];
+  parts.push(`NOTE RECORDED: ${new Date(note.created_at ?? Date.now()).toISOString().slice(0, 10)}`);
   if (note.title) parts.push(`TITLE: ${note.title}`);
   if (note.summary_md) parts.push(`SUMMARY:\n${note.summary_md}`);
-  if (note.action_items) parts.push(`ACTION ITEMS:\n${truncate(JSON.stringify(note.action_items), 3000)}`);
+  if (note.action_items) parts.push(`ACTION ITEMS:\n${truncate(JSON.stringify(note.action_items), 6000)}`);
   if (note.transcript) {
     const t = typeof note.transcript === "string" ? note.transcript : JSON.stringify(note.transcript);
-    parts.push(`TRANSCRIPT:\n${truncate(t, 12000)}`);
+    parts.push(`TRANSCRIPT:\n${truncate(t, 40000)}`);
   }
   const userText = parts.join("\n\n") || "(empty note)";
 
-  let result = await callClaude(userText, MODEL);
+  let result = await callClaude(userText, MODEL, rules);
   if (!result.ok && result.status === 404 && FALLBACK_MODEL && FALLBACK_MODEL !== MODEL) {
-    result = await callClaude(userText, FALLBACK_MODEL);
+    result = await callClaude(userText, FALLBACK_MODEL, rules);
   }
   if (!result.ok || !result.data) {
     await svc.from("injector_notes").update({ status: "error", error: result.error ?? "extraction failed", updated_at: new Date().toISOString() }).eq("id", note.id);
@@ -304,6 +310,7 @@ async function processNote(svc: any, note: any): Promise<{ note_id: string; prop
         subject_property_address: ent.subject_property_address ?? null,
         ownership: ent.ownership ?? "unknown",
         note: ent.note ?? null,
+        evidence: ent.evidence ?? null,
         match_by: match?.by ?? null,
         match_name: match?.contact.name ?? null,
       },
@@ -322,6 +329,7 @@ async function processNote(svc: any, note: any): Promise<{ note_id: string; prop
           ownership_type: own.type,
           ownership_reason: own.reason,
           owner_name: ent.name,
+          evidence: ent.evidence ?? null,
         },
       });
     }
@@ -360,9 +368,31 @@ async function processNote(svc: any, note: any): Promise<{ note_id: string; prop
       return { note_id: note.id, proposals: 0, note_type: "error" };
     }
   }
+  // Duplicate-call detection: Pocket sometimes summarises the same call twice.
+  // If another recent note proposes the same person, flag this one (warning only).
+  let dupWarning: string | null = null;
+  try {
+    const names = [...new Set(rows.filter((r) => r.entity_type === "contact").map((r) => String(r.proposed?.name ?? "").trim().toLowerCase()).filter((x) => x.length > 2))];
+    if (names.length) {
+      const since = new Date(new Date(note.created_at ?? Date.now()).getTime() - 12 * 3600_000).toISOString();
+      const { data: sib } = await svc
+        .from("injector_proposals")
+        .select("note_id, proposed, injector_notes!inner(id,title,created_at,status)")
+        .eq("user_id", OWNER_USER_ID)
+        .eq("entity_type", "contact")
+        .neq("note_id", note.id)
+        .gte("injector_notes.created_at", since)
+        .limit(40);
+      const hit = (sib ?? []).find((r: { proposed?: { name?: string }; injector_notes?: { title?: string; status?: string } }) =>
+        names.includes(String(r.proposed?.name ?? "").trim().toLowerCase()) &&
+        ["extracted", "applied", "reviewed"].includes(String(r.injector_notes?.status ?? "")));
+      if (hit) dupWarning = `Possible duplicate of "${(hit as { injector_notes?: { title?: string } }).injector_notes?.title ?? "another note"}" — same person mentioned.`;
+    }
+  } catch (_) { /* warning only — never block extraction */ }
+
   await svc
     .from("injector_notes")
-    .update({ status: "extracted", error: null, updated_at: new Date().toISOString() })
+    .update({ status: "extracted", error: dupWarning, updated_at: new Date().toISOString() })
     .eq("id", note.id);
   return { note_id: note.id, proposals: rows.length, note_type: ex.note_type };
 }
@@ -393,10 +423,17 @@ Deno.serve(async (req) => {
     notes = data ?? [];
   }
 
+  const { data: rulesRow } = await svc
+    .from("note_master_rules")
+    .select("rules_md")
+    .eq("user_id", OWNER_USER_ID)
+    .maybeSingle();
+  const rules = (rulesRow?.rules_md ?? "").slice(0, 8000);
+
   const results = [];
   for (const n of notes) {
     try {
-      results.push(await processNote(svc, n));
+      results.push(await processNote(svc, n, rules));
     } catch (e) {
       await svc.from("injector_notes").update({ status: "error", error: String(e), updated_at: new Date().toISOString() }).eq("id", n.id);
       results.push({ note_id: n.id, proposals: 0, note_type: "error" });

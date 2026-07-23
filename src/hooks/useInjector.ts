@@ -188,7 +188,51 @@ export function useInjectorMutations() {
     onSuccess: invalidate,
   });
 
-  return { updateProposal, setProposalStatus, applyNote, dismissNote, addProposal, deleteProposal };
+  /** Re-run the Note Master on one note (e.g. after updating the rules). Clears its
+   * pending proposals and extracts fresh; applied/rejected rows are kept. */
+  const reExtract = useMutation({
+    mutationFn: async (noteId: string) => {
+      const { data, error } = await supabase.functions.invoke("pocket-extract", { body: { note_id: noteId } });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(String(data.error));
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { updateProposal, setProposalStatus, applyNote, dismissNote, addProposal, deleteProposal, reExtract };
+}
+
+/** The Note Master's editable rules brief (aliases, staff, suburbs, exclusions). */
+export function useNoteMasterRules() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["note-master-rules"],
+    enabled: Boolean(user?.id),
+    staleTime: 60_000,
+    queryFn: async (): Promise<{ id: string; rules_md: string } | null> => {
+      const { data, error } = await db.from("note_master_rules").select("id,rules_md").maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ?? null;
+    },
+  });
+}
+
+export function useSaveNoteMasterRules() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (input: { id: string | null; rules_md: string }) => {
+      if (input.id) {
+        const { error } = await db.from("note_master_rules").update({ rules_md: input.rules_md, updated_at: new Date().toISOString() }).eq("id", input.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await db.from("note_master_rules").insert({ user_id: user?.id, rules_md: input.rules_md });
+        if (error) throw new Error(error.message);
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["note-master-rules"] }),
+  });
 }
 
 /** Lazy transcript fetch for one note (only when the user expands it — transcripts are big). */
