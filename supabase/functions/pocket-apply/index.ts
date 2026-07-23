@@ -74,6 +74,14 @@ Deno.serve(async (req) => {
   const nameToContact = new Map<string, string>(); // proposed.name -> contact id
   const now = new Date().toISOString();
 
+  // Is this a multi-person session note? (counts ALL contact proposals on the note)
+  const { count: contactCount } = await svc
+    .from("injector_proposals")
+    .select("id", { count: "exact", head: true })
+    .eq("note_id", noteId)
+    .eq("entity_type", "contact");
+  const multiPerson = (contactCount ?? 0) > 1;
+
   // ---- 1) contacts first (so properties/tasks can link to them) ----
   for (const p of (proposals ?? []).filter((x) => x.entity_type === "contact")) {
     const pr = p.proposed ?? {};
@@ -129,9 +137,13 @@ Deno.serve(async (req) => {
     // Conversation Hub entry citing the note — save the FULL call summary so it reads richly,
     // with the contact-specific takeaway kept as the "next / context" line.
     if (contactId) {
-      const convoSummary = note.summary_md
-        ? String(note.summary_md)
-        : (pr.note ? String(pr.note) : `From Pocket note: ${note.title ?? "(untitled)"}`);
+      // Multi-person session → each contact gets only THEIR takeaway (plus its evidence
+      // quote), not the whole call summary — otherwise office banter lands on every card.
+      const personal = pr.note ? String(pr.note) : null;
+      const evidence = pr.evidence ? `\n\n“${String(pr.evidence)}”` : "";
+      const convoSummary = multiPerson
+        ? `${personal ?? `From Pocket note: ${note.title ?? "(untitled)"}`}${evidence}`
+        : (note.summary_md ? String(note.summary_md) : (personal ?? `From Pocket note: ${note.title ?? "(untitled)"}`));
       await svc.from("contact_conversations").insert({
         user_id: OWNER_USER_ID,
         contact_id: contactId,
@@ -139,7 +151,7 @@ Deno.serve(async (req) => {
         channel: "note",
         source: "pocket_injector",
         summary: convoSummary,
-        next_steps: note.summary_md && pr.note ? String(pr.note) : null,
+        next_steps: multiPerson ? null : (note.summary_md && personal ? personal : null),
       });
     }
     await svc.from("injector_proposals").update({ status: "applied", applied_at: now }).eq("id", p.id);

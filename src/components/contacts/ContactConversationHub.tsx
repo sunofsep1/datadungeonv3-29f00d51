@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Plus, Trash2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Loader2, ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   useContactConversations,
   useCreateContactConversation,
+  useUpdateContactConversation,
   useDeleteContactConversation,
   type ContactConversation,
 } from "@/hooks/useContactConversations";
@@ -40,10 +41,64 @@ function ConversationRow({
   // you can click to open; short one-liners just show in full.
   const isLong = summary.length > 140 || summary.includes("\n");
   const [expanded, setExpanded] = useState(!isLong);
+  const [editing, setEditing] = useState(false);
+  const [draftSummary, setDraftSummary] = useState(summary);
+  const [draftNext, setDraftNext] = useState(convo.next_steps ?? "");
+  const updateConvo = useUpdateContactConversation();
   const via =
     convo.source === "pocket_injector" ? "via Pocket"
     : convo.source === "note_master" ? "via Note Master"
     : null;
+
+  const startEdit = () => {
+    setDraftSummary(summary);
+    setDraftNext(convo.next_steps ?? "");
+    setEditing(true);
+    setExpanded(true);
+  };
+  const saveEdit = () => {
+    updateConvo.mutate(
+      { id: convo.id, contact_id: convo.contact_id, summary: draftSummary.trim(), next_steps: draftNext.trim() || null },
+      {
+        onSuccess: () => { setEditing(false); toast.success("Conversation updated"); },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to save"),
+      },
+    );
+  };
+
+  if (editing) {
+    return (
+      <Card className="border border-primary/40 bg-background/60 p-3">
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[10px] uppercase text-primary">
+            {channelLabel(convo.channel)}
+          </Badge>
+          {when ? <span className="text-xs text-muted-foreground">{format(when, "d MMM yyyy · h:mma")}</span> : null}
+          <span className="text-[10px] uppercase text-primary">editing</span>
+        </div>
+        <textarea
+          autoFocus
+          className="min-h-[140px] w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm leading-snug"
+          value={draftSummary}
+          onChange={(e) => setDraftSummary(e.target.value)}
+        />
+        <input
+          placeholder="Next step (optional)"
+          className="mt-2 h-9 w-full rounded-md border border-border bg-background px-3 text-xs"
+          value={draftNext}
+          onChange={(e) => setDraftNext(e.target.value)}
+        />
+        <div className="mt-2 flex justify-end gap-2">
+          <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={() => setEditing(false)}>
+            <X className="h-3.5 w-3.5" /> Cancel
+          </Button>
+          <Button size="sm" className="h-8 gap-1" onClick={saveEdit} disabled={updateConvo.isPending || !draftSummary.trim()}>
+            {updateConvo.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Save
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="group border border-border bg-background/60 p-3 transition-colors hover:border-primary/40">
@@ -69,16 +124,27 @@ function ConversationRow({
             )
           ) : null}
         </button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground opacity-70 hover:text-destructive group-hover:opacity-100"
-          onClick={onDelete}
-          disabled={isDeleting}
-          aria-label="Delete conversation"
-        >
-          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-        </Button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground opacity-70 hover:text-primary group-hover:opacity-100"
+            onClick={startEdit}
+            aria-label="Edit conversation"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground opacity-70 hover:text-destructive group-hover:opacity-100"
+            onClick={onDelete}
+            disabled={isDeleting}
+            aria-label="Delete conversation"
+          >
+            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
       </div>
       {summary ? (
         <p

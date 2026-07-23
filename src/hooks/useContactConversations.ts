@@ -76,6 +76,29 @@ export function useCreateContactConversation() {
   });
 }
 
+export function useUpdateContactConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      contact_id: string;
+      summary?: string;
+      next_steps?: string | null;
+      channel?: string;
+    }) => {
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (input.summary !== undefined) patch.summary = input.summary;
+      if (input.next_steps !== undefined) patch.next_steps = input.next_steps;
+      if (input.channel !== undefined) patch.channel = input.channel;
+      const { error } = await sb.from("contact_conversations").update(patch).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: key(vars.contact_id) });
+    },
+  });
+}
+
 export function useDeleteContactConversation() {
   const qc = useQueryClient();
   return useMutation({
