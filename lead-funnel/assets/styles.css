@@ -26,6 +26,32 @@ a{color:var(--navy)}
 .logo-placeholder--sm{font-size:.72rem;padding:.4rem .6rem}
 .logo-placeholder--rev{color:var(--cream);border-color:var(--gold)}
 
+/* ---------- Newsletter signup (index section + thank-you block) ---------- */
+.nl{background:var(--navy);padding:clamp(3rem,7vw,4.5rem) 1.5rem;position:relative}
+.nl::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,rgba(185,154,80,0) 0%,var(--gold) 50%,rgba(185,154,80,0) 100%);opacity:.55}
+.nl__inner{max-width:640px;margin:0 auto;text-align:center}
+.nl__kicker{font-family:var(--sans);font-weight:600;letter-spacing:.16em;font-size:.82rem;color:var(--gold);text-transform:uppercase;margin:0 0 .9rem}
+.nl__inner h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.7rem,4vw,2.4rem);color:var(--white);margin:0 0 .9rem;line-height:1.15}
+.nl__lead{color:#D8D0BE;font-size:1.02rem;line-height:1.55;margin:0 auto 1.6rem;max-width:52ch}
+.nl-form{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center}
+.nl-form .field{flex:1 1 200px;max-width:280px;height:52px;padding:0 1rem;border:1px solid rgba(255,255,255,.25);border-radius:2px;background:rgba(255,255,255,.06);color:var(--white);font-family:var(--sans);font-size:1rem}
+.nl-form .field::placeholder{color:#A9B0C2}
+.nl-form .field:focus{outline:none;border-color:var(--gold)}
+.nl-form .btn--gold{height:52px;padding:0 1.75rem}
+.nl-form__msg{flex-basis:100%;font-size:.9rem;color:#F4C7C3;margin:.35rem 0 0}
+.nl-form__done{font-family:var(--sans);font-weight:600;font-size:1.05rem;color:var(--gold);margin:.5rem 0 0}
+.nl__fine{font-size:.82rem;color:#8E97AC;margin:1.1rem 0 0}
+/* Compact variant on the (light) thank-you card */
+.nl--card{background:transparent;padding:0;margin-top:2.25rem;border-top:1px solid var(--grey);padding-top:1.75rem}
+.nl--card::before{display:none}
+.nl--card .nl__kicker{color:var(--gold)}
+.nl--card h2{color:var(--navy);font-size:1.45rem}
+.nl--card .nl__lead{color:#6a6a6a;font-size:.95rem}
+.nl--card .nl-form .field{background:var(--white);border-color:var(--grey);color:var(--ink)}
+.nl--card .nl-form .field::placeholder{color:#9a9a9a}
+.nl--card .nl-form__msg{color:#b3261e}
+.nl--card .nl__fine{color:#999}
+
 /* ---------- Header ---------- */
 .site-header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1.5rem;background:rgba(254,251,245,.92);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--grey)}
 .brand-badge__logo{height:40px;width:auto}

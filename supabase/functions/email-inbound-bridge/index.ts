@@ -99,7 +99,11 @@ Deno.serve(async (req) => {
   const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
     headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
   });
-  if (!res.ok) return json({ error: `fetch email: HTTP ${res.status}` }, 502);
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).slice(0, 300);
+    console.error(`resend content fetch failed: HTTP ${res.status} for ${emailId} — ${detail}`);
+    return json({ error: `fetch email: HTTP ${res.status}`, detail }, 502);
+  }
   const email = await res.json() as { subject?: string; text?: string | null; html?: string | null; from?: string };
   const subject = email.subject ?? event.data?.subject ?? "";
   const bodyText = (email.text && email.text.trim()) ? email.text : stripHtml(email.html ?? "");

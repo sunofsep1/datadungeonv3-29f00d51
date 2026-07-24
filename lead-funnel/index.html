@@ -329,6 +329,23 @@
     </div>
   </section>
 
+  <!-- ====================== NEWSLETTER SIGNUP ====================== -->
+  <section class="nl" aria-label="Join Greg's mailing list">
+    <div class="nl__inner">
+      <p class="nl__kicker">Not ready for an appraisal?</p>
+      <h2>Join my exclusive Redlands list</h2>
+      <p class="nl__lead">Off-market listings before they hit the portals, straight-talking market updates, and what you need to know to buy or sell in a changing market. From me &mdash; not a call centre.</p>
+      <form class="nl-form" novalidate>
+        <input type="text" name="nl_first_name" class="field" placeholder="First name" autocomplete="given-name" />
+        <input type="email" name="nl_email" class="field" placeholder="Email address" autocomplete="email" inputmode="email" required />
+        <input type="text" name="company" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;" aria-hidden="true" />
+        <button type="submit" class="btn btn--gold">Join the list</button>
+        <p class="nl-form__msg" role="alert" hidden></p>
+      </form>
+      <p class="nl__fine">No spam. Unsubscribe any time with one click.</p>
+    </div>
+  </section>
+
   <!-- ============================ FOOTER ============================ -->
   <footer class="site-footer" id="privacy">
     <div class="footer__inner">
@@ -353,5 +370,6 @@
   -->
 
   <script src="assets/funnel.js" defer></script>
+  <script src="assets/newsletter.js" defer></script>
 </body>
 </html>
