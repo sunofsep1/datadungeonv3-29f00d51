@@ -37,7 +37,8 @@ a{color:var(--navy)}
 .hero::before{content:"";position:absolute;inset:0;z-index:0;background:radial-gradient(120% 120% at 82% 0%,rgba(185,154,80,.14) 0%,rgba(23,40,73,0) 55%)}
 .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;z-index:1;background:linear-gradient(90deg,rgba(185,154,80,0) 0%,var(--gold) 50%,rgba(185,154,80,0) 100%);opacity:.55}
 .hero__eyebrow{font-family:var(--sans);font-weight:600;letter-spacing:.16em;font-size:.82rem;color:var(--gold);margin:0 0 1.1rem}
-.hero__reassure{font-size:.95rem;color:#D8D0BE;margin:1.1rem 0 0}
+.hero__reassure{font-size:.9rem;color:#D8D0BE;margin:1.1rem 0 0}
+@media(min-width:960px){.hero__reassure{white-space:nowrap;font-size:clamp(.78rem,.95vw,.9rem)}}
 #suburb-token{color:var(--gold);font-style:italic}
 
 /* Hero portrait (right column) */
