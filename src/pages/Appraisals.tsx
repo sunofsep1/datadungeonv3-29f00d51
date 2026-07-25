@@ -39,7 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useContacts } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
 import { useLogListingStageMove } from "@/hooks/useEvents";
-import { useListings, useUpdateListing, type Listing, type ListingWithContact } from "@/hooks/useListings";
+import { useListings, useUpdateListing, useDeleteListing, type Listing, type ListingWithContact } from "@/hooks/useListings";
 import { filterAppraisalPipelineListings } from "@/lib/appraisalListings";
 import { getListingHeroImageUrl } from "@/lib/listingFromProperty";
 import { leadTemperatureForListingPipelineStage } from "@/lib/leadCategoryDerivation";
@@ -71,12 +71,14 @@ export default function Appraisals() {
   const { data: properties = [] } = useProperties();
   const { data: contacts = [] } = useContacts();
   const updateListing = useUpdateListing();
+  const deleteListing = useDeleteListing();
   const { logStageMove } = useLogListingStageMove();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [confirmListed, setConfirmListed] = useState<Listing | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
 
   const contactMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -152,6 +154,22 @@ export default function Appraisals() {
       });
     } finally {
       setAdvancingId(null);
+    }
+  };
+
+  const handleDelete = async (listing: Listing) => {
+    try {
+      await deleteListing.mutateAsync(listing.id);
+      toast({
+        title: "Appraisal deleted",
+        description: listing.address ?? "The appraisal has been removed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not delete appraisal",
+        description: supabaseErrorMessage(error),
+        variant: "destructive",
+      });
     }
   };
 
@@ -283,6 +301,14 @@ export default function Appraisals() {
                       >
                         Move to listed stage
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={deleteListing.isPending}
+                        onSelect={() => setConfirmDelete(listing)}
+                      >
+                        Delete appraisal
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -334,6 +360,32 @@ export default function Appraisals() {
         createMode="appraisal"
         stages={[{ id: "appraisal", name: "Appraisal / prep" }]}
       />
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this appraisal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDelete?.address
+                ? `${confirmDelete.address} will be permanently removed from the appraisal pipeline. The contact and property records are kept.`
+                : "This appraisal will be permanently removed. The contact and property records are kept."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteListing.isPending}
+              onClick={() => {
+                if (confirmDelete) void handleDelete(confirmDelete);
+                setConfirmDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!confirmListed} onOpenChange={(open) => !open && setConfirmListed(null)}>
         <AlertDialogContent>

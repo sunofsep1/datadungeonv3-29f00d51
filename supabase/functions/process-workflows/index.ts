@@ -417,16 +417,35 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (authHeader !== `Bearer ${serviceRoleKey}`) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+
+    // Accept the current env service key outright. Otherwise verify the presented
+    // token really carries service-role privileges by hitting a GoTrue admin
+    // endpoint (anon/user JWTs get rejected there). This survives key-rotation
+    // drift between pg_cron's vault copy and this function's env — the exact
+    // mismatch that silently 401'd the workflow engine for days.
+    let authed = Boolean(token) && token === serviceRoleKey;
+    if (!authed && token) {
+      try {
+        const probe = createClient(supabaseUrl, token, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { error: probeErr } = await probe.auth.admin.listUsers({ page: 1, perPage: 1 });
+        authed = !probeErr;
+      } catch (_) {
+        authed = false;
+      }
+    }
+    if (!authed) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const now = new Date().toISOString();
