@@ -57,60 +57,53 @@ type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
 const GAME_MODE_NAV_URLS = new Set(["/lair", "/training"]);
 
-const homeItems: NavItem[] = [
+// Core 7 — always visible, no group header. Everything else lives in
+// collapsed-by-default groups (Sell / Engage / Insights / Extras).
+const coreItems: NavItem[] = [
   { title: "Daily Hub", url: "/attention-hub", icon: Sparkles },
-  { title: "Drako's Lair", url: "/lair", icon: Flame },
-  { title: "Drako's Trials", url: "/training", icon: Swords },
-  { title: "Home", url: "/dashboard", icon: LayoutDashboard },
-];
-
-const dailyWorkItems: NavItem[] = [
   { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Prospecting Notes", url: "/prospecting-notes", icon: NotebookPen },
-  { title: "My Markets", url: "/contacts/markets", icon: MapPin },
-  { title: "Listings", url: "/listings", icon: Building2 },
-  { title: "Appraisals", url: "/appraisals", icon: ClipboardList },
-  { title: "Pricing", url: "/pricing", icon: LineChart },
-  { title: "Tasks", url: "/tasks", icon: CheckSquare },
   { title: "Note Inbox", url: "/injector", icon: Inbox },
-];
-
-const relationshipItems: NavItem[] = [
-  { title: "Nurture", url: "/nurture", icon: Sparkles },
-  { title: "To-Do lists", url: "/todos", icon: ListTodo },
-  { title: "Properties", url: "/properties", icon: Building2 },
+  { title: "Appraisals", url: "/appraisals", icon: ClipboardList },
+  { title: "Listings", url: "/listings", icon: Building2 },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare },
   { title: "Calendar", url: "/calendar", icon: Calendar },
 ];
 
-const automationItems: NavItem[] = [
-  { title: "Scripts", url: "/scripts", icon: FileText },
+const sellItems: NavItem[] = [
+  { title: "Pricing", url: "/pricing", icon: LineChart },
+  { title: "Properties", url: "/properties", icon: Building2 },
+  { title: "Nurture", url: "/nurture", icon: Sparkles },
+  { title: "My Markets", url: "/contacts/markets", icon: MapPin },
+  { title: "Prospecting Notes", url: "/prospecting-notes", icon: NotebookPen },
 ];
 
-const planningItems: NavItem[] = [{ title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck }];
-
-const businessItems: NavItem[] = [
+const engageItems: NavItem[] = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
+  { title: "Templates & history", url: "/communications", icon: FileText },
+  { title: "SMS suite", url: "/communications/sms", icon: MessageSquare },
+  { title: "Scripts", url: "/scripts", icon: FileText },
+  { title: "Reviews & events", url: "/annual-reviews", icon: ClipboardCheck },
+];
+
+const insightItems: NavItem[] = [
   { title: "Performance", url: "/performance", icon: BarChart3 },
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Invoices", url: "/invoices", icon: Receipt },
 ];
 
-const insightsItems: NavItem[] = [];
-
-const communicationsItems: NavItem[] = [
-  { title: "Templates & history", url: "/communications", icon: FileText },
-  { title: "SMS suite", url: "/communications/sms", icon: MessageSquare },
+const extrasItems: NavItem[] = [
+  { title: "Home", url: "/dashboard", icon: LayoutDashboard },
+  { title: "To-Do lists", url: "/todos", icon: ListTodo },
+  { title: "Drako's Lair", url: "/lair", icon: Flame },
+  { title: "Drako's Trials", url: "/training", icon: Swords },
 ];
 
 const navItems: NavItem[] = [
-  ...homeItems,
-  ...dailyWorkItems,
-  ...relationshipItems,
-  ...automationItems,
-  ...planningItems,
-  ...businessItems,
-  ...insightsItems,
-  ...communicationsItems,
+  ...coreItems,
+  ...sellItems,
+  ...engageItems,
+  ...insightItems,
+  ...extrasItems,
 ];
 
 const mobileNavItems = [
@@ -172,7 +165,7 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
   const { signOut, user } = useAuth();
   const { gameModeEnabled } = useGameMode();
 
-  const visibleHomeItems = homeItems.filter(
+  const visibleExtrasItems = extrasItems.filter(
     (item) => gameModeEnabled || !GAME_MODE_NAV_URLS.has(item.url),
   );
   const visibleNavItems = navItems.filter(
@@ -283,78 +276,42 @@ export function SidebarNavigation({ collapsed, onToggle }: SidebarNavigationProp
             })
           ) : (
             <>
-              <Collapsible defaultOpen className="space-y-0.5">
+              {coreItems.map((item) => renderNavItem(item, location.pathname))}
+              <div className="my-2 border-t border-sidebar-border" />
+              <Collapsible defaultOpen={false} className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Home</span>
+                  <span>Sell</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {visibleHomeItems.map((item) => renderNavItem(item, location.pathname))}
+                  {sellItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
-              <Collapsible defaultOpen className="space-y-0.5">
+              <Collapsible defaultOpen={false} className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Daily work</span>
+                  <span>Engage</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {dailyWorkItems.map((item) => renderNavItem(item, location.pathname))}
+                  {engageItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
-              <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Relationships & records</span>
-                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {relationshipItems.map((item) => renderNavItem(item, location.pathname))}
-                </CollapsibleContent>
-              </Collapsible>
-              <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Automation & scripts</span>
-                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {automationItems.map((item) => renderNavItem(item, location.pathname))}
-                </CollapsibleContent>
-              </Collapsible>
-              <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Planning</span>
-                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {planningItems.map((item) => renderNavItem(item, location.pathname))}
-                </CollapsibleContent>
-              </Collapsible>
-              <Collapsible defaultOpen className="space-y-0.5">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Business</span>
-                  <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {businessItems.map((item) => renderNavItem(item, location.pathname))}
-                </CollapsibleContent>
-              </Collapsible>
-              {insightsItems.length > 0 ? (
               <Collapsible defaultOpen={false} className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
                   <span>Insights</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {insightsItems.map((item) => renderNavItem(item, location.pathname))}
+                  {insightItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
-              ) : null}
-              <Collapsible defaultOpen className="space-y-0.5">
+              <Collapsible defaultOpen={false} className="space-y-0.5">
                 <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30">
-                  <span>Communications</span>
+                  <span>Extras</span>
                   <ChevronDown className="h-3.5 w-3.5 ml-auto data-[state=open]:rotate-180 transition-transform" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 pt-0.5">
-                  {communicationsItems.map((item) => renderNavItem(item, location.pathname))}
+                  {visibleExtrasItems.map((item) => renderNavItem(item, location.pathname))}
                 </CollapsibleContent>
               </Collapsible>
             </>
