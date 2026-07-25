@@ -1,5 +1,21 @@
 import { createRoot } from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+
+// After a deploy, an already-open (or PWA-cached) session can request lazy-route
+// chunks that no longer exist on the server (Contacts page etc.). Vite fires this
+// event on a failed dynamic import — one reload picks up the fresh build.
+window.addEventListener("vite:preloadError", () => {
+  window.location.reload();
+});
+
+// PWA: check for a new service-worker version hourly AND whenever the app is
+// foregrounded (iPad home-screen apps only naturally check on cold launch).
+const updateSW = registerSW({ immediate: true });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void updateSW(true);
+});
+setInterval(() => void updateSW(true), 60 * 60 * 1000);
 
 function showMissingEnvScreen() {
   const el = document.getElementById("root");
