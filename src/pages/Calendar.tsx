@@ -25,6 +25,18 @@ import {
   Plus,
 } from "lucide-react";
 import { useAppointments, APPOINTMENT_TYPES, type AppointmentType } from "@/hooks/useAppointments";
+import { useContacts } from "@/hooks/useContacts";
+import { DayRail } from "@/components/calendar/DayRail";
+import {
+  clashingIds,
+  dayLoad,
+  FILTER_TYPES,
+  metaFor,
+  typeLabel,
+  type CalendarItem,
+  type CalendarItem as CalItem,
+  type CalendarItemSource,
+} from "@/lib/calendarEvents";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,16 +75,7 @@ interface GCalEvent {
   location?: string;
 }
 
-export type CalendarItemSource = "app" | "google";
-
-export interface CalendarItem {
-  id: string;
-  title: string;
-  date: string;
-  source: CalendarItemSource;
-  location?: string | null;
-  htmlLink?: string;
-}
+export type { CalendarItem, CalendarItemSource } from "@/lib/calendarEvents";
 
 const getGcalUrl = () => {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -95,6 +98,12 @@ export default function Calendar() {
     setViewMode(profile.default_calendar_view);
     setDefaultViewApplied(true);
   }, [profile?.default_calendar_view, defaultViewApplied]);
+
+  const { data: contacts = [] } = useContacts();
+  /** The day the rail is showing. Month view stays put while you inspect a day. */
+  const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  /** Empty set means "show everything" rather than "show nothing". */
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set());
 
   const [gcalEvents, setGcalEvents] = useState<GCalEvent[]>([]);
   const [gcalLoading, setGcalLoading] = useState(false);
@@ -179,20 +188,29 @@ export default function Calendar() {
     fetchGcal();
   }, [fetchGcal]);
 
-  const mergedItems = useMemo((): CalendarItem[] => {
-    const appItems: CalendarItem[] = (appointments ?? []).map((a) => ({
+  const mergedItems = useMemo((): CalItem[] => {
+    const appItems: CalItem[] = (appointments ?? []).map((a) => ({
       id: `app-${a.id}`,
+      appointmentId: a.id,
       title: a.title,
       date: a.date,
+      end: a.end_date ?? null,
+      allDay: Boolean(a.all_day),
       source: "app" as const,
+      type: a.type ?? "meeting",
       location: a.location ?? null,
+      contactId: a.contact_id ?? null,
+      notes: a.notes ?? null,
     }));
-    const gcItems: CalendarItem[] = gcalEvents.map((e) => {
+    const gcItems: CalItem[] = gcalEvents.map((e) => {
       const dateStr = e.start?.dateTime ?? e.start?.date ?? "";
       return {
         id: `gc-${e.id}`,
         title: e.summary || "(No title)",
         date: dateStr,
+        end: e.end?.dateTime ?? null,
+        // Google all-day events carry `date` instead of `dateTime`.
+        allDay: Boolean(e.start?.date && !e.start?.dateTime),
         source: "google" as const,
         location: e.location ?? null,
         htmlLink: e.htmlLink,
@@ -202,6 +220,40 @@ export default function Calendar() {
     all.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return all;
   }, [appointments, gcalEvents]);
+
+  /** Types actually present this month, so the filter row only offers real options. */
+  const presentTypes = useMemo(() => {
+    const seen = new Set<string>();
+    mergedItems.forEach((i) => {
+      if (i.source === "app") seen.add(i.type ?? "meeting");
+    });
+    return FILTER_TYPES.filter((t) => seen.has(t));
+  }, [mergedItems]);
+
+  const visibleItems = useMemo(() => {
+    if (activeTypes.size === 0) return mergedItems;
+    return mergedItems.filter(
+      (i) => i.source === "google" || activeTypes.has(i.type ?? "meeting"),
+    );
+  }, [mergedItems, activeTypes]);
+
+  const contactNameFor = useCallback(
+    (contactId: string) => {
+      const c = contacts.find((x) => x.id === contactId);
+      if (!c) return undefined;
+      return [c.first_name, c.last_name].filter(Boolean).join(" ") || undefined;
+    },
+    [contacts],
+  );
+
+  const toggleType = (t: string) => {
+    setActiveTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  };
 
   const navigatePrevious = () => {
     switch (viewMode) {
@@ -235,8 +287,8 @@ export default function Calendar() {
     setCurrentDate(new Date());
   };
 
-  const getEventsForDate = (date: Date): CalendarItem[] => {
-    return mergedItems.filter((item) => {
+  const getEventsForDate = (date: Date): CalItem[] => {
+    return visibleItems.filter((item) => {
       const itemDate = parseISO(item.date);
       return isSameDay(itemDate, date);
     });
@@ -537,63 +589,165 @@ export default function Calendar() {
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
-    const calendarStart = startOfWeek(monthStart);
-    const calendarEnd = endOfWeek(monthEnd);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    const selectedItems = getEventsForDate(selectedDay);
 
     return (
-      <div className="overflow-hidden rounded-xl border border-border/80">
-        <div className="grid grid-cols-7 gap-px bg-border">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div
-              key={day}
-              className="bg-muted/50 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-px bg-border">
-          {days.map((day) => {
-            const events = getEventsForDate(day);
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            return (
-              <button
-                key={day.toISOString()}
-                type="button"
-                onClick={() => openNewAppointmentForSlot(day)}
-                className={cn(
-                  "min-h-[92px] w-full bg-card p-1.5 text-left transition-colors hover:bg-muted/50 sm:min-h-[110px] sm:p-2",
-                  !isCurrentMonth && "opacity-40",
-                )}
-                title="Click to add booking"
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="overflow-hidden rounded-xl border border-border/80">
+          <div className="grid grid-cols-7 gap-px bg-border">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+              <div
+                key={day}
+                className="bg-muted/50 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs"
               >
-                <div className="mb-1 flex justify-end">
-                  <span
-                    className={cn(
-                      "inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-sm tabular-nums",
-                      isToday(day)
-                        ? "bg-primary font-semibold text-primary-foreground shadow-sm"
-                        : cn("text-foreground", !isCurrentMonth && "text-muted-foreground"),
-                    )}
-                  >
-                    {format(day, "d")}
-                  </span>
+                {day}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-px bg-border">
+            {days.map((day) => {
+              const events = getEventsForDate(day);
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isSelected = isSameDay(day, selectedDay);
+              const clashes = clashingIds(events, defaultDuration);
+              const load = dayLoad(events);
+              const shown = events.slice(0, 3);
+
+              return (
+                <div
+                  key={day.toISOString()}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedDay(day)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedDay(day);
+                    }
+                  }}
+                  onDoubleClick={() => openNewAppointmentForSlot(day)}
+                  className={cn(
+                    "min-w-0 cursor-pointer overflow-hidden bg-card p-1.5 text-left transition-colors hover:bg-muted/40 sm:p-2",
+                    "min-h-[96px] sm:min-h-[116px]",
+                    !isCurrentMonth && "bg-muted/20",
+                    isSelected && "ring-2 ring-inset ring-primary",
+                  )}
+                  title="Click to open this day · double-click to add"
+                >
+                  <div className="mb-1 flex items-center gap-1">
+                    <span
+                      className={cn(
+                        "inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full text-xs tabular-nums",
+                        isToday(day)
+                          ? "bg-primary font-semibold text-primary-foreground"
+                          : cn("font-medium text-foreground", !isCurrentMonth && "text-muted-foreground/60"),
+                      )}
+                    >
+                      {format(day, "d")}
+                    </span>
+                    {clashes.size > 0 ? (
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500" title="Double-booked" />
+                    ) : null}
+                    <span className="ml-auto flex gap-[2px]" aria-hidden>
+                      {[1, 2, 3].map((n) => (
+                        <span
+                          key={n}
+                          className={cn(
+                            "block h-1 w-1 rounded-full",
+                            load >= n ? "bg-muted-foreground/70" : "bg-transparent",
+                          )}
+                        />
+                      ))}
+                    </span>
+                  </div>
+
+                  <div className="space-y-[3px]">
+                    {shown.map((item) => {
+                      const meta = metaFor(item);
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "flex min-w-0 items-baseline gap-1 rounded-sm border-l-2 px-1 py-[2px] text-[10.5px] leading-tight",
+                            meta.bar,
+                            meta.chip,
+                            clashes.has(item.id) && "bg-red-500/15",
+                          )}
+                          title={`${item.allDay ? "All day" : format(parseISO(item.date), "h:mm a")} — ${item.title}`}
+                        >
+                          {!item.allDay ? (
+                            <span className="shrink-0 tabular-nums text-muted-foreground">
+                              {format(parseISO(item.date), "HH:mm")}
+                            </span>
+                          ) : null}
+                          <span className="min-w-0 flex-1 truncate text-foreground">{item.title}</span>
+                        </div>
+                      );
+                    })}
+                    {events.length > shown.length ? (
+                      <div className="pl-1 text-[10px] font-medium text-muted-foreground">
+                        +{events.length - shown.length} more
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  {events.slice(0, 2).map((item) => (
-                    <div key={item.id} className={eventPillClass(item.source)} title={item.title}>
-                      {item.title}
-                    </div>
-                  ))}
-                  {events.length > 2 ? (
-                    <div className="px-0.5 text-[10px] font-medium text-muted-foreground">+{events.length - 2}</div>
-                  ) : null}
-                </div>
-              </button>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
+
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <DayRail
+            day={selectedDay}
+            items={selectedItems}
+            defaultDurationMinutes={defaultDuration}
+            contactNameFor={contactNameFor}
+            onAddAt={(d, startTime) => openNewAppointmentForSlot(d, startTime)}
+            onSelectItem={(item) => {
+              if (item.source === "google" && item.htmlLink) window.open(item.htmlLink, "_blank");
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderTypeFilters = () => {
+    if (presentTypes.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {presentTypes.map((t) => {
+          const meta = metaFor({ source: "app", type: t });
+          const count = mergedItems.filter((i) => i.source === "app" && (i.type ?? "meeting") === t).length;
+          const on = activeTypes.size === 0 || activeTypes.has(t);
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => toggleType(t)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-opacity",
+                on ? "border-border/80 text-foreground" : "border-border/50 text-muted-foreground opacity-45",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
+              {typeLabel(t)}
+              <span className="tabular-nums text-muted-foreground">{count}</span>
+            </button>
+          );
+        })}
+        {activeTypes.size > 0 ? (
+          <button
+            type="button"
+            onClick={() => setActiveTypes(new Set())}
+            className="rounded-full px-2.5 py-1 text-[11.5px] font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Show all
+          </button>
+        ) : null}
       </div>
     );
   };
@@ -824,6 +978,7 @@ export default function Calendar() {
 
       {/* Calendar View */}
       <Card className="zoho-card border-border p-4 shadow-sm sm:p-6">
+        {viewMode === "month" ? <div className="mb-4">{renderTypeFilters()}</div> : null}
         {viewMode === "day" && renderDayView()}
         {viewMode === "week" && renderWeekView()}
         {viewMode === "month" && renderMonthView()}
