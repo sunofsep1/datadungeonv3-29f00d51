@@ -48,6 +48,11 @@ datadungeonv3-29f00d51/
 *.csv
 *.docx
 *.html
+# ...but the public funnel site's pages and the newsletter MUST be tracked.
+# (A blanket *.html silently swallowed the Insider article pages on 24 Jul 2026.)
+!lead-funnel/**/*.html
+!lead-funnel/*.html
+!newsletter/*.html
 *.mp4
 *.pyc
 prospect_contacts.csv
