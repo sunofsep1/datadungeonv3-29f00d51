@@ -157,6 +157,48 @@ export function typeLabel(type: string): string {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Deduplication                                                              */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * An appointment that has been synced to Google exists twice: once in our
+ * table and once in the Google feed. Show it once.
+ *
+ * The reliable link is `google_event_id`. Rows that predate that column — or
+ * that were written straight into the database, like the prospecting blocks
+ * migrated out of calendar_events — have no id to match on, so we fall back to
+ * comparing normalised title and start instant. The app copy always wins,
+ * because only it knows the type, the contact and the listing.
+ */
+export function dedupeAgainstGoogle(
+  appItems: CalendarItem[],
+  googleItems: CalendarItem[],
+  linkedGoogleEventIds: Iterable<string> = [],
+): CalendarItem[] {
+  const linked = new Set(
+    [...linkedGoogleEventIds].filter(Boolean).map((id) => `gc-${id}`),
+  );
+
+  const normTitle = (t: string) => t.trim().toLowerCase().replace(/\s+/g, " ");
+  const fingerprint = (i: CalendarItem) => {
+    const ms = new Date(i.date).getTime();
+    return Number.isFinite(ms) ? `${normTitle(i.title)}@${ms}` : null;
+  };
+
+  const appFingerprints = new Set(
+    appItems.map(fingerprint).filter((x): x is string => x !== null),
+  );
+
+  const survivingGoogle = googleItems.filter((g) => {
+    if (linked.has(g.id)) return false;
+    const fp = fingerprint(g);
+    return !(fp && appFingerprints.has(fp));
+  });
+
+  return [...appItems, ...survivingGoogle];
+}
+
+/* ------------------------------------------------------------------------ */
 /* Timing                                                                     */
 /* ------------------------------------------------------------------------ */
 

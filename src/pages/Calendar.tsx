@@ -30,6 +30,7 @@ import { DayRail } from "@/components/calendar/DayRail";
 import {
   clashingIds,
   dayLoad,
+  dedupeAgainstGoogle,
   FILTER_TYPES,
   metaFor,
   typeLabel,
@@ -216,7 +217,15 @@ export default function Calendar() {
         htmlLink: e.htmlLink,
       };
     });
-    const all = [...appItems, ...gcItems].filter((i) => i.date);
+    // An appointment synced to Google exists in both feeds; show it once.
+    const linkedIds = (appointments ?? [])
+      .map((a) => a.google_event_id)
+      .filter((id): id is string => Boolean(id));
+    const all = dedupeAgainstGoogle(
+      appItems.filter((i) => i.date),
+      gcItems.filter((i) => i.date),
+      linkedIds,
+    );
     all.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return all;
   }, [appointments, gcalEvents]);

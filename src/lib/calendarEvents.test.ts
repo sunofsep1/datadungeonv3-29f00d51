@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   clashingIds,
+  dedupeAgainstGoogle,
   dayLoad,
   findClashes,
   findGaps,
@@ -165,5 +166,46 @@ describe("dayLoad", () => {
 
   it("does not count all-day entries as load", () => {
     expect(dayLoad([{ ...ev("goal", 0), allDay: true }])).toBe(0);
+  });
+});
+
+describe("dedupeAgainstGoogle", () => {
+  const app = ev("Prospecting — Daily 5", 10, 11.5, { id: "app-1" });
+  const gcal = { ...ev("Prospecting — Daily 5", 10, 11.5), id: "gc-abc", source: "google" as const };
+
+  it("hides the Google copy of an appointment we already hold", () => {
+    // The exact case: prospecting blocks migrated out of calendar_events that
+    // were also pushed to Google, so each day showed the same block twice.
+    const out = dedupeAgainstGoogle([app], [gcal]);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("app");
+  });
+
+  it("prefers the app copy, which is the one that knows the type", () => {
+    const out = dedupeAgainstGoogle([app], [gcal]);
+    expect(out[0].type).toBe("meeting");
+  });
+
+  it("matches on google_event_id when we have it", () => {
+    const linked = { ...app, title: "Renamed in the CRM" };
+    const out = dedupeAgainstGoogle([linked], [gcal], ["abc"]);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("app");
+  });
+
+  it("keeps genuine Google-only events", () => {
+    const other = { ...ev("Dentist", 15, 16), id: "gc-xyz", source: "google" as const };
+    const out = dedupeAgainstGoogle([app], [gcal, other]);
+    expect(out.map((i) => i.id).sort()).toEqual(["app-1", "gc-xyz"]);
+  });
+
+  it("does not collapse same-titled events at different times", () => {
+    const later = { ...ev("Prospecting — Daily 5", 14, 15), id: "gc-def", source: "google" as const };
+    expect(dedupeAgainstGoogle([app], [later])).toHaveLength(2);
+  });
+
+  it("ignores case and stray whitespace in titles", () => {
+    const messy = { ...gcal, title: "  prospecting —   Daily 5 " };
+    expect(dedupeAgainstGoogle([app], [messy])).toHaveLength(1);
   });
 });
