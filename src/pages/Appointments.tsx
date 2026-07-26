@@ -26,7 +26,14 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SegmentedTabsList, SegmentedTabsTrigger } from "@/components/ui/segmented-tabs";
 import { Plus, Calendar, Clock, MapPin, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppointments, useUpdateAppointment, useDeleteAppointment, type Appointment } from "@/hooks/useAppointments";
+import {
+  useAppointments,
+  useUpdateAppointment,
+  useDeleteAppointment,
+  APPOINTMENT_TYPES,
+  type Appointment,
+  type AppointmentType,
+} from "@/hooks/useAppointments";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useContacts } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
@@ -34,9 +41,11 @@ import { useListings } from "@/hooks/useListings";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { endTimeFromStart } from "@/lib/appointmentTime";
+// This import was missing entirely: `format` and `addHours` were referenced in
+// four places, so rendering the appointment list threw "format is not defined".
+import { addHours, format } from "date-fns";
+import { endTimeFromStart, toBrisbaneIso } from "@/lib/appointmentTime";
 
-type AppointmentType = "valuation" | "meeting" | "call" | "inspection" | "open_home";
 
 const getGcalUrl = () => {
   const base = import.meta.env.VITE_SUPABASE_URL;
@@ -178,11 +187,11 @@ export default function Appointments() {
     }
 
     try {
-      const dateTime = `${formData.date}T${formData.startTime}:00`;
+      const dateTime = toBrisbaneIso(formData.date, formData.startTime);
       const endDateTime = formData.endTime
-        ? `${formData.date}T${formData.endTime}:00`
+        ? toBrisbaneIso(formData.date, formData.endTime)
         : formData.startTime
-          ? `${formData.date}T${endTimeFromStart(formData.startTime, defaultDuration)}:00`
+          ? toBrisbaneIso(formData.date, endTimeFromStart(formData.startTime, defaultDuration))
           : null;
       
       // Combine all rich data into notes
@@ -384,11 +393,9 @@ export default function Appointments() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="valuation">Valuation</SelectItem>
-                          <SelectItem value="meeting">Meeting</SelectItem>
-                          <SelectItem value="call">Call</SelectItem>
-                          <SelectItem value="inspection">Inspection</SelectItem>
-                          <SelectItem value="open_home">Open home</SelectItem>
+                          {APPOINTMENT_TYPES.map((t) => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

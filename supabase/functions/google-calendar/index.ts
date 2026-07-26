@@ -13,6 +13,29 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 // Where to redirect the browser after OAuth (your app URL). Set in Supabase Dashboard → Edge Functions → google-calendar → Secrets.
 const REDIRECT_BASE_URL = Deno.env.get("REDIRECT_BASE_URL") || "http://localhost:8080";
 
+/**
+ * Greg works out of the Redlands. This was previously "Australia/Sydney", which
+ * matches Brisbane only from April to October — every event created during NSW
+ * daylight saving landed in Google an hour late. Queensland has no DST, so
+ * Brisbane is a flat UTC+10:00 year-round.
+ */
+const CALENDAR_TIME_ZONE = "Australia/Brisbane";
+const BRISBANE_UTC_OFFSET = "+10:00";
+
+/**
+ * Normalise an incoming datetime to an offset-bearing RFC3339 string.
+ * The app now sends "2026-07-11T13:00:00+10:00"; older/naive callers may still
+ * send a floating "2026-07-11T13:00:00", which we read as Brisbane local rather
+ * than letting the UTC edge runtime guess.
+ */
+function toBrisbaneRfc3339(value: string): string {
+  const v = String(value ?? "").trim();
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/.test(v)) return v;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return `${v}T00:00:00${BRISBANE_UTC_OFFSET}`;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return `${v}:00${BRISBANE_UTC_OFFSET}`;
+  return `${v}${BRISBANE_UTC_OFFSET}`;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -393,38 +416,24 @@ Deno.serve(async (req) => {
         });
       }
 
-      // End time: use provided end, or start + 1 hour in same format (so Google interprets both as Sydney time)
-      let endDateTime = end;
-      if (!endDateTime) {
-        const startDate = new Date(start);
-        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-        // Output local-style YYYY-MM-DDTHH:mm:ss so timeZone "Australia/Sydney" applies to both
-        const pad = (n: number) => String(n).padStart(2, "0");
-        endDateTime =
-          endDate.getFullYear() +
-          "-" +
-          pad(endDate.getMonth() + 1) +
-          "-" +
-          pad(endDate.getDate()) +
-          "T" +
-          pad(endDate.getHours()) +
-          ":" +
-          pad(endDate.getMinutes()) +
-          ":" +
-          pad(endDate.getSeconds());
-      }
+      const startDateTime = toBrisbaneRfc3339(start);
+      // End time: use provided end, or start + the default hour.
+      const endDateTime = end
+        ? toBrisbaneRfc3339(end)
+        : new Date(new Date(startDateTime).getTime() + 60 * 60 * 1000).toISOString();
 
-      // Build event object (floating time + timeZone so Google Calendar shows correct Sydney time)
+      // dateTime carries a real offset, so Google uses that for the instant;
+      // timeZone is what it displays the event in and how it expands recurrence.
       const eventData: any = {
         summary,
         description: description || "",
         start: {
-          dateTime: start,
-          timeZone: "Australia/Sydney",
+          dateTime: startDateTime,
+          timeZone: CALENDAR_TIME_ZONE,
         },
         end: {
           dateTime: endDateTime,
-          timeZone: "Australia/Sydney",
+          timeZone: CALENDAR_TIME_ZONE,
         },
       };
 
@@ -517,11 +526,17 @@ Deno.serve(async (req) => {
         });
       }
 
+      const updStart = toBrisbaneRfc3339(start);
       const eventData: Record<string, unknown> = {
         summary,
         description: description || "",
-        start: { dateTime: start, timeZone: "Australia/Sydney" },
-        end: { dateTime: end || new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString(), timeZone: "Australia/Sydney" },
+        start: { dateTime: updStart, timeZone: CALENDAR_TIME_ZONE },
+        end: {
+          dateTime: end
+            ? toBrisbaneRfc3339(end)
+            : new Date(new Date(updStart).getTime() + 60 * 60 * 1000).toISOString(),
+          timeZone: CALENDAR_TIME_ZONE,
+        },
       };
       if (location) eventData.location = location;
 

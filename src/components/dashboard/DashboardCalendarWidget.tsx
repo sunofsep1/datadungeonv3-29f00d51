@@ -24,7 +24,12 @@ import {
   MoreHorizontal,
   Plus,
 } from "lucide-react";
-import { useAppointments, useDeleteAppointment } from "@/hooks/useAppointments";
+import {
+  useAppointments,
+  useDeleteAppointment,
+  APPOINTMENT_TYPES,
+  type AppointmentType,
+} from "@/hooks/useAppointments";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +53,7 @@ import {
   subDays,
   addHours,
 } from "date-fns";
+import { toBrisbaneIso } from "@/lib/appointmentTime";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -97,7 +103,6 @@ const getGcalUrl = () => {
   return base ? `${base}/functions/v1/google-calendar` : null;
 };
 
-type AppointmentType = "valuation" | "meeting" | "call" | "inspection" | "open_home";
 
 function EventChip({
   item,
@@ -467,9 +472,9 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
       return;
     }
     try {
-      const dateTime = `${newBooking.date}T${newBooking.startTime}:00`;
+      const dateTime = toBrisbaneIso(newBooking.date, newBooking.startTime);
       const endDateTime = newBooking.endTime
-        ? `${newBooking.date}T${newBooking.endTime}:00`
+        ? toBrisbaneIso(newBooking.date, newBooking.endTime)
         : undefined;
       await createAppointmentWithGcal.mutateAsync({
         title: newBooking.title,
@@ -598,11 +603,9 @@ export function DashboardCalendarWidget({ onDayClick, onAddAppointmentRequest }:
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="valuation">Valuation</SelectItem>
-                    <SelectItem value="meeting">Meeting</SelectItem>
-                    <SelectItem value="call">Call</SelectItem>
-                    <SelectItem value="inspection">Inspection</SelectItem>
-                    <SelectItem value="open_home">Open home</SelectItem>
+                    {APPOINTMENT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -26,7 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useAppointments, APPOINTMENT_TYPES } from "@/hooks/useAppointments";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useLeads } from "@/hooks/useLeads";
 import { 
@@ -49,6 +49,7 @@ import {
   addDays,
   subDays
 } from "date-fns";
+import { toBrisbaneIso } from "@/lib/appointmentTime";
 import { cn } from "@/lib/utils";
 
 interface CalendarEvent {
@@ -69,14 +70,28 @@ interface CalendarEvent {
 
 type ViewMode = "day" | "week" | "month";
 
-const EVENT_TYPES = [
-  { value: "inspection", label: "Inspection", color: "bg-blue-500" },
-  { value: "appraisal", label: "Appraisal", color: "bg-purple-500" },
-  { value: "settlement", label: "Settlement", color: "bg-green-500" },
-  { value: "open-home", label: "Open Home", color: "bg-orange-500" },
-  { value: "meeting", label: "Meeting", color: "bg-cyan-500" },
-  { value: "other", label: "Other", color: "bg-gray-500" },
-];
+// Derived from the shared vocabulary so this widget can never again write a
+// value the rest of the app does not recognise — it previously saved
+// "open-home" with a hyphen, which matched nothing in the database.
+const TYPE_COLORS: Record<string, string> = {
+  appraisal: "bg-purple-500",
+  listing_appt: "bg-amber-500",
+  open_home: "bg-emerald-500",
+  inspection: "bg-blue-500",
+  valuation: "bg-indigo-500",
+  settlement: "bg-green-500",
+  prospecting: "bg-sky-500",
+  call: "bg-teal-500",
+  team: "bg-pink-500",
+  personal: "bg-slate-500",
+  meeting: "bg-cyan-500",
+};
+
+const EVENT_TYPES = APPOINTMENT_TYPES.map((t) => ({
+  value: t.value as string,
+  label: t.label as string,
+  color: TYPE_COLORS[t.value] ?? "bg-gray-500",
+}));
 
 export function EnhancedCalendarWidget() {
   const { user } = useAuth();
@@ -347,9 +362,9 @@ export function EnhancedCalendarWidget() {
     }
 
     try {
-      const dateTime = `${newAppointment.date}T${newAppointment.startTime}:00`;
+      const dateTime = toBrisbaneIso(newAppointment.date, newAppointment.startTime);
       const endDateTime = newAppointment.endTime
-        ? `${newAppointment.date}T${newAppointment.endTime}:00`
+        ? toBrisbaneIso(newAppointment.date, newAppointment.endTime)
         : undefined;
       await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,

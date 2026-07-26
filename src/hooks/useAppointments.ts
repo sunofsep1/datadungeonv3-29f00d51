@@ -2,13 +2,41 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
+/**
+ * The canonical event vocabulary. `appointments.type` was previously a
+ * free-text field where 6 of 8 rows said "meeting", which left nothing to
+ * colour-code, filter or report on.
+ */
+export const APPOINTMENT_TYPES = [
+  { value: "appraisal", label: "Appraisal" },
+  { value: "listing_appt", label: "Listing appointment" },
+  { value: "open_home", label: "Open home" },
+  { value: "inspection", label: "Inspection" },
+  { value: "valuation", label: "Valuation" },
+  { value: "settlement", label: "Settlement" },
+  { value: "prospecting", label: "Prospecting" },
+  { value: "call", label: "Call" },
+  { value: "team", label: "Team / company" },
+  { value: "personal", label: "Personal" },
+  { value: "meeting", label: "Meeting" },
+] as const;
+
+export type AppointmentType = (typeof APPOINTMENT_TYPES)[number]["value"];
+
 // Extended Appointment type to include google_event_id (recently added column)
 export interface Appointment {
   id: string;
   user_id: string;
   contact_id: string | null;
   title: string;
+  /** Start of the appointment, stored as timestamptz. Always built via toBrisbaneIso(). */
   date: string;
+  /** End of the appointment. Null means "apply the default duration". */
+  end_date?: string | null;
+  /** Whole-day entry — consumers should ignore the time component. */
+  all_day?: boolean | null;
+  property_id?: string | null;
+  listing_id?: string | null;
   location: string | null;
   notes: string | null;
   status: string | null;

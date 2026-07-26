@@ -24,7 +24,7 @@ import {
   Unlink,
   Plus,
 } from "lucide-react";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useAppointments, APPOINTMENT_TYPES, type AppointmentType } from "@/hooks/useAppointments";
 import { useCreateAppointmentWithGcal } from "@/hooks/useCreateAppointmentWithGcal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,7 +50,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useToast } from "@/hooks/use-toast";
-import { endTimeFromStart } from "@/lib/appointmentTime";
+import { endTimeFromStart, toBrisbaneIso } from "@/lib/appointmentTime";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -108,7 +108,7 @@ export default function Calendar() {
     startTime: "09:00",
     endTime: "",
     location: "",
-    type: "meeting" as "valuation" | "meeting" | "call" | "inspection" | "open_home",
+    type: "meeting" as AppointmentType,
     notes: "",
     syncToGoogle: true,
   });
@@ -319,10 +319,13 @@ export default function Calendar() {
     }
 
     try {
-      const dateTime = `${newAppointment.date}T${newAppointment.startTime}:00`;
+      const dateTime = toBrisbaneIso(newAppointment.date, newAppointment.startTime);
       const endDateTime = newAppointment.endTime
-        ? `${newAppointment.date}T${newAppointment.endTime}:00`
-        : `${newAppointment.date}T${endTimeFromStart(newAppointment.startTime, defaultDuration)}:00`;
+        ? toBrisbaneIso(newAppointment.date, newAppointment.endTime)
+        : toBrisbaneIso(
+            newAppointment.date,
+            endTimeFromStart(newAppointment.startTime, defaultDuration),
+          );
       await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,
         date: dateTime,
@@ -642,11 +645,9 @@ export default function Calendar() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="valuation">Valuation</SelectItem>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="call">Call</SelectItem>
-                        <SelectItem value="inspection">Inspection</SelectItem>
-                        <SelectItem value="open_home">Open home</SelectItem>
+                        {APPOINTMENT_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

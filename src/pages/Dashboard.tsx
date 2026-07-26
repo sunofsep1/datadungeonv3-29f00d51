@@ -62,6 +62,7 @@ import {
   DASHBOARD_WIDGET_IDS,
   DASHBOARD_WIDGET_LABELS,
 } from "@/lib/dashboardWidgetOrder";
+import { toBrisbaneIso } from "@/lib/appointmentTime";
 import { cn } from "@/lib/utils";
 
 /** Keep command center on the board if something removed it; do not force it to first (that broke persisted drag order). */
@@ -282,9 +283,7 @@ export default function Dashboard() {
       return;
     }
     try {
-      const dateTime = newAppointment.time 
-        ? `${newAppointment.date}T${newAppointment.time}:00`
-        : `${newAppointment.date}T09:00:00`;
+      const dateTime = toBrisbaneIso(newAppointment.date, newAppointment.time || "09:00");
       
       await createAppointmentWithGcal.mutateAsync({
         title: newAppointment.title,

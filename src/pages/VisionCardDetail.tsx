@@ -43,6 +43,7 @@ import { useVisionCard, useUpdateVisionCard } from "@/hooks/useVisionCard";
 import { useCreateAppointment } from "@/hooks/useAppointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { toBrisbaneAllDayIso } from "@/lib/appointmentTime";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow, isFuture } from "date-fns";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
@@ -177,7 +178,9 @@ export default function VisionCardDetail() {
       const fullNotes = persistNotesPayload(userNotes, desk);
       await createAppointment.mutateAsync({
         title: card.title,
-        date: calendarDate,
+        date: toBrisbaneAllDayIso(calendarDate),
+        all_day: true,
+        type: "personal",
         notes: `Vision: ${card.title}${fullNotes ? `\n\n${fullNotes}` : ""}`,
       });
       toast.success("Added to calendar");
