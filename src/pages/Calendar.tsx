@@ -27,6 +27,7 @@ import {
 import { useAppointments, APPOINTMENT_TYPES, type AppointmentType } from "@/hooks/useAppointments";
 import { useContacts } from "@/hooks/useContacts";
 import { DayRail } from "@/components/calendar/DayRail";
+import { WeekView } from "@/components/calendar/WeekView";
 import {
   clashingIds,
   dayLoad,
@@ -433,14 +434,6 @@ export default function Calendar() {
       ? "border-l-4 border-l-sky-500 bg-sky-500/[0.06]"
       : "border-l-4 border-l-primary bg-primary/[0.06]";
 
-  const eventPillClass = (source: CalendarItemSource) =>
-    cn(
-      "truncate rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-tight",
-      source === "google"
-        ? "border border-sky-500/30 bg-sky-500/15 text-sky-100"
-        : "border border-primary/35 bg-primary/15 text-foreground",
-    );
-
   // Render calendar views
   const renderDayView = () => {
     const events = getEventsForDate(currentDate);
@@ -529,69 +522,21 @@ export default function Calendar() {
   };
 
   const renderWeekView = () => {
-    const weekStart = startOfWeek(currentDate);
-    const weekEnd = endOfWeek(currentDate);
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
     return (
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-        {weekDays.map((day) => {
-          const events = getEventsForDate(day);
-          const weekend = (() => {
-            const d = day.getDay();
-            return d === 0 || d === 6;
-          })();
-          return (
-            <div
-              key={day.toISOString()}
-              className={cn(
-                "flex min-h-[220px] flex-col rounded-xl border p-2.5 transition-colors sm:min-h-[240px] sm:p-3",
-                isToday(day)
-                  ? "border-primary/50 bg-primary/[0.06] ring-1 ring-primary/25"
-                  : "border-border bg-card/40",
-                weekend && !isToday(day) && "bg-muted/15",
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => openNewAppointmentForSlot(day)}
-                className={cn(
-                  "-m-1 mb-2 rounded-lg p-1.5 text-left text-sm font-medium transition-colors hover:bg-muted/80",
-                  isToday(day) && "text-primary",
-                  !isSameMonth(day, currentDate) && "text-muted-foreground",
-                  !isToday(day) && isSameMonth(day, currentDate) && "text-foreground",
-                )}
-                title="Click to add booking for this day"
-              >
-                <span className={cn("block text-[10px] font-normal uppercase tracking-wide text-muted-foreground")}>
-                  {format(day, "EEE")}
-                </span>
-                <span className={cn("tabular-nums", isToday(day) && "text-lg font-bold")}>{format(day, "d")}</span>
-              </button>
-              <div className="min-h-0 flex-1 space-y-1">
-                {events.slice(0, 3).map((item) => (
-                  <div key={item.id} className={cn(eventPillClass(item.source), "block")} title={item.title}>
-                    <span className="text-muted-foreground tabular-nums">{formatEventTime(item)}</span>{" "}
-                    <span className="text-foreground">{item.title}</span>
-                  </div>
-                ))}
-                {events.length > 3 ? (
-                  <div className="px-0.5 pt-0.5 text-[10px] font-medium text-muted-foreground">
-                    +{events.length - 3} more
-                  </div>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => openNewAppointmentForSlot(day)}
-                className="mt-auto rounded-md py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-              >
-                + Add
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      <WeekView
+        days={weekDays}
+        itemsForDay={getEventsForDate}
+        defaultDurationMinutes={defaultDuration}
+        contactNameFor={contactNameFor}
+        onAddAt={(d, startTime) => openNewAppointmentForSlot(d, startTime)}
+        onSelectItem={(item) => {
+          if (item.source === "google" && item.htmlLink) window.open(item.htmlLink, "_blank");
+        }}
+      />
     );
   };
 
@@ -914,7 +859,7 @@ export default function Calendar() {
               <p className="min-w-0 truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
                 {viewMode === "day" && format(currentDate, "EEEE, MMMM d, yyyy")}
                 {viewMode === "week" &&
-                  `${format(startOfWeek(currentDate), "MMM d")} – ${format(endOfWeek(currentDate), "MMM d, yyyy")}`}
+                  `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), "MMM d")} – ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), "MMM d, yyyy")}`}
                 {viewMode === "month" && format(currentDate, "MMMM yyyy")}
               </p>
             </div>
@@ -987,7 +932,7 @@ export default function Calendar() {
 
       {/* Calendar View */}
       <Card className="zoho-card border-border p-4 shadow-sm sm:p-6">
-        {viewMode === "month" ? <div className="mb-4">{renderTypeFilters()}</div> : null}
+        {viewMode === "month" || viewMode === "week" ? <div className="mb-4">{renderTypeFilters()}</div> : null}
         {viewMode === "day" && renderDayView()}
         {viewMode === "week" && renderWeekView()}
         {viewMode === "month" && renderMonthView()}
