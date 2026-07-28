@@ -277,6 +277,28 @@ async function fetchContactAddressesByContactIds(
   return map;
 }
 
+async function fetchContactTagsByContactIds(
+  contactIds: string[]
+): Promise<Map<string, ContactTagRow[]>> {
+  const map = new Map<string, ContactTagRow[]>();
+  if (contactIds.length === 0) return map;
+  try {
+    const { data, error } = await (supabase as any)
+      .from("contact_tags")
+      .select("contact_id, tag_id, tags(name)")
+      .in("contact_id", contactIds);
+    if (error || !Array.isArray(data)) return map;
+    for (const row of data as { contact_id: string; tag_id: string; tags: { name: string } | null }[]) {
+      const list = map.get(row.contact_id) ?? [];
+      list.push({ tag_id: row.tag_id, tags: row.tags ?? null });
+      map.set(row.contact_id, list);
+    }
+  } catch {
+    /* table missing or RLS */
+  }
+  return map;
+}
+
 /**
  * Fetches all contacts for the current user. Uses full select with relations when available,
  * falls back to simple select if relation tables are missing (e.g. before migrations).
@@ -295,12 +317,13 @@ export function useContacts() {
         const contacts = (simple ?? []) as Contact[];
         const contactIds = contacts.map((c) => c.id);
         const addrByContact = await fetchContactAddressesByContactIds(contactIds);
+        const tagsByContact = await fetchContactTagsByContactIds(contactIds);
 
         const asMetaNoLinks = (c: Contact): ContactWithMeta =>
           mapContactAddressToDisplay({
             ...c,
             contact_channels: [],
-            contact_tags: [],
+            contact_tags: tagsByContact.get(c.id) ?? [],
             contact_property_links: [],
             contact_addresses: addrByContact.get(c.id) ?? [],
           } as ContactWithMeta);
@@ -356,7 +379,7 @@ export function useContacts() {
             return mapContactAddressToDisplay({
               ...c,
               contact_channels: [],
-              contact_tags: [],
+              contact_tags: tagsByContact.get(c.id) ?? [],
               contact_property_links: mergedLinks,
               contact_addresses: addrByContact.get(c.id) ?? [],
             } as ContactWithMeta);
