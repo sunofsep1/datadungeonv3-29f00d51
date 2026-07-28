@@ -69,6 +69,7 @@ import {
   getPrimaryEmail,
   getPrimaryPhone,
   getTagNames,
+  getTagChips,
   getLinkedPropertyAddress,
   getContactDisplayName,
 } from "@/hooks/useContacts";
@@ -1646,6 +1647,7 @@ export default function Contacts() {
     const primaryEmail = getPrimaryEmail(contact);
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
+    const tagChips = getTagChips(contact);
     const linkedProperty = getLinkedPropertyAddress(contact);
     const effectiveCategory = getEffectiveCategory(contact);
     const lastTouch = getLastTouchDate(contact);
@@ -1701,14 +1703,19 @@ export default function Contacts() {
                 {primaryPhone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{formatPhoneDisplay(primaryPhone)}</span>}
                 {primaryEmail && <span className="truncate">{primaryEmail}</span>}
               </div>
-              {tagNames.length > 0 && (
+              {tagChips.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {tagNames.slice(0, 3).map((t) => (
-                    <Badge key={t} variant="secondary" className="text-[10px] font-normal py-0 px-1.5">
-                      {t}
+                  {tagChips.slice(0, 3).map((t) => (
+                    <Badge
+                      key={t.name}
+                      variant="secondary"
+                      className="text-[10px] font-normal py-0 px-1.5"
+                      style={t.color ? { backgroundColor: t.color, color: "#fff", borderColor: t.color } : undefined}
+                    >
+                      {t.name}
                     </Badge>
                   ))}
-                  {tagNames.length > 3 && <span className="text-[10px] text-muted-foreground">+{tagNames.length - 3}</span>}
+                  {tagChips.length > 3 && <span className="text-[10px] text-muted-foreground">+{tagChips.length - 3}</span>}
                 </div>
               )}
             </div>
@@ -1759,6 +1766,7 @@ export default function Contacts() {
     if (!contact?.id) return null;
     const primaryPhone = getPrimaryPhone(contact);
     const tagNames = getTagNames(contact);
+    const tagChips = getTagChips(contact);
     const classNames = [...(classAssignmentIndex.get(contact.id) ?? [])]
       .map((id) => classNameById.get(id))
       .filter((n): n is string => Boolean(n));
@@ -1879,15 +1887,20 @@ export default function Contacts() {
             </div>
           ) : null}
 
-          {tagNames.length > 0 ? (
+          {tagChips.length > 0 ? (
             <div className="flex min-w-0 items-center gap-1">
-              {tagNames.slice(0, 2).map((t) => (
-                <Badge key={t} variant="secondary" className="px-2 py-0 text-[11px] font-normal">
-                  {t}
+              {tagChips.slice(0, 2).map((t) => (
+                <Badge
+                  key={t.name}
+                  variant="secondary"
+                  className="px-2 py-0 text-[11px] font-normal"
+                  style={t.color ? { backgroundColor: t.color, color: "#fff", borderColor: t.color } : undefined}
+                >
+                  {t.name}
                 </Badge>
               ))}
-              {tagNames.length > 2 ? (
-                <span className="text-[12px] text-muted-foreground">+{tagNames.length - 2} more</span>
+              {tagChips.length > 2 ? (
+                <span className="text-[12px] text-muted-foreground">+{tagChips.length - 2} more</span>
               ) : null}
             </div>
           ) : null}

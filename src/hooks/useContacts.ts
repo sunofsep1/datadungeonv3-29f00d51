@@ -154,7 +154,7 @@ function pickAddressFields(payload: Record<string, unknown>): Record<string, unk
   return hasAny ? addr : null;
 }
 
-export type ContactTagRow = { tag_id: string; tags: { name: string } | null };
+export type ContactTagRow = { tag_id: string; tags: { name: string; color?: string | null } | null };
 export type ContactPropertyLinkRow = {
   id?: string;
   property_id: string;
@@ -184,19 +184,42 @@ export type ContactWithMeta = Contact & ContactAddressFields & {
   lead_score?: number | null;
 };
 
+/**
+ * PostgREST rejects very long request URLs (400 Bad Request) — with hundreds of
+ * contacts, a single `.in("contact_id", allIds)` builds a 30KB+ URL and every
+ * batch hydration (tags/addresses/links/scores) silently fails. Run `.in()`
+ * queries in id-chunks and merge the rows instead.
+ */
+const IN_LIST_CHUNK = 100;
+
+async function selectInChunks<T>(
+  ids: string[],
+  build: (chunk: string[]) => PromiseLike<{ data: unknown; error: unknown }>,
+): Promise<T[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += IN_LIST_CHUNK) chunks.push(ids.slice(i, i + IN_LIST_CHUNK));
+  const results = await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const { data, error } = await build(chunk);
+        return !error && Array.isArray(data) ? (data as T[]) : [];
+      } catch {
+        return [];
+      }
+    }),
+  );
+  return results.flat();
+}
+
 /** Batch-load lead scores for list views (RLS-safe). */
 export async function attachLeadScoresToContacts(contacts: ContactWithMeta[]): Promise<ContactWithMeta[]> {
   const ids = contacts.map((c) => c.id).filter(Boolean);
   if (ids.length === 0) return contacts;
   try {
-    const { data, error } = await supabase
-      .from("contact_scores")
-      .select("contact_id, total_score")
-      .in("contact_id", ids);
-    if (error || !Array.isArray(data)) return contacts;
-    const scoreById = new Map(
-      (data as { contact_id: string; total_score: number | null }[]).map((r) => [r.contact_id, r.total_score ?? 0]),
+    const rows = await selectInChunks<{ contact_id: string; total_score: number | null }>(ids, (chunk) =>
+      supabase.from("contact_scores").select("contact_id, total_score").in("contact_id", chunk),
     );
+    const scoreById = new Map(rows.map((r) => [r.contact_id, r.total_score ?? 0]));
     return contacts.map((c) => ({ ...c, lead_score: scoreById.has(c.id) ? scoreById.get(c.id)! : null }));
   } catch {
     return contacts;
@@ -209,7 +232,7 @@ async function enrichContactsListForTable(contacts: ContactWithMeta[]): Promise<
 
 /** Omit nested `properties(...)` — can cause PostgREST 400; list path above hydrates links + properties separately. */
 const CONTACTS_SELECT =
-  "*, contact_channels(*), contact_tags(tag_id, tags(name)), contact_property_links(id, property_id, role, notes), contact_addresses(*)";
+  "*, contact_channels(*), contact_tags(tag_id, tags(name, color)), contact_property_links(id, property_id, role, notes), contact_addresses(*)";
 
 const CONTACTS_QUERY_KEYS = [["contacts"]];
 
@@ -264,8 +287,9 @@ async function fetchContactAddressesByContactIds(
   const map = new Map<string, ContactAddressRow[]>();
   if (contactIds.length === 0) return map;
   try {
-    const { data, error } = await supabase.from("contact_addresses").select("*").in("contact_id", contactIds);
-    if (error || !Array.isArray(data)) return map;
+    const data = await selectInChunks<ContactAddressRow>(contactIds, (chunk) =>
+      supabase.from("contact_addresses").select("*").in("contact_id", chunk),
+    );
     for (const row of data as ContactAddressRow[]) {
       const list = map.get(row.contact_id) ?? [];
       list.push(row);
@@ -283,12 +307,15 @@ async function fetchContactTagsByContactIds(
   const map = new Map<string, ContactTagRow[]>();
   if (contactIds.length === 0) return map;
   try {
-    const { data, error } = await (supabase as any)
-      .from("contact_tags")
-      .select("contact_id, tag_id, tags(name)")
-      .in("contact_id", contactIds);
-    if (error || !Array.isArray(data)) return map;
-    for (const row of data as { contact_id: string; tag_id: string; tags: { name: string } | null }[]) {
+    const data = await selectInChunks<{ contact_id: string; tag_id: string; tags: { name: string; color?: string | null } | null }>(
+      contactIds,
+      (chunk) =>
+        (supabase as any)
+          .from("contact_tags")
+          .select("contact_id, tag_id, tags(name, color)")
+          .in("contact_id", chunk),
+    );
+    for (const row of data) {
       const list = map.get(row.contact_id) ?? [];
       list.push({ tag_id: row.tag_id, tags: row.tags ?? null });
       map.set(row.contact_id, list);
@@ -333,18 +360,24 @@ export function useContacts() {
         }
 
         try {
-          const { data: links, error: linksErr } = await (supabase as any)
-            .from("contact_property_links")
-            .select("id, contact_id, property_id, role, notes")
-            .in("contact_id", contactIds);
-          if (linksErr || !Array.isArray(links) || links.length === 0) {
+          const links = await selectInChunks<{ id: string; contact_id: string; property_id: string; role: string; notes: string | null }>(
+            contactIds,
+            (chunk) =>
+              (supabase as any)
+                .from("contact_property_links")
+                .select("id, contact_id, property_id, role, notes")
+                .in("contact_id", chunk),
+          );
+          if (links.length === 0) {
             return enrichContactsListForTable(contacts.map(asMetaNoLinks));
           }
-          const propertyIds = [...new Set(links.map((l: { property_id: string }) => l.property_id))];
-          const { data: propertyRows } = await (supabase as any)
-            .from("properties")
-            .select("id, address_line1, address_line2, city, suburb, state, postcode, country, property_type")
-            .in("id", propertyIds);
+          const propertyIds = [...new Set(links.map((l: { property_id: string }) => l.property_id))] as string[];
+          const propertyRows = await selectInChunks<{ id: string }>(propertyIds, (chunk) =>
+            (supabase as any)
+              .from("properties")
+              .select("id, address_line1, address_line2, city, suburb, state, postcode, country, property_type")
+              .in("id", chunk),
+          );
           const propertyMap = new Map(
             (propertyRows ?? []).map((p: { id: string }) => [p.id, p])
           );
@@ -840,6 +873,13 @@ export function getTagNames(c: ContactWithMeta): string[] {
   return (c.contact_tags ?? [])
     .map((ct) => ct.tags?.name)
     .filter((n): n is string => !!n);
+}
+
+/** Tag name + colour pairs for a contact (for coloured chips on cards/rows) */
+export function getTagChips(c: ContactWithMeta): { name: string; color: string | null }[] {
+  return (c.contact_tags ?? [])
+    .map((ct) => (ct.tags?.name ? { name: ct.tags.name, color: ct.tags.color ?? null } : null))
+    .filter((x): x is { name: string; color: string | null } => !!x);
 }
 
 /** First linked property address for export */
