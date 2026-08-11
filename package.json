@@ -24,6 +24,7 @@
     "supabase:deploy:pricefinder": "npx supabase functions deploy pricefinder-proxy --no-verify-jwt",
     "supabase:deploy:perplexity": "npx supabase functions deploy perplexity-proxy",
     "supabase:deploy:inbound-lead": "npx supabase functions deploy inbound-lead --no-verify-jwt",
+    "supabase:deploy:pocket-ai": "npx supabase functions deploy pocket-ai-ingest --no-verify-jwt",
     "supabase:deploy:process-workflows": "npx supabase functions deploy process-workflows --no-verify-jwt",
     "test": "vitest",
     "test:ui": "vitest --ui",
