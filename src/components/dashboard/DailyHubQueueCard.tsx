@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, Check, Loader2, RotateCcw } from "lucide-react";
+import { Check, Loader2, RotateCcw } from "lucide-react";
 import { dailyHubKindLabel, type DailyHubItem, type DailyHubScheduleRow } from "@/lib/dailyHubSchedule";
 import type { DailyHubTriageZone } from "@/lib/dailyHubTriage";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,12 @@ export function DailyHubQueueCard({
         className,
       )}
     >
-      <button type="button" className="min-w-0 text-left" onClick={() => onOpen(item)}>
+      <button
+        type="button"
+        className="-m-1 flex min-w-0 flex-1 flex-col rounded-lg p-1 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-label={`Open ${headline}`}
+        onClick={() => onOpen(item)}
+      >
         <p
           className={cn(
             "line-clamp-2 text-sm font-bold leading-snug tracking-tight",
@@ -99,75 +104,47 @@ export function DailyHubQueueCard({
           ) : null}
         </div>
       </button>
-      <div className="mt-auto flex flex-col gap-1.5">
-        <div className="flex gap-1.5">
+      {showDone || showReturn ? (
+        <div className="mt-auto flex flex-col gap-1.5">
           {showDone ? (
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="h-7 w-full gap-1 px-2 text-[11px] font-semibold"
+                disabled={completing}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onComplete(item);
+                }}
+              >
+                {completing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" aria-hidden />
+                )}
+                Done
+              </Button>
+            </div>
+          ) : null}
+          {showReturn ? (
             <Button
               type="button"
               size="sm"
-              variant="secondary"
-              className="h-7 flex-1 gap-1 px-2 text-[11px] font-semibold"
-              disabled={completing}
+              variant="ghost"
+              className="h-6 gap-1 px-1 text-[10px] text-muted-foreground hover:text-foreground"
               onClick={(event) => {
                 event.stopPropagation();
-                onComplete(item);
+                onReturnToSchedule?.();
               }}
             >
-              {completing ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Check className="h-3 w-3" aria-hidden />
-              )}
-              Done
+              <RotateCcw className="h-3 w-3" />
+              Return to Schedule
             </Button>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            className={cn(
-              "h-7 gap-1 px-2.5 text-[11px] font-semibold shadow-sm",
-              showDone ? "flex-1" : "w-full",
-              isFocus && "bg-primary hover:bg-primary/90",
-            )}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen(item);
-            }}
-          >
-            {isFocus ? (
-              <>
-                <Briefcase className="h-3 w-3" aria-hidden />
-                Work now
-              </>
-            ) : item.kind === "appointment" ? (
-              <>
-                <CalendarClock className="h-3 w-3" aria-hidden />
-                Prep
-              </>
-            ) : (
-              <>
-                <Briefcase className="h-3 w-3" aria-hidden />
-                Open
-              </>
-            )}
-          </Button>
         </div>
-        {showReturn ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-6 gap-1 px-1 text-[10px] text-muted-foreground hover:text-foreground"
-            onClick={(event) => {
-              event.stopPropagation();
-              onReturnToSchedule?.();
-            }}
-          >
-            <RotateCcw className="h-3 w-3" />
-            Return to Schedule
-          </Button>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }
