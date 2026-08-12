@@ -1,9 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  appendCommercialOptOutIfMissing,
   mobileMessageCredsFromEnv,
   postMobileMessageBatch,
   toE164Australia,
 } from "../_shared/smsCore.ts";
+import {
+  applyMerge,
+  buildMergeContext,
+  findUnresolvedTokens,
+  type MergeContext,
+} from "../_shared/mergeCore.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,10 +22,57 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "onboarding@resend.dev";
 
+const AGENT_EMAIL = Deno.env.get("AGENT_EMAIL") || "greg.leigh@qldsir.com";
+const AGENT_NAME = Deno.env.get("AGENT_NAME") || "Greg Leigh";
+const AGENT_PHONE = Deno.env.get("AGENT_PHONE") || "0466 805 992";
+const BRAND_LOGO = "https://redlandshomevalue.com.au/assets/qsir-email-logo.png";
+
+const REPLY_TO_EMAIL = Deno.env.get("REPLY_TO_EMAIL") || "replies@venuachiax.resend.app";
+
+const CONTACT_SELECT =
+  `id, name, first_name, last_name, email, mobile, phone, suburb, city, state, postcode, address, address_line1, sms_opt_out, email_opt_out, do_not_contact, dnc_sms, dnc_email, contact_channels ( channel_type, value, is_primary )`;
+
 function addDays(d: Date, days: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + days);
   return x;
+}
+
+function brandEmail(innerHtml: string): string {
+  const looksComplete = /<\s*(!doctype|html)\b/i.test(innerHtml);
+  if (looksComplete) return innerHtml;
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#f3efe7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f3efe7" style="background-color:#f3efe7;">
+<tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:600px;max-width:100%;background-color:#ffffff;border:1px solid #e8e1d4;">
+  <tr><td bgcolor="#0e2140" align="center" style="background-color:#0e2140;padding:34px 40px;text-align:center;">
+    <img src="${BRAND_LOGO}" width="360" alt="Queensland Sotheby's International Realty" style="display:inline-block;width:100%;max-width:360px;height:auto;border:0;outline:none;">
+  </td></tr>
+  <tr><td bgcolor="#b08d3f" height="3" style="background-color:#b08d3f;height:3px;line-height:3px;font-size:0;">&nbsp;</td></tr>
+  <tr><td style="padding:44px 44px 8px;font-family:Georgia,'Times New Roman',Times,serif;font-size:16px;line-height:26px;color:#20242e;">
+    ${innerHtml}
+  </td></tr>
+  <tr><td style="padding:8px 44px 40px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td bgcolor="#e8e1d4" height="1" style="background-color:#e8e1d4;height:1px;line-height:1px;font-size:0;">&nbsp;</td></tr>
+      <tr><td style="padding-top:22px;">
+        <p style="margin:0 0 12px;font-family:Georgia,'Times New Roman',Times,serif;font-size:15px;line-height:24px;color:#20242e;">Kind regards,</p>
+        <p style="margin:0 0 4px;font-family:Georgia,'Times New Roman',Times,serif;font-size:21px;line-height:26px;color:#0e2140;">${AGENT_NAME}</p>
+        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:20px;color:#6b6b6b;">Senior Sales Executive<br>Queensland Sotheby's International Realty<br>${AGENT_PHONE}<br><a href="https://www.gregleighproperty.com.au" style="color:#b08d3f;text-decoration:none;">www.gregleighproperty.com.au</a></p>
+      </td></tr>
+    </table>
+  </td></tr>
+  <tr><td bgcolor="#f3efe7" align="center" style="background-color:#f3efe7;padding:20px 40px;border-top:1px solid #e8e1d4;">
+    <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#8a8a8a;">Queensland Sotheby's International Realty &nbsp;&middot;&nbsp; Redlands Coast<br>${AGENT_NAME} &nbsp;&middot;&nbsp; ${AGENT_PHONE} &nbsp;&middot;&nbsp; ${AGENT_EMAIL}<br>Each office is independently owned and operated.</p>
+    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#8a8a8a;">Don't want these updates? <a href="mailto:${AGENT_EMAIL}?subject=Unsubscribe" style="color:#8a8a8a;">Unsubscribe here</a> and I'll take you off the list.</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
 }
 
 function getContactEmail(contact: {
@@ -61,43 +115,6 @@ function mergeNurtureSmsBody(
     .replace(/\{\{\s*name\s*\}\}/gi, name);
 }
 
-async function advanceEnrollment(
-  supabase: ReturnType<typeof createClient>,
-  enrollment: { id: string; sequence_id: string; current_step_index: number; started_at: string },
-  stepsLength: number,
-) {
-  const nextIndex = enrollment.current_step_index + 1;
-  if (nextIndex >= stepsLength) {
-    await supabase
-      .from("nurture_sequence_enrollments")
-      .update({
-        completed_at: new Date().toISOString(),
-        next_step_at: null,
-        current_step_index: nextIndex,
-      })
-      .eq("id", enrollment.id);
-    return "sequence_completed";
-  }
-
-  const { data: nextStep } = await supabase
-    .from("nurture_sequence_steps")
-    .select("offset_days")
-    .eq("sequence_id", enrollment.sequence_id)
-    .order("sort_order", { ascending: true })
-    .range(nextIndex, nextIndex)
-    .maybeSingle();
-
-  const nextAt = addDays(new Date(enrollment.started_at), Number(nextStep?.offset_days ?? 0));
-  await supabase
-    .from("nurture_sequence_enrollments")
-    .update({
-      current_step_index: nextIndex,
-      next_step_at: nextAt.toISOString(),
-    })
-    .eq("id", enrollment.id);
-  return "advanced";
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -130,6 +147,19 @@ Deno.serve(async (req) => {
     }
 
     const results: { enrollment_id: string; action: string; detail?: string }[] = [];
+
+    async function mergeContextFor(contact: Record<string, unknown> | null, contactId: string): Promise<MergeContext> {
+      let listingAddress: string | null = null;
+      const { data: listing } = await supabase
+        .from("listings")
+        .select("address, created_at")
+        .eq("contact_id", contactId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (listing?.address) listingAddress = String(listing.address);
+      return buildMergeContext(contact as Parameters<typeof buildMergeContext>[0], { listingAddress });
+    }
 
     for (const enr of enrollments ?? []) {
       const enrollment = enr as {
@@ -186,8 +216,7 @@ Deno.serve(async (req) => {
 
       if (existingRun) {
         if (existingRun.status === "pending") {
-          // Email: if we previously sent it (error is null), finish + advance; otherwise wait for manual completion.
-          if (step.step_type === "email" && !existingRun.error) {
+          if ((step.step_type === "email" || step.step_type === "sms") && !existingRun.error) {
             const { data: existingNotif } = await supabase
               .from("notifications")
               .select("id")
@@ -216,56 +245,14 @@ Deno.serve(async (req) => {
             });
 
             if (rpcErr) {
-              results.push({ enrollment_id: enrollment.id, action: "email_rpc_error_after_pending_run", detail: rpcErr.message });
+              results.push({ enrollment_id: enrollment.id, action: "rpc_error_after_pending_run", detail: rpcErr.message });
               continue;
             }
 
-            results.push({ enrollment_id: enrollment.id, action: "email_advanced_after_pending_run" });
+            results.push({ enrollment_id: enrollment.id, action: "advanced_after_pending_run" });
             continue;
           }
 
-          if (step.step_type === "sms" && !existingRun.error) {
-            const { data: existingNotifSms } = await supabase
-              .from("notifications")
-              .select("id")
-              .eq("user_id", enrollment.user_id)
-              .eq("kind", "nurture_step_due")
-              .eq("entity_type", "nurture_sequence_step_runs")
-              .eq("entity_id", existingRun.id)
-              .maybeSingle();
-
-            if (!existingNotifSms) {
-              await supabase.from("notifications").insert({
-                user_id: enrollment.user_id,
-                kind: "nurture_step_due",
-                title: step.title,
-                body: "Sequence SMS step is due now.",
-                entity_type: "nurture_sequence_step_runs",
-                entity_id: existingRun.id,
-                read_at: null,
-              });
-            }
-
-            const { error: rpcErrSms } = await supabase.rpc("complete_nurture_step_and_advance", {
-              p_enrollment_id: enrollment.id,
-              p_step_run_id: existingRun.id,
-              p_outcome: "completed",
-            });
-
-            if (rpcErrSms) {
-              results.push({
-                enrollment_id: enrollment.id,
-                action: "sms_rpc_error_after_pending_run",
-                detail: rpcErrSms.message,
-              });
-              continue;
-            }
-
-            results.push({ enrollment_id: enrollment.id, action: "sms_advanced_after_pending_run" });
-            continue;
-          }
-
-          // For task/prompt (and for email fallback requiring manual action), create notification only once.
           const { data: existingNotif } = await supabase
             .from("notifications")
             .select("id")
@@ -300,9 +287,7 @@ Deno.serve(async (req) => {
 
       const { data: contact } = await supabase
         .from("contacts")
-        .select(
-          `id, name, first_name, last_name, email, mobile, phone, sms_opt_out, contact_channels ( channel_type, value, is_primary )`,
-        )
+        .select(CONTACT_SELECT)
         .eq("id", enrollment.contact_id)
         .single();
 
@@ -310,12 +295,12 @@ Deno.serve(async (req) => {
         const { data: taskRow, error: taskErr } = await supabase
           .from("contact_tasks")
           .insert({
-          contact_id: enrollment.contact_id,
-          user_id: enrollment.user_id,
-          title: step.title,
-          notes: step.body,
-          due_at: dueAt.toISOString(),
-          sequence_enrollment_id: enrollment.id,
+            contact_id: enrollment.contact_id,
+            user_id: enrollment.user_id,
+            title: step.title,
+            notes: step.body,
+            due_at: dueAt.toISOString(),
+            sequence_enrollment_id: enrollment.id,
           })
           .select("id")
           .single();
@@ -351,18 +336,43 @@ Deno.serve(async (req) => {
         });
         results.push({ enrollment_id: enrollment.id, action: "task_created" });
       } else if (step.step_type === "email") {
-        const to = getContactEmail(contact as {
-          email?: string | null;
-          contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean }>;
-        } | null);
-        if (!to || !RESEND_API_KEY) {
+        const cE = contact as {
+          email_opt_out?: boolean | null;
+          dnc_email?: boolean | null;
+          do_not_contact?: boolean | null;
+        } | null;
+        const emailBlocked = cE?.email_opt_out === true || cE?.dnc_email === true || cE?.do_not_contact === true;
+
+        const to = emailBlocked
+          ? null
+          : getContactEmail(contact as {
+              email?: string | null;
+              contact_channels?: Array<{ channel_type: string; value?: string | null; is_primary?: boolean }>;
+            } | null);
+
+        const ctx = await mergeContextFor(contact as Record<string, unknown> | null, enrollment.contact_id);
+        const rawSubject = step.email_subject || step.title;
+        const rawBody = step.email_html || `<p>${(step.body || "").replace(/\n/g, "<br/>")}</p>`;
+        const mergedSubject = applyMerge(rawSubject, ctx);
+        const mergedBody = applyMerge(rawBody, ctx);
+        const unresolved = findUnresolvedTokens(mergedSubject, mergedBody);
+
+        if (!to || !RESEND_API_KEY || unresolved.length > 0) {
+          const reason = emailBlocked
+            ? " (contact opted out of email)"
+            : !to
+            ? " (missing contact email)"
+            : unresolved.length > 0
+            ? ` (unresolved merge fields: ${unresolved.join(", ")} - fill these in and send manually)`
+            : "";
           const { data: taskRow, error: taskErr } = await supabase
             .from("contact_tasks")
             .insert({
               contact_id: enrollment.contact_id,
               user_id: enrollment.user_id,
               title: step.title,
-              notes: (step.body || "Email step requires manual action") + (!to ? " (missing contact email)" : ""),
+              notes: (step.body || "Email step requires manual action") + reason +
+                (unresolved.length > 0 ? `\n\n--- DRAFT (subject) ---\n${mergedSubject}` : ""),
               due_at: dueAt.toISOString(),
               sequence_enrollment_id: enrollment.id,
             })
@@ -381,7 +391,13 @@ Deno.serve(async (req) => {
               status: "pending",
               task_id: taskRow?.id ?? null,
               activated_at: new Date().toISOString(),
-              error: !to ? "missing_contact_email" : "missing_resend_api_key",
+              error: emailBlocked
+                ? "contact_email_opt_out"
+                : !to
+                ? "missing_contact_email"
+                : unresolved.length > 0
+                ? "unresolved_merge_tokens"
+                : "missing_resend_api_key",
             })
             .select("id")
             .single();
@@ -394,17 +410,26 @@ Deno.serve(async (req) => {
             user_id: enrollment.user_id,
             kind: "nurture_step_due",
             title: step.title,
-            body: !to ? "Email step is due, but contact has no email." : "Email step is due, but email delivery is not configured.",
+            body: emailBlocked
+              ? "Email step is due, but the contact has opted out of email."
+              : !to
+              ? "Email step is due, but contact has no email."
+              : unresolved.length > 0
+              ? `Email step held back - unresolved merge fields: ${unresolved.join(", ")}.`
+              : "Email step is due, but email delivery is not configured.",
             entity_type: "nurture_sequence_step_runs",
             entity_id: createdRunId ?? null,
             read_at: null,
           });
-          results.push({ enrollment_id: enrollment.id, action: "email_fallback_task_created" });
+          results.push({
+            enrollment_id: enrollment.id,
+            action: unresolved.length > 0 ? "email_held_unresolved_tokens" : "email_fallback_task_created",
+            detail: unresolved.length > 0 ? unresolved.join(", ") : undefined,
+          });
           continue;
         }
 
-        const sub = step.email_subject || step.title;
-        const html = step.email_html || `<p>${(step.body || "").replace(/\n/g, "<br/>")}</p>`;
+        const html = brandEmail(mergedBody);
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -414,8 +439,13 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: EMAIL_FROM,
             to: [to],
-            subject: sub,
+            bcc: [AGENT_EMAIL],
+            reply_to: REPLY_TO_EMAIL,
+            subject: mergedSubject,
             html,
+            headers: {
+              "List-Unsubscribe": `<mailto:${AGENT_EMAIL}?subject=Unsubscribe>`,
+            },
           }),
         });
         if (!res.ok) {
@@ -469,15 +499,23 @@ Deno.serve(async (req) => {
         const mm = mobileMessageCredsFromEnv();
         const c = contact as {
           sms_opt_out?: boolean | null;
+          dnc_sms?: boolean | null;
+          do_not_contact?: boolean | null;
           first_name?: string | null;
           last_name?: string | null;
           name?: string | null;
         } | null;
 
-        const msgTemplate = (step.body || step.title || "").trim() || "Message from your agent.";
-        const merged = mergeNurtureSmsBody(msgTemplate, c ?? {});
+        const smsBlocked = c?.sms_opt_out === true || c?.dnc_sms === true || c?.do_not_contact === true;
 
-        if (!mm || c?.sms_opt_out === true) {
+        const msgTemplate = (step.body || step.title || "").trim() || "Message from your agent.";
+        const smsCtx = await mergeContextFor(contact as Record<string, unknown> | null, enrollment.contact_id);
+        const merged = appendCommercialOptOutIfMissing(
+          applyMerge(mergeNurtureSmsBody(msgTemplate, c ?? {}), smsCtx),
+        );
+        const smsUnresolved = findUnresolvedTokens(merged);
+
+        if (!mm || smsBlocked || smsUnresolved.length > 0) {
           const { data: taskRow, error: taskErr } = await supabase
             .from("contact_tasks")
             .insert({
@@ -486,7 +524,11 @@ Deno.serve(async (req) => {
               title: step.title,
               notes:
                 (step.body || "SMS step requires manual action") +
-                (!mm ? " (Mobile Message not configured on sequence-runner)" : " (contact opted out of SMS)"),
+                (!mm
+                  ? " (Mobile Message not configured on sequence-runner)"
+                  : smsBlocked
+                  ? " (contact opted out of SMS)"
+                  : ` (unresolved merge fields: ${smsUnresolved.join(", ")} - fill these in and send manually)`),
               due_at: dueAt.toISOString(),
               sequence_enrollment_id: enrollment.id,
             })
@@ -505,7 +547,11 @@ Deno.serve(async (req) => {
               status: "pending",
               task_id: taskRow?.id ?? null,
               activated_at: new Date().toISOString(),
-              error: !mm ? "missing_mobile_message_config" : "contact_sms_opt_out",
+              error: !mm
+                ? "missing_mobile_message_config"
+                : smsBlocked
+                ? "contact_sms_opt_out"
+                : "unresolved_merge_tokens",
             })
             .select("id")
             .single();
@@ -520,12 +566,17 @@ Deno.serve(async (req) => {
             title: step.title,
             body: !mm
               ? "SMS step is due, but Mobile Message is not configured on the sequence-runner function."
-              : "SMS step is due, but contact opted out of SMS.",
+              : smsBlocked
+              ? "SMS step is due, but contact opted out of SMS."
+              : `SMS step held back - unresolved merge fields: ${smsUnresolved.join(", ")}.`,
             entity_type: "nurture_sequence_step_runs",
             entity_id: createdRunId ?? null,
             read_at: null,
           });
-          results.push({ enrollment_id: enrollment.id, action: "sms_fallback_task_created" });
+          results.push({
+            enrollment_id: enrollment.id,
+            action: smsUnresolved.length > 0 ? "sms_held_unresolved_tokens" : "sms_fallback_task_created",
+          });
           continue;
         }
 
@@ -585,8 +636,7 @@ Deno.serve(async (req) => {
 
         const batch = await postMobileMessageBatch(mm, [{ to, message: merged }]);
         if (!batch.ok) {
-          const detail =
-            (batch.data?.error as string) || (batch.data?.message as string) || `HTTP ${batch.status}`;
+          const detail = (batch.data?.error as string) || (batch.data?.message as string) || `HTTP ${batch.status}`;
           results.push({ enrollment_id: enrollment.id, action: "sms_failed", detail });
           continue;
         }
@@ -596,7 +646,7 @@ Deno.serve(async (req) => {
           user_id: enrollment.user_id,
           contact_id: enrollment.contact_id,
           to_phone: to,
-          body_preview: merged.length > 200 ? `${merged.slice(0, 200)}…` : merged,
+          body_preview: merged.length > 200 ? `${merged.slice(0, 200)}...` : merged,
           provider: "mobile_message",
           provider_message_id: first?.message_id ?? null,
           status: "sent",
