@@ -8,6 +8,10 @@
 //   3. Drops a "Buyer enquiry" card into the Note Inbox (injector_notes/proposals)
 //      — contact-as-buyer + call-back task, reviewed & injected like any note.
 //
+// ALSO accepts structured website enquiries (5 Aug 2026): POST { website: true,
+// gmail_message_id: "webreg-<id>", name, email, phone, property_address, comments }
+// — same acks, same Greg alert, same Note Inbox card, source "website".
+//
 // Dedupe on gmail_message_id (stored in injector_notes.pocket_recording_id).
 // Test switches: { dry_run: true } parses without sending/writing;
 // { override_recipient: { email, phone } } redirects buyer-facing acks (testing).
@@ -27,7 +31,7 @@ const OWNER_USER_ID = "e1bd63ad-b120-4a5a-91c0-c3189bc8938c";
 const GREG_EMAIL = "greg.leigh@qldsir.com";
 const GREG_PHONE = "+61466805992";
 const SITE = "https://gregleighproperty.com.au";
-const LOGO = "https://tiny-brioche-b979f7.netlify.app/qsir-email-logo.png";
+const LOGO = "https://redlandshomevalue.com.au/assets/qsir-email-logo.png";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +64,7 @@ function shortAddr(a: string | null): string {
 }
 
 type Enquiry = {
-  source: "rea" | "domain";
+  source: "rea" | "domain" | "website";
   property_address: string | null;
   property_id: string | null;
   property_url: string | null;
@@ -73,9 +77,16 @@ type Enquiry = {
   comments: string | null;
 };
 
+function sourceLabel(s: Enquiry["source"]): string {
+  return s === "rea" ? "realestate.com.au" : s === "domain" ? "Domain" : "gregleighproperty.com.au";
+}
+
 /** Parse a (possibly forwarded) REA or Domain enquiry from raw email text. */
 function parseEnquiry(subject: string, body: string): Enquiry | null {
-  const b = body.replace(/\r/g, "");
+  // Normalise: drop CRs and strip forwarded quote markers ("> ") so the same
+  // field greps work whether the enquiry was forwarded (Outlook/Gmail) or sent
+  // straight to the Resend inbound address by the portal.
+  const b = body.replace(/\r/g, "").replace(/^[ \t]*>+[ \t]?/gm, "");
   const isRea = /realestate\.com\.au/i.test(b) && /Property address:/i.test(b);
   const isDomain = /domain\.com\.au/i.test(b) && /Email:/i.test(b) && !isRea;
 
@@ -83,7 +94,9 @@ function parseEnquiry(subject: string, body: string): Enquiry | null {
     const name = grab(b, /Name:\s*([^\n]+)/i) ?? "there";
     return {
       source: "rea",
-      property_id: grab(b, /Property id:\s*([^\n]+)/i),
+      // Prefer the numeric REA id; fall back to the first token so a messy
+      // "Property id: 151633612, 17 Elysium Road, ..." line doesn't swallow the address.
+      property_id: grab(b, /Property id:\s*#?(\d+)/i) ?? grab(b, /Property id:\s*([^\n,]+)/i),
       property_address: grab(b, /Property address:\s*([^\n]+)/i),
       property_url: grab(b, /Property URL:\s*([^\n]+)/i),
       name,
@@ -96,10 +109,13 @@ function parseEnquiry(subject: string, body: string): Enquiry | null {
     };
   }
   if (isDomain) {
-    // Forwarded emails carry an Outlook "From: Domain.com.au Property Enquiry" header line —
-    // the buyer's name is the "From:" immediately followed by an "Email:" line.
+    // Forwarded emails carry an Outlook "From: <buyer name>\nEmail:" header line.
+    // Portal-direct Domain sends don't, so fall back to Domain's native fields
+    // ("Name:" / "new enquiry from <name>") before giving up on the greeting.
     const name =
       grab(b, /From:\s*([^\n<]+?)\s*\n+\s*Email:/i) ??
+      grab(b, /(?:Full name|Contact name|Name)\s*:\s*([^\n<]+)/i) ??
+      grab(b, /enquir(?:y|ed)\s+from[:\s]+([A-Z][^\n<.,]{1,60})/i) ??
       grab(b, /From:\s*([^\n<]+?)(?:\n|<|$)/i) ??
       "there";
     const addr =
@@ -120,6 +136,24 @@ function parseEnquiry(subject: string, body: string): Enquiry | null {
     };
   }
   return null;
+}
+
+/** Build an Enquiry straight from a structured website payload (register-interest form). */
+function websiteEnquiry(body: Record<string, unknown>): Enquiry {
+  const nm = String(body.name ?? "").trim() || "there";
+  return {
+    source: "website",
+    property_id: null,
+    property_address: body.property_address ? String(body.property_address).trim() : null,
+    property_url: null,
+    name: nm,
+    first_name: nm.split(/\s+/)[0] ?? "there",
+    email: body.email ? String(body.email).trim().toLowerCase() : null,
+    phone: normalizePhone(body.phone ? String(body.phone) : null),
+    about: body.about ? String(body.about).trim() : null,
+    wants: null,
+    comments: body.comments ? String(body.comments).trim() : null,
+  };
 }
 
 function ackEmailHtml(e: Enquiry): { subject: string; html: string } {
@@ -181,19 +215,20 @@ async function sendSms(to: string, message: string): Promise<{ ok: boolean; erro
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method === "GET") return json({ ok: true, fn: "buyer-enquiry-inbound", email: Boolean(RESEND_API_KEY), sms: Boolean(MM_USER && MM_PASS && MM_SENDER) });
+  if (req.method === "GET") return json({ ok: true, fn: "buyer-enquiry-inbound", email: Boolean(RESEND_API_KEY), sms: Boolean(MM_USER && MM_PASS && MM_SENDER), website_intake: true });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { return json({ error: "invalid json" }, 400); }
+  const isWebsite = body.website === true;
   const gmailId = String(body.gmail_message_id ?? "").trim();
   const subject = String(body.subject ?? "");
   const rawBody = String(body.body_text ?? "");
   const dryRun = body.dry_run === true;
   const override = (body.override_recipient ?? null) as { email?: string; phone?: string } | null;
-  if (!gmailId || !rawBody) return json({ error: "gmail_message_id and body_text required" }, 400);
+  if (!gmailId || (!rawBody && !isWebsite)) return json({ error: "gmail_message_id and body_text required" }, 400);
 
-  const enquiry = parseEnquiry(subject, rawBody);
+  const enquiry = isWebsite ? websiteEnquiry(body) : parseEnquiry(subject, rawBody);
   if (!enquiry) return json({ ok: true, ignored: true, reason: "not a recognisable REA/Domain enquiry" });
   if (dryRun) return json({ ok: true, dry_run: true, parsed: enquiry });
 
@@ -262,7 +297,7 @@ Deno.serve(async (req) => {
     `# Buyer enquiry — ${enquiry.name}`,
     ``,
     `**Property:** ${enquiry.property_address ?? "—"}${enquiry.property_id ? ` (ID ${enquiry.property_id})` : ""}`,
-    `**Source:** ${enquiry.source === "rea" ? "realestate.com.au" : "Domain"}`,
+    `**Source:** ${sourceLabel(enquiry.source)}`,
     `**Phone:** ${enquiry.phone ?? "—"}  **Email:** ${enquiry.email ?? "—"}`,
     enquiry.about ? `**About them:** ${enquiry.about}` : null,
     enquiry.wants ? `**They want:** ${enquiry.wants}` : null,
@@ -289,7 +324,7 @@ Deno.serve(async (req) => {
       proposed: {
         name: enquiry.name, first_name: nameParts[0] ?? null, last_name: nameParts.length > 1 ? nameParts.slice(1).join(" ") : null,
         mobile: enquiry.phone, email: enquiry.email, ownership: "buyer",
-        note: `Enquired on ${enquiry.property_address ?? "a listing"} via ${enquiry.source.toUpperCase()}${firstHome ? " (first-home buyer)" : ""}${enquiry.comments ? `: “${enquiry.comments.slice(0, 220)}”` : ""}`,
+        note: `Enquired on ${enquiry.property_address ?? "a listing"} via ${sourceLabel(enquiry.source)}${firstHome ? " (first-home buyer)" : ""}${enquiry.comments ? `: “${enquiry.comments.slice(0, 220)}”` : ""}`,
         evidence: enquiry.comments ? enquiry.comments.slice(0, 140) : (enquiry.wants ?? null),
         match_name: matchName,
         match_by: matchId ? (digits.length === 9 ? "phone" : "email") : null,
