@@ -84,7 +84,7 @@ export function renderBrandedEmailHtml(opts: {
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e8e1d4;">
         <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:34px 40px;text-align:center;">
-          <img src="https://tiny-brioche-b979f7.netlify.app/qsir-email-logo.png" width="360" alt="Queensland Sotheby&#39;s International Realty" style="display:inline-block;width:100%;max-width:360px;height:auto;border:0;">
+          <img src="https://redlandshomevalue.com.au/assets/qsir-email-logo.png" width="360" alt="Queensland Sotheby&#39;s International Realty" style="display:inline-block;width:100%;max-width:360px;height:auto;border:0;">
         </td></tr>
         <tr><td style="height:3px;line-height:3px;font-size:0;background:#b08d3f;">&nbsp;</td></tr>
         <tr><td style="padding:46px 48px 40px;font-family:Georgia,'Times New Roman',serif;color:#20242e;">
