@@ -57,3 +57,6 @@ datadungeonv3-29f00d51/
 *.pyc
 prospect_contacts.csv
 Pipeline_*
+
+# Local staging for files pending manual deletion
+_to_delete/
