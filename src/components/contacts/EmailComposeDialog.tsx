@@ -148,7 +148,7 @@ export function EmailComposeDialog({
         <DialogHeader>
           <DialogTitle>Send Email</DialogTitle>
           <DialogDescription id="email-compose-desc">
-            Pick a branded template or write your own. It sends in your Queensland Sotheby's design and logs to the
+            Pick a branded template or write your own. It sends in your Greg Leigh branded design and logs to the
             contact. Replies come back to your inbox.
           </DialogDescription>
         </DialogHeader>

@@ -25,7 +25,6 @@ const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || "onboarding@resend.dev";
 const AGENT_EMAIL = Deno.env.get("AGENT_EMAIL") || "greg.leigh@qldsir.com";
 const AGENT_NAME = Deno.env.get("AGENT_NAME") || "Greg Leigh";
 const AGENT_PHONE = Deno.env.get("AGENT_PHONE") || "0466 805 992";
-const BRAND_LOGO = "https://redlandshomevalue.com.au/assets/qsir-email-logo.png";
 
 const REPLY_TO_EMAIL = Deno.env.get("REPLY_TO_EMAIL") || "replies@venuachiax.resend.app";
 
@@ -48,8 +47,9 @@ function brandEmail(innerHtml: string): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f3efe7" style="background-color:#f3efe7;">
 <tr><td align="center" style="padding:32px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:600px;max-width:100%;background-color:#ffffff;border:1px solid #e8e1d4;">
-  <tr><td bgcolor="#0e2140" align="center" style="background-color:#0e2140;padding:34px 40px;text-align:center;">
-    <img src="${BRAND_LOGO}" width="360" alt="Queensland Sotheby's International Realty" style="display:inline-block;width:100%;max-width:360px;height:auto;border:0;outline:none;">
+  <tr><td bgcolor="#0e2140" align="center" style="background-color:#0e2140;padding:36px 40px;text-align:center;">
+    <div style="font-family:Georgia,'Times New Roman',Times,serif;font-weight:600;font-size:28px;line-height:1.1;letter-spacing:.18em;color:#ffffff;">GREG&nbsp;LEIGH</div>
+    <div style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:#c6b58a;">Redlands Coast Real Estate</div>
   </td></tr>
   <tr><td bgcolor="#b08d3f" height="3" style="background-color:#b08d3f;height:3px;line-height:3px;font-size:0;">&nbsp;</td></tr>
   <tr><td style="padding:44px 44px 8px;font-family:Georgia,'Times New Roman',Times,serif;font-size:16px;line-height:26px;color:#20242e;">

@@ -22,6 +22,10 @@ a{color:var(--navy)}
 .btn[disabled]{opacity:.55;cursor:not-allowed}
 
 /* ---------- Logo placeholders (shown only if SVG missing) ---------- */
+/* Text wordmark — replaces the QSIR logo images (logo permission withdrawn Aug 2026). */
+.wordmark{display:inline-block;font-family:var(--serif);font-weight:700;font-size:1.3rem;letter-spacing:.16em;line-height:1.1;color:var(--navy);text-transform:uppercase}
+.wordmark__sub{display:block;font-weight:600;font-size:.58rem;letter-spacing:.34em;color:var(--gold);margin-top:.22rem;text-transform:uppercase}
+.wordmark--rev{color:var(--cream)}
 .logo-placeholder{display:inline-block;font-family:var(--serif);font-weight:600;font-size:.9rem;letter-spacing:.12em;color:var(--navy);border:1px dashed var(--gold);padding:.5rem .75rem;line-height:1.2;max-width:220px}
 .logo-placeholder--sm{font-size:.72rem;padding:.4rem .6rem}
 .logo-placeholder--rev{color:var(--cream);border-color:var(--gold)}

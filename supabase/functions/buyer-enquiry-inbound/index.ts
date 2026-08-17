@@ -31,7 +31,6 @@ const OWNER_USER_ID = "e1bd63ad-b120-4a5a-91c0-c3189bc8938c";
 const GREG_EMAIL = "greg.leigh@qldsir.com";
 const GREG_PHONE = "+61466805992";
 const SITE = "https://gregleighproperty.com.au";
-const LOGO = "https://redlandshomevalue.com.au/assets/qsir-email-logo.png";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -166,8 +165,9 @@ function ackEmailHtml(e: Enquiry): { subject: string; html: string } {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3efe7;padding:32px 12px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e8e1d4;">
-        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:34px 40px;text-align:center;">
-          <img src="${LOGO}" width="360" alt="Queensland Sotheby&#39;s International Realty" style="display:inline-block;width:100%;max-width:360px;height:auto;border:0;">
+        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:36px 40px;text-align:center;">
+          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:30px;line-height:1.1;letter-spacing:.18em;color:#ffffff;">GREG&nbsp;LEIGH</div>
+          <div style="margin-top:6px;font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:#c6b58a;font-family:Arial,Helvetica,sans-serif;">Redlands Coast Real Estate</div>
         </td></tr>
         <tr><td style="height:3px;line-height:3px;font-size:0;background:#b08d3f;">&nbsp;</td></tr>
         <tr><td style="padding:46px 48px 40px;font-family:Georgia,'Times New Roman',serif;color:#20242e;">

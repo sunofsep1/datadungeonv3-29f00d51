@@ -44,7 +44,8 @@ function welcomeHtml(firstName: string): string {
 <html><body style="margin:0;padding:0;background:#FEFBF5;">
 <div style="max-width:560px;margin:0 auto;padding:32px 24px;font-family:'Source Sans 3',-apple-system,'Segoe UI',sans-serif;color:#1a1a1a;">
   <div style="text-align:center;padding-bottom:20px;border-bottom:2px solid #B99A50;">
-    <img src="${SITE}/assets/qsir-logo-navy.png" alt="Queensland Sotheby's International Realty" width="200" style="max-width:200px;height:auto;margin:0 auto;" />
+    <div style="font-family:Georgia,'Times New Roman',serif;font-weight:600;font-size:24px;letter-spacing:.2em;color:#172849;">GREG&nbsp;LEIGH</div>
+    <div style="margin-top:5px;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#B99A50;font-family:Arial,Helvetica,sans-serif;">Redlands Coast Real Estate</div>
   </div>
   <h1 style="font-family:Georgia,'Times New Roman',serif;color:#172849;font-size:26px;font-weight:600;margin:28px 0 12px;">You&rsquo;re on the inside now.</h1>
   <p style="font-size:16px;line-height:1.55;margin:0 0 14px;">${hi}</p>
