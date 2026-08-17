@@ -48,8 +48,7 @@ function brandEmail(innerHtml: string): string {
 <tr><td align="center" style="padding:32px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:600px;max-width:100%;background-color:#ffffff;border:1px solid #e8e1d4;">
   <tr><td bgcolor="#0e2140" align="center" style="background-color:#0e2140;padding:36px 40px;text-align:center;">
-    <div style="font-family:Georgia,'Times New Roman',Times,serif;font-weight:600;font-size:28px;line-height:1.1;letter-spacing:.18em;color:#ffffff;">GREG&nbsp;LEIGH</div>
-    <div style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:#c6b58a;">Redlands Coast Real Estate</div>
+    <img src="https://redlandshomevalue.com.au/assets/brand/gl-logo-full-rev.png" width="300" alt="Greg Leigh — Redlands Coast Real Estate" style="display:inline-block;width:300px;max-width:80%;height:auto;border:0;">
   </td></tr>
   <tr><td bgcolor="#b08d3f" height="3" style="background-color:#b08d3f;height:3px;line-height:3px;font-size:0;">&nbsp;</td></tr>
   <tr><td style="padding:44px 44px 8px;font-family:Georgia,'Times New Roman',Times,serif;font-size:16px;line-height:26px;color:#20242e;">

@@ -91,7 +91,7 @@ export function composeProspectAckEmail(ctx: SellerLeadContext): { subject: stri
   const addr = ctx.address ? ` on <strong>${escapeHtml(ctx.address)}</strong>` : "";
   const subject = "Your Redlands property appraisal request — Greg Leigh";
   const header =
-    `        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:38px 40px;text-align:center;">\n          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:30px;line-height:1.1;letter-spacing:.18em;color:#ffffff;">GREG&nbsp;LEIGH</div>\n          <div style="margin-top:6px;font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:#c6b58a;font-family:Arial,Helvetica,sans-serif;">Redlands Coast Real Estate</div>\n        </td></tr>\n        <tr><td style="height:3px;line-height:3px;font-size:0;background:#b08d3f;">&nbsp;</td></tr>`;
+    `        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:34px 40px;text-align:center;">\n          <img src="https://redlandshomevalue.com.au/assets/brand/gl-logo-full-rev.png" width="300" alt="Greg Leigh — Redlands Coast Real Estate" style="display:inline-block;width:300px;max-width:80%;height:auto;border:0;">\n        </td></tr>\n        <tr><td style="height:3px;line-height:3px;font-size:0;background:#b08d3f;">&nbsp;</td></tr>`;
   const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap');</style></head>
