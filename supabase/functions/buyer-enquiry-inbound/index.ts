@@ -165,23 +165,25 @@ function ackEmailHtml(e: Enquiry): { subject: string; html: string } {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3efe7;padding:32px 12px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e8e1d4;">
-        <tr><td bgcolor="#0e2140" style="background:#0e2140;padding:36px 40px;text-align:center;">
-          <img src="https://redlandshomevalue.com.au/assets/brand/gl-logo-full-email.png" width="300" alt="Greg Leigh — Redlands Coast Real Estate" style="display:inline-block;width:300px;max-width:80%;height:auto;border:0;">
+        <tr><td bgcolor="#172849" style="background:#172849;padding:34px 40px 30px;text-align:center;">
+          <div style="text-align:center;line-height:0;font-size:0;"><img src="https://redlandshomevalue.com.au/assets/brand/qsir-marque-email.png" width="210" alt="Queensland Sotheby&#39;s" style="display:inline-block;width:100%;max-width:210px;height:auto;border:0;outline:none;text-decoration:none;color:#FFFFFF;font-family:Georgia,'Times New Roman',Times,serif;font-size:13px;"></div>
+          <div style="padding:19px 0 17px;font-size:0;line-height:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="64" style="width:64px;"><tr><td height="1" bgcolor="#3D4E70" style="height:1px;line-height:1px;font-size:1px;background-color:#3D4E70;">&nbsp;</td></tr></table></div>
+          <div style="text-align:center;line-height:0;font-size:0;"><img src="https://redlandshomevalue.com.au/assets/brand/greg-leigh-lockup.png" width="286" alt="Greg Leigh" style="display:inline-block;width:100%;max-width:286px;height:auto;border:0;outline:none;text-decoration:none;color:#FFFFFF;font-family:Georgia,'Times New Roman',Times,serif;font-size:20px;letter-spacing:4px;"></div>
         </td></tr>
-        <tr><td style="height:3px;line-height:3px;font-size:0;background:#b08d3f;">&nbsp;</td></tr>
+        <tr><td style="height:3px;line-height:3px;font-size:0;background:#B99A50;">&nbsp;</td></tr>
         <tr><td style="padding:46px 48px 40px;font-family:Georgia,'Times New Roman',serif;color:#20242e;">
-          <p style="margin:0 0 10px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#b08d3f;font-family:Arial,Helvetica,sans-serif;">Property Enquiry</p>
-          <h1 style="margin:0 0 24px;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:33px;line-height:1.2;color:#0e2140;">Thanks ${esc(e.first_name)} &mdash; I&#39;ve got your enquiry.</h1>
+          <p style="margin:0 0 10px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#B99A50;font-family:Arial,Helvetica,sans-serif;">Property Enquiry</p>
+          <h1 style="margin:0 0 24px;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-weight:600;font-size:33px;line-height:1.2;color:#172849;">Thanks ${esc(e.first_name)} &mdash; I&#39;ve got your enquiry.</h1>
           <p style="margin:0 0 18px;font-size:16px;line-height:1.75;">Thanks for reaching out about <strong>${esc(addr)}</strong>. I&#39;ve received your enquiry and I&#39;ll personally be in touch shortly with the answers you&#39;re after &mdash; price guidance, inspection times, whatever you need.</p>
           <p style="margin:0 0 26px;font-size:16px;line-height:1.75;">If it&#39;s urgent, call or text me directly on <strong>0466 805 992</strong> &mdash; I&#39;d rather you catch me than wait.</p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 34px;"><tr>
-            <td bgcolor="#b08d3f" style="border-radius:2px;">
-              <a href="${SITE}/listings" rel="noopener" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:.04em;color:#0e2140;text-decoration:none;">See my current listings &rarr;</a>
+            <td bgcolor="#B99A50" style="border-radius:2px;">
+              <a href="${SITE}/listings" rel="noopener" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:.04em;color:#172849;text-decoration:none;">See my current listings &rarr;</a>
             </td>
           </tr></table>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e8e1d4;"><tr><td style="padding-top:24px;">
-            <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;color:#0e2140;line-height:1.2;">Greg Leigh</div>
-            <div style="margin-top:5px;font-size:13px;line-height:1.7;color:#6b6b6b;font-family:Arial,Helvetica,sans-serif;">Local Redlands Property Specialist<br>Queensland Sotheby&#39;s International Realty<br><a href="${SITE}" rel="noopener" style="color:#b08d3f;text-decoration:none;">gregleighproperty.com.au</a></div>
+            <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;color:#172849;line-height:1.2;">Greg Leigh</div>
+            <div style="margin-top:5px;font-size:13px;line-height:1.7;color:#6b6b6b;font-family:Arial,Helvetica,sans-serif;">Local Redlands Property Specialist<br>Queensland Sotheby&#39;s International Realty<br><a href="${SITE}" rel="noopener" style="color:#B99A50;text-decoration:none;">gregleighproperty.com.au</a></div>
           </td></tr></table>
         </td></tr>
         <tr><td style="background:#f3efe7;padding:22px 40px;text-align:center;border-top:1px solid #e8e1d4;">
