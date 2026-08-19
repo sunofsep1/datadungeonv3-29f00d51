@@ -77,7 +77,12 @@ export function buildMergeContext(contact: MergeContact | null, extras: MergeExt
 }
 
 const CURLY = /\{\{\s*([a-z_][a-z0-9_]{1,30})\s*\}\}/gi;
-const SQUARE = /\[([a-z_][a-z0-9_]{2,30})\]/gi;
+// Widened 14 Aug 2026: the old pattern required 3+ word-chars, so tokens with a
+// space or slash ([suburb/property type], [Beds/baths], [one line]) and short ones
+// ([X], [Y], [D], [N]) were invisible to findUnresolvedTokens and got emailed
+// verbatim. Any bracketed run is now treated as a token: unknown keys stay
+// unsubstituted in applyMerge and correctly park the step instead of sending.
+const SQUARE = /\[([^\]\n]{1,40})\]/gi;
 const BRACE = /\{([a-z_][a-z0-9_]{1,30})\}/gi;
 
 export function applyMerge(text: string | null | undefined, ctx: MergeContext): string {
