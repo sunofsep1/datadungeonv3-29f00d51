@@ -143,6 +143,28 @@
             </td>
           </tr>
 
+          <!-- ===== free guide download ===== -->
+          <tr>
+            <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:8px 30px 26px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#172849" style="background-color:#172849;border-radius:2px;">
+                <tr>
+                  <td style="padding:24px 24px;">
+                    <p style="margin:0 0 4px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#B99A50;">Free download</p>
+                    <h3 style="margin:0 0 8px;font-family:Georgia,'Times New Roman',Times,serif;font-size:20px;font-weight:600;color:#FFFFFF;">My spring selling guide: 36 ways to sell for more.</h3>
+                    <p style="margin:0 0 16px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#D8D0BE;">The simple, low-cost jobs that lift a home&rsquo;s value before it ever hits the market &mdash; my 36 field-tested tips, in one quick read. In a market like this one they matter more, not less. Yours free, no strings.</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td bgcolor="#B99A50" align="center" style="background-color:#B99A50;border-radius:2px;">
+                          <a href="https://redlandshomevalue.com.au/assets/greg-36-tips-selling-your-home.pdf" style="display:inline-block;padding:13px 28px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#172849;text-decoration:none;">Download the guide (PDF) &rarr;</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
           <!-- ===== sign off ===== -->
           <tr>
             <td bgcolor="#FFFFFF" style="background-color:#FFFFFF;padding:6px 30px 30px;">
