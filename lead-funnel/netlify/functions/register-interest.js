@@ -97,6 +97,18 @@ exports.handler = async (event) => {
   const postcode = str(body.postcode).slice(0, 12);
   const listing = str(body.listing).slice(0, 160) || "a listing";
 
+  // Which of the advertised viewings they picked. Whitelisted rather than free
+  // text so nothing arbitrary can be posted into the notification email.
+  const VIEWINGS = {
+    "2026-08-27": "Thursday 27 August, 5:30-6:15pm",
+    "2026-09-03": "Thursday 3 September, 5:30-6:15pm",
+    either: "Either date suits",
+  };
+  const viewingKey = str(body.viewing).slice(0, 20);
+  const viewing = Object.prototype.hasOwnProperty.call(VIEWINGS, viewingKey)
+    ? VIEWINGS[viewingKey]
+    : "";
+
   if (!first_name || !last_name) {
     return json(400, { ok: false, error: "Name is required" }, cors);
   }
@@ -115,6 +127,7 @@ exports.handler = async (event) => {
   const whereFrom = [suburb, postcode].filter(Boolean).join(" ");
   const notes =
     `Registered interest in ${listing} via the website. ` +
+    (viewing ? `Wants the ${viewing} viewing. ` : "") +
     `Buyer${whereFrom ? ` lives in ${whereFrom}` : ""}.` +
     (phone ? ` Mobile: ${phone}.` : "");
 
@@ -158,6 +171,9 @@ exports.handler = async (event) => {
       `<p style="font-family:Arial,sans-serif;font-size:15px;color:#333;margin:0 0 12px;"><strong>${esc(listing)}</strong></p>` +
       `<table style="font-family:Arial,sans-serif;font-size:14px;color:#333;border-collapse:collapse;">` +
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Name</td><td style="padding:4px 0;"><strong>${esc(first_name)} ${esc(last_name)}</strong></td></tr>` +
+      (viewing
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Viewing</td><td style="padding:4px 0;"><strong style="color:#B99A50;">${esc(viewing)}</strong></td></tr>`
+        : "") +
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Mobile</td><td style="padding:4px 0;">${esc(phone) || "—"}</td></tr>` +
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Email</td><td style="padding:4px 0;">${esc(email) || "—"}</td></tr>` +
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Lives in</td><td style="padding:4px 0;">${esc(whereFrom) || "—"}</td></tr>` +
@@ -171,7 +187,9 @@ exports.handler = async (event) => {
           from,
           to: [to],
           reply_to: email || undefined,
-          subject: `New interest: ${listing} — ${first_name} ${last_name}`,
+          subject: viewing
+            ? `New interest: ${first_name} ${last_name} — ${viewing.split(",")[0]}`
+            : `New interest: ${listing} — ${first_name} ${last_name}`,
           html,
         }),
       });
