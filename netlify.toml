@@ -29,4 +29,6 @@
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # camera/microphone must be allowed for the app itself: "Take Photo" from file
+    # inputs (iPhone/iPad) and the voice-memo recorder both break when denied.
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=()"

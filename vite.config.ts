@@ -27,7 +27,11 @@ export default defineConfig(() => ({
     tailwindcss(),
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt" (not "autoUpdate"): the app controls WHEN a new version reloads the
+      // page. autoUpdate reloaded the instant a new SW activated — on iPhone/iPad the
+      // photo picker / camera backgrounds the app, and the reload-on-return killed the
+      // picker mid-flight, which presented as "the app crashes when I add a photo".
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "icons/apple-touch-icon.png"],
       manifest: {
         name: "DataDungeon",
