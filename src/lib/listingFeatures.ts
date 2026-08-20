@@ -162,13 +162,14 @@ export function featureKeysToPropertyLabels(keys: string[]): string[] {
 export const MARKETING_HEADLINE_MAX = 150;
 export const MARKETING_DESCRIPTION_MAX = 6000;
 
-export type ListingResourceKind = "photo" | "floorplan" | "document" | "link";
+export type ListingResourceKind = "photo" | "floorplan" | "document" | "link" | "design";
 
 export const LISTING_RESOURCE_KINDS: Array<{ key: ListingResourceKind; label: string }> = [
   { key: "photo", label: "Photos" },
   { key: "floorplan", label: "Floorplans" },
   { key: "document", label: "Documents" },
   { key: "link", label: "Links" },
+  { key: "design", label: "Designs" },
 ];
 
 export function listingResourceKindLabel(kind: string): string {

@@ -112,6 +112,7 @@ import { ListingPricingPanel } from "@/components/listings/ListingPricingPanel";
 import { ListingForSalePanel } from "@/components/listings/ListingForSalePanel";
 import { ListingFeaturesPanel } from "@/components/listings/ListingFeaturesPanel";
 import { ListingResourcesPanel } from "@/components/listings/ListingResourcesPanel";
+import { MarketingStudioCard } from "@/components/listings/MarketingStudioCard";
 import { ListingPipelineNextCard } from "@/components/listings/ListingPipelineNextCard";
 import { useActivityLogByListing, useCreateActivityLog } from "@/hooks/useActivityLog";
 import { useCreateAppointment } from "@/hooks/useAppointments";
@@ -1274,7 +1275,23 @@ export default function ListingDetail() {
       )}
 
       {activeSection === "listing-resources" && (
-      <div id="listing-resources" className="scroll-mt-28">
+      <div id="listing-resources" className="scroll-mt-28 space-y-6">
+        <MarketingStudioCard
+          listingId={listing.id}
+          listing={{
+            address: listing.address ?? null,
+            bedrooms: listing.bedrooms ?? null,
+            bathrooms: listing.bathrooms ?? null,
+            property_type: listing.property_type ?? null,
+            display_price: (listing as { display_price?: string | null }).display_price ?? null,
+            quote_price: (listing as { quote_price?: string | null }).quote_price ?? null,
+            marketing_headline:
+              (listing as { marketing_headline?: string | null }).marketing_headline ?? null,
+            campaign_next_inspection_at:
+              (listing as { campaign_next_inspection_at?: string | null })
+                .campaign_next_inspection_at ?? null,
+          }}
+        />
         <ListingResourcesPanel
           listingId={listing.id}
           heroUrls={heroUrls}

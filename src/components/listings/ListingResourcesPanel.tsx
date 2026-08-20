@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ExternalLink, FileText, ImageIcon, Layers, Link2, Plus, Star, Trash2 } from "lucide-react";
+import { ExternalLink, FileText, ImageIcon, Layers, Link2, Palette, Plus, Star, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ const KIND_ICONS: Record<ListingResourceKind, typeof ImageIcon> = {
   floorplan: Layers,
   document: FileText,
   link: Link2,
+  design: Palette,
 };
 
 export function ListingResourcesPanel({
@@ -249,7 +250,7 @@ export function ListingResourcesPanel({
           )}
         </TabsContent>
 
-        {(["floorplan", "document", "link"] as ListingResourceKind[]).map((kind) => {
+        {(["floorplan", "document", "link", "design"] as ListingResourceKind[]).map((kind) => {
           const Icon = KIND_ICONS[kind];
           const items = byKind(kind);
           return (
@@ -260,6 +261,10 @@ export function ListingResourcesPanel({
                     <Plus className="h-3.5 w-3.5 mr-1.5" />
                     Add link
                   </Button>
+                ) : kind === "design" ? (
+                  <p className="text-xs text-muted-foreground">
+                    Designs are created from the Marketing Studio above and saved here automatically.
+                  </p>
                 ) : (
                   <>
                     <input
