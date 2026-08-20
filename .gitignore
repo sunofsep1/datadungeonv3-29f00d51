@@ -60,3 +60,11 @@ Pipeline_*
 
 # Local staging for files pending manual deletion
 _to_delete/
+
+# Capacitor iOS generated artifacts
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+build/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
