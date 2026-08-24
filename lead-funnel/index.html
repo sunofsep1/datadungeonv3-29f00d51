@@ -13,6 +13,8 @@
   <meta property="og:type" content="website" />
 
   <!-- Fonts: elegant serif headlines (Cormorant Garamond) + clean sans body (Source Sans 3) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -101,8 +103,10 @@
 
   <!-- ============================ HEADER ============================ -->
   <header class="site-header">
-    <a class="brand-badge" href="/" aria-label="Greg Leigh — Redlands Coast Real Estate">
-      <img src="assets/brand/gl-logo-full-navy.png" alt="Greg Leigh — Redlands Coast Real Estate" style="height:50px;width:auto;display:inline-block" />
+    <a class="brand-badge" href="/" aria-label="Queensland Sotheby's International Realty">
+      <img src="assets/gl-logo-full-navy.png" alt="Greg Leigh Property — Redlands Coast"
+           class="brand-badge__logo" width="200" height="44"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
     </a>
     <a class="header-cta" href="#appraisal-form">Get my free appraisal</a>
   </header>
@@ -346,7 +350,10 @@
   <!-- ============================ FOOTER ============================ -->
   <footer class="site-footer" id="privacy">
     <div class="footer__inner">
-      <img src="assets/brand/gl-logo-full-rev.png" alt="Greg Leigh — Redlands Coast Real Estate" style="height:52px;width:auto;display:inline-block" />
+      <img src="assets/gl-logo-full-rev.png" alt="Greg Leigh Property — Redlands Coast"
+           class="footer__logo" width="220" height="48"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-placeholder logo-placeholder--rev',textContent:'QUEENSLAND SOTHEBY’S INTERNATIONAL REALTY'}))" />
+      <p class="footer__agency">Greg Leigh &middot; Queensland Sotheby&rsquo;s International Realty, Redlands QLD</p>
       <p class="footer__fine">
         Each office is independently owned and operated. Licensed real estate agent (QLD).
         <a href="#privacy">Privacy policy</a> &middot;

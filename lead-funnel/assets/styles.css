@@ -58,7 +58,7 @@ a{color:var(--navy)}
 
 /* ---------- Header ---------- */
 .site-header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1.5rem;background:rgba(254,251,245,.92);backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--grey)}
-.brand-badge__logo{height:40px;width:auto}
+.brand-badge__logo{height:56px;width:auto}
 .header-cta{font-family:var(--sans);font-weight:600;font-size:.95rem;color:var(--navy);text-decoration:none;padding:.55rem 1.1rem;border:1px solid var(--gold);border-radius:2px;white-space:nowrap;transition:background .18s,color .18s}
 .header-cta:hover{background:var(--gold);color:var(--white)}
 
@@ -146,7 +146,7 @@ a{color:var(--navy)}
 /* ---------- Footer ---------- */
 .site-footer{background:var(--navy);color:#cbd2df}
 .footer__inner{max-width:var(--maxw);margin:0 auto;padding:3rem 1.5rem;text-align:center}
-.footer__logo{height:44px;width:auto;margin:0 auto 1.25rem;opacity:.95}
+.footer__logo{height:64px;width:auto;margin:0 auto 1.25rem;opacity:.95}
 .footer__agency{font-family:var(--serif);font-size:1.15rem;color:var(--white);margin:0 0 1rem}
 .footer__fine{font-size:.82rem;line-height:1.6;max-width:60ch;margin:0 auto 1rem;color:#9aa4b8}
 .footer__fine a,.footer__copy a{color:var(--gold);text-decoration:none}
