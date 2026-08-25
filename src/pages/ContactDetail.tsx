@@ -1095,7 +1095,16 @@ export default function ContactDetail() {
                     <DropdownMenuItem onClick={handleCreateFromAddress} disabled={createFromAddress.isPending || createLink.isPending}>
                       Create property from address
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLinkPropertyOpen(true)} disabled={availableProperties.length === 0}>
+                    <DropdownMenuItem
+                      // Defer opening until the dropdown has fully closed — opening a Dialog
+                      // synchronously from a closing Radix DropdownMenu makes the dialog
+                      // flash open then immediately dismiss (focus-return races the dialog's
+                      // dismissable layer).
+                      onSelect={() => {
+                        setTimeout(() => setLinkPropertyOpen(true), 0);
+                      }}
+                      disabled={availableProperties.length === 0}
+                    >
                       Link existing property
                     </DropdownMenuItem>
                   </DropdownMenuContent>
