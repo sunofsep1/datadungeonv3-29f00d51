@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /thankyou
+Disallow: /thankyou.html
+
+Sitemap: https://redlandshomevalue.com.au/sitemap.xml
