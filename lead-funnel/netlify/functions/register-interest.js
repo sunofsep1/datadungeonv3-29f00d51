@@ -124,6 +124,58 @@ exports.handler = async (event) => {
     : "";
   const unconditionalAck = body.unconditional_ack === true;
 
+  // Extra buyer-qualification questions for auction listings. All whitelisted
+  // rather than free text so nothing arbitrary can be posted into the
+  // notification email.
+  const BUYER_TYPE = {
+    owner_occupier: "Owner-occupier \u2014 to live in",
+    investor: "Investor",
+  };
+  const buyerTypeKey = str(body.buyer_type).slice(0, 20);
+  const buyerType = Object.prototype.hasOwnProperty.call(BUYER_TYPE, buyerTypeKey)
+    ? BUYER_TYPE[buyerTypeKey]
+    : "";
+
+  const SELLING_FIRST = {
+    no: "No \u2014 ready to proceed",
+    yes_listed: "Yes \u2014 already selling / listed",
+    yes_not_started: "Yes \u2014 hasn't started selling yet",
+  };
+  const sellingFirstKey = str(body.selling_first).slice(0, 20);
+  const sellingFirst = Object.prototype.hasOwnProperty.call(SELLING_FIRST, sellingFirstKey)
+    ? SELLING_FIRST[sellingFirstKey]
+    : "";
+
+  const PEST_STATUS = {
+    completed: "Building & pest already completed",
+    booked: "Building & pest booked / in progress",
+    need_help: "Needs help arranging a building & pest inspection",
+    not_started: "Hasn't started a building & pest inspection",
+  };
+  const pestStatusKey = str(body.pest_status).slice(0, 20);
+  const pestStatus = Object.prototype.hasOwnProperty.call(PEST_STATUS, pestStatusKey)
+    ? PEST_STATUS[pestStatusKey]
+    : "";
+
+  const SOLICITOR_READY = {
+    yes: "Solicitor/conveyancer ready to go",
+    no: "Still needs a solicitor/conveyancer",
+    not_sure: "Not sure yet re solicitor/conveyancer",
+  };
+  const solicitorReadyKey = str(body.solicitor_ready).slice(0, 20);
+  const solicitorReady = Object.prototype.hasOwnProperty.call(SOLICITOR_READY, solicitorReadyKey)
+    ? SOLICITOR_READY[solicitorReadyKey]
+    : "";
+
+  const BIDDING_FOR = {
+    self: "Bidding for themselves",
+    someone_else: "Bidding on behalf of someone else",
+  };
+  const biddingForKey = str(body.bidding_for).slice(0, 20);
+  const biddingFor = Object.prototype.hasOwnProperty.call(BIDDING_FOR, biddingForKey)
+    ? BIDDING_FOR[biddingForKey]
+    : "";
+
   if (!first_name || !last_name) {
     return json(400, { ok: false, error: "Name is required" }, cors);
   }
@@ -144,6 +196,11 @@ exports.handler = async (event) => {
     `Registered interest in ${listing} via the website. ` +
     (viewing ? `Wants the ${viewing} viewing. ` : "") +
     (financeStatus ? `Finance: ${financeStatus}. ` : "") +
+    (buyerType ? `${buyerType}. ` : "") +
+    (sellingFirst ? `Selling first: ${sellingFirst}. ` : "") +
+    (pestStatus ? `${pestStatus}. ` : "") +
+    (solicitorReady ? `${solicitorReady}. ` : "") +
+    (biddingFor ? `${biddingFor}. ` : "") +
     (unconditionalAck ? `Acknowledged unconditional auction terms. ` : "") +
     `Buyer${whereFrom ? ` lives in ${whereFrom}` : ""}.` +
     (phone ? ` Mobile: ${phone}.` : "");
@@ -193,6 +250,21 @@ exports.handler = async (event) => {
         : "") +
       (financeStatus
         ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Finance</td><td style="padding:4px 0;"><strong style="color:#B99A50;">${esc(financeStatus)}</strong></td></tr>`
+        : "") +
+      (buyerType
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Buyer type</td><td style="padding:4px 0;">${esc(buyerType)}</td></tr>`
+        : "") +
+      (sellingFirst
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Selling first?</td><td style="padding:4px 0;">${esc(sellingFirst)}</td></tr>`
+        : "") +
+      (pestStatus
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Building &amp; pest</td><td style="padding:4px 0;">${esc(pestStatus)}</td></tr>`
+        : "") +
+      (solicitorReady
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Solicitor</td><td style="padding:4px 0;">${esc(solicitorReady)}</td></tr>`
+        : "") +
+      (biddingFor
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Bidding for</td><td style="padding:4px 0;">${esc(biddingFor)}</td></tr>`
         : "") +
       (unconditionalAck
         ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Unconditional</td><td style="padding:4px 0;">Acknowledged</td></tr>`
