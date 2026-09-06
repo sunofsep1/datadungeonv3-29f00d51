@@ -109,6 +109,21 @@ exports.handler = async (event) => {
     ? VIEWINGS[viewingKey]
     : "";
 
+  // Finance readiness, for listings selling unconditionally at auction.
+  // Whitelisted rather than free text so nothing arbitrary can be posted
+  // into the notification email.
+  const FINANCE_STATUS = {
+    cash: "Cash buyer \u2014 no finance required",
+    preapproved: "Finance pre-approved",
+    in_progress: "Finance application in progress",
+    not_started: "Hasn't started finance yet",
+  };
+  const financeStatusKey = str(body.finance_status).slice(0, 20);
+  const financeStatus = Object.prototype.hasOwnProperty.call(FINANCE_STATUS, financeStatusKey)
+    ? FINANCE_STATUS[financeStatusKey]
+    : "";
+  const unconditionalAck = body.unconditional_ack === true;
+
   if (!first_name || !last_name) {
     return json(400, { ok: false, error: "Name is required" }, cors);
   }
@@ -128,6 +143,8 @@ exports.handler = async (event) => {
   const notes =
     `Registered interest in ${listing} via the website. ` +
     (viewing ? `Wants the ${viewing} viewing. ` : "") +
+    (financeStatus ? `Finance: ${financeStatus}. ` : "") +
+    (unconditionalAck ? `Acknowledged unconditional auction terms. ` : "") +
     `Buyer${whereFrom ? ` lives in ${whereFrom}` : ""}.` +
     (phone ? ` Mobile: ${phone}.` : "");
 
@@ -173,6 +190,12 @@ exports.handler = async (event) => {
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Name</td><td style="padding:4px 0;"><strong>${esc(first_name)} ${esc(last_name)}</strong></td></tr>` +
       (viewing
         ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Viewing</td><td style="padding:4px 0;"><strong style="color:#B99A50;">${esc(viewing)}</strong></td></tr>`
+        : "") +
+      (financeStatus
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Finance</td><td style="padding:4px 0;"><strong style="color:#B99A50;">${esc(financeStatus)}</strong></td></tr>`
+        : "") +
+      (unconditionalAck
+        ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Unconditional</td><td style="padding:4px 0;">Acknowledged</td></tr>`
         : "") +
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Mobile</td><td style="padding:4px 0;">${esc(phone) || "—"}</td></tr>` +
       `<tr><td style="padding:4px 12px 4px 0;color:#666;">Email</td><td style="padding:4px 0;">${esc(email) || "—"}</td></tr>` +
